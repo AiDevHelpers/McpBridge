@@ -10,6 +10,11 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 - `src/Helpers/LogHelper` — log parsing and query support used by the bridge.
 - `src/Helpers/TerminalControl` — Windows Terminal session management.
 - `src/Helpers/WindowsSession` — Windows session helpers.
+- `src/Helpers/ConfigHelper` — real paths and redacted reads for config files.
+- `src/Helpers/ErrorHelper` — build errors, warnings and notices, with snapshots and suppression.
+- `src/Helpers/ExtensionsHelper` — list, describe and add VS Code and Visual Studio extensions; workspace recommendations.
+- `src/Helpers/TestingHelper` — hot-reload test failures, and code coverage.
+- `src/Helpers/BookmarkHelper` — bookmark model and service over the IDE bridge.
 
 ## Documentation
 

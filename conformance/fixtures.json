@@ -18,5 +18,10 @@
     "request": { "action": "bookmarkList" },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "open_document_refused_by_generic_bridge": {
+    "request": { "action": "openDocument", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }
