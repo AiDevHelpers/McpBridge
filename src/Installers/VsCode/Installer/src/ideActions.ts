@@ -247,6 +247,19 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             await vscode.commands.executeCommand("editor.action.sourceAction", { kind: "source.fixAll", apply: "first" });
             return { command: "editor.action.sourceAction", kind: "source.fixAll" };
 
+        case "openDocument": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = optionalInt(args, "line");
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const editor = await vscode.window.showTextDocument(doc);
+            if (line !== undefined) {
+                const pos = new vscode.Position(Math.max(0, line - 1), 0);
+                editor.selection = new vscode.Selection(pos, pos);
+                editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+            }
+            return { file: uri.fsPath, line: line ?? null, opened: true };
+        }
+
         case "setBreakpoint": {
             const uri = resolveFile(requireString(args, "file"));
             const line = optionalInt(args, "line");

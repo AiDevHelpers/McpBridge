@@ -45,6 +45,7 @@ public sealed class IdeActions(DTE2 dte)
         "searchOutput" => SearchOutput(OptionalString(args, "pane") ?? "Build", RequireString(args, "pattern")),
         "clearOutput" => ClearOutput(OptionalString(args, "pane") ?? "Build"),
         "getLocals" => GetLocals(OptionalInt(args, "maxItems") ?? 100),
+        "openDocument" => OpenDocument(RequireString(args, "file"), OptionalInt(args, "line")),
         "setBreakpoint" => SetBreakpoint(RequireString(args, "file"), RequireInt(args, "line")),
         "removeBreakpoint" => RemoveBreakpoint(RequireString(args, "file"), RequireInt(args, "line")),
         "listBreakpoints" => ListBreakpoints(),
@@ -244,6 +245,17 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { function = frame.FunctionName, count = locals.Count, locals };
+    }
+
+    private object OpenDocument(string file, int? line)
+    {
+        dte.ItemOperations.OpenFile(file);
+        if (line is int oneBased && oneBased >= 1)
+        {
+            ((TextSelection)dte.ActiveDocument.Selection).GotoLine(oneBased, true);
+        }
+
+        return new { file, line, opened = true };
     }
 
     private object SetBreakpoint(string file, int line)

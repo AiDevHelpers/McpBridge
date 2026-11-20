@@ -42,6 +42,15 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         IdeInstanceRouter.CallAsync("setStartupProject", new { project }, solutionPath, ct);
 
     [McpServerTool]
+    [Description("Open a file in an IDE instance and move the caret to an optional 1-based line. Pass solutionPath when several instances are open.")]
+    public Task<string> IdeOpenDocument(
+        [Description("Full path of the file")] string file,
+        [Description("Optional: 1-based line to go to")] int? line = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct);
+
+    [McpServerTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeStartDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
