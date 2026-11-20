@@ -254,6 +254,12 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             return { folder, opened: true, note: "VS Code opens the solution folder; .sln files are not opened." };
         }
 
+        case "hotReloadState": {
+            // C# Dev Kit: csharp.experimental.debug.hotReload (Microsoft, Feb 2025). Null when the setting is not present.
+            const value = vscode.workspace.getConfiguration("csharp.experimental.debug").get<boolean>("hotReload");
+            return { ide: "VsCode", enabled: value ?? null, setting: "csharp.experimental.debug.hotReload" };
+        }
+
         case "openDocument": {
             const uri = resolveFile(requireString(args, "file"));
             try {
