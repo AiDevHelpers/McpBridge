@@ -19,6 +19,10 @@ Status: draft, revised after the read-only Sonnet review. Awaiting approval. Bui
 - D22 Snapshots live in memory per process; they are lost on restart.
 - D23 Suppression is read from the solution .vsconfig under the key `aidevhelpersErrors`. Unverified: Visual Studio may reject unknown .vsconfig keys; check on a real install.
 - D24 Build output is supplied by the caller through `error_ingest`. ErrorHelper does not run dotnet build itself.
+- D25 Workspace recommendations: `.vscode/extensions.json` lists ms-dotnettools.csdevkit and ms-dotnettools.csharp. Existing entries are kept.
+- D26 When C# Dev Kit is installed, `dotnet.defaultSolution` is written to `.vscode/settings.json` without a separate approval (user choice). The key is undocumented; verify on a real install.
+- D27 Test discovery and launch profiles need no setting; C# Dev Kit reads launchSettings.json and tests itself. Only dotnet.defaultSolution is written.
+- D28 Visual Studio extension listing is not implemented; list covers VS Code only.
 
 ## Open questions (block the phase named)
 
@@ -66,7 +70,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Project: `src/Helpers/ErrorHelper/src` and `src/Helpers/ErrorHelper/tests`. MCP tools wired in this phase.
 - Acceptance: parser fixtures per source; `GetChanges` after `TakeSnapshot` returns only new diagnostics; suppression removes listed codes and sources.
 
-### Phase 4: ExtensionsHelper
+### Phase 4: ExtensionsHelper (DONE 2026-11-20, plus workspace setup)
 
 - API: `List`, `GetInfo(id)`, `Add(id)`. `Add` runs the IDE CLI (D6) and requires explicit approval per install.
 - Blocked on Q-EXT for the approval mechanism and VS install flow.

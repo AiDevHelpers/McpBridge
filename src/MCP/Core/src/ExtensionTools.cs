@@ -91,6 +91,24 @@ internal sealed class ExtensionTools
         return Json(new { ok = result.Ok, exitCode = result.ExitCode, output = result.Output });
     }
 
+    [McpServerTool]
+    [Description("Recommend the official C# extensions (C# Dev Kit, C#) in the folder's .vscode/extensions.json. " +
+                 "When C# Dev Kit is installed, also write dotnet.defaultSolution to .vscode/settings.json. Existing keys are kept.")]
+    public static async Task<string> ExtensionWorkspaceSetup(
+        [Description("Folder that holds the solution")] string folderPath,
+        [Description("Full path of the .sln to make the default solution")] string solutionPath,
+        CancellationToken ct = default)
+    {
+        var result = await new WorkspaceSetup(new ProcessCommandRunner()).SetupAsync(folderPath, solutionPath, ct);
+        return Json(new
+        {
+            ok = result.Ok,
+            settingApplied = result.SettingApplied,
+            recommended = result.Recommended,
+            error = result.Error,
+        });
+    }
+
     private static bool TryParseIde(string ide, out ExtensionIde parsed, out string? error)
     {
         if (Enum.TryParse(ide, ignoreCase: true, out parsed) && Enum.IsDefined(parsed))
