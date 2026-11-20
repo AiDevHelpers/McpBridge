@@ -8,7 +8,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 
 /// <summary>
 ///     MCP surface for terminal sessions. A session's launchMode decides where its terminal runs: InteractiveUser
-///     shows it on the logged-on user's desktop, ServiceAccount runs it headless under TokenSaver's own account.
+///     shows it on the logged-on user's desktop, ServiceAccount runs it headless under the host's own account.
 /// </summary>
 [McpServerToolType]
 internal sealed class TerminalSessionTools

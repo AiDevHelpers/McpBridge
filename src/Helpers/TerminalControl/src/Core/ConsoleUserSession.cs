@@ -9,7 +9,7 @@ using AiDevHelpers.Helpers.WindowsSession;
 using static AiDevHelpers.Helpers.TerminalControl.Core.NativeMethods;
 
 /// <summary>
-/// Starts a terminal in the logged-on user's session. Needed when TokenSaver runs as LocalSystem: a LocalSystem
+/// Starts a terminal in the logged-on user's session. Needed when the host runs as LocalSystem: a LocalSystem
 /// process lives in session 0, where it cannot show a window. Token and session calls come from AiDevHelpers.Helpers.WindowsSession.
 /// </summary>
 public sealed class ConsoleUserTerminalLauncher : ITerminalProcessLauncher

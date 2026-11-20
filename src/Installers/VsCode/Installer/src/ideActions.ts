@@ -1,11 +1,11 @@
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
-import { OutputBuffer } from "./outputBuffer.js";
+import { OutputBuffer } from "aidevhelpers-installers-vscode-core";
 import { debugOutputStore } from "./debugOutputTracker.js";
 
-// Common IDE actions for VS Code. The names match the Visual Studio bridge (TokenSaver.Vs.Extension
-// Bridge/IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
+// Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
+// IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
 // perform throw an "not supported" error instead of guessing, so the caller always knows what happened.
 //
 // Output and watches are kept by this bridge, because VS Code has no API to read other output channels or

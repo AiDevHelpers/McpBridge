@@ -3,7 +3,7 @@ using System;
 namespace AiDevHelpers.Bridge;
 
 /// <summary>
-/// Logging seam for the bridge. The host adapts its own logger (for TokenSaver, AiDevHelpers.Logger) to this interface.
+/// Logging seam for the bridge. The host adapts its own logger (for the host, AiDevHelpers.Logger) to this interface.
 /// </summary>
 public interface IBridgeLogger
 {

@@ -33,7 +33,7 @@ Status: executed. Phases A–C done, initial commit pushed, old repo archived. O
 | MCP/Server (exe) | `AiDevHelpers.MCP` / `AiDevHelpers.MCP.Tests` |
 | Installers/Vs2026/Core | `AiDevHelpers.Installers.Vs2026.Core` / `.Tests` (net48) |
 | Installers/Vs2026/Installer (VSIX) | `AiDevHelpers.Installers.Vs2026.Installer` / `.Tests` (net48) |
-| Installers/VsCode/Installer | single npm package, no Core split (Q7) |
+| Installers/VsCode/Core / Installer | Core split done 2026-11-20: pure protocol, buffer, log-root and DAP store modules in `Core` (no VS Code API); `Installer` depends on it via `file:../Core` |
 
 Solution: `AiDevHelpers.slnx` at repo root, one solution folder per area.
 
@@ -64,7 +64,7 @@ Solution: `AiDevHelpers.slnx` at repo root, one solution folder per area.
 - Bridge tests fixture link is three levels up (`..\..\..\conformance`), not four as the draft said. MCP Core tests are four levels.
 - The draft's Q4 "defer" was overridden: wire names renamed now. Consequences below.
 - Shell `Move-Item` failed on this machine; moves were done with Git Bash `mv`. No effect on the result.
-- VS Code Core split was skipped (Q7), which conflicts with the original request that each extension have a Core library.
+- VS Code Core split was skipped under Q7; it was added after the reorg on 2026-11-20 when the user approved it.
 - Smoke tests replaced the draft's "no test project" option for projects without tests (Q10).
 - LogHelper `ScaffoldTests` forbidden-prefix list now names `AiDevHelpers.Common`, `AiDevHelpers.Bridge` and `AiDevHelpers.MCP.Core`.
 - `tokensaver-tab.ps1` file name kept; the C# and PowerShell pipe names match.
@@ -78,12 +78,21 @@ Solution: `AiDevHelpers.slnx` at repo root, one solution folder per area.
 
 ## Open items
 
-- VS Code Core split (Q7 vs original request).
 - Install the new VSIX into VS and verify the bridge end to end; `update-vs-extension.ps1` not run.
-- Run the NuGet pack for `AiDevHelpers.Bridge` and `AiDevHelpers.MCP.Core`.
-- Check the first CI run on `main`.
-- Smoke-run `AiDevHelpers.MCP` over stdio.
-- Remaining "TokenSaver" prose in TerminalControl and VS Code comments.
-- README is minimal; `docs/ide-bridge.md` still has some TokenSaver paths.
+- Check the first CI run on `main`. CI does not run the VS Code tests (`npm test` in `Core` and `Installer`); consider adding them.
+- `scripts/run-dev-server.ps1` and the `TokenSaverMCP` service named in `docs/ide-bridge.md` (Live checks) are not in this repo; confirm or update.
+- `.tokensaver/` state paths, `tokensaver-tab.ps1`, and `tokensaver-*` window and temp names are runtime identifiers kept on purpose. Rename only if TokenSaver's side is changed too.
+- `vsce package` needs a VS Code manifest (publisher, engines, main) that the repo does not have. The packaging steps in `docs/ide-bridge.md` are unverified.
 - Branch protection and required CI check on the new repo.
+- NuGet packages build with missing-readme warnings; add a readme before publishing.
+
+## Resumed 2026-11-20 (done)
+
+- Plan file committed on `docs/reorg-plan` (`6baa8f0`).
+- VS Code Core split: `src/Installers/VsCode/Core` holds the four pure modules and their tests. Core: 24/24 tests, build clean. Installer: type-check and build clean, new smoke test passes.
+- Prose "TokenSaver" comments reworded in TerminalControl, Bridge, MCP.Core, VS Code; identifiers kept.
+- `README.md` component paths and links, and `docs/ide-bridge.md` paths, config section (`IdeTools`) and VS Code build steps, corrected.
+- NuGet pack: `AiDevHelpers.Bridge` 0.1.0 and `AiDevHelpers.MCP.Core` 1.0.0 both pack.
+- .NET tests all pass: Bridge 18, MCP.Core 102, LogHelper 196, TerminalControl 88, Common, WindowsSession, Vs2026 Core, Vs2026 Installer, MCP 1 each.
+- Stdio smoke: `AiDevHelpers.MCP` answers `initialize` and `tools/list` (33 tools) when stdin stays open. Closing stdin immediately produced no stdout, which may matter for clients that close stdin early.
 - Follow-up plan: ErrorHelper, TestingHelper, BookmarkHelper, ConfigHelper, ExtensionsHelper (empty slots not created).

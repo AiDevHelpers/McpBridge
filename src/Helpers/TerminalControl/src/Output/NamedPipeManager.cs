@@ -62,7 +62,7 @@ public sealed class NamedPipeManager : IDisposable
     }
 
     /// <summary>
-    /// Creates a pipe that TokenSaver writes commands into; the tab's wrapper connects as the client.
+    /// Creates a pipe that the host writes commands into; the tab's wrapper connects as the client.
     /// Server-side writes are used so an elevated client can read from a pipe created at a lower integrity level.
     /// </summary>
     public string CreateCommandPipe(string sessionId, string tabId, System.Security.Principal.SecurityIdentifier? clientSid = null)
@@ -227,7 +227,7 @@ public sealed class NamedPipeManager : IDisposable
 }
 
 /// <summary>
-/// Server side of a one-client command pipe: TokenSaver writes lines, the tab's wrapper reads them.
+/// Server side of a one-client command pipe: the host writes lines, the tab's wrapper reads them.
 /// </summary>
 public sealed class NamedCommandPipe : IDisposable
 {

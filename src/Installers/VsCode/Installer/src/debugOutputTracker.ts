@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { DebugOutputStore, type DapMessage } from "./debugOutputStore.js";
+import { DebugOutputStore, type DapMessage } from "aidevhelpers-installers-vscode-core";
 
 /** Program output of debug sessions, shared with the bridge's getDebugOutput and listDebugSessions actions. */
 export const debugOutputStore = new DebugOutputStore();

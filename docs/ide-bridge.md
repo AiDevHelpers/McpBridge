@@ -7,7 +7,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 - Each IDE window runs a bridge on a named pipe, one pipe per window process:
   - Visual Studio: `InstanceRegistry.PipeNameFor(pid)` in the `AiDevHelpers.Bridge` package (source: AiDevHelpers/McpBridge). The VS extension hosts it.
-  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`vscode/src/ideBridge.ts`).
+  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`src/Installers/VsCode/Installer/src/ideBridge.ts`).
 - Each window writes a manifest to `%ProgramData%\AiDevHelpers\vs-instances\<pid>.json`:
   `{ pid, pipeName, solutionPath, updatedUtc, ide }`. `ide` is `VisualStudio` or `VsCode`.
 - The MCP server reads the manifests (`VsInstanceRegistry`, in the package) and routes each call (`IdeInstanceRouter`, in the package) to the window whose
@@ -52,7 +52,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 ## Settings
 
-- `IdeTestRunMode` in the MCP `appsettings.json` (`TokenSaver` section): `DotnetTest` or `TestExplorer`
+- `IdeTestRunMode` in the MCP `appsettings.json` (`IdeTools` section): `DotnetTest` or `TestExplorer`
   (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it.
 - The VS options page also edits the MCP advanced settings: verbose logging, context helper and token
   economy switches, context size limit, endpoint strategy, and endpoints. Endpoints are one per line as
@@ -60,7 +60,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 ## Build and install
 
-Visual Studio (from the TokenSaver folder):
+Visual Studio (from the repo root):
 
 ```bash
 pwsh -File scripts/update-vs-extension.ps1
@@ -70,12 +70,12 @@ This rebuilds the VSIX and opens VsixInstaller for each VS 2026 instance. Expect
 dialog per instance. Commit first: the version comes from git height, so an uncommitted rebuild can
 install the same version as before and do nothing.
 
-VS Code bridge source (from this repo's `vscode/` folder):
+VS Code bridge (build the Core package first; the Installer depends on it through `file:../Core`):
 
 ```bash
-npm run build
-npx vsce package --out tokensaver.vsix --no-dependencies
-code --install-extension tokensaver.vsix --force
+pushd src/Installers/VsCode/Core && npm install && npm run build && popd
+pushd src/Installers/VsCode/Installer && npm install && npm run build && npx vsce package --out aidevhelpers.vsix && popd
+code --install-extension src/Installers/VsCode/Installer/aidevhelpers.vsix --force
 ```
 
 ## Live checks

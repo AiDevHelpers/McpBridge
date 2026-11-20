@@ -7,6 +7,9 @@
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
+  "dependencies": {
+    "aidevhelpers-installers-vscode-core": "file:../Core"
+  },
   "devDependencies": {
     "@types/node": "26.1.0",
     "@types/vscode": "1.125.0",
