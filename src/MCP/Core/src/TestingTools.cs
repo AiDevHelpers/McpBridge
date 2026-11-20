@@ -84,6 +84,71 @@ internal sealed class TestingTools
         });
     }
 
+    [McpServerTool]
+    [Description("Start live testing for a solution with dotnet watch test. Works in Visual Studio Community, which has no Live Unit Testing. " +
+                 "Each run writes TestResults/live.trx; failures are reported through test_failures and the error log.")]
+    public static string LiveTestStart([Description("Full path of the .sln or its folder")] string solutionPath)
+    {
+        var full = Path.GetFullPath(solutionPath);
+        var dir = Directory.Exists(full) ? full : Path.GetDirectoryName(full)!;
+        var results = Path.Combine(dir, "TestResults");
+        Directory.CreateDirectory(results);
+
+        lock (LiveRuns)
+        {
+            if (LiveRuns.TryGetValue(full, out var running) && !running.HasExited)
+            {
+                return Json(new { ok = true, alreadyRunning = true, pid = running.Id, trx = Path.Combine(results, "live.trx") });
+            }
+
+            var psi = new System.Diagnostics.ProcessStartInfo("dotnet")
+            {
+                WorkingDirectory = dir,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var arg in new[] { "watch", "test", "--logger", "trx;LogFileName=live.trx", "--results-directory", results })
+            {
+                psi.ArgumentList.Add(arg);
+            }
+
+            var process = System.Diagnostics.Process.Start(psi);
+            if (process is null)
+            {
+                return Json(new { ok = false, error = "dotnet watch test did not start." });
+            }
+
+            LiveRuns[full] = process;
+            TestingState.Watches[full] = new TestWatch(full, IdeHotReload: true, DotnetWatchRunning: true);
+            return Json(new { ok = true, pid = process.Id, trx = Path.Combine(results, "live.trx") });
+        }
+    }
+
+    [McpServerTool]
+    [Description("Stop live testing for a solution started by live_test_start.")]
+    public static string LiveTestStop([Description("Full path of the .sln or its folder")] string solutionPath)
+    {
+        var full = Path.GetFullPath(solutionPath);
+        TestingState.Watches.TryRemove(full, out _);
+        lock (LiveRuns)
+        {
+            if (!LiveRuns.TryGetValue(full, out var process))
+            {
+                return Json(new { ok = false, error = "No live testing is running for this solution." });
+            }
+
+            LiveRuns.Remove(full);
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+
+        return Json(new { ok = true, stopped = full });
+    }
+
+    private static readonly Dictionary<string, System.Diagnostics.Process> LiveRuns = new(StringComparer.OrdinalIgnoreCase);
+
     private static object HotReloadState(bool? ide, bool dotnetWatch)
     {
         var state = HotReloadPolicy.Resolve(ide, dotnetWatch);

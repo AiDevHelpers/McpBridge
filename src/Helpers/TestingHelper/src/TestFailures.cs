@@ -57,7 +57,9 @@ public sealed class TestFailureQueue
 /// </summary>
 public sealed class TestMonitor(TestFailureQueue queue)
 {
-    private readonly HashSet<string> _seen = new(StringComparer.OrdinalIgnoreCase);
+    // Last write time seen per file. A file is read again when its write time moves on, so a live run that
+    // rewrites the same TRX reports its new failures.
+    private readonly Dictionary<string, DateTime> _seen = new(StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<TestFailure> Poll(string trxDirectory)
     {
@@ -67,15 +69,16 @@ public sealed class TestMonitor(TestFailureQueue queue)
         }
 
         var fresh = Directory.EnumerateFiles(trxDirectory, "*.trx", SearchOption.AllDirectories)
-            .Where(f => !_seen.Contains(f))
-            .OrderBy(File.GetLastWriteTimeUtc)
+            .Select(f => (Path: f, Written: File.GetLastWriteTimeUtc(f)))
+            .Where(f => !_seen.TryGetValue(f.Path, out var seenAt) || f.Written > seenAt)
+            .OrderBy(f => f.Written)
             .ToList();
 
         var found = new List<TestFailure>();
         foreach (var file in fresh)
         {
-            _seen.Add(file);
-            found.AddRange(TrxFailures.Parse(File.ReadAllText(file), file));
+            _seen[file.Path] = file.Written;
+            found.AddRange(TrxFailures.Parse(File.ReadAllText(file.Path), file.Path));
         }
 
         queue.Add(found);

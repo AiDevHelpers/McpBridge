@@ -240,3 +240,50 @@ public sealed class CoverageServiceTests : IDisposable
         Assert.Contains(runner.Calls, c => c.StartsWith("dotnet test") && c.Contains("XPlat Code Coverage"));
     }
 }
+
+public sealed class TestMonitorRereadTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "testing-reread-tests", Guid.NewGuid().ToString("N"));
+
+    public TestMonitorRereadTests()
+    {
+        Directory.CreateDirectory(_dir);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_dir))
+        {
+            Directory.Delete(_dir, recursive: true);
+        }
+    }
+
+    private const string Passing = "<TestRun xmlns=\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Results><UnitTestResult testName=\"A\" outcome=\"Passed\" /></Results></TestRun>";
+    private const string Failing = "<TestRun xmlns=\"http://microsoft.com/schemas/VisualStudio/TeamTest/2010\"><Results><UnitTestResult testName=\"A\" outcome=\"Failed\"><Output><ErrorInfo><Message>boom</Message></ErrorInfo></Output></UnitTestResult></Results></TestRun>";
+
+    [Fact]
+    public void RereadsTrxWhenItChangesAndReportsNewFailure()
+    {
+        var file = Path.Combine(_dir, "live.trx");
+        File.WriteAllText(file, Passing);
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddSeconds(-10));
+        var monitor = new TestMonitor(new TestFailureQueue());
+        Assert.Empty(monitor.Poll(_dir));
+
+        File.WriteAllText(file, Failing);
+        File.SetLastWriteTimeUtc(file, DateTime.UtcNow);
+
+        var found = monitor.Poll(_dir);
+        Assert.Single(found);
+    }
+
+    [Fact]
+    public void UnchangedTrxIsNotReportedAgain()
+    {
+        var file = Path.Combine(_dir, "live.trx");
+        File.WriteAllText(file, Failing);
+        var monitor = new TestMonitor(new TestFailureQueue());
+        Assert.Single(monitor.Poll(_dir));
+        Assert.Empty(monitor.Poll(_dir));
+    }
+}
