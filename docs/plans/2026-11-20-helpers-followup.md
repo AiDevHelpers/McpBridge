@@ -93,7 +93,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Acceptance: Coverlet path runs against a sample test project and returns Cobertura data; provider selection is unit-tested; a hot-reload test failure is pushed to the caller.
 - Note: VS coverage may require VS Enterprise and `dotnet-coverage`. Tool dependency is to be stated before coding.
 
-### Phase 6: BookmarkHelper (VS side built 2026-11-20; VS Code not-supported reply still pending, see D34)
+### Phase 6: BookmarkHelper (DONE 2026-11-20: VS side live-tested set, get, list, remove on the bridge; VS Code not-supported reply still pending, see D34)
 
 - API: `Get`, `List`, `Set`, `Remove`, backed by Visual Studio bookmarks through the IDE bridge (D5, D8).
 - New bridge actions and protocol changes are required (Q-BM). The existing `conformance/fixtures.json` covers only health, unknown_action and malformed_line; new fixtures are added in this phase.
