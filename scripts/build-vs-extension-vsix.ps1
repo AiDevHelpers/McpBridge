@@ -31,9 +31,24 @@ if (-not (Test-Path -LiteralPath $MSBuildPath)) {
     throw "MSBuild.exe not found at $MSBuildPath."
 }
 
-& $MSBuildPath $Project "/t:Build;CreateVsixContainer" /restore "/p:Configuration=$Configuration" /verbosity:minimal
-if ($LASTEXITCODE -ne 0) {
-    throw "MSBuild failed for $Project with exit code $LASTEXITCODE."
+# The VSSDK does not replace $version$, and CreateVsixContainer regenerates the manifest from source, so the
+# version is written into the source manifest for this build only and restored afterwards. The version is the
+# git commit count, the height Nerdbank.GitVersioning would give (0.1.<height>).
+$sourceManifest = Join-Path (Split-Path -Parent $Project) "source.extension.vsixmanifest"
+$height = (& git -C $RepoRoot rev-list --count HEAD).Trim()
+$version = "0.1.$height"
+$original = [IO.File]::ReadAllText($sourceManifest)
+$patched = [regex]::Replace($original, '(<Identity [^>]*?Version=")[^"]*(")', "`${1}$version`${2}", 1)
+Write-Host "VSIX version $version" -ForegroundColor Cyan
+try {
+    [IO.File]::WriteAllText($sourceManifest, $patched)
+    & $MSBuildPath $Project "/t:Build;CreateVsixContainer" /restore "/p:Configuration=$Configuration" /verbosity:minimal
+    if ($LASTEXITCODE -ne 0) {
+        throw "MSBuild failed for $Project with exit code $LASTEXITCODE."
+    }
+}
+finally {
+    [IO.File]::WriteAllText($sourceManifest, $original)
 }
 if (-not (Test-Path -LiteralPath $Vsix)) {
     throw "VSIX package was not created at $Vsix."
