@@ -400,6 +400,11 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "setStartupProject":
         case "prepareKill":
+        // Bookmarks are a Visual Studio feature in v1 (D8). VS Code has no bookmark API in the extension host.
+        case "bookmarkList":
+        case "bookmarkGet":
+        case "bookmarkSet":
+        case "bookmarkRemove":
             throw new UnsupportedActionError(action);
 
         default:

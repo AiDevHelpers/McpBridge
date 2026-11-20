@@ -28,7 +28,7 @@ Status: draft, revised after the read-only Sonnet review. Awaiting approval. Bui
 - D31 Coverage lives in MCP.Core TestingTools, not IdeTestRunService. IdeTestRunService is unchanged. This departs from D15.
 - D32 The monitor polls the TestResults folder of watched solutions every 5 seconds while hot reload is active. No file watcher (D7).
 - D33 (resolved 2026-11-20) Visual Studio bookmarks are read from open documents: the RDT gives IVsTextLines, and EnumMarkers returns native bookmark markers (3 and 21), as Bookmark Studio does. Set uses OpenFile, GotoLine and Edit.ToggleBookmark, and only when no bookmark exists on that line. Remove invalidates the marker. Closed files and names are not supported. Source: https://github.com/madskristensen/BookmarkStudio/blob/main/src/Helpers/NativeBookmarkHelper.cs
-- D34 The VS Code not-supported reply for bookmark actions (D8) is not built. The bridge fixture bookmark_list_refused_by_generic_bridge covers only the generic refusal.
+- D34 (resolved 2026-11-20) VS Code replies to bookmark actions with unsupported: true, with the message "not supported in VS Code". Live-checked on the VS Code bridge.
 
 ## Open questions (block the phase named)
 
