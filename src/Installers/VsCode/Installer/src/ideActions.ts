@@ -14,6 +14,9 @@ import { debugOutputStore } from "./debugOutputTracker.js";
 
 type Args = Record<string, unknown>;
 
+// VS Code has no API to read continuous mode. This is the bridge's own record of the last start or stop it ran.
+let continuousOn = false;
+
 export class UnsupportedActionError extends Error {
     constructor(action: string) {
         super(`Action '${action}' is not supported in VS Code (no VS Code API for it).`);
@@ -253,6 +256,19 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(folder), false);
             return { folder, opened: true, note: "VS Code opens the solution folder; .sln files are not opened." };
         }
+
+        case "continuousTestingStart":
+            await vscode.commands.executeCommand("testing.startContinuousRun");
+            continuousOn = true;
+            return { ide: "VsCode", continuous: true, command: "testing.startContinuousRun" };
+
+        case "continuousTestingStop":
+            await vscode.commands.executeCommand("testing.stopContinuousRun");
+            continuousOn = false;
+            return { ide: "VsCode", continuous: false, command: "testing.stopContinuousRun" };
+
+        case "continuousTestingState":
+            return { ide: "VsCode", tracked: continuousOn, note: "Bridge-tracked: set by continuousTestingStart and continuousTestingStop only." };
 
         case "hotReloadState": {
             // C# Dev Kit: csharp.experimental.debug.hotReload (Microsoft, Feb 2025). Null when the setting is not present.
