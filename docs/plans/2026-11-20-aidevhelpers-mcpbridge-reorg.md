@@ -94,5 +94,5 @@ Solution: `AiDevHelpers.slnx` at repo root, one solution folder per area.
 - `README.md` component paths and links, and `docs/ide-bridge.md` paths, config section (`IdeTools`) and VS Code build steps, corrected.
 - NuGet pack: `AiDevHelpers.Bridge` 0.1.0 and `AiDevHelpers.MCP.Core` 1.0.0 both pack.
 - .NET tests all pass: Bridge 18, MCP.Core 102, LogHelper 196, TerminalControl 88, Common, WindowsSession, Vs2026 Core, Vs2026 Installer, MCP 1 each.
-- Stdio smoke: `AiDevHelpers.MCP` answers `initialize` and `tools/list` (33 tools) when stdin stays open. Closing stdin immediately produced no stdout, which may matter for clients that close stdin early.
+- Stdio smoke: `AiDevHelpers.MCP` answers `initialize` and `tools/list` (32 tools; the count was recounted as 32 on 2026-11-20) when stdin stays open. Closing stdin immediately produced no stdout, which may matter for clients that close stdin early.
 - Follow-up plan: ErrorHelper, TestingHelper, BookmarkHelper, ConfigHelper, ExtensionsHelper (empty slots not created).

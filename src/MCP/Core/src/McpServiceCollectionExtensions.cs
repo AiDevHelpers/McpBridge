@@ -37,6 +37,7 @@ public static class McpServiceCollectionExtensions
             .AddMcpServer()
             .WithResources<McpDocumentationResources>()
             .WithTools<IdeTools>()
+            .WithTools<ConfigTools>()
             .WithTools<TerminalSessionTools>();
     }
 }

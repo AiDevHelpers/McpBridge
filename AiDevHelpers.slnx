@@ -11,6 +11,10 @@
     <Project Path="src/Helpers/LogHelper/src/AiDevHelpers.Helpers.LogHelper.csproj" />
     <Project Path="src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/ConfigHelper/">
+    <Project Path="src/Helpers/ConfigHelper/src/AiDevHelpers.Helpers.ConfigHelper.csproj" />
+    <Project Path="src/Helpers/ConfigHelper/tests/AiDevHelpers.Helpers.ConfigHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/TerminalControl/">
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />
