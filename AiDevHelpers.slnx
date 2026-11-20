@@ -23,6 +23,10 @@
     <Project Path="src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
     <Project Path="src/Helpers/ExtensionsHelper/tests/AiDevHelpers.Helpers.ExtensionsHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/TestingHelper/">
+    <Project Path="src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj" />
+    <Project Path="src/Helpers/TestingHelper/tests/AiDevHelpers.Helpers.TestingHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/TerminalControl/">
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />

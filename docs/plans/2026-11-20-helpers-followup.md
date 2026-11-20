@@ -23,6 +23,10 @@ Status: draft, revised after the read-only Sonnet review. Awaiting approval. Bui
 - D26 When C# Dev Kit is installed, `dotnet.defaultSolution` is written to `.vscode/settings.json` without a separate approval (user choice). The key is undocumented; verify on a real install.
 - D27 Test discovery and launch profiles need no setting; C# Dev Kit reads launchSettings.json and tests itself. Only dotnet.defaultSolution is written.
 - D28 Visual Studio extension listing is not implemented; list covers VS Code only.
+- D29 Hot-reload failures reach the caller two ways: an error log (MCP log notification) and the test_failures queue. Both, as chosen.
+- D30 VS coverage: IDE bridge first, dotnet-coverage CLI as fallback. The bridge coverage action is not built yet, so the CLI runs in practice.
+- D31 Coverage lives in MCP.Core TestingTools, not IdeTestRunService. IdeTestRunService is unchanged. This departs from D15.
+- D32 The monitor polls the TestResults folder of watched solutions every 5 seconds while hot reload is active. No file watcher (D7).
 
 ## Open questions (block the phase named)
 
@@ -78,7 +82,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Acceptance: List and GetInfo against recorded CLI output; `Add` in dry-run mode prints the command and does not run it; `Add` without approval is refused.
 - Gate: tools/list count updated.
 
-### Phase 5: TestingHelper
+### Phase 5: TestingHelper (DONE 2026-11-20, see D29-D32)
 
 - Hot-reload: D7 with precedence from Q-HR.
 - Code coverage: configurable provider (D4). With no provider, return a clear error (D14). Coverage output as structured data (Cobertura for Coverlet; VS coverage export for VS).
