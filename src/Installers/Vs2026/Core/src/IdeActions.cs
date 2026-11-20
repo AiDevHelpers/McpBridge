@@ -46,6 +46,7 @@ public sealed class IdeActions(DTE2 dte)
         "clearOutput" => ClearOutput(OptionalString(args, "pane") ?? "Build"),
         "getLocals" => GetLocals(OptionalInt(args, "maxItems") ?? 100),
         "openSolution" => OpenSolution(RequireString(args, "solutionPath")),
+        "testHotReloadState" => TestHotReloadState(),
         "openDocument" => OpenDocument(RequireString(args, "file"), OptionalInt(args, "line")),
         "bookmarkList" => BookmarkActions.List(dte),
         "bookmarkGet" => BookmarkActions.Get(RequireString(args, "id")),
@@ -250,6 +251,86 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { function = frame.FunctionName, count = locals.Count, locals };
+    }
+
+    // Reads test.hotReload from this instance's settings.json (the "Enable Hot Reloaded test runs" option under
+    // Tools > Options > Test). The instance folder is 18.0_<first 8 chars of instanceId>, where instanceId comes from
+    // the instance's state.json in ProgramData, matched by installationPath.
+    private object TestHotReloadState()
+    {
+        var settingsPath = InstanceSettingsPath();
+        if (settingsPath is null)
+        {
+            throw new InvalidOperationException("Could not find this Visual Studio instance's settings.json.");
+        }
+
+        var value = (bool?)null;
+        using (var doc = JsonDocument.Parse(StripComments(File.ReadAllText(settingsPath))))
+        {
+            if (doc.RootElement.TryGetProperty("test.hotReload", out var prop) && (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
+            {
+                value = prop.GetBoolean();
+            }
+        }
+
+        return new { ide = "VisualStudio", enabled = value, setting = "test.hotReload", settingsPath };
+    }
+
+    private string? InstanceSettingsPath()
+    {
+        var devenv = dte.FileName;
+        if (string.IsNullOrEmpty(devenv))
+        {
+            return null;
+        }
+
+        // devenv.exe sits in <install>\Common7\IDE.
+        var install = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(devenv)));
+        var instancesRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Microsoft", "VisualStudio", "Packages", "_Instances");
+        if (install is null || !Directory.Exists(instancesRoot))
+        {
+            return null;
+        }
+
+        foreach (var dir in Directory.GetDirectories(instancesRoot))
+        {
+            var state = Path.Combine(dir, "state.json");
+            if (!File.Exists(state))
+            {
+                continue;
+            }
+
+            using var doc = JsonDocument.Parse(File.ReadAllText(state));
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("installationPath", out var ip) || !string.Equals(ip.GetString()?.TrimEnd('\\'), install.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var instanceId = root.TryGetProperty("instanceId", out var id) ? id.GetString() : null;
+            if (string.IsNullOrEmpty(instanceId) || instanceId.Length < 8)
+            {
+                continue;
+            }
+
+            var candidate = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "VisualStudio", "18.0_" + instanceId.Substring(0, 8), "settings.json");
+            return File.Exists(candidate) ? candidate : null;
+        }
+
+        return null;
+    }
+
+    // settings.json starts with a /* */ comment, which System.Text.Json does not accept by default.
+    private static string StripComments(string text)
+    {
+        var start = text.IndexOf("/*", StringComparison.Ordinal);
+        if (start < 0)
+        {
+            return text;
+        }
+
+        var end = text.IndexOf("*/", start, StringComparison.Ordinal);
+        return end < 0 ? text : text.Remove(start, end + 2 - start);
     }
 
     private object OpenSolution(string solutionPath)
