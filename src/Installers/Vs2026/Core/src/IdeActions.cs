@@ -307,7 +307,13 @@ public sealed class IdeActions(DTE2 dte)
                 continue;
             }
 
+            // Some state.json files leave instanceId empty. The folder name is the instance id.
             var instanceId = root.TryGetProperty("instanceId", out var id) ? id.GetString() : null;
+            if (string.IsNullOrEmpty(instanceId))
+            {
+                instanceId = Path.GetFileName(dir);
+            }
+
             if (string.IsNullOrEmpty(instanceId) || instanceId.Length < 8)
             {
                 continue;
