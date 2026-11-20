@@ -45,6 +45,7 @@ public sealed class IdeActions(DTE2 dte)
         "searchOutput" => SearchOutput(OptionalString(args, "pane") ?? "Build", RequireString(args, "pattern")),
         "clearOutput" => ClearOutput(OptionalString(args, "pane") ?? "Build"),
         "getLocals" => GetLocals(OptionalInt(args, "maxItems") ?? 100),
+        "openSolution" => OpenSolution(RequireString(args, "solutionPath")),
         "openDocument" => OpenDocument(RequireString(args, "file"), OptionalInt(args, "line")),
         "bookmarkList" => BookmarkActions.List(dte),
         "bookmarkGet" => BookmarkActions.Get(RequireString(args, "id")),
@@ -249,6 +250,17 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { function = frame.FunctionName, count = locals.Count, locals };
+    }
+
+    private object OpenSolution(string solutionPath)
+    {
+        if (!File.Exists(solutionPath))
+        {
+            throw new FileNotFoundException("Solution file not found.", solutionPath);
+        }
+
+        dte.Solution.Open(solutionPath);
+        return new { solution_path = solutionPath, opened = true };
     }
 
     private object OpenDocument(string file, int? line)

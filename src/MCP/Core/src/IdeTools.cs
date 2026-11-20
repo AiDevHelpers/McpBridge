@@ -51,6 +51,13 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct);
 
     [McpServerTool]
+    [Description("Open a solution in an IDE instance. In VS Code the solution folder is opened. Pass ide to choose VsCode or VisualStudio.")]
+    public Task<string> IdeOpenSolution(
+        [Description("Full path of the .sln (or, for VS Code, its folder)")] string solutionPath,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("openSolution", new { solutionPath }, null, ct);
+
+    [McpServerTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeStartDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,

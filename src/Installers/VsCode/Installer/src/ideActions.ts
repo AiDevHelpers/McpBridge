@@ -247,6 +247,13 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             await vscode.commands.executeCommand("editor.action.sourceAction", { kind: "source.fixAll", apply: "first" });
             return { command: "editor.action.sourceAction", kind: "source.fixAll" };
 
+        case "openSolution": {
+            const solutionPath = requireString(args, "solutionPath");
+            const folder = path.dirname(solutionPath);
+            await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(folder), false);
+            return { folder, opened: true, note: "VS Code opens the solution folder; .sln files are not opened." };
+        }
+
         case "openDocument": {
             const uri = resolveFile(requireString(args, "file"));
             const line = optionalInt(args, "line");
