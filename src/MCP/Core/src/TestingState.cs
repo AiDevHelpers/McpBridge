@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using AiDevHelpers.Helpers.TestingHelper;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol.Protocol;
 
 namespace AiDevHelpers.MCP.Core.Services;
 
@@ -14,6 +15,9 @@ internal static class TestingState
     public static readonly ConcurrentDictionary<string, TestWatch> Watches = new(StringComparer.OrdinalIgnoreCase);
     public static readonly TestFailureQueue Failures = new();
     public static readonly ConcurrentDictionary<string, TestMonitor> Monitors = new(StringComparer.OrdinalIgnoreCase);
+
+    // The MCP session that started live testing. Set from a tool call, so the monitor can push notifications to that client.
+    public static volatile ModelContextProtocol.Server.McpServer? Session;
 
     public static string ResultsDirectory(string solutionPath)
     {
@@ -29,6 +33,25 @@ internal static class TestingState
 /// </summary>
 internal sealed class TestMonitorService(ILogger<TestMonitorService> logger) : BackgroundService
 {
+    // Sends one MCP log notification per failure to the client that started live testing. Failures still reach the queue and the error log without a session.
+    private void Push(TestFailure failure)
+    {
+        var server = TestingState.Session;
+        if (server is null)
+        {
+            return;
+        }
+
+        _ = server.SendNotificationAsync(
+            NotificationMethods.LoggingMessageNotification,
+            new LoggingMessageNotificationParams
+            {
+                Level = LoggingLevel.Error,
+                Logger = "AiDevHelpers.Testing",
+                Data = System.Text.Json.JsonSerializer.SerializeToElement(new { test = failure.TestName, message = failure.Message, trx = failure.Trx }),
+            });
+    }
+
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -48,6 +71,7 @@ internal sealed class TestMonitorService(ILogger<TestMonitorService> logger) : B
                 foreach (var failure in monitor.Poll(TestingState.ResultsDirectory(watch.SolutionPath)))
                 {
                     logger.LogError("Test failed after hot reload: {Test}. {Message}", failure.TestName, failure.Message);
+                    Push(failure);
                 }
             }
         }

@@ -87,8 +87,9 @@ internal sealed class TestingTools
     [McpServerTool]
     [Description("Start live testing for a solution with dotnet watch test. Works in Visual Studio Community, which has no Live Unit Testing. " +
                  "Each run writes TestResults/live.trx; failures are reported through test_failures and the error log.")]
-    public static string LiveTestStart([Description("Full path of the .sln or its folder")] string solutionPath)
+    public static string LiveTestStart(McpServer server, [Description("Full path of the .sln or its folder")] string solutionPath)
     {
+        TestingState.Session = server;
         var full = Path.GetFullPath(solutionPath);
         var dir = Directory.Exists(full) ? full : Path.GetDirectoryName(full)!;
         var results = Path.Combine(dir, "TestResults");
