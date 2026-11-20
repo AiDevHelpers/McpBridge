@@ -39,8 +39,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Project name to make the startup project")] string project,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("setStartupProject", new { project }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("setStartupProject", new { project }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Open a file in an IDE instance and move the caret to an optional 1-based line. Pass solutionPath when several instances are open.")]
@@ -49,8 +50,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Optional: 1-based line to go to")] int? line = null,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
@@ -76,16 +78,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     public Task<string> IdeStartDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Stop debugging in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeStopDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("stopDebugging", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("stopDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Run all tests in the solution. The server setting IdeTestRunMode picks the method: 'TestExplorer' " +
@@ -94,6 +98,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     public Task<string> IdeRunTests(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
         if (IdeTestRunService.NormalizeMode(options.Value.IdeTestRunMode) == IdeTestRunService.DotnetTestMode)
@@ -104,7 +109,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide);
+        return IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
     }
 
     [McpServerTool]
@@ -126,8 +131,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Output pane name, e.g. 'Build' or 'Debug'")] string pane = "Build",
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("searchOutput", new { pattern, pane }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("searchOutput", new { pattern, pane }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Clear an output pane in an IDE instance.")]
@@ -135,16 +141,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Output pane name, e.g. 'Build' or 'Debug'")] string pane = "Build",
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("clearOutput", new { pane }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("clearOutput", new { pane }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Format the active document in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeFormatDocument(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("formatDocument", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("formatDocument", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Build the solution in an IDE instance and report whether it succeeded. " +
@@ -152,8 +160,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     public Task<string> IdeBuild(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Read build errors and warnings from an IDE instance's Error List (the last build's results).")]
@@ -161,16 +170,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("'error', 'warning', or 'all' (default)")] string severity = "all",
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("getBuildDiagnostics", new { severity }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("getBuildDiagnostics", new { severity }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Run Visual Studio's Code Cleanup on the active document of an IDE instance.")]
     public Task<string> IdeCodeCleanup(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("codeCleanup", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("codeCleanup", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Read the last lines of an IDE output pane, e.g. 'Build' or 'Debug'. For a filtered, deduplicated summary, use LogQuery with a vsout: channel.")]
@@ -179,8 +190,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Maximum number of trailing lines to return")] int maxLines = 200,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("getOutput", new { pane, maxLines }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("getOutput", new { pane, maxLines }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Read local variables in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint.")]
@@ -188,8 +200,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Maximum number of variables to return")] int maxItems = 100,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("getLocals", new { maxItems }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("getLocals", new { maxItems }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Check the bridge health of an IDE instance: whether its listener is running, when it started, " +
@@ -198,16 +211,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     public Task<string> IdeBridgeHealth(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("health", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("health", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("List the solution build configurations (e.g. Debug, Release) of an IDE instance and the active one.")]
     public Task<string> IdeListConfigurations(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("listConfigurations", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("listConfigurations", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Set the active build configuration (e.g. Debug or Release) of an IDE instance's solution.")]
@@ -215,24 +230,27 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Configuration name, e.g. 'Debug' or 'Release'")] string configuration,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("setConfiguration", new { configuration }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("setConfiguration", new { configuration }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Clean the solution in an IDE instance using the active configuration.")]
     public Task<string> IdeClean(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("clean", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("clean", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Publish the startup project of an IDE instance with the IDE's publish command, using the active configuration.")]
     public Task<string> IdePublish(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("publish", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("publish", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Kill a process that an IDE instance started for clean or publish. Refuses any other process id.")]
@@ -240,8 +258,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Process id returned by IdeClean or IdePublish")] int pid,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("killProcess", new { pid }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("killProcess", new { pid }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Launch a Visual Studio instance with a solution open. Reuses an instance that already has it open. " +
@@ -265,8 +284,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("1-based line number")] int line,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("setBreakpoint", new { file, line }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("setBreakpoint", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Remove breakpoints at a file and line in an IDE instance.")]
@@ -275,16 +295,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("1-based line number")] int line,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("removeBreakpoint", new { file, line }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("removeBreakpoint", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("List breakpoints set in an IDE instance.")]
     public Task<string> IdeListBreakpoints(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("listBreakpoints", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("listBreakpoints", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Step the debugger in an IDE instance: 'over', 'into', or 'out'. The debugger must be stopped at a breakpoint.")]
@@ -292,16 +314,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("'over', 'into', or 'out'")] string mode,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("step", new { mode }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("step", new { mode }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Get the debugger mode (design, run, or break) and the current function in an IDE instance.")]
     public Task<string> IdeGetDebugState(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("debugState", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("debugState", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Evaluate an expression in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint.")]
@@ -309,8 +333,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("C# expression to evaluate, e.g. 'items.Count'")] string expression,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("evaluate", new { expression }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("evaluate", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Add a watch expression to an IDE instance's watch list. Watches are kept by the extension, not the Watch window.")]
@@ -318,8 +343,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Expression to watch")] string expression,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("addWatch", new { expression }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("addWatch", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Remove a watch expression from an IDE instance's watch list.")]
@@ -327,14 +353,16 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Expression to remove")] string expression,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("removeWatch", new { expression }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("removeWatch", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("List an IDE instance's watch expressions with their current values (when stopped at a breakpoint).")]
     public Task<string> IdeListWatches(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide);
+        IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide, instancePid);
 }

@@ -24,13 +24,22 @@ public static class IdeInstanceRouter
     /// With no solution given, the single running instance is used; several instances is an error.
     /// Returns a JSON object that always includes <c>ide</c>, <c>instance_pid</c>, and <c>solution_path</c>.
     /// </summary>
-    public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null)
+    public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null, int? instancePid = null)
     {
         var instances = VsInstanceRegistry.ListRunning();
         if (!string.IsNullOrWhiteSpace(ide))
         {
             // Only instances of the requested IDE ("VisualStudio" or "VsCode") are candidates.
             instances = instances.Where(i => string.Equals(i.Ide, ide, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        if (instancePid is int pid)
+        {
+            instances = instances.Where(i => i.Pid == pid).ToList();
+            if (instances.Count == 0)
+            {
+                return Error($"No running IDE instance has process id {pid}.", VsInstanceRegistry.ListRunning());
+            }
         }
 
         VsInstance? target;
@@ -40,6 +49,11 @@ public static class IdeInstanceRouter
             if (matches.Count == 0)
             {
                 return Error($"No open Visual Studio instance has '{solutionPath}' open.", instances);
+            }
+
+            if (matches.Count > 1 && instancePid is null)
+            {
+                return Error("Several instances have this solution open; pass instancePid to choose one.", matches);
             }
 
             target = matches[0];
