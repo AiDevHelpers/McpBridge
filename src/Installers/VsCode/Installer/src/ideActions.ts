@@ -256,6 +256,11 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "openDocument": {
             const uri = resolveFile(requireString(args, "file"));
+            try {
+                await vscode.workspace.fs.stat(uri);
+            } catch {
+                throw new Error(`File not found: ${uri.fsPath}`);
+            }
             const line = optionalInt(args, "line");
             const doc = await vscode.workspace.openTextDocument(uri);
             const editor = await vscode.window.showTextDocument(doc);

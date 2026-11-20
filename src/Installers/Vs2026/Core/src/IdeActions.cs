@@ -265,6 +265,11 @@ public sealed class IdeActions(DTE2 dte)
 
     private object OpenDocument(string file, int? line)
     {
+        if (!File.Exists(file))
+        {
+            throw new FileNotFoundException("File not found.", file);
+        }
+
         dte.ItemOperations.OpenFile(file);
         if (line is int oneBased && oneBased >= 1)
         {

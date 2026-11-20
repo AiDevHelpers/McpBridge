@@ -88,9 +88,13 @@ public static class IdeInstanceRouter
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
 
             await writer.WriteLineAsync(JsonSerializer.Serialize(new { action, args }));
-            using var replyCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            replyCts.CancelAfter(ReplyTimeout);
-            var line = await reader.ReadLineAsync(replyCts.Token);
+            var readTask = reader.ReadLineAsync();
+            var finished = await Task.WhenAny(readTask, Task.Delay(ReplyTimeout, ct));
+            if (finished != readTask)
+            {
+                throw new TimeoutException("No reply from the IDE within the timeout.");
+            }
+            var line = await readTask;
 
             using var reply = JsonDocument.Parse(line ?? "{}");
             var ok = reply.RootElement.TryGetProperty("ok", out var okProp) && okProp.GetBoolean();
