@@ -39,6 +39,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<IdeTools>()
             .WithTools<ConfigTools>()
             .WithTools<ErrorTools>()
+            .WithTools<ExtensionTools>()
             .WithTools<TerminalSessionTools>();
     }
 }
