@@ -17,6 +17,7 @@ namespace AiDevHelpers.Bridge;
 public static class IdeInstanceRouter
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>
     /// Runs <paramref name="action"/> on the instance whose solution matches <paramref name="solutionPath"/>.
@@ -87,7 +88,9 @@ public static class IdeInstanceRouter
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
 
             await writer.WriteLineAsync(JsonSerializer.Serialize(new { action, args }));
-            var line = await reader.ReadLineAsync();
+            using var replyCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            replyCts.CancelAfter(ReplyTimeout);
+            var line = await reader.ReadLineAsync(replyCts.Token);
 
             using var reply = JsonDocument.Parse(line ?? "{}");
             var ok = reply.RootElement.TryGetProperty("ok", out var okProp) && okProp.GetBoolean();
@@ -102,15 +105,18 @@ public static class IdeInstanceRouter
                 error = !ok && reply.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null,
             });
         }
-        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException)
+        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException or UnauthorizedAccessException)
         {
+            var reason = ex is UnauthorizedAccessException
+                ? "the instance's pipe refused this client (often a process running at a different elevation)"
+                : ex.Message;
             return JsonSerializer.Serialize(new
             {
                 ide = target.Ide,
                 instance_pid = target.Pid,
                 solution_path = target.SolutionPath,
                 ok = false,
-                error = $"Could not reach Visual Studio instance {target.Pid}: {ex.Message}",
+                error = $"Could not reach Visual Studio instance {target.Pid}: {reason}",
             });
         }
     }
