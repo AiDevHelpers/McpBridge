@@ -27,6 +27,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Nerdbank.GitVersioning" Version="3.10.94" PrivateAssets="all" />
     <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="18.11.1036" />
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="18.11.1036" />
   </ItemGroup>
