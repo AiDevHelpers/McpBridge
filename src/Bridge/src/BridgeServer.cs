@@ -130,8 +130,9 @@ public sealed class BridgeServer : IDisposable
             var result = await _invoke(action, args).ConfigureAwait(false);
             return JsonSerializer.Serialize(new { ok = true, pid = System.Diagnostics.Process.GetCurrentProcess().Id, result });
         }
-        catch (Exception ex) when (ex is JsonException or KeyNotFoundException or InvalidOperationException or ArgumentException or NotSupportedException)
+        catch (Exception ex)
         {
+            // Every failure gets an error reply. A connection closed without one looks like an empty reply to the caller.
             return JsonSerializer.Serialize(new { ok = false, pid = System.Diagnostics.Process.GetCurrentProcess().Id, error = ex.Message });
         }
     }
