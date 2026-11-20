@@ -27,6 +27,8 @@ Status: draft, revised after the read-only Sonnet review. Awaiting approval. Bui
 - D30 VS coverage: IDE bridge first, dotnet-coverage CLI as fallback. The bridge coverage action is not built yet, so the CLI runs in practice.
 - D31 Coverage lives in MCP.Core TestingTools, not IdeTestRunService. IdeTestRunService is unchanged. This departs from D15.
 - D32 The monitor polls the TestResults folder of watched solutions every 5 seconds while hot reload is active. No file watcher (D7).
+- D33 Visual Studio exposes no bookmark collection through EnvDTE (ToolWindows.BookmarkWindow does not compile). The user chose the VS Shell bookmark service, but no interface for it has been found in SDK docs. List, get and remove are blocked on that. Set is not built either: without enumeration, a toggle could remove an existing bookmark.
+- D34 The VS Code not-supported reply for bookmark actions (D8) is not built. The bridge fixture bookmark_list_refused_by_generic_bridge covers only the generic refusal.
 
 ## Open questions (block the phase named)
 
@@ -91,7 +93,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Acceptance: Coverlet path runs against a sample test project and returns Cobertura data; provider selection is unit-tested; a hot-reload test failure is pushed to the caller.
 - Note: VS coverage may require VS Enterprise and `dotnet-coverage`. Tool dependency is to be stated before coding.
 
-### Phase 6: BookmarkHelper (riskiest, last)
+### Phase 6: BookmarkHelper (PARTIAL 2026-11-20: library, fixture and MCP tools done; VS route blocked, see D33-D34)
 
 - API: `Get`, `List`, `Set`, `Remove`, backed by Visual Studio bookmarks through the IDE bridge (D5, D8).
 - New bridge actions and protocol changes are required (Q-BM). The existing `conformance/fixtures.json` covers only health, unknown_action and malformed_line; new fixtures are added in this phase.

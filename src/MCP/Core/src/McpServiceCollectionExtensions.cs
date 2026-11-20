@@ -42,6 +42,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ErrorTools>()
             .WithTools<ExtensionTools>()
             .WithTools<TestingTools>()
+            .WithTools<BookmarkTools>()
             .WithTools<TerminalSessionTools>();
     }
 }
