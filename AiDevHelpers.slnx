@@ -1,0 +1,38 @@
+<Solution>
+  <Folder Name="/Common/">
+    <Project Path="src/Common/src/AiDevHelpers.Common.csproj" />
+    <Project Path="src/Common/tests/AiDevHelpers.Common.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Bridge/">
+    <Project Path="src/Bridge/src/AiDevHelpers.Bridge.csproj" />
+    <Project Path="src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/LogHelper/">
+    <Project Path="src/Helpers/LogHelper/src/AiDevHelpers.Helpers.LogHelper.csproj" />
+    <Project Path="src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/TerminalControl/">
+    <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
+    <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/WindowsSession/">
+    <Project Path="src/Helpers/WindowsSession/src/AiDevHelpers.Helpers.WindowsSession.csproj" />
+    <Project Path="src/Helpers/WindowsSession/tests/AiDevHelpers.Helpers.WindowsSession.Tests.csproj" />
+  </Folder>
+  <Folder Name="/MCP/Core/">
+    <Project Path="src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj" />
+    <Project Path="src/MCP/Core/tests/AiDevHelpers.MCP.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/MCP/Server/">
+    <Project Path="src/MCP/Server/src/AiDevHelpers.MCP.csproj" />
+    <Project Path="src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Installers/Vs2026/Core/">
+    <Project Path="src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj" />
+    <Project Path="src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Installers/Vs2026/Installer/">
+    <Project Path="src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.csproj" />
+    <Project Path="src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj" />
+  </Folder>
+</Solution>

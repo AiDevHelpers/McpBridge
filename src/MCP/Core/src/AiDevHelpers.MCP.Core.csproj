@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Library: the bridge's MCP logic and setup. Packed as a NuGet so another MCP host can reference it.
+       The runnable server is AiDevHelpers.MCP (src/MCP/Server). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiDevHelpers.MCP.Core</RootNamespace>
+    <AssemblyName>AiDevHelpers.MCP.Core</AssemblyName>
+    <IsPackable>true</IsPackable>
+    <PackageId>AiDevHelpers.MCP.Core</PackageId>
+    <Authors>AiDevHelpers</Authors>
+    <Description>MCP tools and services for the AiDevHelpers IDE bridge. Reference this library to host the bridge tools in your own MCP server.</Description>
+    <RepositoryUrl>https://github.com/AiDevHelpers/McpBridge</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\src\AiDevHelpers.Common.csproj" />
+    <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
+    <ProjectReference Include="..\..\..\Helpers\LogHelper\src\AiDevHelpers.Helpers.LogHelper.csproj" />
+    <ProjectReference Include="..\..\..\Helpers\TerminalControl\src\AiDevHelpers.Helpers.TerminalControl.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" Version="1.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

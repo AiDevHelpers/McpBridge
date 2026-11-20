@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Logic for the Visual Studio 2026 extension: IDE actions, bridge host, logging. No package attributes here;
+       the VSIX project (AiDevHelpers.Installers.Vs2026.Installer) holds the UI and setup code only. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiDevHelpers.Installers.Vs2026.Core</RootNamespace>
+    <AssemblyName>AiDevHelpers.Installers.Vs2026.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="18.11.1036" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" SetTargetFramework="TargetFramework=net48" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runnable MCP server (stdio). All logic lives in AiDevHelpers.MCP.Core. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiDevHelpers.MCP</RootNamespace>
+    <AssemblyName>AiDevHelpers.MCP</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\src\AiDevHelpers.MCP.Core.csproj" />
+  </ItemGroup>
+
+</Project>
