@@ -1,5 +1,4 @@
 using System.Text.Json;
-using AiDevHelpers.MCP.Core.Services;
 using AiDevHelpers.MCP.Core.Tools;
 using Xunit;
 
@@ -8,12 +7,10 @@ namespace AiDevHelpers.MCP.Core.Tests.Tools;
 public sealed class OpenSolutionToolTests
 {
     [Fact]
-    public async Task IdeOpenSolution_NoInstance_ReportsError()
+    public void IdeOpenSolution_MissingFile_ReportsErrorWithoutLaunching()
     {
-        var tools = new IdeTools(Microsoft.Extensions.Options.Options.Create(new IdeToolsOptions()));
+        using var doc = JsonDocument.Parse(IdeTools.IdeOpenSolution(@"C:\__open_sln_no_such__\Missing.sln"));
 
-        var reply = await tools.IdeOpenSolution(@"C:\__open_sln_no_such__\Missing.sln");
-
-        Assert.Contains("\"ok\":false", reply.Replace(" ", string.Empty));
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
     }
 }

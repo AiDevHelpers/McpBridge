@@ -51,11 +51,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct);
 
     [McpServerTool]
-    [Description("Open a solution in an IDE instance. In VS Code the solution folder is opened. Pass ide to choose VsCode or VisualStudio.")]
-    public Task<string> IdeOpenSolution(
-        [Description("Full path of the .sln (or, for VS Code, its folder)")] string solutionPath,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("openSolution", new { solutionPath }, null, ct);
+    [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
+    public static string IdeOpenSolution(
+        [Description("Full path of the .sln")] string solutionPath)
+    {
+        if (!File.Exists(solutionPath))
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = "Solution file not found." });
+        }
+
+        var error = DevenvLauncher.Open(solutionPath);
+        if (error is not null)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath });
+    }
 
     [McpServerTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
