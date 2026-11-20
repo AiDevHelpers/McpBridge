@@ -15,6 +15,10 @@ Status: draft, revised after the read-only Sonnet review. Awaiting approval. Bui
 - D9 ExtensionsHelper `Add` accepts any extension id, after user confirmation for each install.
 - D10 ConfigHelper v1 resolves: remote debugger settings (XML/JSON), `launchSettings.json`, `appsettings.json`, user settings, solution settings.
 - D11 (proposed by review, adopted) Phase order puts the bridge-dependent BookmarkHelper last, because it has the most unknowns.
+- D21 ErrorHelper reuses LogHelper's `LogSeverity` (Error, Warning, Information as notice).
+- D22 Snapshots live in memory per process; they are lost on restart.
+- D23 Suppression is read from the solution .vsconfig under the key `aidevhelpersErrors`. Unverified: Visual Studio may reject unknown .vsconfig keys; check on a real install.
+- D24 Build output is supplied by the caller through `error_ingest`. ErrorHelper does not run dotnet build itself.
 
 ## Open questions (block the phase named)
 
@@ -53,7 +57,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Acceptance: each D10 kind resolves against a fixture folder; a traversal path is refused; a secret value in a fixture is redacted in output.
 - Gate: `dotnet test` for ConfigHelper; MCP tools/list count = 34 (32 baseline + config_resolve, config_read).
 
-### Phase 3: ErrorHelper
+### Phase 3: ErrorHelper (DONE 2026-11-20)
 
 - API: `GetErrors`, `GetWarnings`, `GetNotices`, `GetChanges(snapshotId)`, `TakeSnapshot()` (records state, returns only the id), filter by `code` and `source`, and `Suppress` config for codes and sources.
 - Sources in v1 (D3): MSBuild/compiler output, Roslyn analyzer diagnostics, NuGet restore output.
