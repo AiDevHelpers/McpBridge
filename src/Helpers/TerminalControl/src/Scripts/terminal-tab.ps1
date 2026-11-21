@@ -27,6 +27,9 @@ $cmdClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $CommandPipe, [Sy
 $cmdClient.Connect(60000)
 $cmdReader = [System.IO.StreamReader]::new($cmdClient)
 
+# The window shows what the host runs, so a quiet tab is never mistaken for a stuck one.
+Write-Host 'AiDevHelpers terminal tab ready. Commands from the host appear below.'
+
 while ($null -ne ($line = $cmdReader.ReadLine())) {
     $space = $line.IndexOf(' ')
     if ($space -lt 1) { continue }
@@ -35,10 +38,12 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
     $command = $line.Substring($space + 1)
 
     if ($command -eq $closeCommand) {
+        Write-Host 'Closing tab.'
         $outW.WriteLine("$endMarker $id 0")
         break
     }
 
+    Write-Host "PS> $command" -ForegroundColor Cyan
     $global:LASTEXITCODE = 0
     $failed = $false
     try {
@@ -46,9 +51,11 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
             if ($_ -is [System.Management.Automation.ErrorRecord]) {
                 # Error text must stay on one line so the protocol framing holds.
                 $text = ($_.ToString() -replace '[\r\n]+', ' | ')
+                Write-Host $text -ForegroundColor Red
                 $outW.WriteLine("$errorMarker $id $text")
             }
             else {
+                Write-Host ([string]$_)
                 $outW.WriteLine([string]$_)
             }
         }
@@ -56,6 +63,7 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
     catch {
         $failed = $true
         $text = ($_.ToString() -replace '[\r\n]+', ' | ')
+        Write-Host $text -ForegroundColor Red
         $outW.WriteLine("$errorMarker $id $text")
     }
 
@@ -63,6 +71,7 @@ while ($null -ne ($line = $cmdReader.ReadLine())) {
     elseif ($global:LASTEXITCODE -is [int] -and $global:LASTEXITCODE -ne 0) { $code = $global:LASTEXITCODE }
     else { $code = 0 }
 
+    Write-Host "[exit $code]"
     $outW.WriteLine("$endMarker $id $code")
 }
 

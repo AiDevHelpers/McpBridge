@@ -26,11 +26,13 @@ internal sealed class TerminalSessionTools
     [Description(
         "Run commands in a terminal session. action: open (create a session with launchMode InteractiveUser " +
         "(visible on the user's desktop, default) or ServiceAccount (headless, under the service account) and a first tab; " +
-        "tabName optional), tab (new tab in sessionId; tabName optional), exec (run command in sessionId + tabId; " +
+        "elevated=true opens the session with UAC so its tabs run as administrator; tabName optional), " +
+        "tab (new tab in sessionId; tabName optional), exec (run command in sessionId + tabId; " +
         "timeoutSeconds optional, default 60), list (open sessions), close (end sessionId).")]
     public async Task<string> TerminalSession(
         string action = "list",
         string? launchMode = null,
+        bool elevated = false,
         string? sessionId = null,
         string? tabId = null,
         string? tabName = null,
@@ -49,9 +51,9 @@ internal sealed class TerminalSessionTools
                 return await RunAsync(async () =>
                 {
                     await EnsureInitializedAsync(ct);
-                    var session = await _manager.CreateSessionAsync(new TerminalSessionConfig(LaunchMode: mode), ct);
+                    var session = await _manager.CreateSessionAsync(new TerminalSessionConfig(LaunchMode: mode, IsElevated: elevated), ct);
                     var tab = await session.CreateTabAsync(tabName ?? "main", null, ct);
-                    return $"Opened session {session.SessionId} (launchMode {mode}) with tab {tab.TabId}.";
+                    return $"Opened session {session.SessionId} (launchMode {mode}, elevated {elevated}) with tab {tab.TabId}.";
                 });
 
             case "TAB":

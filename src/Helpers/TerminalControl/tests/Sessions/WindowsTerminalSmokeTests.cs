@@ -85,7 +85,7 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var candidate = Path.Combine(dir.FullName, "src", "Helpers", "TerminalControl", "src", "Scripts", "tokensaver-tab.ps1");
+            var candidate = Path.Combine(dir.FullName, "src", "Helpers", "TerminalControl", "src", "Scripts", "terminal-tab.ps1");
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -94,7 +94,7 @@ public sealed class WindowsTerminalSmokeTests : IDisposable
             dir = dir.Parent;
         }
 
-        throw new FileNotFoundException("tokensaver-tab.ps1 not found above the test output folder.");
+        throw new FileNotFoundException("terminal-tab.ps1 not found above the test output folder.");
     }
 
     /// <summary>Starts the real wt.exe (keeping Verb/UseShellExecute), pointing the wrapper path at the source script.</summary>
