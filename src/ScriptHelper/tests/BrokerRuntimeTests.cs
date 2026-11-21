@@ -107,7 +107,12 @@ public sealed class BrokerRuntimeTests : IDisposable
         using var first = BrokerLock.TryAcquire(name);
         Assert.NotNull(first);
 
-        var second = Task.Run(() => BrokerLock.TryAcquire(name)).Result;
+        // A named mutex belongs to the thread that holds it, and that thread may take it again. Task.Run can run
+        // the attempt inline on this thread, which made the test flaky, so the second attempt gets its own thread.
+        BrokerLock? second = null;
+        var attempt = new Thread(() => second = BrokerLock.TryAcquire(name));
+        attempt.Start();
+        attempt.Join();
 
         Assert.Null(second);
     }

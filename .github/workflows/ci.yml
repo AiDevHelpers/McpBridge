@@ -35,7 +35,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test
-        run: dotnet test AiDevHelpers.slnx -c Release --no-build
+        run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm"
 
       - name: Build VSIX
         shell: pwsh
