@@ -75,4 +75,14 @@
     <Project Path="src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.csproj" />
     <Project Path="src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj" />
   </Folder>
+  <Folder Name="/Installers/VsCode/Core/">
+    <File Path="src/Installers/VsCode/Core/package.json" />
+    <File Path="src/Installers/VsCode/Core/package-lock.json" />
+    <File Path="src/Installers/VsCode/Core/tsconfig.json" />
+  </Folder>
+  <Folder Name="/Installers/VsCode/Installer/">
+    <File Path="src/Installers/VsCode/Installer/package.json" />
+    <File Path="src/Installers/VsCode/Installer/package-lock.json" />
+    <File Path="src/Installers/VsCode/Installer/tsconfig.json" />
+  </Folder>
 </Solution>
