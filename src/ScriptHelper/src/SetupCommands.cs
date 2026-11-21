@@ -48,7 +48,21 @@ public sealed class SetupCommands : ISetupCommands
 
     public string ApprovalsPath(string projectId) => _config.ApprovalsPath(projectId);
 
-    public SetupResult Register(string root) => _registry.Register(root);
+    public SetupResult Register(string root)
+    {
+        var result = _registry.Register(root);
+        if (!result.Ok)
+            return result;
+
+        // The owner's queue and results folders are created with owner-only ACLs, so the owner
+        // can submit requests and read answers, and nobody else can.
+        var project = _registry.Find(root);
+        if (project is null)
+            return Fail("project was registered but could not be read back");
+
+        RequesterFolders.Ensure(_config, project.OwnerSid);
+        return result;
+    }
 
     public SetupResult Approve(string root, string relativeScript)
     {

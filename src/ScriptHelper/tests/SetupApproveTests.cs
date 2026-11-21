@@ -642,6 +642,19 @@ public sealed class SetupApproveTests : IDisposable
     }
 
     [Fact]
+    public void Register_creates_the_owners_queue_and_results_folders()
+    {
+        var c = Commands();
+
+        RegisterProject(c);
+
+        var owner = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+        var config = new ScriptHelperConfig(_data);
+        Assert.True(Directory.Exists(Path.Combine(config.QueueDirectory, owner)));
+        Assert.True(Directory.Exists(Path.Combine(config.ResultsDirectory, owner)));
+    }
+
+    [Fact]
     public void Register_through_setup_commands_uses_the_same_registry()
     {
         var c = Commands();

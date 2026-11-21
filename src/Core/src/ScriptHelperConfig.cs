@@ -32,6 +32,12 @@ public sealed class ScriptHelperConfig
     /// <summary>The recorded protection mode, kept out of band from the approvals files.</summary>
     public string ModePath => Path.Combine(DataRoot, "mode.txt");
 
+    /// <summary>Per-requester folders where requests are written (one subfolder per owner SID).</summary>
+    public string QueueDirectory => Path.Combine(DataRoot, "queue");
+
+    /// <summary>Per-requester folders where the broker writes answers (one subfolder per owner SID).</summary>
+    public string ResultsDirectory => Path.Combine(DataRoot, "results");
+
     /// <summary>The TPM key that signs approvals.</summary>
     public string KeyName => "ScriptHelper.Approvals";
 
