@@ -6,7 +6,7 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 
 - `src/MCP/Server` (`AiDevHelpers.MCP`) — MCP server exe for IDE and terminal tools. Shared tools live in `src/MCP/Core`.
 - `src/Installers/Vs2026/Installer` — Visual Studio 2026 extension (VSIX). Shared bridge code lives in `src/Installers/Vs2026/Core`.
-- `src/Installers/VsCode/Installer` — VS Code extension. Its protocol and buffer code lives in `src/Installers/VsCode/Core`.
+- `src/Installers/VsCode/Installer/AiDevTools.VsCode` — VS Code extension (TypeScript). Its protocol and buffer code lives in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`.
 - `src/Helpers/LogHelper` — log parsing and query support used by the bridge.
 - `src/Helpers/TerminalControl` — Windows Terminal session management.
 - `src/Helpers/WindowsSession` — Windows session helpers.

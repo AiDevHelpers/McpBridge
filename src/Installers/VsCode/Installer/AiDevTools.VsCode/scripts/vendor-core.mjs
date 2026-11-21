@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const core = join(here, "..", "..", "Core");
+const core = join(here, "..", "..", "..", "Core", "AiDevTools.VsCode.Core");
 execSync("npm run build", { cwd: core, stdio: "inherit" });
 const dest = join(here, "..", "src", "vendor", "core");
 rmSync(dest, { recursive: true, force: true });

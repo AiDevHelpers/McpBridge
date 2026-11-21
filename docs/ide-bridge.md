@@ -7,7 +7,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 - Each IDE window runs a bridge on a named pipe, one pipe per window process:
   - Visual Studio: `InstanceRegistry.PipeNameFor(pid)` in the `AiDevHelpers.Bridge` package (source: AiDevHelpers/McpBridge). The VS extension hosts it.
-  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`src/Installers/VsCode/Installer/src/ideBridge.ts`).
+  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`src/Installers/VsCode/Installer/AiDevTools.VsCode/src/ideBridge.ts`).
 - Each window writes a manifest to `%ProgramData%\AiDevHelpers\vs-instances\<pid>.json`:
   `{ pid, pipeName, solutionPath, updatedUtc, ide }`. `ide` is `VisualStudio` or `VsCode`.
 - The MCP server reads the manifests (`VsInstanceRegistry`, in the package) and routes each call (`IdeInstanceRouter`, in the package) to the window whose
@@ -111,7 +111,7 @@ when both are ticked. The command-line form with more than one instance ID fails
 VS Code bridge (the Core library is vendored into the extension at build time, so the package is self-contained):
 
 ```bash
-cd src/Installers/VsCode/Installer
+cd src/Installers/VsCode/Installer/AiDevTools.VsCode
 npm install
 npm run build
 npm test

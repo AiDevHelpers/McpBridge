@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>14</LangVersion>
+
+    <!-- VSIX settings -->
+    <VSSDKBuildToolsAutoSetup>true</VSSDKBuildToolsAutoSetup>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectCapability Include="CreateVsixContainer" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="18.11.1036" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VSSDK.BuildTools" Version="18.11.1034" />
+  </ItemGroup>
+
+  <!-- The VS Code extension is TypeScript in this folder. A build installs, builds and tests it with npm.
+       Pass -p:SkipNpm=true to skip. Packaging the .vsix for VS Code is manual: npm run package. -->
+  <Target Name="NpmBuild" BeforeTargets="BeforeBuild" Condition="'$(SkipNpm)' != 'true'">
+    <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm test" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+</Project>

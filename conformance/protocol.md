@@ -1,7 +1,7 @@
 # IDE bridge protocol (conformance)
 
 Every IDE bridge follows these rules. The C# bridge (`AiDevHelpers.Bridge`, hosted by the Visual Studio
-extension) and the VS Code bridge (`src/Installers/VsCode/Installer/src/ideBridge.ts`) both must pass the
+extension) and the VS Code bridge (`src/Installers/VsCode/Installer/AiDevTools.VsCode/src/ideBridge.ts`) both must pass the
 fixtures in `fixtures.json`.
 
 ## Pipe

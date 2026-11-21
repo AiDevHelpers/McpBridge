@@ -3,7 +3,7 @@ import { describe, expect, test } from "vitest";
 import { replyToBridgeRequest } from "./bridgeProtocol.js";
 
 type Fixture = { request?: { action: string }; raw?: string; ok: boolean; reply_keys: string[] };
-const fixtures = JSON.parse(readFileSync(new URL("../../../../../conformance/fixtures.json", import.meta.url), "utf8")) as Record<string, Fixture>;
+const fixtures = JSON.parse(readFileSync(new URL("../../../../../../conformance/fixtures.json", import.meta.url), "utf8")) as Record<string, Fixture>;
 
 const health = {
     listener_running: true,

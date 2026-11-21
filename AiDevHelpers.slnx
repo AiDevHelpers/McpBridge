@@ -47,6 +47,7 @@
     <Project Path="src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj" />
     <Project Path="src/Helpers/TestingHelper/tests/AiDevHelpers.Helpers.TestingHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/" />
   <Folder Name="/Helpers/BookmarkHelper/">
     <Project Path="src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj" />
     <Project Path="src/Helpers/BookmarkHelper/tests/AiDevHelpers.Helpers.BookmarkHelper.Tests.csproj" />
@@ -59,6 +60,7 @@
     <Project Path="src/Helpers/WindowsSession/src/AiDevHelpers.Helpers.WindowsSession.csproj" />
     <Project Path="src/Helpers/WindowsSession/tests/AiDevHelpers.Helpers.WindowsSession.Tests.csproj" />
   </Folder>
+  <Folder Name="/MCP/" />
   <Folder Name="/MCP/Core/">
     <Project Path="src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj" />
     <Project Path="src/MCP/Core/tests/AiDevHelpers.MCP.Core.Tests.csproj" />
@@ -67,6 +69,8 @@
     <Project Path="src/MCP/Server/src/AiDevHelpers.MCP.csproj" />
     <Project Path="src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj" />
   </Folder>
+  <Folder Name="/Installers/" />
+  <Folder Name="/Installers/Vs2026/" />
   <Folder Name="/Installers/Vs2026/Core/">
     <Project Path="src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj" />
     <Project Path="src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj" />
@@ -76,13 +80,14 @@
     <Project Path="src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj" />
   </Folder>
   <Folder Name="/Installers/VsCode/Core/">
-    <File Path="src/Installers/VsCode/Core/package.json" />
-    <File Path="src/Installers/VsCode/Core/package-lock.json" />
-    <File Path="src/Installers/VsCode/Core/tsconfig.json" />
+    <Project Path="src/Installers/VsCode/Core/AiDevTools.VsCode.Core/AiDevTools.VsCode.Core.esproj">
+      <Build />
+      <Deploy />
+    </Project>
   </Folder>
   <Folder Name="/Installers/VsCode/Installer/">
-    <File Path="src/Installers/VsCode/Installer/package.json" />
-    <File Path="src/Installers/VsCode/Installer/package-lock.json" />
-    <File Path="src/Installers/VsCode/Installer/tsconfig.json" />
+    <Project Path="src/Installers/VsCode/Installer/AiDevTools.VsCode/AiDevTools.VsCode.csproj" Id="72da9984-0174-4b54-a39f-bbe9f56d38e8">
+      <Deploy />
+    </Project>
   </Folder>
 </Solution>
