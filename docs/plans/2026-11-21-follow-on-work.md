@@ -78,6 +78,10 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Give each new helper's library a NuGet package (per-helper versioning, as in D19) and add it to the CI pack list.
 - Gate: the tool count matches the new total, and the protocol doc and fixtures match the code.
 
+## Todo
+
+- Restart signal for aidevtools: tell every open chat that uses aidevtools to pause, then close, then update, then reopen, and send a resume signal when done. Not designed yet.
+
 ## Carried-over items
 
 Fix:
