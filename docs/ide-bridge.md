@@ -54,6 +54,8 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 | Tools | Helper | Notes |
 |---|---|---|
+| `live_test_start`, `live_test_stop` | TestingHelper | Live testing with `dotnet watch test`. Works in Visual Studio Community, which has no Live Unit Testing. Failures reach `test_failures`, the error log and MCP log notifications. |
+|---|---|---|
 | `config_resolve`, `config_read` | ConfigHelper | Real paths for remote debugger, launchSettings, appsettings, user and solution settings. Reads are limited to allowed roots and redact secrets. |
 | `error_ingest`, `error_list`, `error_snapshot`, `error_changes` | ErrorHelper | Caller supplies build output. Filters by code and source. Suppression comes from the solution's `.vsconfig` key `aidevhelpersErrors`. |
 | `test_watch`, `test_unwatch`, `test_failures`, `test_coverage` | TestingHelper | Watches TestResults while hot reload is active. Coverage uses Coverlet, or the `dotnet-coverage` CLI for Visual Studio. |
@@ -71,7 +73,8 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - **VS bookmarks:** only bookmarks in open documents are visible. Names are not stored by VS, so `name` comes back null.
 - **VS Code bookmarks:** not supported in v1 (`unsupported: true`).
 - **VS coverage through the bridge:** not built. Visual Studio coverage uses the `dotnet-coverage` CLI.
-- **VS Code hot reload setting:** the bridge action that reads it is not built yet. TestingHelper falls back to `dotnet watch`.
+- **Hot reload:** `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio) read the settings. TestingHelper uses them when the caller passes them, and otherwise falls back to `dotnet watch`.
+- **Continuous testing:** VS Code only, through Test Explorer's run commands. Visual Studio has no continuous testing setting, so it uses `live_test_start`.
 - **Unverified on a real install:** `dotnet.defaultSolution`, the `.vsconfig` key `aidevhelpersErrors`, and the
   Marketplace query shape used by ExtensionsHelper.
 

@@ -66,6 +66,16 @@ A reply that does not arrive within 60 seconds is an error, so a stalled bridge 
 
 VS Code replies to the four bookmark actions with `"unsupported":true` (D8).
 
+| Action | Args | Result | Notes |
+|---|---|---|---|
+| `hotReloadState` | none | `{ide, enabled, setting}` (VS Code) | Reads `csharp.experimental.debug.hotReload` through the extension host settings API. `enabled` is null when unset. |
+| `testHotReloadState` | none | `{ide, enabled, setting, settingsPath}` (VS) | Reads `test.hotReload` from the instance's `settings.json`. The instance folder comes from its `state.json`, falling back to the folder name. |
+| `continuousTestingStart` | none | `{ide, continuous, command}` (VS Code) | Runs `testing.startContinuousRun`. |
+| `continuousTestingStop` | none | `{ide, continuous, command}` (VS Code) | Runs `testing.stopContinuousRun`. |
+| `continuousTestingState` | none | `{ide, tracked}` (VS Code) | The bridge's own record of its last start or stop. VS Code has no API to read continuous mode. |
+
+A call that can't reach an instance within 60 seconds gets an error reply. An instance that accepts the connection but never replies is reported as "No reply".
+
 ## Fixtures
 
 - `fixtures.json` runs each entry against the bridge's generic handler. An entry checks the reply shape

@@ -26,3 +26,9 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 - [Windows Terminal standard session plan](docs/plans/wt-standard-session.md)
 
 The bridge follows the shared [protocol fixtures](conformance/fixtures.json). See `docs/ide-bridge.md` for extension installation and live IDE setup.
+
+## CI and branches
+
+- Pull requests to `main` and `dev`, and `v*` tags, run `build-and-test` (the solution build, tests and the Visual Studio VSIX) and `vscode-extension` (the VS Code extension tests and package). Pushes to branches don't run CI.
+- `main` and `dev` require both checks before a merge. `wip` requires none, blocks deletion, and allows force pushes.
+- A `v*` tag also publishes the Bridge, MCP.Core and each helper to GitHub Packages.
