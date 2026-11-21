@@ -94,9 +94,15 @@ public static class IdeInstanceRouter
         try
         {
             using var pipe = new NamedPipeClientStream(".", target.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            connectCts.CancelAfter(ConnectTimeout);
-            await pipe.ConnectAsync(connectCts.Token);
+            // ConnectAsync does not reliably honor its token, so race it against the timeout.
+            var connecting = pipe.ConnectAsync();
+            var connected = await Task.WhenAny(connecting, Task.Delay(ConnectTimeout, ct));
+            if (connected != connecting)
+            {
+                throw new TimeoutException("The IDE instance did not accept the connection in time.");
+            }
+
+            await connecting;
 
             using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
             using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
