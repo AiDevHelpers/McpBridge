@@ -53,7 +53,17 @@ public static class IdeInstanceRouter
 
             if (matches.Count > 1 && instancePid is null)
             {
-                return Error("Several instances have this solution open; pass instancePid to choose one.", matches);
+                // The stored preference only breaks this tie. An explicit ide or instancePid has already decided.
+                var preferred = string.IsNullOrWhiteSpace(ide) ? RepoConfig.PreferredIde(solutionPath) : null;
+                var narrowed = preferred is null
+                    ? matches
+                    : matches.Where(i => string.Equals(i.Ide, preferred, StringComparison.OrdinalIgnoreCase)).ToList();
+                if (narrowed.Count != 1)
+                {
+                    return Error("Several instances have this solution open; pass instancePid to choose one.", matches);
+                }
+
+                matches = narrowed;
             }
 
             target = matches[0];

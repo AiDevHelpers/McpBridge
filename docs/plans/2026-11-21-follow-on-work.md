@@ -43,6 +43,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: tests against a scratch repo, and a live check in each IDE.
 
 ### Phase 3: Preferred IDE and the repo config (D5, Q2)
+- Status: done. `RepoConfig` reads and writes `.claude/aidevhelpers.json` (keeps other keys; a malformed file throws instead of being overwritten). Routing uses the preference only when the ambiguity error would fire. `ide_set_preferred` and `ide_get_preferred` tools. 14 bridge tests pass, including the precedence cases. Red run not recorded: the code was written before the tests.
 - Acceptance: a stored preference answers tool calls without asking, and a call with an explicit `ide` still wins.
 - Gate: tests for the config read and write, and for the precedence rule.
 

@@ -44,6 +44,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
             .WithTools<LintTools>()
+            .WithTools<PreferredIdeTools>()
             .WithTools<TerminalSessionTools>();
     }
 }
