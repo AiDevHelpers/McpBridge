@@ -33,6 +33,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: the helper's unit tests, plus the lint check on this repo.
 
 ### Phase 2: Source control spike, then helper (D1, D7)
+- Status: helper built (`SourceControlHelper`: status, diff, planned writes with single-use tokens; 13 tests pass against a scratch git repo). MCP tools `git_status`, `git_diff`, `git_plan`, `git_confirm`. Deviation from D1: Visual Studio and VS Code both use `git.exe` for now. The VS Code git API path is not built; it needs bridge actions and is deferred to a later unit. Live checks in each IDE are not run.
 - Spike: confirm which of status, diff, stage, commit, pull, push, branch, switch and stash each IDE's API supports. Record the result in the plan.
 - Spike result (2026-11-21):
   - VS Code (`vscode.git` `Repository` API, microsoft/vscode `extensions/git/src/api/git.d.ts`): status, diff, add (stage), commit, pull, push, fetch, createBranch, deleteBranch, checkout (switch), createStash, applyStash, popStash, dropStash all exist. No separate `stage` or `switch` method: staging is `add`, switching is `checkout`. Full coverage.
