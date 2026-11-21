@@ -61,6 +61,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: a test that each helper's markdown is present.
 
 ### Phase 6: Package helper and gate helper (D3, D6)
+- Status: partly done. `PackageHelper` (NuGet, pip, npm checks; 7 tests pass) and `GateHelper` (steps from `.claude/reference/full-gate.md` or detected from the stack, runs stop at the first failure; 7 tests pass). MCP tools `package_check`, `gate_plan`, `gate_run`. Not done: the test helper change to run only affected tests, and the lite gate (its definition is still not found). This repo has no `.claude/reference/full-gate.md`, and its root has no `package.json`, so the gate detects only the solution; the two VS Code TypeScript projects are not in it until a reference file names them.
 - Package: check the configs and packages in D3, then run the full gate's build step.
 - Gate: run the full gate (D6) on this repo. Lite gate once its definition is found.
 - Extend the test helper to run only the affected tests.

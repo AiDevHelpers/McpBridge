@@ -15,7 +15,7 @@ internal sealed class SelfTestTools
     public static readonly string[] HelperNames =
     [
         "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "LintHelper", "LogHelper",
-        "OutputHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
+        "OutputHelper", "PackageHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
     ];
 
     private const string ResourceName = "AiDevHelpers.SelfTest.md";

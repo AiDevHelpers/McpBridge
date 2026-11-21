@@ -48,6 +48,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<SourceControlTools>()
             .WithTools<OutputTools>()
             .WithTools<SelfTestTools>()
+            .WithTools<GateTools>()
             .WithTools<TerminalSessionTools>();
     }
 }

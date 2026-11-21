@@ -31,6 +31,14 @@
     <Project Path="src/Helpers/OutputHelper/src/AiDevHelpers.Helpers.OutputHelper.csproj" />
     <Project Path="src/Helpers/OutputHelper/tests/AiDevHelpers.Helpers.OutputHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/PackageHelper/">
+    <Project Path="src/Helpers/PackageHelper/src/AiDevHelpers.Helpers.PackageHelper.csproj" />
+    <Project Path="src/Helpers/PackageHelper/tests/AiDevHelpers.Helpers.PackageHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/GateHelper/">
+    <Project Path="src/Helpers/GateHelper/src/AiDevHelpers.Helpers.GateHelper.csproj" />
+    <Project Path="src/Helpers/GateHelper/tests/AiDevHelpers.Helpers.GateHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/ExtensionsHelper/">
     <Project Path="src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
     <Project Path="src/Helpers/ExtensionsHelper/tests/AiDevHelpers.Helpers.ExtensionsHelper.Tests.csproj" />

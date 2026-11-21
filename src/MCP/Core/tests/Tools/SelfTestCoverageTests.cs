@@ -18,6 +18,7 @@ public sealed class SelfTestCoverageTests
         ("ExtensionTools", "ExtensionsHelper"),
         ("LintTools", "LintHelper"),
         ("OutputTools", "OutputHelper"),
+        ("GateTools", "GateHelper"),
         ("SourceControlTools", "SourceControlHelper"),
         ("TestingTools", "TestingHelper"),
         ("TerminalSessionTools", "TerminalControl"),
