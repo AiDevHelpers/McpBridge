@@ -34,7 +34,8 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Spike result (2026-11-21):
   - VS Code (`vscode.git` `Repository` API, microsoft/vscode `extensions/git/src/api/git.d.ts`): status, diff, add (stage), commit, pull, push, fetch, createBranch, deleteBranch, checkout (switch), createStash, applyStash, popStash, dropStash all exist. No separate `stage` or `switch` method: staging is `add`, switching is `checkout`. Full coverage.
   - Visual Studio: no public Git operation API found. Team Explorer's Git assemblies (`Microsoft.TeamFoundation.Git.CoreServices`, `.Provider`) expose internal types only (IActiveGitFile, ICollaborationSession). The VS extensibility docs landing page names no Git API. Not a full search of learn.microsoft.com, so not a proof of absence.
-  - Decision needed (D1 fallback): for Visual Studio, run the git CLI in the repo folder and parse its output. Recommended, because it is the only path that covers all nine operations. Use the IDE API for VS Code.
+  - Sonnet research (2026-11-21, read-only): no public VS Git operation API. Team Explorer's `Microsoft.VisualStudio.TeamFoundation.Git.Extensibility` exposes read-only info only: repo path, current branch, remotes, branch name and SHA. Status (pending changes), stage, commit, pull, push, fetch, branch, switch and stash are internal (`IGitRepository` in `Microsoft.TeamFoundation.Git.Contracts.dll`), not an SDK. No public NuGet package has the write operations.
+  - Recommendation (D1 fallback): for Visual Studio, use `IGitRepositoryInfo` for the repo path and branch, and run `git.exe` for every operation. Use the VS Code API for VS Code. Awaiting approval.
 - Acceptance (after the spike): each supported operation returns a structured result, and each write needs two-step approval.
 - Gate: tests against a scratch repo, and a live check in each IDE.
 
