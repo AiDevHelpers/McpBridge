@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>scripthelper-broker</AssemblyName>
+    <RootNamespace>AiDevHelpers.ScriptHelper.Broker</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\src\AiDevHelpers.ScriptHelper.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="AiDevHelpers.Common.Contracts" />
+    <Using Include="AiDevHelpers.Core" />
+  </ItemGroup>
+</Project>

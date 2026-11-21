@@ -17,7 +17,7 @@
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Scripts\tokensaver-tab.ps1" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Scripts\terminal-tab.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />

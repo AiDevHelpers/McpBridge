@@ -52,6 +52,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `bookmark_list`, `bookmark_get`, `bookmark_set`, `bookmark_remove` | `bookmarkList`, `bookmarkGet`, `bookmarkSet`, `bookmarkRemove` | Visual Studio bookmarks. VS Code returns not-supported. See Limits. |
 | `output_channel_set`, `output_write` | `outputWrite` | Writes text to a named output channel: an Output window pane in Visual Studio, an output channel in VS Code. The IDE for each channel is stored per repo. Reading back is not offered. |
 | `ide_set_preferred`, `ide_get_preferred` | (MCP only) | Stores or reads `preferredIde` in `.claude/aidevhelpers.json` next to the solution. See Settings. |
+| `run_elevated_script` | (MCP only) | Runs an approved script elevated through the Script Helper broker (`elev.exe`, next to the server). Needs `projectRoot`, `script` and optional `args`. Returns the exit code and output, or a refusal. The script must be in the project's `.elevated.json` and approved by a person. |
 
 ### Bridge actions used by other tools
 

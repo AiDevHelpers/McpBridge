@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Common\src\AiDevHelpers.Common.csproj" />
+    <ProjectReference Include="..\..\Core\src\AiDevHelpers.Core.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="AiDevHelpers.Common.Contracts" />
+    <Using Include="AiDevHelpers.Core" />
+  </ItemGroup>
+</Project>

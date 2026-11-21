@@ -19,6 +19,45 @@ public sealed class TerminalSessionToolsTests
         public Task ShutdownAsync(CancellationToken ct = default) => throw new InvalidOperationException("unexpected");
     }
 
+    /// <summary>Captures the config passed to CreateSessionAsync, then stops the open.</summary>
+    private sealed class CapturingManager : ITerminalSessionManager
+    {
+        public TerminalSessionConfig? Captured { get; private set; }
+        public Task InitializeAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public TerminalConfiguration TerminalConfiguration => throw new InvalidOperationException("unexpected");
+        public Task<ITerminalSession> CreateSessionAsync(TerminalSessionConfig config, CancellationToken ct = default)
+        {
+            Captured = config;
+            throw new InvalidOperationException("captured");
+        }
+        public ITerminalSession? GetSession(string sessionId) => throw new InvalidOperationException("unexpected");
+        public IReadOnlyList<ITerminalSession> GetActiveSessions() => throw new InvalidOperationException("unexpected");
+        public Task CloseSessionAsync(string sessionId, bool graceful = true, CancellationToken ct = default) => throw new InvalidOperationException("unexpected");
+        public Task ShutdownAsync(CancellationToken ct = default) => throw new InvalidOperationException("unexpected");
+    }
+
+    [Fact]
+    public async Task Open_Elevated_PassesIsElevatedToSessionConfig()
+    {
+        var manager = new CapturingManager();
+        var tools = new TerminalSessionTools(manager);
+
+        await tools.TerminalSession(action: "open", elevated: true);
+
+        Assert.True(manager.Captured?.IsElevated);
+    }
+
+    [Fact]
+    public async Task Open_Default_IsNotElevated()
+    {
+        var manager = new CapturingManager();
+        var tools = new TerminalSessionTools(manager);
+
+        await tools.TerminalSession(action: "open");
+
+        Assert.False(manager.Captured?.IsElevated);
+    }
+
     [Theory]
     [InlineData(null, TerminalLaunchMode.InteractiveUser)]
     [InlineData("", TerminalLaunchMode.InteractiveUser)]

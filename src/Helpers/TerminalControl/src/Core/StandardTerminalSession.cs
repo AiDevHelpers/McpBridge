@@ -29,7 +29,8 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
     public string SessionId { get; } = $"standard_{Guid.NewGuid():N}".Substring(0, 20);
     private string WindowName => $"tokensaver-{SessionId}";
-    private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "tokensaver-tab.ps1");
+    // The wrapper is copied under Scripts\ in the output folder (see TerminalControl.csproj).
+    private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "Scripts", "terminal-tab.ps1");
     public bool IsElevated { get; }
     public int ProcessId => _process?.Id ?? -1;
     public TerminalSessionState State { get; private set; } = TerminalSessionState.Initializing;

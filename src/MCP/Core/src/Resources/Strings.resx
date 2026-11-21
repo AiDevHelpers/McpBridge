@@ -67,4 +67,8 @@
   <data name="WatchNotStarted" xml:space="preserve"><value>dotnet watch test did not start.</value></data>
   <data name="NoLiveTesting" xml:space="preserve"><value>No live testing is running for this solution.</value></data>
   <data name="IdeAlreadyRunning" xml:space="preserve"><value>{0} is already running</value></data>
+  <data name="ElevNotFound" xml:space="preserve"><value>elev.exe not found next to the MCP server ({0}).</value></data>
+  <data name="ElevDidNotStart" xml:space="preserve"><value>elev.exe did not start.</value></data>
+  <data name="ScriptHelperNeedsArgs" xml:space="preserve"><value>Error: runElevatedScript needs projectRoot and script.</value></data>
+  <data name="ScriptHelperError" xml:space="preserve"><value>Error: {0}</value></data>
 </root>

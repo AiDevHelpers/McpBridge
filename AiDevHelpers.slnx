@@ -88,4 +88,15 @@
   <Folder Name="/Installers/VsCode/Installer/">
     <Project Path="src/Installers/VsCode/Installer/AiDevTools.VsCode/AiDevTools.VsCode.csproj" Id="72da9984-0174-4b54-a39f-bbe9f56d38e8" />
   </Folder>
+  <Folder Name="/Core/">
+    <Project Path="src/Core/src/AiDevHelpers.Core.csproj" />
+    <Project Path="src/Core/tests/AiDevHelpers.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/ScriptHelper/">
+    <Project Path="src/ScriptHelper/src/AiDevHelpers.ScriptHelper.Core.csproj" />
+    <Project Path="src/ScriptHelper/setup/AiDevHelpers.ScriptHelper.Setup.csproj" />
+    <Project Path="src/ScriptHelper/broker/AiDevHelpers.ScriptHelper.Broker.csproj" />
+    <Project Path="src/ScriptHelper/client/AiDevHelpers.ScriptHelper.Client.csproj" />
+    <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
+  </Folder>
 </Solution>
