@@ -75,7 +75,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - **VS coverage through the bridge:** not built. Visual Studio coverage uses the `dotnet-coverage` CLI.
 - **Hot reload:** `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio) read the settings. TestingHelper uses them when the caller passes them, and otherwise falls back to `dotnet watch`.
 - **Continuous testing:** VS Code only, through Test Explorer's run commands. Visual Studio has no continuous testing setting, so it uses `live_test_start`.
-- **Unverified on a real install:** `dotnet.defaultSolution`, the `.vsconfig` key `aidevhelpersErrors`, and the
+- **Unverified on a real install:** the `.vsconfig` key `aidevhelpersErrors`, and the
   Marketplace query shape used by ExtensionsHelper.
 
 ## Settings
@@ -91,7 +91,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - `csharp.experimental.debug.hotReload` (VS Code) and `test.hotReload` (Visual Studio): hot reload state, read by
   `hotReloadState` and `testHotReloadState`. Both are set by the IDE, not by this project.
 - `dotnet.defaultSolution` (C# Dev Kit): set on install by `extension_workspace_setup` when C# Dev Kit is installed.
-  Its behavior is not yet verified.
+  Verified: with two solutions in a folder and this key set, C# Dev Kit restores and loads the chosen one.
 - Extension recommendations go to `.vscode/extensions.json` in the folder: `ms-dotnettools.csdevkit` and
   `ms-dotnettools.csharp`.
 
