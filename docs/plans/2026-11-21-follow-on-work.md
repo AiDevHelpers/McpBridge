@@ -15,6 +15,9 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 ## Answered open questions
 
 - Q1 Gate definitions: answered from the `full-gate` skill (D6). The lite gate definition was not found in the skills; check `.claude/reference/` before Phase 6.
+- Q2 Preferred IDE: tie-break only. The preference applies only when the ambiguity error would fire. Otherwise the call still needs `ide` or `instancePid`.
+- Q3 Localization: `.resx` for the .NET helpers and a JSON table for the TypeScript side. English only for now; other languages can be added later.
+- Q4 Self tests: each helper's self-test markdown is embedded as a resource in its library, and the bridge reads it at runtime. A "full" self test runs every MCP tool of the helper once against a fixture and checks the reply shape.
 
 ## Open questions (block the named phase)
 
