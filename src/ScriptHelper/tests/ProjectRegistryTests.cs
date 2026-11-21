@@ -41,7 +41,44 @@ public sealed class ProjectRegistryTests : IDisposable
         return root;
     }
 
-    private ProjectRegistry Registry() => new(RegistryPath, _elevation, _volumes, Profile);
+    private const string Owner = "S-1-5-21-1111111111-2222222222-3333333333-1001";
+
+    private ProjectRegistry Registry() => new(RegistryPath, _elevation, _volumes, Profile, currentUserSid: () => Owner);
+
+    [Fact]
+    public void Register_records_the_current_user_as_the_owner()
+    {
+        var root = NewRoot("repo");
+
+        Registry().Register(root);
+
+        Assert.Equal(Owner, Registry().Find(root)?.OwnerSid);
+    }
+
+    [Fact]
+    public void Owner_survives_a_reload_from_the_file()
+    {
+        var root = NewRoot("repo");
+        Registry().Register(root);
+
+        var found = new ProjectRegistry(RegistryPath, _elevation, _volumes, Profile, currentUserSid: () => "S-1-5-21-other")
+            .Find(root);
+
+        Assert.Equal(Owner, found?.OwnerSid);
+    }
+
+    [Fact]
+    public void Re_registering_keeps_the_original_owner()
+    {
+        var root = NewRoot("repo");
+        Registry().Register(root);
+
+        var again = new ProjectRegistry(RegistryPath, _elevation, _volumes, Profile, currentUserSid: () => "S-1-5-21-other")
+            .Register(root);
+
+        Assert.True(again.Ok);
+        Assert.Equal(Owner, Registry().Find(root)?.OwnerSid);
+    }
 
     [Fact]
     public void Register_in_an_elevated_shell_succeeds_and_returns_an_id()

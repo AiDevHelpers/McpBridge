@@ -2,7 +2,8 @@ using System.Text.Json;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
-public sealed record ProjectEntry(string Id, string Root);
+/// <summary>A registered project. OwnerSid is the user SID whose requests the broker accepts for it.</summary>
+public sealed record ProjectEntry(string Id, string Root, string OwnerSid);
 
 public sealed record RegistryDocument(IReadOnlyList<ProjectEntry> Projects);
 
@@ -20,19 +21,22 @@ public sealed class ProjectRegistry
     private readonly IVolumeInfo _volumes;
     private readonly string _profileRoot;
     private readonly Action<string> _ensureDirectory;
+    private readonly Func<string> _currentUserSid;
 
     public ProjectRegistry(
         string registryPath,
         IElevationCheck elevation,
         IVolumeInfo volumes,
         string userProfileRoot,
-        Action<string>? ensureDirectory = null)
+        Action<string>? ensureDirectory = null,
+        Func<string>? currentUserSid = null)
     {
         _path = registryPath;
         _elevation = elevation;
         _volumes = volumes;
         _profileRoot = Normalize(userProfileRoot);
         _ensureDirectory = ensureDirectory ?? (p => Directory.CreateDirectory(p));
+        _currentUserSid = currentUserSid ?? (() => System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value);
     }
 
     public SetupResult Register(string root)
@@ -75,7 +79,7 @@ public sealed class ProjectRegistry
         if (existing is not null)
             return new SetupResult(true, "already registered", existing.Id);
 
-        var entry = new ProjectEntry(Guid.NewGuid().ToString("N"), full);
+        var entry = new ProjectEntry(Guid.NewGuid().ToString("N"), full, _currentUserSid());
         projects.Add(entry);
         Save(projects);
 

@@ -2,7 +2,7 @@ using AiDevHelpers.Common.Contracts;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
-public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args);
+public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args, string RequesterSid = "");
 
 public sealed record BrokerResponse(bool Ok, string Reason, int? ExitCode, string Stdout, string Stderr);
 
@@ -65,6 +65,14 @@ public sealed class RequestHandler
         var project = _registry.Find(request.ProjectRoot);
         if (project is null)
             return Deny(request, "project is not registered");
+
+        // Only the user the project was registered to may run its scripts. An empty requester
+        // or a project with no recorded owner is refused.
+        if (string.IsNullOrWhiteSpace(request.RequesterSid)
+            || !string.Equals(project.OwnerSid, request.RequesterSid, StringComparison.OrdinalIgnoreCase))
+        {
+            return Deny(request, "requester is not the project owner");
+        }
 
         var manifestPath = Path.Combine(project.Root, ".elevated.json");
         byte[] manifestBytes;

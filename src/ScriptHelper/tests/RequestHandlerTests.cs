@@ -37,6 +37,7 @@ public sealed class RequestHandlerTests : IDisposable
     private readonly ProjectRegistry _registry;
     private readonly VersionCounter _versions;
     private string _projectId = string.Empty;
+    private const string Owner = "S-1-5-21-1111111111-2222222222-3333333333-1001";
 
     public RequestHandlerTests()
     {
@@ -46,7 +47,7 @@ public sealed class RequestHandlerTests : IDisposable
         Directory.CreateDirectory(_root);
         Directory.CreateDirectory(_staging);
         _config = new ScriptHelperConfig(_data);
-        _registry = new ProjectRegistry(_config.RegistryPath, _elevation, _volumes, @"C:\Users\tester");
+        _registry = new ProjectRegistry(_config.RegistryPath, _elevation, _volumes, @"C:\Users\tester", currentUserSid: () => Owner);
         _versions = new VersionCounter(_config.VersionsDirectory);
 
         WriteFile(".elevated.json", """{ "scripts": [ { "path": "scripts/debug/*.ps1" } ] }""");
@@ -88,7 +89,40 @@ public sealed class RequestHandlerTests : IDisposable
     }
 
     private BrokerRequest Request(string script = Script, params string[] args) =>
-        new(_root, script, args);
+        new(_root, script, args, Owner);
+
+    [Fact]
+    public void Request_from_a_sid_that_is_not_the_owner_is_denied_and_nothing_runs()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(new BrokerRequest(_root, Script, Array.Empty<string>(), "S-1-5-21-someone-else"));
+
+        Assert.False(r.Ok);
+        Assert.Contains("not the project owner", r.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void Request_with_no_sid_is_denied_and_nothing_runs()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(new BrokerRequest(_root, Script, Array.Empty<string>()));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void Owner_sid_comparison_ignores_case()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(new BrokerRequest(_root, Script, Array.Empty<string>(), Owner.ToLowerInvariant()));
+
+        Assert.True(r.Ok, r.Reason);
+    }
 
     [Fact]
     public void Unregistered_project_is_denied_and_nothing_runs()
