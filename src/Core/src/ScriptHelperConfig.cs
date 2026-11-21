@@ -38,6 +38,18 @@ public sealed class ScriptHelperConfig
     /// <summary>Per-requester folders where the broker writes answers (one subfolder per owner SID).</summary>
     public string ResultsDirectory => Path.Combine(DataRoot, "results");
 
+    /// <summary>The broker's heartbeat file, rewritten while it runs (the client's ping).</summary>
+    public string HeartbeatPath => Path.Combine(DataRoot, "broker-heartbeat.json");
+
+    /// <summary>Creating this file asks a running broker to stop; the broker deletes it.</summary>
+    public string StopPath => Path.Combine(DataRoot, "broker.stop");
+
+    /// <summary>Where requests are staged before they run. Only the broker touches it.</summary>
+    public string StagingDirectory => Path.Combine(DataRoot, "staging");
+
+    /// <summary>The admin-only audit log.</summary>
+    public string AuditLogPath => Path.Combine(DataRoot, "logs", "audit.log");
+
     /// <summary>The TPM key that signs approvals.</summary>
     public string KeyName => "ScriptHelper.Approvals";
 

@@ -62,6 +62,8 @@
   <Folder Name="/ScriptHelper/">
     <Project Path="src/ScriptHelper/src/AiDevHelpers.ScriptHelper.Core.csproj" />
     <Project Path="src/ScriptHelper/setup/AiDevHelpers.ScriptHelper.Setup.csproj" />
+    <Project Path="src/ScriptHelper/broker/AiDevHelpers.ScriptHelper.Broker.csproj" />
+    <Project Path="src/ScriptHelper/client/AiDevHelpers.ScriptHelper.Client.csproj" />
     <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
   </Folder>
 </Solution>
