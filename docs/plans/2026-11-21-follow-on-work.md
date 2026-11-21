@@ -31,6 +31,10 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 
 ### Phase 2: Source control spike, then helper (D1, D7)
 - Spike: confirm which of status, diff, stage, commit, pull, push, branch, switch and stash each IDE's API supports. Record the result in the plan.
+- Spike result (2026-11-21):
+  - VS Code (`vscode.git` `Repository` API, microsoft/vscode `extensions/git/src/api/git.d.ts`): status, diff, add (stage), commit, pull, push, fetch, createBranch, deleteBranch, checkout (switch), createStash, applyStash, popStash, dropStash all exist. No separate `stage` or `switch` method: staging is `add`, switching is `checkout`. Full coverage.
+  - Visual Studio: no public Git operation API found. Team Explorer's Git assemblies (`Microsoft.TeamFoundation.Git.CoreServices`, `.Provider`) expose internal types only (IActiveGitFile, ICollaborationSession). The VS extensibility docs landing page names no Git API. Not a full search of learn.microsoft.com, so not a proof of absence.
+  - Decision needed (D1 fallback): for Visual Studio, run the git CLI in the repo folder and parse its output. Recommended, because it is the only path that covers all nine operations. Use the IDE API for VS Code.
 - Acceptance (after the spike): each supported operation returns a structured result, and each write needs two-step approval.
 - Gate: tests against a scratch repo, and a live check in each IDE.
 
