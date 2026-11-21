@@ -98,7 +98,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 - **Hot reload:** `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio) read the settings. TestingHelper uses them when the caller passes them, and otherwise falls back to `dotnet watch`.
 - **Continuous testing:** VS Code only, through Test Explorer's run commands. Visual Studio has no continuous testing setting, so it uses `live_test_start`.
 - **Output channels:** `outputWrite` creates a channel on first use and appends. VS Code can't read a channel back, and Visual Studio reads panes through `IdeGetOutput` only for the panes it lists.
-- **Source control:** Visual Studio has no public Git operation API, so `git_*` runs `git.exe` for both IDEs. The VS Code git API is not used yet.
+- **Source control:** Visual Studio has no public Git operation API, so `git_*` runs `git.exe` for both IDEs. VS Code has a git API (its built-in git extension), used by the `git*` bridge actions in the VS Code extension. The MCP `git_*` tools do not route to it yet, so they still run `git.exe`.
 - **Gate:** `gate_run` runs the repo's build and test commands. It does not read `package.json` in subfolders, so list those steps in `.claude/reference/full-gate.md`. The lite gate is not defined.
 - **Live checks not run:** `outputWrite` in both IDEs, the `git_*` tools in an IDE, and `ide_set_preferred` routing with two live instances.
 - **Unverified on a real install:** the `.vsconfig` key `aidevhelpersErrors`, and the

@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
 import { t } from "./strings.js";
+import { isGitAction, runGitAction } from "./gitActions.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -449,6 +450,9 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             throw new UnsupportedActionError(action);
 
         default:
+            if (isGitAction(action)) {
+                return runGitAction(action, args);
+            }
             throw new Error(t("unknownAction", action));
     }
 }

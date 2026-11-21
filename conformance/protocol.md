@@ -68,6 +68,7 @@ A reply that does not arrive within 60 seconds is an error, so a stalled bridge 
 | `bookmarkSet` | `file`, `line`, optional `name` | the bookmark | VS only. `name` is not stored by VS and comes back null. |
 | `bookmarkRemove` | `id` | true or false | VS only. |
 | `outputWrite` | `channel`, `text` | `{channel, written}` | Appends `text` and a newline to a named channel, creating it on first use. VS: an Output window pane found by a GUID derived from the name. VS Code: an output channel. Missing `channel` or `text` is an error. Channels can't be read back. |
+| `gitStatus`, `gitStage`, `gitCommit`, `gitPull`, `gitPush`, `gitFetch`, `gitCreateBranch`, `gitDeleteBranch`, `gitSwitch`, `gitStashPush`, `gitStashPop`, `gitStashApply` | per action (`paths`, `message`, `branch`, optional `repoPath`) | `gitStatus`: `{branch, ahead, behind, changes}`; others `{...ok}` | VS Code only, through its built-in git extension. The MCP side approves every write first. `repoPath` picks the repository whose root matches; without it the first open repository is used. |
 
 VS Code replies to the four bookmark actions with `"unsupported":true` (D8).
 

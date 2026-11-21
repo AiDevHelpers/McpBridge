@@ -12,5 +12,7 @@
   "noDebugSession": "No active debug session.",
   "notStopped": "Not stopped at a breakpoint; locals need a paused debug session.",
   "noLaunchConfigNamed": "No launch configuration named '{0}' in launch.json.",
-  "unknownAction": "Unknown action '{0}'."
+  "unknownAction": "Unknown action '{0}'.",
+  "gitUnavailable": "The VS Code git extension is not available.",
+  "noGitRepository": "No git repository is open in VS Code."
 }
