@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InvalidFieldTerm" xml:space="preserve"><value>Invalid field term '{0}'. Use key=value.</value></data>
+  <data name="PatternTooLong" xml:space="preserve"><value>Pattern is too long ({0} chars; max {1}).</value></data>
+  <data name="InvalidRegex" xml:space="preserve"><value>Invalid regex: {0}</value></data>
+  <data name="UnsupportedLookaround" xml:space="preserve"><value>Unsupported: lookaround assertions are not allowed. Remove the (?=, (?!, (?&lt;= or (?&lt;! construct.</value></data>
+  <data name="UnsupportedBackreference" xml:space="preserve"><value>Unsupported: backreferences and other backtracking-only constructs are not allowed ({0}).</value></data>
+  <data name="InvalidChannelId" xml:space="preserve"><value>Invalid channel id '{0}'. Expected [host/]scheme:name with a known scheme.</value></data>
+  <data name="UnknownFormat" xml:space="preserve"><value>Unknown format '{0}'. Use auto, plain, json, xml, logfmt or regex.</value></data>
+  <data name="PatternOnlyForRegex" xml:space="preserve"><value>A pattern applies only to format regex.</value></data>
+  <data name="RegexNeedsPattern" xml:space="preserve"><value>Format regex needs a pattern with named groups.</value></data>
+  <data name="FormatNotResolved" xml:space="preserve"><value>Format must be resolved before parsing.</value></data>
+  <data name="SchemaNotObject" xml:space="preserve"><value>Schema must be a JSON object that maps slots to field names.</value></data>
+  <data name="UnknownSchemaSlot" xml:space="preserve"><value>Unknown schema slot '{0}'. Use timestamp, level, message, category or exception.</value></data>
+  <data name="SchemaSlotEmpty" xml:space="preserve"><value>Schema slot '{0}' must map to a non-empty field name.</value></data>
+  <data name="SchemaNotJson" xml:space="preserve"><value>Schema is not valid JSON.</value></data>
+  <data name="EscapeMarkerReason" xml:space="preserve"><value>Escape marker '{0}' in the trace.</value></data>
+  <data name="HandledReason" xml:space="preserve"><value>Logged at {0}; probably handled.</value></data>
+  <data name="NotErrorReason" xml:space="preserve"><value>Trace logged at {0}, not as an error.</value></data>
+  <data name="PathEmpty" xml:space="preserve"><value>Path is empty.</value></data>
+  <data name="NoLogRoots" xml:space="preserve"><value>No log roots are configured.</value></data>
+  <data name="UncPathNotAllowed" xml:space="preserve"><value>UNC, device and extended-length paths are not allowed.</value></data>
+  <data name="AdsNotAllowed" xml:space="preserve"><value>Alternate data streams are not allowed.</value></data>
+  <data name="PathInvalid" xml:space="preserve"><value>Path is invalid.</value></data>
+  <data name="PathOutsideRoots" xml:space="preserve"><value>Path is outside the allowed log roots.</value></data>
+  <data name="LinkNotAllowed" xml:space="preserve"><value>Symbolic links and junctions are not allowed in log paths.</value></data>
+  <data name="UnknownView" xml:space="preserve"><value>Unknown view '{0}'. Use summary, traces or ignored.</value></data>
+  <data name="CursorReset" xml:space="preserve"><value>(cursor reset: source changed)</value></data>
+  <data name="LogRolled" xml:space="preserve"><value>(log rolled: includes the rest of the previous file)</value></data>
+  <data name="NoStateDirectoryMark" xml:space="preserve"><value>No state directory is configured, so runs cannot be marked.</value></data>
+  <data name="RunMarked" xml:space="preserve"><value>{0} marked: {1} templates from {2} entries</value></data>
+  <data name="NoMessagesToCompare" xml:space="preserve"><value>no messages in either channel to compare.</value></data>
+  <data name="NothingDropped" xml:space="preserve"><value>nothing was dropped by the filter.</value></data>
+  <data name="NoStateDirectoryCompare" xml:space="preserve"><value>No state directory is configured, so runs cannot be compared.</value></data>
+  <data name="NoBaseline" xml:space="preserve"><value>no baseline for this channel yet; call LogMarkRun first.</value></data>
+  <data name="UnknownRun" xml:space="preserve"><value>unknown run '{0}' for this channel.</value></data>
+  <data name="BaselineReset" xml:space="preserve"><value>baseline reset: masking rules changed since the last run; call LogMarkRun to set a new baseline.</value></data>
+  <data name="NoChangesSince" xml:space="preserve"><value>no new or changed messages since {0}</value></data>
+  <data name="TemplatesGone" xml:space="preserve"><value>{0} template(s) no longer present.</value></data>
+  <data name="TemplateWas" xml:space="preserve"><value>{0} (was {1})</value></data>
+  <data name="NoProviderForScheme" xml:space="preserve"><value>No log provider is registered for scheme '{0}'.</value></data>
+  <data name="MoreRows" xml:space="preserve"><value>+{0} more rows (raise maxTokens to see)</value></data>
+  <data name="MoreTemplates" xml:space="preserve"><value>+{0} more templates (raise maxTokens to see)</value></data>
+  <data name="MoreTraces" xml:space="preserve"><value>+{0} more traces (raise maxTokens to see)</value></data>
+  <data name="WindowsEventLogDescription" xml:space="preserve"><value>Windows event log</value></data>
+  <data name="EventLogNotAllowed" xml:space="preserve"><value>Event log '{0}' is not in the allow-list. Add it to LogHelperOptions.EventLogAllowList to read it.</value></data>
+  <data name="EventLogAccessDenied" xml:space="preserve"><value>Event Log access denied for '{0}'. Add this user to the Event Log Readers group, or run elevated.</value></data>
+  <data name="ProcessNotStarted" xml:space="preserve"><value>{0} could not be started: {1}</value></data>
+  <data name="ProcessExited" xml:space="preserve"><value>{0} exited with code {1}: {2}</value></data>
+  <data name="JournalAllDescription" xml:space="preserve"><value>journalctl, all units</value></data>
+  <data name="UnknownSyslogChannel" xml:space="preserve"><value>Unknown syslog channel '{0}'. Use journal/&lt;unit&gt; or file/&lt;name&gt;.</value></data>
+  <data name="InvalidSyslogFileName" xml:space="preserve"><value>Invalid syslog file name '{0}'.</value></data>
+  <data name="InvalidJournalUnit" xml:space="preserve"><value>Invalid journal unit name '{0}'.</value></data>
+</root>

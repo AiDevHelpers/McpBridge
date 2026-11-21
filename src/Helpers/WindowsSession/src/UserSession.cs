@@ -38,7 +38,7 @@ public static class UserSession
     {
         if (!WTSEnumerateSessionsW(IntPtr.Zero, 0, 1, out IntPtr infos, out int count))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "WTSEnumerateSessions failed.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("WtsEnumerateSessionsFailed"));
         }
 
         try
@@ -83,14 +83,14 @@ public static class UserSession
     {
         if (!WTSQueryUserToken(session, out IntPtr userToken))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "WTSQueryUserToken failed.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("WtsQueryUserTokenFailed"));
         }
 
         try
         {
             if (!DuplicateTokenEx(userToken, TokenAllAccess, IntPtr.Zero, SecurityImpersonation, TokenPrimary, out IntPtr primary))
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "DuplicateTokenEx failed.");
+                throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("DuplicateTokenExFailed"));
             }
 
             if (bindToSession)
@@ -99,7 +99,7 @@ public static class UserSession
                 if (!SetTokenInformation(primary, TokenSessionIdClass, ref sid, sizeof(uint)))
                 {
                     _ = CloseHandle(primary);
-                    throw new Win32Exception(Marshal.GetLastWin32Error(), "SetTokenInformation(TokenSessionId) failed.");
+                    throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("SetTokenInformationFailed"));
                 }
             }
 

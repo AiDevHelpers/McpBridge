@@ -32,7 +32,7 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
             _settingsPath = GetTerminalSettingsPath();
             if (!File.Exists(_settingsPath))
             {
-                throw new InvalidOperationException($"Windows Terminal settings file not found at {_settingsPath}");
+                throw new InvalidOperationException(Strings.Format("SettingsFileNotFound", _settingsPath));
             }
 
             // Backup original settings
@@ -43,7 +43,7 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
             var modifiedSettings = JsonNode.Parse(json);
             if (modifiedSettings is null)
             {
-                throw new InvalidOperationException("Failed to parse settings JSON");
+                throw new InvalidOperationException(Strings.Get("SettingsJsonParseFailed"));
             }
 
             if (settings.DefaultProfileGuid is not null && modifiedSettings["defaultProfile"] is not null)
@@ -103,7 +103,7 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
             _settingsPath = GetTerminalSettingsPath();
             if (!File.Exists(_settingsPath))
             {
-                throw new InvalidOperationException($"Windows Terminal settings file not found at {_settingsPath}");
+                throw new InvalidOperationException(Strings.Format("SettingsFileNotFound", _settingsPath));
             }
 
             var json = await File.ReadAllTextAsync(_settingsPath, ct);
@@ -112,7 +112,7 @@ public sealed class TerminalSettingsManager : ITerminalSettingsManager
             var modifiedSettings = JsonNode.Parse(json);
             if (modifiedSettings is null)
             {
-                throw new InvalidOperationException("Failed to parse settings JSON");
+                throw new InvalidOperationException(Strings.Get("SettingsJsonParseFailed"));
             }
 
             // Find and modify the profile

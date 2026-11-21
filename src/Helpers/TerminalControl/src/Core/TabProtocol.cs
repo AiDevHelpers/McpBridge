@@ -32,7 +32,7 @@ public static class TabProtocol
     {
         if (command.Contains('\n', StringComparison.Ordinal) || command.Contains('\r', StringComparison.Ordinal))
         {
-            throw new ArgumentException("Commands must be a single line.", nameof(command));
+            throw new ArgumentException(Strings.Get("CommandMustBeSingleLine"), nameof(command));
         }
 
         return $"{requestId} {command}";

@@ -18,7 +18,7 @@ public static partial class PackageChecks
     {
         if (!Directory.Exists(root))
         {
-            throw new DirectoryNotFoundException($"Folder not found: {root}");
+            throw new DirectoryNotFoundException(Strings.Format("FolderNotFound", root));
         }
 
         var findings = new List<PackageFinding>();
@@ -38,12 +38,12 @@ public static partial class PackageChecks
 
         if (!Enumerate(root, "nuget.config").Any())
         {
-            findings.Add(new PackageFinding("nuget", "info", root, "No nuget.config. Package sources come from the machine defaults."));
+            findings.Add(new PackageFinding("nuget", "info", root, Strings.Get("NoNugetConfig")));
         }
 
         if (!Enumerate(root, "Directory.Packages.props").Any())
         {
-            findings.Add(new PackageFinding("nuget", "info", root, "No Directory.Packages.props. Package versions are not centrally managed."));
+            findings.Add(new PackageFinding("nuget", "info", root, Strings.Get("NoCentralPackageManagement")));
         }
 
         foreach (var project in projects)
@@ -52,12 +52,12 @@ public static partial class PackageChecks
             var isTest = text.Contains("Microsoft.NET.Test.Sdk", StringComparison.OrdinalIgnoreCase) || text.Contains("<IsTestProject>true</IsTestProject>", StringComparison.OrdinalIgnoreCase);
             if (isTest && !text.Contains("xunit.analyzers", StringComparison.OrdinalIgnoreCase))
             {
-                findings.Add(new PackageFinding("nuget", "warning", project, "Test project without the xunit.analyzers package."));
+                findings.Add(new PackageFinding("nuget", "warning", project, Strings.Get("TestProjectWithoutAnalyzers")));
             }
 
             if (DisablesNetAnalyzers().IsMatch(text))
             {
-                findings.Add(new PackageFinding("nuget", "warning", project, "EnableNETAnalyzers is false. The .NET analyzers (Microsoft.CodeAnalysis.NetAnalyzers) are off."));
+                findings.Add(new PackageFinding("nuget", "warning", project, Strings.Get("NetAnalyzersDisabled")));
             }
         }
     }
@@ -76,7 +76,7 @@ public static partial class PackageChecks
 
                 if (!line.Contains("==", StringComparison.Ordinal))
                 {
-                    findings.Add(new PackageFinding("pip", "warning", requirements, $"'{line}' is not pinned with ==."));
+                    findings.Add(new PackageFinding("pip", "warning", requirements, Strings.Format("NotPinned", line)));
                 }
             }
         }
@@ -93,7 +93,7 @@ public static partial class PackageChecks
                           || File.Exists(Path.Combine(dir, "pnpm-lock.yaml"));
             if (!hasLock)
             {
-                findings.Add(new PackageFinding("npm", "error", package, "No lockfile next to package.json. npm ci needs one."));
+                findings.Add(new PackageFinding("npm", "error", package, Strings.Get("NoLockfile")));
             }
         }
     }

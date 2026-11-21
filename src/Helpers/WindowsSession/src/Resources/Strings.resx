@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="WtsEnumerateSessionsFailed" xml:space="preserve"><value>WTSEnumerateSessions failed.</value></data>
+  <data name="WtsQueryUserTokenFailed" xml:space="preserve"><value>WTSQueryUserToken failed.</value></data>
+  <data name="DuplicateTokenExFailed" xml:space="preserve"><value>DuplicateTokenEx failed.</value></data>
+  <data name="SetTokenInformationFailed" xml:space="preserve"><value>SetTokenInformation(TokenSessionId) failed.</value></data>
+</root>

@@ -62,7 +62,7 @@ public sealed record ChannelId(string? Host, string Scheme, string Name)
             return id;
         }
 
-        throw new FormatException($"Invalid channel id '{text}'. Expected [host/]scheme:name with a known scheme.");
+        throw new FormatException(Strings.Format("InvalidChannelId", text));
     }
 
     public override string ToString() =>

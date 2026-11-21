@@ -3,6 +3,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
+import { t } from "./strings.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -19,7 +20,7 @@ let continuousOn = false;
 
 export class UnsupportedActionError extends Error {
     constructor(action: string) {
-        super(`Action '${action}' is not supported in VS Code (no VS Code API for it).`);
+        super(t("unsupportedAction", action));
     }
 }
 
@@ -43,7 +44,7 @@ function writeNamedChannel(name: string, text: string): void {
 function requireString(args: Args, key: string): string {
     const value = args[key];
     if (typeof value !== "string" || value.length === 0) {
-        throw new Error(`Missing required argument '${key}'.`);
+        throw new Error(t("missingArgument", key));
     }
     return value;
 }
@@ -64,7 +65,7 @@ function resolveFile(file: string): vscode.Uri {
     }
     const root = vscode.workspace.workspaceFolders?.[0]?.uri;
     if (!root) {
-        throw new Error(`Relative path '${file}' needs an open workspace folder.`);
+        throw new Error(t("relativePathNeedsWorkspace", file));
     }
     return vscode.Uri.joinPath(root, file);
 }
@@ -77,7 +78,7 @@ function launchConfigurationNames(): string[] {
 function workspaceRoot(): string {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) {
-        throw new Error("This action needs an open workspace folder.");
+        throw new Error(t("needsWorkspace"));
     }
     return root;
 }
@@ -96,7 +97,7 @@ function runDotnet(verb: "clean" | "publish", project: string | undefined): Prom
         const child = spawn("dotnet", args, { cwd, windowsHide: true });
         const pid = child.pid;
         if (pid === undefined) {
-            reject(new Error("dotnet did not start."));
+            reject(new Error(t("dotnetDidNotStart")));
             return;
         }
         trackedProcesses.set(pid, child);
@@ -116,7 +117,7 @@ function runDotnet(verb: "clean" | "publish", project: string | undefined): Prom
 // Kills a process tree this bridge started. taskkill /T takes the children that dotnet spawns too.
 function killTracked(pid: number): Promise<unknown> {
     if (!trackedProcesses.has(pid)) {
-        throw new Error(`Process ${pid} was not started by this bridge; it will not be killed.`);
+        throw new Error(t("processNotStarted", pid));
     }
     return new Promise((resolve, reject) => {
         const killer = spawn("taskkill", ["/T", "/F", "/PID", String(pid)], { windowsHide: true });
@@ -161,7 +162,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             const folder = vscode.workspace.workspaceFolders?.[0];
             const name = optionalString(args, "configuration") ?? selectedConfiguration ?? launchConfigurationNames()[0];
             if (!name) {
-                throw new Error("No launch configuration found in launch.json.");
+                throw new Error(t("noLaunchConfig"));
             }
             const started = await vscode.debug.startDebugging(folder, name);
             return { started, configuration: name };
@@ -177,7 +178,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "formatDocument":
             if (!vscode.window.activeTextEditor) {
-                throw new Error("No active editor to format.");
+                throw new Error(t("noActiveEditor"));
             }
             await vscode.commands.executeCommand("editor.action.formatDocument");
             return { formatted: true };
@@ -299,7 +300,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             try {
                 await vscode.workspace.fs.stat(uri);
             } catch {
-                throw new Error(`File not found: ${uri.fsPath}`);
+                throw new Error(t("fileNotFound", uri.fsPath));
             }
             const line = optionalInt(args, "line");
             const doc = await vscode.workspace.openTextDocument(uri);
@@ -315,7 +316,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
         case "setBreakpoint": {
             const uri = resolveFile(requireString(args, "file"));
             const line = optionalInt(args, "line");
-            if (line === undefined) throw new Error("Missing required argument 'line'.");
+            if (line === undefined) throw new Error(t("missingArgument", "line"));
             vscode.debug.addBreakpoints([new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(line - 1, 0)))]);
             return { file: uri.fsPath, line };
         }
@@ -355,7 +356,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                 continue: "workbench.action.debug.continue",
             };
             const command = commands[kind];
-            if (!command) throw new Error(`Unknown step kind '${kind}'. Use over, into, out, or continue.`);
+            if (!command) throw new Error(t("unknownStepKind", kind));
             await vscode.commands.executeCommand(command);
             return { step: kind };
         }
@@ -372,7 +373,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "evaluate": {
             const session = vscode.debug.activeDebugSession;
-            if (!session) throw new Error("No active debug session.");
+            if (!session) throw new Error(t("noDebugSession"));
             const expression = requireString(args, "expression");
             const frame = vscode.debug.activeStackItem;
             const frameId = frame && "frameId" in frame ? frame.frameId : undefined;
@@ -404,7 +405,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             const session = vscode.debug.activeDebugSession;
             const frame = vscode.debug.activeStackItem;
             if (!session || !frame || !("frameId" in frame)) {
-                throw new Error("Not stopped at a breakpoint; locals need a paused debug session.");
+                throw new Error(t("notStopped"));
             }
             const scopes = (await session.customRequest("scopes", { frameId: frame.frameId })).scopes as Array<{ name: string; variablesReference: number }>;
             const locals: Array<{ scope: string; name: string; value: string; type: string | null }> = [];
@@ -423,7 +424,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
         case "setConfiguration": {
             const configuration = requireString(args, "configuration");
             if (!launchConfigurationNames().includes(configuration)) {
-                throw new Error(`No launch configuration named '${configuration}' in launch.json.`);
+                throw new Error(t("noLaunchConfigNamed", configuration));
             }
             selectedConfiguration = configuration;
             return { configuration };
@@ -431,7 +432,7 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "killProcess": {
             const pid = optionalInt(args, "pid");
-            if (pid === undefined) throw new Error("Missing required argument 'pid'.");
+            if (pid === undefined) throw new Error(t("missingArgument", "pid"));
             return killTracked(pid);
         }
 
@@ -448,6 +449,6 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             throw new UnsupportedActionError(action);
 
         default:
-            throw new Error(`Unknown action '${action}'.`);
+            throw new Error(t("unknownAction", action));
     }
 }

@@ -28,7 +28,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
             psi.ArgumentList.Add(arg);
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Could not start '{exe}'.");
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", exe));
         var stdout = process.StandardOutput.ReadToEndAsync(ct);
         var stderr = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);

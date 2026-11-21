@@ -58,7 +58,7 @@ public sealed class ErrorService
         {
             if (!_snapshots.TryGetValue(snapshotId, out var found))
             {
-                throw new ArgumentException($"Unknown snapshot id '{snapshotId}'.", nameof(snapshotId));
+                throw new ArgumentException(Strings.Format("UnknownSnapshotId", snapshotId), nameof(snapshotId));
             }
 
             known = found;

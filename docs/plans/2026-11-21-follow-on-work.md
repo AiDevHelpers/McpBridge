@@ -68,6 +68,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: unit tests, plus a full-gate run on this repo.
 
 ### Phase 7: Localization (Q3)
+- Status: done for the helpers and the VS Code extension; not for the MCP Core tool replies (about 27 messages in `src/MCP/Core/src`) or the VS Core C# bridge. Each helper has `Resources/Strings.resx` and `Strings.cs` (about 140 messages moved, English only). `HardCodedStringTests` fails on any multi-word literal in a helper that is not in `hardcoded-strings-allowlist.txt`, and checks every `Strings` key exists. The extension uses `strings.en.json` and `t()` (16 messages), with tests. All helper suites, Core (132) and the extension tests pass. Not run: the extension inside VS Code (the JSON import needs Node 22 or later in its extension host), and TerminalControl's window tests.
 - Last, because it touches every helper's strings and would conflict with the phases above.
 - Acceptance: no user-facing string is hard-coded in a helper. The languages are those from Q3.
 - Gate: a test that fails on a hard-coded string, plus the existing suites.

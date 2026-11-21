@@ -80,15 +80,15 @@ public static class TraceFlagger
         string? marker = EscapeMarkers.FirstOrDefault(entry.Raw.Contains);
         if (marker is not null)
         {
-            return ("high", $"Escape marker '{marker}' in the trace.");
+            return ("high", Strings.Format("EscapeMarkerReason", marker));
         }
 
         if (entry.Severity >= LogSeverity.Error)
         {
-            return ("low", $"Logged at {entry.Severity}; probably handled.");
+            return ("low", Strings.Format("HandledReason", entry.Severity));
         }
 
-        return ("medium", $"Trace logged at {entry.Severity}, not as an error.");
+        return ("medium", Strings.Format("NotErrorReason", entry.Severity));
     }
 
     private static string GroupKeyOf(LogEntry entry)

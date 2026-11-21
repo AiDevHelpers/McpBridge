@@ -107,9 +107,7 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
         }
 
         // Build user-friendly error message with action
-        var errorMessage = $"{preferred.GetDisplayName()} is not installed on this system. " +
-                          "Please install it from the Microsoft Store to use this provider, " +
-                          "or switch to the Integrated Terminal option.";
+        var errorMessage = Strings.Format("ProviderNotInstalled", preferred.GetDisplayName());
 
         _logger.LogWarning("Provider validation failed: {Provider} - {Error}", preferred.GetDisplayName(), errorMessage);
 
@@ -117,6 +115,6 @@ public sealed class TerminalProviderSelector : ITerminalProviderSelector
             IsValid: false,
             ErrorMessage: errorMessage,
             ActionUrl: availability.InstallUrl,
-            ActionText: "Install from Microsoft Store");
+            ActionText: Strings.Get("InstallFromMicrosoftStore"));
     }
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind.</value></data>
+  <data name="ProjectPathRequired" xml:space="preserve"><value>A project path is required for this kind.</value></data>
+  <data name="FileNotFound" xml:space="preserve"><value>File not found.</value></data>
+  <data name="NoSolutionOpen" xml:space="preserve"><value>No solution is open.</value></data>
+  <data name="NoVsconfigOrVsFolder" xml:space="preserve"><value>No .vsconfig or .vs folder beside the solution.</value></data>
+  <data name="NoUserSettingsFound" xml:space="preserve"><value>No VS Code settings.json or Visual Studio CurrentSettings.vssettings found.</value></data>
+  <data name="NoRemoteDebuggerConfig" xml:space="preserve"><value>No Remote Debugger config found under the search roots.</value></data>
+  <data name="InvalidPath" xml:space="preserve"><value>Invalid path.</value></data>
+  <data name="PathOutsideAllowedRoots" xml:space="preserve"><value>Path is outside the allowed roots.</value></data>
+</root>

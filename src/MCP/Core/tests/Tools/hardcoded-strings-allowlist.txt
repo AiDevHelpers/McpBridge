@@ -1,0 +1,51 @@
+# Multi-word literals in helper sources that are not user-facing text. Format: Helper|literal. Anything else must be in Resources/Strings.resx.
+
+# Folder names on disk.
+ConfigHelper|Remote Debugger
+ExtensionsHelper|Microsoft Visual Studio
+
+# Step labels for the gate. They name the command that runs, so they stay in code with it.
+GateHelper|dotnet outdated
+GateHelper|dotnet clean
+GateHelper|dotnet build
+GateHelper|dotnet test
+GateHelper|npm ci
+GateHelper|npm outdated
+GateHelper|npm run {script}
+GateHelper|pip outdated
+GateHelper|go vet
+GateHelper|go build
+GateHelper|go test
+GateHelper|cargo build
+GateHelper|cargo test
+
+# Patterns and markers matched against log input, and a date format. Not text shown to anyone.
+LogHelper|^Traceback \(most recent call last\):
+LogHelper|^Exception thrown:
+LogHelper|Caused by:
+LogHelper|MMM d yyyy HH:mm:ss
+LogHelper|Unhandled exception.
+LogHelper|Exception in thread
+LogHelper|<Event xmlns=.*?</Event>
+LogHelper|Access is denied
+
+# Marker that git prints in porcelain status output.
+SourceControlHelper|No commits yet on
+
+# Log message templates passed to a logger (diagnostics for the operator, not tool replies).
+TerminalControl|Session registered: {SessionId} ({Name}) opened by {OpenedBy}
+TerminalControl|Session {SessionId} activity updated: {Activity}
+TerminalControl|Session closed: {SessionId} ({Name}) opened by {OpenedBy} (duration: {Duration})
+TerminalControl|Tab {TabId} created with pipes: stdout={StdoutPipe}, command={CommandPipe}
+TerminalControl|Selecting terminal provider: Preferred={Preferred}, Fallback={Fallback}
+TerminalControl|Preferred provider {Preferred} not available, falling back to {Fallback}
+TerminalControl|Provider validation passed: {Provider} is available
+TerminalControl|Session initialized
+TerminalControl|Terminal session created successfully (SessionId: {SessionId})
+TerminalControl|Closing terminal session {SessionId} (Graceful: {Graceful})
+TerminalControl|Windows Terminal detected: {Path}, Version: {Version}
+TerminalControl|Terminal configuration discovery complete: {ProfileCount} profiles, {WslCount} WSL instances, {ExtensionCount} extensions
+TerminalControl|Created named pipe {PipeName} for session {SessionId} tab {TabId}
+
+# The product name Windows Terminal, which is a brand name and is not translated.
+TerminalControl|Windows Terminal

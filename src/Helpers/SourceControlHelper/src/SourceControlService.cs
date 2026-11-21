@@ -56,7 +56,7 @@ public sealed class SourceControlService(IGitRunner git)
     {
         if (!WriteActions.Contains(action))
         {
-            throw new ArgumentException($"Unknown write action '{action}'. Use one of: {string.Join(", ", WriteActions)}.", nameof(action));
+            throw new ArgumentException(Strings.Format("UnknownWriteAction", action, string.Join(", ", WriteActions)), nameof(action));
         }
 
         var args = BuildArguments(action, paths, message, branch);
@@ -75,7 +75,7 @@ public sealed class SourceControlService(IGitRunner git)
     {
         if (!_pending.TryRemove(token, out var pending))
         {
-            return new GitResult(false, -1, "Unknown or already used token. Plan the write again.");
+            return new GitResult(false, -1, Strings.Get("UnknownToken"));
         }
 
         return git.Run(pending.RepoPath, pending.Arguments);
@@ -86,12 +86,12 @@ public sealed class SourceControlService(IGitRunner git)
         switch (action)
         {
             case "stage":
-                RequireItems(paths, "stage needs at least one path.");
+                RequireItems(paths, Strings.Get("StageNeedsPath"));
                 return ["add", "--", .. paths!];
             case "commit":
                 if (string.IsNullOrWhiteSpace(message))
                 {
-                    throw new ArgumentException("commit needs a message.", nameof(message));
+                    throw new ArgumentException(Strings.Get("CommitNeedsMessage"), nameof(message));
                 }
 
                 return ["commit", "-m", message!];
@@ -100,13 +100,13 @@ public sealed class SourceControlService(IGitRunner git)
             case "push":
                 return string.IsNullOrWhiteSpace(branch) ? ["push"] : ["push", "origin", branch!];
             case "create_branch":
-                RequireText(branch, "create_branch needs a branch name.");
+                RequireText(branch, Strings.Get("CreateBranchNeedsName"));
                 return ["switch", "-c", branch!];
             case "delete_branch":
-                RequireText(branch, "delete_branch needs a branch name.");
+                RequireText(branch, Strings.Get("DeleteBranchNeedsName"));
                 return ["branch", "-d", branch!];
             case "switch":
-                RequireText(branch, "switch needs a branch name.");
+                RequireText(branch, Strings.Get("SwitchNeedsName"));
                 return ["switch", branch!];
             case "stash_push":
                 return ["stash", "push"];
@@ -115,7 +115,7 @@ public sealed class SourceControlService(IGitRunner git)
             case "stash_apply":
                 return ["stash", "apply"];
             default:
-                throw new ArgumentException($"Unknown write action '{action}'.", nameof(action));
+                throw new ArgumentException(Strings.Format("UnknownWriteActionName", action), nameof(action));
         }
     }
 
@@ -157,7 +157,7 @@ public sealed class ProcessGitRunner : IGitRunner
             psi.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException("Could not start git.");
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Get("CouldNotStartGit"));
         var stderr = process.StandardError.ReadToEndAsync();
         var stdout = process.StandardOutput.ReadToEnd();
         process.WaitForExit();

@@ -27,7 +27,7 @@ public static class GatePlanner
     {
         if (!Directory.Exists(root))
         {
-            throw new DirectoryNotFoundException($"Folder not found: {root}");
+            throw new DirectoryNotFoundException(Strings.Format("FolderNotFound", root));
         }
 
         var reference = Path.Combine(root, ReferencePath.Replace('/', Path.DirectorySeparatorChar));
@@ -72,7 +72,7 @@ public static class GatePlanner
 
         if (steps.Count == 0)
         {
-            throw new InvalidOperationException($"{ReferencePath} has no ```gate block with commands.");
+            throw new InvalidOperationException(Strings.Format("MissingGateBlock", ReferencePath));
         }
 
         return steps;
@@ -125,7 +125,7 @@ public static class GatePlanner
 
         if (steps.Count == 0)
         {
-            throw new InvalidOperationException("No known stack at the root and no " + ReferencePath + ". Ask for the gate commands and save them there.");
+            throw new InvalidOperationException(Strings.Format("NoKnownStack", ReferencePath));
         }
 
         return steps;

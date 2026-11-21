@@ -42,7 +42,7 @@ public sealed class LogWatcher
     {
         ILogSourceProvider provider = _providers.FirstOrDefault(p =>
                 string.Equals(p.Scheme, channel.Scheme, StringComparison.OrdinalIgnoreCase))
-            ?? throw new InvalidOperationException($"No log provider is registered for scheme '{channel.Scheme}'.");
+            ?? throw new InvalidOperationException(Strings.Format("NoProviderForScheme", channel.Scheme));
 
         ILogSource source = provider.Open(channel);
         using var signal = new ChangeSignal(WatchedFile(channel));

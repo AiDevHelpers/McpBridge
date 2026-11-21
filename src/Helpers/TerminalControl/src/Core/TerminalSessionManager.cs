@@ -16,7 +16,7 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
 
     public TerminalConfiguration TerminalConfiguration =>
         _terminalConfiguration ?? throw new InvalidOperationException(
-            "Terminal configuration not initialized. Call InitializeAsync first.");
+            Strings.Get("TerminalConfigurationNotInitialized"));
 
     public TerminalSessionManager(
         ITerminalConfigurationDiscovery configDiscovery,
@@ -70,7 +70,7 @@ public sealed class TerminalSessionManager : ITerminalSessionManager, IAsyncDisp
             // Register in session registry
             await _sessionRegistry.RegisterSessionAsync(
                 session.SessionId,
-                $"{(config.IsElevated ? "Elevated" : "Standard")} Terminal",
+                config.IsElevated ? Strings.Get("ElevatedTerminalName") : Strings.Get("StandardTerminalName"),
                 Environment.UserName,
                 config.IsElevated,
                 ct);

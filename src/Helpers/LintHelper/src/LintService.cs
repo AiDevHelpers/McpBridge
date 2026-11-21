@@ -23,7 +23,7 @@ public sealed partial class LintService(ICommandRunner runner)
     {
         if (!Directory.Exists(root))
         {
-            throw new DirectoryNotFoundException($"Folder not found: {root}");
+            throw new DirectoryNotFoundException(Strings.Format("FolderNotFound", root));
         }
 
         var findings = new List<LintFinding>();
@@ -44,13 +44,13 @@ public sealed partial class LintService(ICommandRunner runner)
         var path = Path.Combine(root, ".editorconfig");
         if (!File.Exists(path))
         {
-            findings.Add(new LintFinding("editorconfig", "error", path, "No .editorconfig at the root. Analyzer severities and formatting have no shared source."));
+            findings.Add(new LintFinding("editorconfig", "error", path, Strings.Get("NoEditorConfig")));
             return;
         }
 
         if (!RootTrue().IsMatch(File.ReadAllText(path)))
         {
-            findings.Add(new LintFinding("editorconfig", "warning", path, "Missing 'root = true'. Parent .editorconfig files may apply unexpectedly."));
+            findings.Add(new LintFinding("editorconfig", "warning", path, Strings.Get("MissingRootTrue")));
         }
     }
 
@@ -87,7 +87,7 @@ public sealed partial class LintService(ICommandRunner runner)
                         "dotnet",
                         "error",
                         file,
-                        $"NoWarn suppresses {id}, but .editorconfig sets it to error. The two disagree."));
+                        Strings.Format("NoWarnConflict", id)));
                 }
             }
         }
@@ -99,7 +99,7 @@ public sealed partial class LintService(ICommandRunner runner)
         {
             if (!StrictTrue().IsMatch(File.ReadAllText(file)))
             {
-                findings.Add(new LintFinding("typescript", "warning", file, "\"strict\": true is not set. The lint standard requires strict mode."));
+                findings.Add(new LintFinding("typescript", "warning", file, Strings.Get("TsConfigNotStrict")));
             }
         }
     }
@@ -116,18 +116,18 @@ public sealed partial class LintService(ICommandRunner runner)
 
             if (usesTs && !hasEslint)
             {
-                findings.Add(new LintFinding("typescript", "error", package, "TypeScript project without an ESLint flat config (eslint.config.mjs)."));
+                findings.Add(new LintFinding("typescript", "error", package, Strings.Get("TypeScriptWithoutEslint")));
             }
 
             if (text.Contains("\"tslint\"", StringComparison.Ordinal))
             {
-                findings.Add(new LintFinding("typescript", "warning", package, "TSLint is deprecated. Use ESLint with typescript-eslint instead."));
+                findings.Add(new LintFinding("typescript", "warning", package, Strings.Get("TslintDeprecated")));
             }
         }
 
         foreach (var tslint in EnumerateFiles(root, "tslint.json"))
         {
-            findings.Add(new LintFinding("typescript", "warning", tslint, "TSLint is deprecated. Use ESLint with typescript-eslint instead."));
+            findings.Add(new LintFinding("typescript", "warning", tslint, Strings.Get("TslintDeprecated")));
         }
     }
 
@@ -136,7 +136,7 @@ public sealed partial class LintService(ICommandRunner runner)
         var solution = Directory.EnumerateFiles(root, "*.sln*", SearchOption.TopDirectoryOnly).FirstOrDefault();
         if (solution is null)
         {
-            findings.Add(new LintFinding("dotnet", "info", root, "No solution file at the root, so dotnet format was not run."));
+            findings.Add(new LintFinding("dotnet", "info", root, Strings.Get("NoSolutionForFormat")));
             return;
         }
 
@@ -144,7 +144,7 @@ public sealed partial class LintService(ICommandRunner runner)
         if (code != 0)
         {
             var firstLines = string.Join(" | ", output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(3));
-            findings.Add(new LintFinding("dotnet", "error", solution, $"dotnet format --verify-no-changes failed (exit {code}): {firstLines}"));
+            findings.Add(new LintFinding("dotnet", "error", solution, Strings.Format("FormatFailed", code, firstLines)));
         }
     }
 

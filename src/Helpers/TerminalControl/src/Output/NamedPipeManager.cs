@@ -279,7 +279,7 @@ public sealed class NamedCommandPipe : IDisposable
 
     public async Task WriteLineAsync(string line)
     {
-        var writer = _writer ?? throw new InvalidOperationException($"Pipe {_pipeName} has no connected client.");
+        var writer = _writer ?? throw new InvalidOperationException(Strings.Format("PipeHasNoClient", _pipeName));
         await writer.WriteLineAsync(line);
     }
 
@@ -370,7 +370,7 @@ public sealed class NamedServerPipe : IDisposable
     {
         try
         {
-            var reader = _reader ?? throw new InvalidOperationException("Pipe reader is not initialized.");
+            var reader = _reader ?? throw new InvalidOperationException(Strings.Get("PipeReaderNotInitialized"));
             var line = await reader.ReadLineAsync();
             if (line is not null)
             {

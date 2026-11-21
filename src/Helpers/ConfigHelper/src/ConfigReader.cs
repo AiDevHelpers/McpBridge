@@ -12,17 +12,17 @@ public static class ConfigReader
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            return new ConfigReadResult(false, null, "Invalid path.");
+            return new ConfigReadResult(false, null, Strings.Get("InvalidPath"));
         }
 
         if (!allowedRoots.Any(root => IsUnder(full, Path.GetFullPath(root))))
         {
-            return new ConfigReadResult(false, null, "Path is outside the allowed roots.");
+            return new ConfigReadResult(false, null, Strings.Get("PathOutsideAllowedRoots"));
         }
 
         if (!File.Exists(full))
         {
-            return new ConfigReadResult(false, null, "File not found.");
+            return new ConfigReadResult(false, null, Strings.Get("FileNotFound"));
         }
 
         return new ConfigReadResult(true, ConfigRedactor.Redact(File.ReadAllText(full)), null);

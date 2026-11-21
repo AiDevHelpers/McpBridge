@@ -1,0 +1,16 @@
+{
+  "unsupportedAction": "Action '{0}' is not supported in VS Code (no VS Code API for it).",
+  "missingArgument": "Missing required argument '{0}'.",
+  "relativePathNeedsWorkspace": "Relative path '{0}' needs an open workspace folder.",
+  "needsWorkspace": "This action needs an open workspace folder.",
+  "dotnetDidNotStart": "dotnet did not start.",
+  "processNotStarted": "Process {0} was not started by this bridge; it will not be killed.",
+  "noLaunchConfig": "No launch configuration found in launch.json.",
+  "noActiveEditor": "No active editor to format.",
+  "fileNotFound": "File not found: {0}",
+  "unknownStepKind": "Unknown step kind '{0}'. Use over, into, out, or continue.",
+  "noDebugSession": "No active debug session.",
+  "notStopped": "Not stopped at a breakpoint; locals need a paused debug session.",
+  "noLaunchConfigNamed": "No launch configuration named '{0}' in launch.json.",
+  "unknownAction": "Unknown action '{0}'."
+}

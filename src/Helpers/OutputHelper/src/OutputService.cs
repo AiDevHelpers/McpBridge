@@ -42,7 +42,7 @@ public sealed class OutputService(IOutputBridge bridge)
         ValidateChannel(channel);
         if (!Ides.Contains(ide, StringComparer.Ordinal))
         {
-            throw new ArgumentException("Use VisualStudio or VsCode.", nameof(ide));
+            throw new ArgumentException(Strings.Get("UseIdeValues"), nameof(ide));
         }
 
         var path = ConfigPathFor(solutionPath);
@@ -67,12 +67,12 @@ public sealed class OutputService(IOutputBridge bridge)
         var target = ide ?? ChannelIde(solutionPath, channel);
         if (target is null)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = $"No IDE is set for channel '{channel}'. Pass ide, or set it with output_channel_set." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Format("NoIdeSet", channel) });
         }
 
         if (!Ides.Contains(target, StringComparer.Ordinal))
         {
-            return JsonSerializer.Serialize(new { ok = false, error = "Use VisualStudio or VsCode." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("UseIdeValues") });
         }
 
         return await bridge.CallAsync("outputWrite", new { channel, text }, solutionPath, target, ct);
@@ -82,7 +82,7 @@ public sealed class OutputService(IOutputBridge bridge)
     {
         if (string.IsNullOrWhiteSpace(channel) || channel.Length > 100)
         {
-            throw new ArgumentException("Channel name must be 1 to 100 characters.", nameof(channel));
+            throw new ArgumentException(Strings.Get("ChannelNameLength"), nameof(channel));
         }
     }
 }
