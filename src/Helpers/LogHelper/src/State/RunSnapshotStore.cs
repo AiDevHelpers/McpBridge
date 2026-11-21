@@ -111,6 +111,25 @@ public sealed class RunSnapshotStore
         Directory.CreateDirectory(_stateDirectory);
         string temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
         await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(runs, JsonOptions), ct);
-        File.Move(temp, path, overwrite: true);
+
+        // On Windows a scanner or indexer can hold the destination for a moment, which makes the rename fail with
+        // "access denied". Retry a few times before giving up, and remove the temp file if the rename never works.
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temp, path, overwrite: true);
+                return;
+            }
+            catch (Exception ex) when (ex is UnauthorizedAccessException or IOException && attempt < 6)
+            {
+                await Task.Delay(25 * attempt, ct);
+            }
+            catch
+            {
+                File.Delete(temp);
+                throw;
+            }
+        }
     }
 }

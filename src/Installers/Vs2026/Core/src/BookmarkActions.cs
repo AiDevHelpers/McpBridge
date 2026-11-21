@@ -26,6 +26,7 @@ internal static class BookmarkActions
 
     public static object List(DTE2 dte)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         var items = new List<object>();
         foreach (var path in OpenDocumentPaths(dte))
         {
@@ -53,6 +54,7 @@ internal static class BookmarkActions
 
     public static object Set(DTE2 dte, string file, int line)
     {
+        ThreadHelper.ThrowIfNotOnUIThread();
         if (!HasBookmark(file, line))
         {
             dte.ItemOperations.OpenFile(file);
@@ -132,11 +134,22 @@ internal static class BookmarkActions
         return count;
     }
 
-    private static IEnumerable<string> OpenDocumentPaths(DTE2 dte) =>
-        dte.Documents.Cast<Document>()
-            .Select(d => d.FullName)
-            .Where(f => !string.IsNullOrEmpty(f))
-            .ToList();
+    private static IEnumerable<string> OpenDocumentPaths(DTE2 dte)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        var paths = new List<string>();
+        foreach (Document document in dte.Documents)
+        {
+            ThreadHelper.ThrowIfNotOnUIThread();
+            var path = document.FullName;
+            if (!string.IsNullOrEmpty(path))
+            {
+                paths.Add(path);
+            }
+        }
+
+        return paths;
+    }
 
     private static IVsTextLines? TextLinesFor(string path)
     {

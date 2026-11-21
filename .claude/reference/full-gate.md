@@ -8,6 +8,7 @@ Close running `AiDevHelpers.MCP` processes first: they lock the server's output 
 ```gate
 ! dotnet list AiDevHelpers.slnx package --outdated
 pwsh -NoProfile -File scripts/gate-build.ps1
+dotnet format AiDevHelpers.slnx --verify-no-changes --no-restore
 dotnet test AiDevHelpers.slnx -c Release --no-build
 npm --prefix src/Installers/VsCode/Core/AiDevTools.VsCode.Core ci
 npm --prefix src/Installers/VsCode/Core/AiDevTools.VsCode.Core run lint
