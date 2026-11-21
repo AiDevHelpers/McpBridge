@@ -6,8 +6,8 @@ Status: draft, awaiting approval. Builds on the archived [helpers follow-up plan
 
 - D1 Source control helper uses the IDE source control APIs (VS and VS Code), not the git CLI.
 - D2 Output helper writes to both the Visual Studio Output window and the VS Code Output panel. The target is chosen per call and remembered per repo in a JSON config.
-- D3 Package helper checks `nuget.config` and `Directory.Packages.props`, and ensures xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers are referenced. It also has a full gate build step.
-- D4 Lint helper aligns `.editorconfig`, `dotnet format` and analyzer severities with each other and with the code style.
+- D3 Package helper checks NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers), pip (`requirements.txt` or `pyproject.toml`), and npm (`package.json` and lockfiles). It also has a full gate build step.
+- D4 Lint helper aligns `.editorconfig`, `dotnet format` and analyzer severities. It also checks ESLint for TypeScript and JavaScript. TSLint is deprecated, so the helper reports it and recommends ESLint.
 
 ## Open questions (block the named item)
 
@@ -38,9 +38,9 @@ Status: draft, awaiting approval. Builds on the archived [helpers follow-up plan
 3. Preferred IDE: store the chosen IDE per repo so tools don't ask again. Depends on Q2.
 4. Self tests: each helper ships a full self-test markdown, embedded in its library, and the bridge references it in the Core DLL version. Depends on Q4.
 5. Localization: move all user-facing text and static returns in the helpers into resources. Depends on Q3.
-6. Package helper: check `nuget.config` and `Directory.Packages.props`, ensure xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers are referenced, and add a full-gate build step.
+6. Package helper: check NuGet, pip and npm configs and packages (xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers for .NET), and add a full-gate build step.
 7. Gate helper: full and lite gate methods, from the definitions in Q1. Extend the test helper to run the affected tests.
-8. Lint helper: align `.editorconfig`, `dotnet format` and analyzer severities.
+8. Lint helper: align `.editorconfig`, `dotnet format` and analyzer severities, and check ESLint configs for the TypeScript and JavaScript projects (TSLint is reported as deprecated).
 
 ## Verification gate
 
