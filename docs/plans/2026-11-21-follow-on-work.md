@@ -1,48 +1,92 @@
-# Follow-on work and open items, 2026-11-21
+# Follow-on work, 2026-11-21
 
-Status: draft, awaiting approval. Builds on the archived [helpers follow-up plan](archived/2026-11-20-helpers-followup.md).
+Status: revised after the Sonnet review. Awaiting approval. Builds on the archived [helpers follow-up plan](archived/2026-11-20-helpers-followup.md), which is done.
 
 ## Decisions
 
-- D1 Source control helper uses the IDE source control APIs (VS and VS Code), not the git CLI.
-- D2 Output helper writes to both the Visual Studio Output window and the VS Code Output panel. The target is chosen per call and remembered per repo in a JSON config.
-- D3 Package helper checks NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers), pip (`requirements.txt` or `pyproject.toml`), and npm (`package.json` and lockfiles). It also has a full gate build step.
-- D4 Lint helper aligns `.editorconfig`, `dotnet format` and analyzer severities. It also checks ESLint for TypeScript and JavaScript. TSLint is deprecated, so the helper reports it and recommends ESLint.
+- D1 Source control helper uses the IDE source control APIs. Feasibility is spiked first (Phase 2), because Visual Studio may not offer pull, push and stash. A fallback to the git CLI is decided after the spike.
+- D2 Output helper writes to the Visual Studio Output window and the VS Code Output panel, chosen per call. The per-repo choice is stored in the shared repo config (D5).
+- D3 Package helper checks NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, Microsoft.CodeAnalysis.NetAnalyzers), pip (`requirements.txt` or `pyproject.toml`) and npm (`package.json` and its lockfile).
+- D4 Lint helper aligns `.editorconfig`, `dotnet format` and analyzer severities, and checks ESLint for TypeScript and JavaScript. TSLint is reported as deprecated, with ESLint recommended. Detection: `tslint.json` or a `tslint` dependency.
+- D5 One per-repo config file, `.claude/aidevhelpers.json`, holds the output channel locations and the preferred IDE. Both items read and write it.
+- D6 The full gate is the `full-gate` skill: the repo's `.claude/reference/full-gate.md` if it exists, otherwise stack detection (dotnet, npm, pip, go, cargo). The gate helper runs the same steps. The package helper's gate step and the gate helper are one thing, owned by Phase 6.
+- D7 Write actions (commit, push, stage, branch, stash) need the two-step approval used for extension Add (D13). A commit never adds the Claude attribution lines.
 
-## Open questions (block the named item)
+## Answered open questions
 
-- Q1 Gate definitions: read the full and lite gate definitions in the skills (`full-gate`, `lint`) before the gate helper is designed. Blocks the gate helper.
-- Q2 Preferred IDE: the store and the rule for choosing an IDE when both are open. Blocks the preferences item.
-- Q3 Localization: which languages, and which strings are in scope (UI, MCP tool descriptions, static returns). Blocks localization.
-- Q4 Self-test docs: whether each helper's self-test markdown is embedded as a resource in the library, and how the bridge reads it. Blocks the self-test item.
+- Q1 Gate definitions: answered from the `full-gate` skill (D6). The lite gate definition was not found in the skills; check `.claude/reference/` before Phase 6.
 
-## Open items carried over
+## Open questions (block the named phase)
 
-- The `.vsconfig` key `aidevhelpersErrors`: unverified, left as is at the user's request.
-- MCP log notifications: unverified whether Claude Code displays them.
-- D28, Visual Studio extension listing: not built.
-- D30, Visual Studio coverage through the bridge: not built. Coverage uses the `dotnet-coverage` CLI.
-- D15, coverage placement: lives in `TestingTools`, not `IdeTestRunService` as planned.
+- Q2 Preferred IDE: does a stored preference override the ambiguity error (ide-bridge.md routing), or only break a tie? Blocks Phase 3.
+- Q3 Localization mechanism: `.resx` for the .NET helpers and a JSON table for the TypeScript side, or one approach? Which languages? Blocks Phase 7.
+- Q4 Self-test docs: is each helper's self-test markdown embedded as a resource in its library, and how does the bridge read it? What counts as a "full" self test? Blocks Phase 5.
+
+## Phases (each ends with a review gate)
+
+### Phase 1: Lint helper (D4, D7 not needed)
+- Acceptance: a repo with mismatched `.editorconfig`, `dotnet format` and ESLint settings reports each mismatch, and fixing them makes the check pass. TSLint is reported as deprecated.
+- Gate: the helper's unit tests, plus the lint check on this repo.
+
+### Phase 2: Source control spike, then helper (D1, D7)
+- Spike: confirm which of status, diff, stage, commit, pull, push, branch, switch and stash each IDE's API supports. Record the result in the plan.
+- Acceptance (after the spike): each supported operation returns a structured result, and each write needs two-step approval.
+- Gate: tests against a scratch repo, and a live check in each IDE.
+
+### Phase 3: Preferred IDE and the repo config (D5, Q2)
+- Acceptance: a stored preference answers tool calls without asking, and a call with an explicit `ide` still wins.
+- Gate: tests for the config read and write, and for the precedence rule.
+
+### Phase 4: Output helper (D2, D5)
+- New bridge actions for creating and opening a named channel. Needs fixtures and protocol doc entries (Phase 8).
+- VS Code cannot read other channels (ide-bridge.md Limits). Creating and writing is supported, reading back is not.
+- Acceptance: the log helper writes to a channel, and the channel location persists per repo.
+- Gate: live check in both IDEs.
+
+### Phase 5: Self tests (Q4)
+- Acceptance: each helper has an embedded self-test markdown, and the bridge reports its version from the Core DLL. Criteria for "full" come from Q4.
+- Gate: a test that each helper's markdown is present.
+
+### Phase 6: Package helper and gate helper (D3, D6)
+- Package: check the configs and packages in D3, then run the full gate's build step.
+- Gate: run the full gate (D6) on this repo. Lite gate once its definition is found.
+- Extend the test helper to run only the affected tests.
+- Gate: unit tests, plus a full-gate run on this repo.
+
+### Phase 7: Localization (Q3)
+- Last, because it touches every helper's strings and would conflict with the phases above.
+- Acceptance: no user-facing string is hard-coded in a helper. The languages are those from Q3.
+- Gate: a test that fails on a hard-coded string, plus the existing suites.
+
+### Phase 8: Docs, solution and fixtures
+- Update `AiDevHelpers.slnx`, `conformance/protocol.md`, `docs/ide-bridge.md` and the README for each new tool and action.
+- Add conformance fixtures for each new bridge action.
+- Give each new helper's library a NuGet package (per-helper versioning, as in D19) and add it to the CI pack list.
+- Gate: the tool count matches the new total, and the protocol doc and fixtures match the code.
+
+## Carried-over items
+
+Fix:
+- The Insiders `test.hotReload` is blank (owner: the user sets the option; the reply is `null` until then).
+- The flaky `StopClosesThePipe_AndStartReopensIt` test: fix the test to wait for the pipe to close instead of sleeping.
+- The silent-instance timeout test runs only locally. Add it to the Bridge test project's CI run.
+
+Accepted (not work):
+- D15: coverage lives in `TestingTools`.
+- D28: Visual Studio extension listing is not built.
+- D30: Visual Studio coverage uses the `dotnet-coverage` CLI.
 - Bookmarks: only open documents are visible, and names aren't stored.
-- The `2005` error for a multi-ID VSIX install. The dialog install works.
-- The VS Code bridge stall after stacked-window restarts. Not root-caused.
-- Flaky test `StopClosesThePipe_AndStartReopensIt`.
-- The silent-instance timeout test runs only locally, not in the repo's CI.
-- Insiders' `test.hotReload` is blank, so its reply is `null` until the option is set there.
 - Only `main` and `dev` require checks. `wip` is the working branch.
 
-## New work
+Verify on a real install:
+- The `.vsconfig` key `aidevhelpersErrors`.
+- Whether Claude Code displays MCP log notifications.
 
-1. Source control helper: status, diff, stage, commit, pull, push, branch, switch and stash through the IDE APIs. VS first, then VS Code.
-2. Output helper: create or open a named channel in the VS Output window or the VS Code Output panel. Let the log helper write to a channel instead of a terminal. Remember the channel per repo in a JSON config, or reuse the existing config.
-3. Preferred IDE: store the chosen IDE per repo so tools don't ask again. Depends on Q2.
-4. Self tests: each helper ships a full self-test markdown, embedded in its library, and the bridge references it in the Core DLL version. Depends on Q4.
-5. Localization: move all user-facing text and static returns in the helpers into resources. Depends on Q3.
-6. Package helper: check NuGet, pip and npm configs and packages (xunit analyzers and Microsoft.CodeAnalysis.NetAnalyzers for .NET), and add a full-gate build step.
-7. Gate helper: full and lite gate methods, from the definitions in Q1. Extend the test helper to run the affected tests.
-8. Lint helper: align `.editorconfig`, `dotnet format` and analyzer severities, and check ESLint configs for the TypeScript and JavaScript projects (TSLint is reported as deprecated).
+Decide:
+- The `2005` error for a multi-ID VSIX install (fix or accept; the dialog install works).
+- The VS Code bridge stall after stacked-window restarts (investigate or accept).
 
 ## Verification gate
 
-- Each helper's tests pass, and the stdio server lists the new tools.
-- Each new item is live-checked against a running IDE where it touches one.
+- Each phase's gate passes, and the stdio server lists the new tools.
+- Each item that touches a running IDE is live-checked.
