@@ -59,11 +59,22 @@ public sealed class BrokerRuntimeTests : IDisposable
     public void Heartbeat_ping_answers_from_the_heartbeat_file()
     {
         var path = Path_("heartbeat.json");
-        BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now);
+        BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now, @"C:\ProgramData\AiDevHelpers\script-helper\bin\scripthelper-broker.exe");
 
-        Assert.True(new HeartbeatPing(path, () => Now.AddSeconds(1)).Ping(TimeSpan.FromSeconds(3)));
-        Assert.False(new HeartbeatPing(path, () => Now.AddMinutes(1)).Ping(TimeSpan.FromSeconds(3)));
-        Assert.False(new HeartbeatPing(Path_("absent.json"), () => Now).Ping(TimeSpan.FromSeconds(3)));
+        Assert.Equal(BrokerState.Answering, new HeartbeatPing(path, () => Now.AddSeconds(1), _ => true).Check(TimeSpan.FromSeconds(3)));
+        Assert.Equal(BrokerState.Silent, new HeartbeatPing(path, () => Now.AddMinutes(1), _ => true).Check(TimeSpan.FromSeconds(3)));
+        Assert.Equal(BrokerState.Silent, new HeartbeatPing(Path_("absent.json"), () => Now, _ => true).Check(TimeSpan.FromSeconds(3)));
+    }
+
+    [Fact]
+    public void A_fresh_heartbeat_from_a_broker_outside_the_install_folder_is_untrusted()
+    {
+        var path = Path_("heartbeat.json");
+        BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now, @"C:\Users\someone\Downloads\scripthelper-broker.exe");
+
+        var state = new HeartbeatPing(path, () => Now, exe => exe.StartsWith(@"C:\ProgramData", StringComparison.OrdinalIgnoreCase)).Check(TimeSpan.FromSeconds(3));
+
+        Assert.Equal(BrokerState.UntrustedInstall, state);
     }
 
     [Fact]

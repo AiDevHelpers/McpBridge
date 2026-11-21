@@ -14,7 +14,10 @@ if (args.Length < 2)
 var config = ConfigRepository.FromEnvironment().ScriptHelper;
 var sid = WindowsIdentity.GetCurrent().User!.Value;
 var queue = new RequestQueue(config.QueueDirectory, config.ResultsDirectory);
-var ping = new HeartbeatPing(config.HeartbeatPath, () => DateTime.UtcNow);
+var ping = new HeartbeatPing(
+    config.HeartbeatPath,
+    () => DateTime.UtcNow,
+    exe => BrokerInstall.IsTrusted(exe, config.InstallDirectory, config.DataRoot));
 var client = new ScriptClient(queue, ping, sid);
 
 var result = client.Run(args[0], args[1], args[2..], TimeSpan.FromMinutes(10));

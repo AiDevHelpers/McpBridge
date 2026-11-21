@@ -44,6 +44,9 @@ public sealed class ScriptHelperConfig
     /// <summary>Creating this file asks a running broker to stop; the broker deletes it.</summary>
     public string StopPath => Path.Combine(DataRoot, "broker.stop");
 
+    /// <summary>The admin-only folder the broker binary must run from. The client refuses any other broker.</summary>
+    public string InstallDirectory => Path.Combine(DataRoot, "bin");
+
     /// <summary>Where requests are staged before they run. Only the broker touches it.</summary>
     public string StagingDirectory => Path.Combine(DataRoot, "staging");
 

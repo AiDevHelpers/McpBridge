@@ -29,13 +29,13 @@ public sealed class ScriptClientTests : IDisposable
 
     private sealed class FakePing : IBrokerPing
     {
-        public bool Answer { get; set; } = true;
+        public BrokerState State { get; set; } = BrokerState.Answering;
         public int Calls { get; private set; }
 
-        public bool Ping(TimeSpan timeout)
+        public BrokerState Check(TimeSpan timeout)
         {
             Calls++;
-            return Answer;
+            return State;
         }
     }
 
@@ -50,12 +50,25 @@ public sealed class ScriptClientTests : IDisposable
     public void A_silent_broker_is_reported_before_anything_is_queued()
     {
         var q = Queue();
-        var ping = new FakePing { Answer = false };
+        var ping = new FakePing { State = BrokerState.Silent };
 
         var r = new ScriptClient(q, ping, Sid).Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
 
         Assert.False(r.Ok);
         Assert.Contains("not responding", r.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(q.Pending());
+    }
+
+    [Fact]
+    public void A_broker_outside_the_admin_only_install_folder_is_refused_and_nothing_is_queued()
+    {
+        var q = Queue();
+        var ping = new FakePing { State = BrokerState.UntrustedInstall };
+
+        var r = new ScriptClient(q, ping, Sid).Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+
+        Assert.False(r.Ok);
+        Assert.Contains("admin-only", r.Reason, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(q.Pending());
     }
 

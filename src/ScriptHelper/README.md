@@ -58,11 +58,16 @@ person was shown.
 
 ## Running the broker
 
-Start it once, elevated and hidden:
+The broker must run from `%ProgramData%\AiDevHelpers\script-helper\bin`, the admin-only folder
+that setup creates. Copy `scripthelper-broker.exe` and the files beside it there, then start it
+once, elevated and hidden:
 
 ```
-Start-Process -FilePath scripthelper-broker.exe -Verb RunAs -WindowStyle Hidden
+Start-Process -FilePath "$env:ProgramData\AiDevHelpers\script-helper\bin\scripthelper-broker.exe" -Verb RunAs -WindowStyle Hidden
 ```
+
+`elev` refuses a broker that runs from anywhere else, or from a folder that ordinary users can
+write to.
 
 It stops after 30 minutes with no requests, or when you ask it to:
 
@@ -99,10 +104,19 @@ Not blocked:
 - With `--allow-no-tpm` (no TPM 2.0), approvals are protected by directory ACLs alone, with no
   signature. That is weaker, and the setup says so.
 
+## Self test
+
+`tests/e2e/Run-EndToEnd.ps1` builds the three executables, runs setup, starts the broker hidden,
+runs `elev` on an approved script and an unlisted one, stops the broker, and checks the audit log.
+It points `ProgramData` at a temp folder, so real Script Helper data is untouched. Run it from an
+elevated PowerShell 7 shell.
+
 ## Not built yet
 
-- The broker-binary install location check (the client should refuse a broker outside an
-  admin-only folder).
-- Verification that the broker window stays hidden, and an end-to-end run with a second,
-  non-admin account. Both are manual checks.
-- Integration into McpBridge.
+- The second, non-admin account check is done. A standard account (`dragonfire\test`) is denied
+  read access to the admin's queue folder, write access to it, and read access to the admin's
+  results folder.
+
+McpBridge exposes the same path as the `runElevatedScript` tool (`src/MCP/Core`). It runs `elev.exe`
+from the server's folder, so copy `elev.exe` there. The tool does not approve anything: a person
+still approves each script with `scripthelper-setup.exe`.

@@ -19,6 +19,7 @@ var repository = ConfigRepository.FromEnvironment();
 var config = repository.ScriptHelper;
 Directory.CreateDirectory(repository.Root);
 AdminOnlyDirectory.Ensure(config.DataRoot);
+AdminOnlyDirectory.Ensure(config.InstallDirectory);
 
 // The mode lives out of band in the admin-only data root, never in the approvals files.
 var mode = ModeResolver.Resolve(TbsTpmDetector.Tpm20Present(), ModeFile.Read(config.ModePath), allowNoTpm);

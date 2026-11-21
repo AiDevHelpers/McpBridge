@@ -33,6 +33,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ITerminalConfigurationDiscovery, TerminalConfigurationDiscovery>();
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
+        services.AddSingleton<IElevRunner, ProcessElevRunner>();
 
         return services
             .AddMcpServer()
@@ -43,6 +44,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ExtensionTools>()
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
-            .WithTools<TerminalSessionTools>();
+            .WithTools<TerminalSessionTools>()
+            .WithTools<ScriptHelperTools>();
     }
 }

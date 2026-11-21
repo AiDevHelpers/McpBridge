@@ -1,9 +1,16 @@
 namespace AiDevHelpers.ScriptHelper.Core;
 
-/// <summary>Asks whether a broker is answering. The real check (named pipe or mutex) comes with the broker host.</summary>
+public enum BrokerState
+{
+    Answering,
+    Silent,
+    UntrustedInstall,
+}
+
+/// <summary>Asks whether a broker is answering and whether it is installed where it may be trusted.</summary>
 public interface IBrokerPing
 {
-    bool Ping(TimeSpan timeout);
+    BrokerState Check(TimeSpan timeout);
 }
 
 public sealed record ClientResult(bool Ok, string Reason, int? ExitCode, string Stdout, string Stderr);
@@ -30,8 +37,13 @@ public sealed class ScriptClient
 
     public ClientResult Run(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout)
     {
-        if (!_ping.Ping(PingTimeout))
-            return new ClientResult(false, "broker is not responding; start it before running scripts", null, string.Empty, string.Empty);
+        switch (_ping.Check(PingTimeout))
+        {
+            case BrokerState.Silent:
+                return new ClientResult(false, "broker is not responding; start it before running scripts", null, string.Empty, string.Empty);
+            case BrokerState.UntrustedInstall:
+                return new ClientResult(false, "refused: the broker is not in the admin-only install folder", null, string.Empty, string.Empty);
+        }
 
         var id = _queue.Enqueue(_requesterSid, new BrokerRequestFile(projectRoot, script, args));
 
