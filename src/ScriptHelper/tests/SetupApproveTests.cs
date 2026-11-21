@@ -278,6 +278,154 @@ public sealed class SetupApproveTests : IDisposable
         Assert.Contains(ManifestHash(), prompt, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Prepare_returns_the_prompt_and_both_hashes_and_writes_nothing()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+
+        var p = c.PrepareApproval(_root, Script);
+
+        var fp = FingerprintBuilder.Build(_root, Script, _interpreter, _inspector).Fingerprint;
+        Assert.True(p.Ok, p.Reason);
+        Assert.Equal(fp, p.Fingerprint);
+        Assert.Equal(ManifestHash(), p.AllowlistHash);
+        Assert.Contains("Approve this script to run elevated?", p.Prompt, StringComparison.Ordinal);
+        Assert.Contains(fp, p.Prompt, StringComparison.Ordinal);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+        Assert.Equal(0, c.Versions.Get(id));
+    }
+
+    [Fact]
+    public void Prepare_never_asks_the_console_question()
+    {
+        var c = Commands();
+        RegisterProject(c);
+
+        c.PrepareApproval(_root, Script);
+
+        Assert.Equal(0, _confirmer.Calls);
+    }
+
+    [Fact]
+    public void Prepare_refuses_when_not_elevated()
+    {
+        var c = Commands();
+        RegisterProject(c);
+        _elevation.Elevated = false;
+
+        var p = c.PrepareApproval(_root, Script);
+
+        Assert.False(p.Ok);
+        Assert.Contains("elevated", p.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Prepare_refuses_a_script_that_is_not_listed()
+    {
+        var c = Commands();
+        RegisterProject(c);
+        WriteScript("scripts/other/x.ps1", "x");
+
+        var p = c.PrepareApproval(_root, "scripts/other/x.ps1");
+
+        Assert.False(p.Ok);
+        Assert.Contains("not listed", p.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(string.Empty, p.Fingerprint);
+    }
+
+    [Fact]
+    public void Confirm_with_the_shown_hashes_approves_without_the_console_question()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        var p = c.PrepareApproval(_root, Script);
+
+        var r = c.ConfirmApproval(_root, Script, p.Fingerprint, p.AllowlistHash);
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal(0, _confirmer.Calls);
+        Assert.True(Authorize(c, id).Allowed);
+        Assert.Equal(1, c.Versions.Get(id));
+    }
+
+    [Fact]
+    public void Confirm_refuses_when_the_script_changed_after_it_was_shown()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        var p = c.PrepareApproval(_root, Script);
+        WriteScript(Script, "Write-Output 'swapped after the person looked'");
+
+        var r = c.ConfirmApproval(_root, Script, p.Fingerprint, p.AllowlistHash);
+
+        Assert.False(r.Ok);
+        Assert.Contains("changed since it was shown", r.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+    }
+
+    [Fact]
+    public void Confirm_refuses_when_the_allowlist_changed_after_it_was_shown()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        var p = c.PrepareApproval(_root, Script);
+        WriteManifest("""{ "scripts": [ { "path": "scripts/debug/*.ps1" }, { "path": "scripts/extra.ps1" } ] }""");
+
+        var r = c.ConfirmApproval(_root, Script, p.Fingerprint, p.AllowlistHash);
+
+        Assert.False(r.Ok);
+        Assert.Contains("changed since it was shown", r.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+    }
+
+    [Theory]
+    [InlineData("", "AL")]
+    [InlineData("FP", "")]
+    [InlineData("  ", "  ")]
+    public void Confirm_refuses_empty_hashes(string fingerprint, string allowlistHash)
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+
+        var r = c.ConfirmApproval(_root, Script, fingerprint, allowlistHash);
+
+        Assert.False(r.Ok);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+    }
+
+    [Fact]
+    public void Confirm_refuses_when_not_elevated_and_writes_nothing()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        var p = c.PrepareApproval(_root, Script);
+        _elevation.Elevated = false;
+
+        var r = c.ConfirmApproval(_root, Script, p.Fingerprint, p.AllowlistHash);
+
+        Assert.False(r.Ok);
+        Assert.Contains("elevated", r.Reason, StringComparison.OrdinalIgnoreCase);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+    }
+
+    [Fact]
+    public void Confirm_after_confirm_increments_the_version_like_an_interactive_approval()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        WriteScript("scripts/debug/second.ps1", "second");
+        var first = c.PrepareApproval(_root, Script);
+        c.ConfirmApproval(_root, Script, first.Fingerprint, first.AllowlistHash);
+        var second = c.PrepareApproval(_root, "scripts/debug/second.ps1");
+
+        c.ConfirmApproval(_root, "scripts/debug/second.ps1", second.Fingerprint, second.AllowlistHash);
+
+        Assert.Equal(2, c.Versions.Get(id));
+        Assert.True(Authorize(c, id, Script).Allowed);
+        Assert.True(Authorize(c, id, "scripts/debug/second.ps1").Allowed);
+    }
+
     private static string[] PromptLines(string prompt) =>
         prompt.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
 

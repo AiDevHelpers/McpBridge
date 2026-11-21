@@ -52,12 +52,54 @@ public sealed class SetupCommands : ISetupCommands
 
     public SetupResult Approve(string root, string relativeScript)
     {
+        var analysis = Analyze(root, relativeScript);
+        if (!analysis.Ok)
+            return Fail(analysis.Reason);
+
+        var prompt = BuildPrompt(analysis);
+        if (!_confirmer.Confirm(prompt))
+            return Fail("approval declined");
+
+        return Write(analysis);
+    }
+
+    public ApprovalPreview PrepareApproval(string root, string relativeScript)
+    {
+        var analysis = Analyze(root, relativeScript);
+        if (!analysis.Ok)
+            return new ApprovalPreview(false, analysis.Reason, string.Empty, string.Empty, string.Empty);
+
+        return new ApprovalPreview(true, "prepared", BuildPrompt(analysis), analysis.Fingerprint.Fingerprint, analysis.AllowlistHash);
+    }
+
+    public SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash)
+    {
+        if (string.IsNullOrWhiteSpace(fingerprint) || string.IsNullOrWhiteSpace(allowlistHash))
+            return Fail("confirm needs both the fingerprint and the allowlist hash that were shown");
+
+        var analysis = Analyze(root, relativeScript);
+        if (!analysis.Ok)
+            return Fail(analysis.Reason);
+
+        // The values must match what was shown; otherwise the person approved something else.
+        if (!string.Equals(analysis.Fingerprint.Fingerprint, fingerprint, StringComparison.Ordinal)
+            || !string.Equals(analysis.AllowlistHash, allowlistHash, StringComparison.Ordinal))
+        {
+            return Fail("the script or allowlist changed since it was shown; prepare again and show the new values");
+        }
+
+        return Write(analysis);
+    }
+
+    /// <summary>Everything Approve needs before asking a person. Writes nothing.</summary>
+    private Analysis Analyze(string root, string relativeScript)
+    {
         if (!_elevation.IsElevated())
-            return Fail("setup needs an elevated shell");
+            return Analysis.Failed("setup needs an elevated shell");
 
         var project = _registry.Find(root);
         if (project is null)
-            return Fail("project is not registered; run register first");
+            return Analysis.Failed("project is not registered; run register first");
 
         byte[] manifestBytes;
         try
@@ -66,36 +108,36 @@ public sealed class SetupCommands : ISetupCommands
         }
         catch (FileNotFoundException)
         {
-            return Fail($"{ManifestName} not found in the project root");
+            return Analysis.Failed($"{ManifestName} not found in the project root");
         }
         catch (DirectoryNotFoundException)
         {
-            return Fail($"{ManifestName} not found in the project root");
+            return Analysis.Failed($"{ManifestName} not found in the project root");
         }
         catch (IOException)
         {
-            return Fail($"{ManifestName} cannot be read");
+            return Analysis.Failed($"{ManifestName} cannot be read");
         }
 
         var manifest = ManifestParser.Parse(Encoding.UTF8.GetString(manifestBytes));
         if (!manifest.Ok)
-            return Fail(manifest.Reason);
+            return Analysis.Failed(manifest.Reason);
 
         var resolved = PathRules.ResolveInsideRoot(project.Root, relativeScript);
         if (!resolved.Ok)
-            return Fail($"'{relativeScript}': {resolved.Reason}");
+            return Analysis.Failed($"'{relativeScript}': {resolved.Reason}");
 
         var rel = Path.GetRelativePath(project.Root, resolved.FullPath).Replace('\\', '/');
         var key = ApprovalStore.NormalizeScriptPath(rel);
         if (key is null)
-            return Fail($"'{relativeScript}' is not a valid relative path");
+            return Analysis.Failed($"'{relativeScript}' is not a valid relative path");
 
         if (!Allowlist.IsPathListed(manifest.Entries, rel))
-            return Fail($"script is not listed in {ManifestName}");
+            return Analysis.Failed($"script is not listed in {ManifestName}");
 
         var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
         if (!fingerprint.Ok)
-            return Fail(fingerprint.Reason);
+            return Analysis.Failed(fingerprint.Reason);
 
         var allowlistHash = Fingerprint.Sha256Hex(manifestBytes);
 
@@ -105,34 +147,56 @@ public sealed class SetupCommands : ISetupCommands
         var approvalsPath = ApprovalsPath(project.Id);
         var load = ApprovalStore.TryLoad(approvalsPath, _signer);
         if (!load.Ok)
-            return Fail($"existing approvals are not trusted ({load.Reason}); refusing to overwrite them");
+            return Analysis.Failed($"existing approvals are not trusted ({load.Reason}); refusing to overwrite them");
 
         var existing = load.Document;
         if (existing is not null && !string.Equals(existing.ProjectId, project.Id, StringComparison.Ordinal))
-            return Fail("existing approvals belong to another project; refusing to overwrite them");
+            return Analysis.Failed("existing approvals belong to another project; refusing to overwrite them");
 
-        var prompt = BuildPrompt(project.Root, rel, fingerprint, allowlistHash, existing);
-        if (!_confirmer.Confirm(prompt))
-            return Fail("approval declined");
+        return new Analysis(true, string.Empty, project, rel, key, fingerprint, allowlistHash, existing, approvalsPath);
+    }
 
-        var version = Math.Max(Versions.Get(project.Id), existing?.Version ?? 0) + 1;
-        var scripts = (existing?.Scripts ?? Array.Empty<ApprovalRecord>())
-            .Where(r => r.Path != key)
-            .Append(new ApprovalRecord(key, fingerprint.Fingerprint))
+    /// <summary>Writes the approval the analysis describes. Only called after a person (or a matching confirm).</summary>
+    private SetupResult Write(Analysis a)
+    {
+        var version = Math.Max(Versions.Get(a.Project.Id), a.Existing?.Version ?? 0) + 1;
+        var scripts = (a.Existing?.Scripts ?? Array.Empty<ApprovalRecord>())
+            .Where(r => r.Path != a.Key)
+            .Append(new ApprovalRecord(a.Key, a.Fingerprint.Fingerprint))
             .ToList();
 
         ApprovalStore.Save(
-            approvalsPath,
-            new ApprovalDocument(project.Id, project.Root, version, allowlistHash, scripts, Signature: ""),
+            a.ApprovalsPath,
+            new ApprovalDocument(a.Project.Id, a.Project.Root, version, a.AllowlistHash, scripts, Signature: ""),
             _signer);
-        Versions.Bump(project.Id, version);
+        Versions.Bump(a.Project.Id, version);
 
-        return new SetupResult(true, $"approved '{key}' (approvals version {version})", project.Id);
+        return new SetupResult(true, $"approved '{a.Key}' (approvals version {version})", a.Project.Id);
     }
 
-    private static string BuildPrompt(
-        string root, string rel, FingerprintResult fingerprint, string allowlistHash, ApprovalDocument? existing)
+    private sealed record Analysis(
+        bool Ok,
+        string Reason,
+        ProjectEntry Project,
+        string Rel,
+        string Key,
+        FingerprintResult Fingerprint,
+        string AllowlistHash,
+        ApprovalDocument? Existing,
+        string ApprovalsPath)
     {
+        public static Analysis Failed(string reason) =>
+            new(false, reason, null!, string.Empty, string.Empty, null!, string.Empty, null, string.Empty);
+    }
+
+    private static string BuildPrompt(Analysis a)
+    {
+        var root = a.Project.Root;
+        var rel = a.Rel;
+        var fingerprint = a.Fingerprint;
+        var allowlistHash = a.AllowlistHash;
+        var existing = a.Existing;
+
         // One labelled value per section, a blank line between sections, and the hashes on one
         // unbroken line each so they can be compared or searched.
         var sb = new StringBuilder();

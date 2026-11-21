@@ -17,6 +17,8 @@ Purpose: run allowlisted debug scripts elevated through one hidden, long-lived b
 
 - D9 Shared code placement: interfaces live in `AiDevHelpers.Common` (`Contracts`): `IApprovalSigner`, `IElevationCheck`, `IVolumeInfo`, `IPathInspector`, `IInterpreterInfo`, `IConfirmer`, `ISetupCommands`, and the `SetupResult` record. The config repository lives in the new `AiDevHelpers.Core` library (`src/Core`): `ConfigRepository` resolves `%ProgramData%\AiDevHelpers` and exposes a `ScriptHelper` element (`ScriptHelperConfig`) for the registry, approvals, versions, mode file and key name. Implementations stay in `AiDevHelpers.ScriptHelper.Core`. The Script Helper projects target `net10.0-windows`, like Common.
 
+- D10 Approval without a console (decided 2026-11-20): a calling AI can ask for an approval in two steps. `approve --prepare` returns the labelled prompt plus the fingerprint and allowlist hash, and writes nothing. The AI must show that prompt to the person and ask them with the question form. Then `approve --confirm <fingerprint> <allowlistHash>` writes the approval only if the script and allowlist still hash to those values, so a script changed after the person looked is refused. This does not trust the AI's answer: the gate is that the person saw the exact values, and any change to the script or allowlist between the two steps fails. The console question (`approve` with no flags) stays as the stronger, person-only path. Phase 5 (the broker) may later add a host-UI elicitation with a one-time ticket if the AI-in-the-middle path proves too weak; that is not built.
+
 ## Test-first rule (applies to every phase)
 
 Each unit follows red, green, refactor:
