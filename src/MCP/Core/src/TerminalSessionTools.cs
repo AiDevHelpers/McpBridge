@@ -43,7 +43,7 @@ internal sealed class TerminalSessionTools
             case "OPEN":
                 if (!TryParseMode(launchMode, out var mode))
                 {
-                    return $"Error: launchMode must be InteractiveUser or ServiceAccount, got '{launchMode}'.";
+                    return Strings.Format("InvalidLaunchMode", launchMode);
                 }
 
                 return await RunAsync(async () =>
@@ -51,33 +51,33 @@ internal sealed class TerminalSessionTools
                     await EnsureInitializedAsync(ct);
                     var session = await _manager.CreateSessionAsync(new TerminalSessionConfig(LaunchMode: mode), ct);
                     var tab = await session.CreateTabAsync(tabName ?? "main", null, ct);
-                    return $"Opened session {session.SessionId} (launchMode {mode}) with tab {tab.TabId}.";
+                    return Strings.Format("SessionOpened", session.SessionId, mode, tab.TabId);
                 });
 
             case "TAB":
                 if (sessionId is null)
                 {
-                    return "Error: tab needs sessionId.";
+                    return Strings.Get("TabNeedsSession");
                 }
 
                 return await RunAsync(async () =>
                 {
                     var session = _manager.GetSession(sessionId)
-                        ?? throw new InvalidOperationException($"no session '{sessionId}'. Use action=list.");
+                        ?? throw new InvalidOperationException(Strings.Format("NoSession", sessionId));
                     var tab = await session.CreateTabAsync(tabName ?? "main", null, ct);
-                    return $"Created tab {tab.TabId} in {sessionId}.";
+                    return Strings.Format("TabCreated", tab.TabId, sessionId);
                 });
 
             case "EXEC":
                 if (sessionId is null || tabId is null || command is null)
                 {
-                    return "Error: exec needs sessionId, tabId and command.";
+                    return Strings.Get("ExecNeedsArgs");
                 }
 
                 return await RunAsync(async () =>
                 {
                     var session = _manager.GetSession(sessionId)
-                        ?? throw new InvalidOperationException($"no session '{sessionId}'. Use action=list.");
+                        ?? throw new InvalidOperationException(Strings.Format("NoSession", sessionId));
                     var result = await session.ExecuteInTabAsync(
                         tabId, command, null, TimeSpan.FromSeconds(timeoutSeconds), ct);
 
@@ -96,7 +96,7 @@ internal sealed class TerminalSessionTools
                 var sessions = _manager.GetActiveSessions();
                 if (sessions.Count == 0)
                 {
-                    return "No open terminal sessions.";
+                    return Strings.Get("NoOpenSessions");
                 }
 
                 return string.Join("\n", sessions.Select(s =>
@@ -105,7 +105,7 @@ internal sealed class TerminalSessionTools
             case "CLOSE":
                 if (sessionId is null)
                 {
-                    return "Error: close needs sessionId.";
+                    return Strings.Get("CloseNeedsSession");
                 }
 
                 return await RunAsync(async () =>
@@ -115,7 +115,7 @@ internal sealed class TerminalSessionTools
                 });
 
             default:
-                return "Error: action must be open, tab, exec, list or close.";
+                return Strings.Get("InvalidTerminalAction");
         }
     }
 

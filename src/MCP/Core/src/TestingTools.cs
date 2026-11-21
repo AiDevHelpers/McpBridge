@@ -23,7 +23,7 @@ internal sealed class TestingTools
             "on" => true,
             "off" => false,
             "unknown" => null,
-            _ => throw new ArgumentException("ideHotReload must be on, off or unknown."),
+            _ => throw new ArgumentException(Strings.Get("HotReloadInvalid")),
         };
         var full = Path.GetFullPath(solutionPath);
         TestingState.Watches[full] = new TestWatch(full, ide, dotnetWatchRunning);
@@ -105,7 +105,7 @@ internal sealed class TestingTools
         }
         else if (!Enum.TryParse<CoverageProvider>(provider, ignoreCase: true, out chosen))
         {
-            return Json(new { ok = false, error = $"Unknown provider '{provider}'. Use Coverlet or VisualStudio." });
+            return Json(new { ok = false, error = Strings.Format("UnknownProvider", provider) });
         }
 
         var service = new CoverageService(new ProcessTestCommandRunner(), Path.Combine(TestingState.ResultsDirectory(full), "coverage"));
@@ -153,7 +153,7 @@ internal sealed class TestingTools
             var process = System.Diagnostics.Process.Start(psi);
             if (process is null)
             {
-                return Json(new { ok = false, error = "dotnet watch test did not start." });
+                return Json(new { ok = false, error = Strings.Get("WatchNotStarted") });
             }
 
             LiveRuns[full] = process;
@@ -172,7 +172,7 @@ internal sealed class TestingTools
         {
             if (!LiveRuns.TryGetValue(full, out var process))
             {
-                return Json(new { ok = false, error = "No live testing is running for this solution." });
+                return Json(new { ok = false, error = Strings.Get("NoLiveTesting") });
             }
 
             LiveRuns.Remove(full);

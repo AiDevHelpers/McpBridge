@@ -49,7 +49,7 @@ internal sealed class LintProcessCommandRunner : ICommandRunner
             psi.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Could not start {fileName}.");
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStart", fileName));
         var stderr = process.StandardError.ReadToEndAsync();
         var stdout = process.StandardOutput.ReadToEnd();
         process.WaitForExit();

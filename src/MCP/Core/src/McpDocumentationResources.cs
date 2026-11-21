@@ -19,7 +19,7 @@ public sealed class McpDocumentationResources
         Assembly assembly = typeof(IIDELauncher).Assembly;
         using Stream stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException(
-                $"Embedded resource '{resourceName}' not found. Available: " +
+                Strings.Format("EmbeddedResourceNotFound", resourceName) +
                 string.Join(", ", assembly.GetManifestResourceNames()));
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();

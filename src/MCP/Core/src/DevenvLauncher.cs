@@ -47,7 +47,7 @@ internal static class DevenvLauncher
         var devenv = Find();
         if (devenv is null)
         {
-            return "Visual Studio 18 (devenv.exe) was not found.";
+            return Strings.Get("DevenvNotFound");
         }
 
         Process.Start(new ProcessStartInfo(devenv) { UseShellExecute = false, ArgumentList = { solutionPath } });

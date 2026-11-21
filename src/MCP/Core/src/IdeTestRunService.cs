@@ -32,7 +32,7 @@ internal static class IdeTestRunService
         var full = Path.GetFullPath(solutionPath);
         return Directory.Exists(full)
             ? full
-            : Path.GetDirectoryName(full) ?? throw new InvalidOperationException("No solution directory.");
+            : Path.GetDirectoryName(full) ?? throw new InvalidOperationException(Strings.Get("NoSolutionDirectory"));
     }
 
     /// <summary>Runs <c>dotnet test</c> on the solution, writing one TRX per test project into a new run folder under TestResults.</summary>
@@ -53,7 +53,7 @@ internal static class IdeTestRunService
             ct);
         if (!run.Launched)
         {
-            throw new InvalidOperationException($"dotnet test did not start: {run.LaunchError}");
+            throw new InvalidOperationException(Strings.Format("DotnetTestNotStarted", run.LaunchError));
         }
 
         var trxFiles = TrxFilesIn(runDir);
@@ -78,7 +78,7 @@ internal static class IdeTestRunService
         var resultsDir = Path.Combine(solutionDir, ResultsFolder);
         if (!Directory.Exists(resultsDir))
         {
-            return JsonSerializer.Serialize(new { ok = false, error = $"No {ResultsFolder} folder under {solutionDir}." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Format("NoResultsFolder", ResultsFolder, solutionDir) });
         }
 
         // Newest run folder that holds TRX files; a TRX written directly in TestResults counts as its own run.
@@ -94,7 +94,7 @@ internal static class IdeTestRunService
                 .ToList();
         if (trxFiles.Count == 0)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = "No TRX test results found." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("NoTrxResults") });
         }
 
         return JsonSerializer.Serialize(new
@@ -116,7 +116,7 @@ internal static class IdeTestRunService
     {
         if (trxFiles.Count == 0)
         {
-            return new { error = "TRX file not found." };
+            return new { error = Strings.Get("TrxFileNotFound") };
         }
 
         int total = 0, passed = 0, failed = 0, skipped = 0;

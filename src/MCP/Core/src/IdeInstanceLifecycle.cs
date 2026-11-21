@@ -22,7 +22,7 @@ internal static class IdeInstanceLifecycle
     {
         if (!File.Exists(solutionPath))
         {
-            return Error($"Solution file not found: {solutionPath}");
+            return Error(Strings.Format("SolutionFileNotFound", solutionPath));
         }
 
         var existing = Find(solutionPath);
@@ -34,7 +34,7 @@ internal static class IdeInstanceLifecycle
         var devenv = IDELauncherService.FindVisualStudioPath();
         if (devenv is null)
         {
-            return Error("Visual Studio 18 (devenv.exe) was not found by vswhere.");
+            return Error(Strings.Get("DevenvNotFoundByVswhere"));
         }
 
         var startInfo = new ProcessStartInfo(devenv) { UseShellExecute = false };
@@ -62,7 +62,7 @@ internal static class IdeInstanceLifecycle
             await Task.Delay(TimeSpan.FromSeconds(1), ct);
         }
 
-        return Error($"Visual Studio did not register a bridge for {solutionPath} within {LaunchTimeout.TotalSeconds} seconds.");
+        return Error(Strings.Format("BridgeNotRegistered", solutionPath, LaunchTimeout.TotalSeconds));
     }
 
     /// <summary>
@@ -83,7 +83,7 @@ internal static class IdeInstanceLifecycle
         var result = root.GetProperty("result");
         if (!result.GetProperty("safe").GetBoolean())
         {
-            return Error("Not killed: these documents are still unsaved.", result.GetProperty("unsaved").Clone());
+            return Error(Strings.Get("NotKilledUnsaved"), result.GetProperty("unsaved").Clone());
         }
 
         var pid = root.GetProperty("instance_pid").GetInt32();
@@ -91,7 +91,7 @@ internal static class IdeInstanceLifecycle
         {
             if (!string.Equals(process.ProcessName, "devenv", StringComparison.OrdinalIgnoreCase))
             {
-                return Error($"Not killed: process {pid} is {process.ProcessName}, not devenv.");
+                return Error(Strings.Format("NotKilledWrongProcess", pid, process.ProcessName));
             }
 
             process.Kill(entireProcessTree: true);

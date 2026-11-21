@@ -21,7 +21,7 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
             SessionId: SessionId(ide, reply),
             IdeType: ideType,
             Success: reply.Ok,
-            Message: reply.Ok ? $"Debugging started in {ide}" : reply.Error ?? "The IDE did not start debugging.",
+            Message: reply.Ok ? Strings.Format("DebuggingStarted", ide) : reply.Error ?? Strings.Get("DebugNotStarted"),
             ConfigName: configName);
     }
 
@@ -38,12 +38,12 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
         if (!string.IsNullOrWhiteSpace(condition) || hitCount is not null)
         {
             return new BreakpointResult(id, filePath, lineNumber, Verified: false,
-                "Conditions and hit counts are not supported by the IDE bridge; no breakpoint was set.");
+                Strings.Get("ConditionsNotSupported"));
         }
 
         BridgeReply reply = await bridge.CallAsync(BridgeIde(ideType), "setBreakpoint", new { file = filePath, line = lineNumber }, ct);
         return new BreakpointResult(id, filePath, lineNumber, reply.Ok,
-            reply.Ok ? "Breakpoint set" : reply.Error ?? "The IDE did not set the breakpoint.");
+            reply.Ok ? Strings.Get("BreakpointSet") : reply.Error ?? Strings.Get("BreakpointNotSet"));
     }
 
     public async Task RemoveBreakpointAsync(string ideType, string breakpointId, CancellationToken ct = default)
@@ -98,7 +98,7 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
                     : await bridge.CallAsync(ide, "startDebugging", new { }, ct);
                 break;
             default:
-                return new ExecutionResult(false, command, Message: $"{command} is not supported by the IDE bridge.");
+                return new ExecutionResult(false, command, Message: Strings.Format("CommandNotSupported", command));
         }
 
         return new ExecutionResult(reply.Ok, command, Message: reply.Ok ? $"{command} done" : reply.Error);
@@ -139,7 +139,7 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
             return "VisualStudio";
         }
 
-        throw new ArgumentException($"Unknown IDE type: {ideType}. Expected 'VsCode' or 'VisualStudio2026'", nameof(ideType));
+        throw new ArgumentException(Strings.Format("UnknownDebuggerIdeType", ideType), nameof(ideType));
     }
 
     internal static string BreakpointId(string file, int line) => $"{file}:{line}";
@@ -149,7 +149,7 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
         int colon = breakpointId.LastIndexOf(':');
         if (colon <= 0 || !int.TryParse(breakpointId[(colon + 1)..], out int line) || line < 1)
         {
-            throw new ArgumentException($"'{breakpointId}' is not a breakpoint id (expected 'file:line').", nameof(breakpointId));
+            throw new ArgumentException(Strings.Format("NotBreakpointId", breakpointId), nameof(breakpointId));
         }
 
         return (breakpointId[..colon], line);
@@ -161,7 +161,7 @@ internal sealed class DebuggerControlService(IIdeBridge bridge) : IDebuggerContr
     {
         if (!reply.Ok)
         {
-            throw new InvalidOperationException(reply.Error ?? $"The IDE could not {what}.");
+            throw new InvalidOperationException(reply.Error ?? Strings.Format("IdeCouldNotAct", what));
         }
     }
 

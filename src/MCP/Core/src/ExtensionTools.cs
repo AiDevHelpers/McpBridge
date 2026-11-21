@@ -31,7 +31,7 @@ internal sealed class ExtensionTools
 
         if (parsed == ExtensionIde.VisualStudio)
         {
-            return Json(new { ok = false, error = "Listing Visual Studio extensions is not available yet." });
+            return Json(new { ok = false, error = Strings.Get("ExtensionListingUnavailable") });
         }
 
         var list = await Service.Value.ListVsCodeAsync(ct);
@@ -54,7 +54,7 @@ internal sealed class ExtensionTools
             ? Service.Value.GetVsCodeInfo(id)
             : await Service.Value.GetVisualStudioInfoAsync(id, ct);
         return info is null
-            ? Json(new { ok = false, error = $"Extension '{id}' was not found." })
+            ? Json(new { ok = false, error = Strings.Format("ExtensionNotFound", id) })
             : Json(new { ok = true, item = Project(info) });
     }
 
@@ -117,7 +117,7 @@ internal sealed class ExtensionTools
             return true;
         }
 
-        error = $"Unknown ide '{ide}'. Use VsCode or VisualStudio.";
+        error = Strings.Format("UnknownIde", ide);
         return false;
     }
 

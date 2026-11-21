@@ -31,11 +31,13 @@ public sealed partial class HardCodedStringTests
 
     internal static IEnumerable<(string Helper, string File, int Line, string Literal)> Findings()
     {
+        // Every helper library, and the MCP Core library whose tool replies a client reads.
         var helpers = Path.Combine(RepoRoot(), "src", "Helpers");
-        foreach (var helperDir in Directory.EnumerateDirectories(helpers))
+        var roots = Directory.EnumerateDirectories(helpers)
+            .Select(dir => (Name: Path.GetFileName(dir), Src: Path.Combine(dir, "src")))
+            .Append((Name: "MCP.Core", Src: Path.Combine(RepoRoot(), "src", "MCP", "Core", "src")));
+        foreach (var (helper, src) in roots)
         {
-            var helper = Path.GetFileName(helperDir);
-            var src = Path.Combine(helperDir, "src");
             if (!Directory.Exists(src))
             {
                 continue;
@@ -55,8 +57,11 @@ public sealed partial class HardCodedStringTests
                 {
                     var line = lines[i];
                     var trimmed = line.TrimStart();
+                    // Skip comments, attributes (tool and parameter descriptions are for the client's tool list), and
+                    // the continuation lines of a multi-line description.
+                    var isDescriptionContinuation = trimmed.StartsWith('"') && (trimmed.EndsWith('+') || trimmed.EndsWith(")]"));
                     if (trimmed.StartsWith("//") || trimmed.StartsWith("///") || trimmed.StartsWith("[") || trimmed.StartsWith("*")
-                        || LoggerCall().IsMatch(line))
+                        || isDescriptionContinuation || LoggerCall().IsMatch(line))
                     {
                         continue;
                     }

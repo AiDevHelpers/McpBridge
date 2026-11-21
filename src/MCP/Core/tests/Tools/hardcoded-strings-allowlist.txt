@@ -49,3 +49,41 @@ TerminalControl|Created named pipe {PipeName} for session {SessionId} tab {TabId
 
 # The product name Windows Terminal, which is a brand name and is not translated.
 TerminalControl|Windows Terminal
+
+# MCP.Core: parameter descriptions written inline in an attribute. They go into the tool list for the client, not into a reply.
+MCP.Core|Bookmark id
+MCP.Core|Full path of the .sln or its folder
+
+# MCP.Core: log message templates passed to a logger.
+MCP.Core|Client registered: {ClientType} v{Version} (ID: {ClientId}, PID: {ProcessId})
+MCP.Core|Debug session started: {SessionName} (ID: {SessionId}) for client {ClientId}
+MCP.Core|Debug session ended: {SessionId} (duration: {DurationMs}ms)
+MCP.Core|Cleanup: removed {ClientCount} stale clients and {SessionCount} old sessions
+
+# MCP.Core: short labels passed as arguments and spliced into a localized sentence (for example "The IDE could not {0}.").
+MCP.Core|stop debugging
+MCP.Core|remove the breakpoint
+MCP.Core|list breakpoints
+MCP.Core|read the debugger state
+MCP.Core|debug session (ended)
+MCP.Core|debug session
+MCP.Core|IDE launch
+MCP.Core|test run
+
+# MCP.Core: a file path, a command line, and the titles of embedded documentation resources.
+MCP.Core|C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe
+MCP.Core|dotnet test \"{p}\"
+MCP.Core|AiDevHelpers.McpBridge MCP Tools
+MCP.Core|AiDevHelpers.McpBridge MCP Full Self-Test
+
+# MCP.Core: patterns and markers matched against IDE output.
+MCP.Core|Test run finished: \\d+ Tests
+MCP.Core|Test run finished: (\d+) Tests \((\d+) Passed, (\d+) Failed, (\d+) Skipped\)
+
+# PENDING, user-facing: these are in uncommitted work from another session (IdeTools.cs, TestSummaryParser.cs).
+# Move them to Resources/Strings.resx when that work is committed, then delete these lines.
+MCP.Core|Solution file not found.
+MCP.Core|Pass solutionPath: no single open instance to infer it from.
+MCP.Core|Could not read the Tests output pane.
+MCP.Core|Unreadable output from the IDE.
+MCP.Core|No finished test run found in the Tests output pane.

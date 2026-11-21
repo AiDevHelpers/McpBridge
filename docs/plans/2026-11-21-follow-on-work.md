@@ -69,7 +69,8 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: unit tests, plus a full-gate run on this repo.
 
 ### Phase 7: Localization (Q3)
-- Status: done for the helpers and the VS Code extension; not for the MCP Core tool replies (about 27 messages in `src/MCP/Core/src`) or the VS Core C# bridge. Each helper has `Resources/Strings.resx` and `Strings.cs` (about 140 messages moved, English only). `HardCodedStringTests` fails on any multi-word literal in a helper that is not in `hardcoded-strings-allowlist.txt`, and checks every `Strings` key exists. The extension uses `strings.en.json` and `t()` (16 messages), with tests. All helper suites, Core (132) and the extension tests pass. Not run: the extension inside VS Code (the JSON import needs Node 22 or later in its extension host), and TerminalControl's window tests.
+- Review follow-up: the MCP Core tool replies are moved too (60 sites, `src/MCP/Core/src/Resources/Strings.resx`), and `HardCodedStringTests` now scans MCP Core. Five user-facing strings in another session's uncommitted `IdeTools.cs` and `TestSummaryParser.cs` are listed as PENDING in the allowlist, to move when that work is committed. The Visual Studio C# bridge (net48) is still not covered.
+- Status: done for the helpers and the VS Code extension. Each helper has `Resources/Strings.resx` and `Strings.cs` (about 140 messages moved, English only). `HardCodedStringTests` fails on any multi-word literal in a helper that is not in `hardcoded-strings-allowlist.txt`, and checks every `Strings` key exists. The extension uses `strings.en.json` and `t()` (16 messages), with tests. All helper suites, Core (132) and the extension tests pass. Not run: the extension inside VS Code (the JSON import needs Node 22 or later in its extension host), and TerminalControl's window tests.
 - Last, because it touches every helper's strings and would conflict with the phases above.
 - Acceptance: no user-facing string is hard-coded in a helper. The languages are those from Q3.
 - Gate: a test that fails on a hard-coded string, plus the existing suites.
@@ -83,7 +84,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 
 ## Todo
 
-- Restart signal for aidevtools: tell every open chat that uses aidevtools to pause, then close, then update, then reopen, and send a resume signal when done. Not designed yet.
+- Done: restart signal for aidevtools (pause, close, update, reopen, resume). Each chat has its own server process, so the state is a file every server reads: `%ProgramData%\AiDevHelpers\control\state.json` (`running`, `paused`, `closing`). A call-tool filter refuses tool calls while not running (the two `server_control_*` tools always work), and a background service pushes a log notification (`AiDevHelpers.Control`) to its chat on each change and stops the process after `closing`. `scripts/update-aidevtools.ps1` runs pause, close, update, resume and always resumes at the end. Reopening is the chat reconnecting (Claude Code: `/mcp reconnect`). Checked end to end against a real server process with a private ProgramData (pause refuses, notifications arrive, resume works, closing exits) and by 11 unit tests. Not checked: how Claude Code shows the notification, and the script's update step against the real servers.
 
 ## Carried-over items
 
@@ -104,7 +105,7 @@ Verify on a real install:
 - Whether Claude Code displays MCP log notifications.
 
 Decide:
-- The `2005` error for a multi-ID VSIX install (fix or accept; the dialog install works).
+- The `2005` error for a multi-ID VSIX install: accepted. You directed that the VS Installer dialog installs one VSIX into both Community and Insiders, and the docs say so.
 - The VS Code bridge stall after stacked-window restarts (investigate or accept).
 
 ## Verification gate

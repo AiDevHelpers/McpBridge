@@ -50,13 +50,13 @@ internal sealed class SelfTestTools
     {
         if (!HelperNames.Contains(helper, StringComparer.OrdinalIgnoreCase))
         {
-            return JsonSerializer.Serialize(new { ok = false, error = $"Unknown helper '{helper}'. Use one of: {string.Join(", ", HelperNames)}." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Format("UnknownHelper", helper, string.Join(", ", HelperNames)) });
         }
 
         var name = HelperNames.First(n => string.Equals(n, helper, StringComparison.OrdinalIgnoreCase));
         var markdown = ReadSelfTest(name);
         return markdown is null
-            ? JsonSerializer.Serialize(new { ok = false, error = $"Helper '{name}' has no embedded self-test." })
+            ? JsonSerializer.Serialize(new { ok = false, error = Strings.Format("HelperHasNoSelfTest", name) })
             : JsonSerializer.Serialize(new { ok = true, helper = name, markdown });
     }
 

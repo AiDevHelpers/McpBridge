@@ -91,7 +91,7 @@ internal sealed class GateProcessRunner : IGateRunner
             psi.ArgumentList.Add(argument);
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Could not start {step.Tool}.");
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStart", step.Tool));
         var stderr = process.StandardError.ReadToEndAsync();
         var stdout = process.StandardOutput.ReadToEnd();
         process.WaitForExit();
