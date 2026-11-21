@@ -85,6 +85,15 @@ public static class IdeInstanceRouter
         });
     }
 
+    // One request line out, one reply line back. Both steps can block on a silent server, so the caller races this.
+    private static async Task<string?> ExchangeAsync(NamedPipeClientStream pipe, string request)
+    {
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
+        using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+        await writer.WriteLineAsync(request);
+        return await reader.ReadLineAsync();
+    }
+
     private static async Task<string> SendAsync(
         VsInstance target,
         string action,
@@ -104,17 +113,16 @@ public static class IdeInstanceRouter
 
             await connecting;
 
-            using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
-            using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
-
-            await writer.WriteLineAsync(JsonSerializer.Serialize(new { action, args }));
-            var readTask = reader.ReadLineAsync();
-            var finished = await Task.WhenAny(readTask, Task.Delay(ReplyTimeout, ct));
-            if (finished != readTask)
+            // The write can block on a pipe whose server never reads, so the write and the read share one timeout.
+            // On timeout the pipe is disposed, which aborts a stuck write.
+            var exchange = ExchangeAsync(pipe, JsonSerializer.Serialize(new { action, args }));
+            var finished = await Task.WhenAny(exchange, Task.Delay(ReplyTimeout, ct));
+            if (finished != exchange)
             {
+                pipe.Dispose();
                 throw new TimeoutException("No reply from the IDE within the timeout.");
             }
-            var line = await readTask;
+            var line = await exchange;
 
             using var reply = JsonDocument.Parse(line ?? "{}");
             var ok = reply.RootElement.TryGetProperty("ok", out var okProp) && okProp.GetBoolean();
@@ -129,7 +137,7 @@ public static class IdeInstanceRouter
                 error = !ok && reply.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null,
             });
         }
-        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException or UnauthorizedAccessException)
+        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException or UnauthorizedAccessException or ObjectDisposedException)
         {
             var reason = ex is UnauthorizedAccessException
                 ? "the instance's pipe refused this client (often a process running at a different elevation)"
