@@ -86,8 +86,6 @@
     </Project>
   </Folder>
   <Folder Name="/Installers/VsCode/Installer/">
-    <Project Path="src/Installers/VsCode/Installer/AiDevTools.VsCode/AiDevTools.VsCode.csproj" Id="72da9984-0174-4b54-a39f-bbe9f56d38e8">
-      <Deploy />
-    </Project>
+    <Project Path="src/Installers/VsCode/Installer/AiDevTools.VsCode/AiDevTools.VsCode.csproj" Id="72da9984-0174-4b54-a39f-bbe9f56d38e8" />
   </Folder>
 </Solution>
