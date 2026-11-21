@@ -269,16 +269,8 @@ internal sealed class IDELauncherService : IIDELauncher
 
     internal static string? FindVisualStudioPath()
     {
-        // Common VS 2022/2026 paths on Windows
-        var possiblePaths = new[]
-        {
-            @"C:\Program Files\Microsoft Visual Studio\2026\Preview\Common7\IDE\devenv.exe",
-            @"C:\Program Files\Microsoft Visual Studio\2026\Professional\Common7\IDE\devenv.exe",
-            @"C:\Program Files (x86)\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe",
-            @"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe"
-        };
-
-        return possiblePaths.FirstOrDefault(File.Exists);
+        // Locates the newest VS 18 install through vswhere, so Community, Professional and Insiders all resolve.
+        return DevenvLauncher.Find();
     }
 
     private string? FindSolutionFile(string workspaceRoot)

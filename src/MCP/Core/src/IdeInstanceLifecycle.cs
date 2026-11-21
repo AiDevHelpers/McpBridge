@@ -34,7 +34,7 @@ internal static class IdeInstanceLifecycle
         var devenv = IDELauncherService.FindVisualStudioPath();
         if (devenv is null)
         {
-            return Error("devenv.exe was not found in the known Visual Studio install locations.");
+            return Error("Visual Studio 18 (devenv.exe) was not found by vswhere.");
         }
 
         var startInfo = new ProcessStartInfo(devenv) { UseShellExecute = false };
