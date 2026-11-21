@@ -12,6 +12,11 @@
     <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
   </PropertyGroup>
 
+  <!-- Show the extension's files in Solution Explorer. They are not compiled by MSBuild. -->
+  <ItemGroup>
+    <None Include="**/*" Exclude="node_modules/**;dist/**;bin/**;obj/**;*.vsix;$(MSBuildProjectFile)" />
+  </ItemGroup>
+
   <Target Name="NpmBuild" BeforeTargets="BeforeBuild" Condition="'$(SkipNpm)' != 'true'">
     <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)" />
     <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)" />
