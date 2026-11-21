@@ -77,6 +77,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `config_resolve`, `config_read` | ConfigHelper | Real paths for remote debugger, launchSettings, appsettings, user and solution settings. Reads are limited to allowed roots and redact secrets. |
 | `error_ingest`, `error_list`, `error_snapshot`, `error_changes` | ErrorHelper | Caller supplies build output. Filters by code and source. Suppression comes from the solution's `.vsconfig` key `aidevhelpersErrors`. |
 | `test_watch`, `test_unwatch`, `test_failures`, `test_coverage` | TestingHelper | Watches TestResults while hot reload is active. Coverage uses Coverlet, or the `dotnet-coverage` CLI for Visual Studio. |
+| `test_affected` | TestingHelper | Lists the test projects a change can affect, with a `dotnet test` command for each. A changed file affects its project and every project that references it; a build-wide file (`Directory.Build.props`, `.editorconfig`, a solution file) affects all test projects. Uses git's changed files when none are given. Runs nothing. |
 | `extension_list`, `extension_info`, `extension_add_plan`, `extension_add_confirm` | ExtensionsHelper | VS Code list and info are local. Visual Studio info queries the Marketplace. Adds are two-step and need approval. |
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
 

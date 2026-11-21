@@ -20,6 +20,7 @@
   <Target Name="NpmBuild" BeforeTargets="BeforeBuild" Condition="'$(SkipNpm)' != 'true'">
     <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)" />
     <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run lint" WorkingDirectory="$(MSBuildProjectDirectory)" />
     <Exec Command="npm test" WorkingDirectory="$(MSBuildProjectDirectory)" />
     <!-- Produces aidevhelpers-vscode.vsix in this folder, the package VS Code installs. -->
     <Exec Command="npm run package" WorkingDirectory="$(MSBuildProjectDirectory)" />

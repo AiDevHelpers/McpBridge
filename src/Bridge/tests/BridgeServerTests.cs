@@ -50,15 +50,53 @@ public sealed class BridgeServerTests
         Assert.Contains("\"listener_running\":true", first);
 
         server.Stop();
-        await Task.Delay(300);
         Assert.False(server.IsRunning);
-        await Assert.ThrowsAnyAsync<TimeoutException>(() => SendAsync(pipe, "{\"action\":\"health\"}", timeoutMs: 500));
+        await WaitForPipeClosedAsync(pipe);
 
         server.Start();
         Assert.True(server.IsRunning);
-        var second = await SendAsync(pipe, "{\"action\":\"health\"}");
+        var second = await SendWithRetryAsync(pipe, "{\"action\":\"health\"}");
         Assert.NotNull(second);
         Assert.Contains("\"listener_running\":true", second);
+    }
+
+    // Waits for the pipe to go away instead of sleeping a fixed time, which was flaky on a slow runner.
+    private static async Task WaitForPipeClosedAsync(string pipeName)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                await client.ConnectAsync(200);
+            }
+            catch (TimeoutException)
+            {
+                return;
+            }
+
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException("The pipe was still open 10 seconds after Stop.");
+    }
+
+    // After a restart the new listener may need a moment to create its pipe, so retry the connect.
+    private static async Task<string?> SendWithRetryAsync(string pipeName, string request)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (true)
+        {
+            try
+            {
+                return await SendAsync(pipeName, request, timeoutMs: 1000);
+            }
+            catch (TimeoutException) when (DateTime.UtcNow < deadline)
+            {
+                await Task.Delay(50);
+            }
+        }
     }
 
     [Fact]

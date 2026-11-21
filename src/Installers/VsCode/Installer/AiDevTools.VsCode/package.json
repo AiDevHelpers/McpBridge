@@ -4,23 +4,36 @@
   "description": "Lets the AiDevHelpers MCP server drive VS Code: build, test, debug and document actions.",
   "version": "0.1.0",
   "publisher": "AiDevHelpers",
-  "repository": { "type": "git", "url": "https://github.com/AiDevHelpers/McpBridge" },
-  "engines": { "vscode": "^1.125.0" },
-  "categories": ["Other"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AiDevHelpers/McpBridge"
+  },
+  "engines": {
+    "vscode": "^1.125.0"
+  },
+  "categories": [
+    "Other"
+  ],
   "main": "./dist/extension.js",
-  "activationEvents": ["onStartupFinished"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "type": "module",
   "scripts": {
     "prebuild": "node scripts/vendor-core.mjs",
     "build": "tsc -p tsconfig.json",
     "postbuild": "node scripts/copy-vendor.mjs",
     "test": "vitest run",
-    "package": "npx --yes @vscode/vsce package --skip-license --no-dependencies --out aidevhelpers-vscode.vsix"
+    "package": "npx --yes @vscode/vsce package --skip-license --no-dependencies --out aidevhelpers-vscode.vsix",
+    "lint": "eslint src"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "26.1.0",
     "@types/vscode": "1.125.0",
+    "eslint": "^10.15.0",
     "typescript": "5.9.3",
+    "typescript-eslint": "^8.73.0",
     "vitest": "5.1.0"
   }
 }

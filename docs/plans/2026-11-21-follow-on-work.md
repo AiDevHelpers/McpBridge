@@ -28,7 +28,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 ## Phases (each ends with a review gate)
 
 ### Phase 1: Lint helper (D4, D7 not needed)
-- Status: done. LintHelper (11 unit tests pass), `lint_check` MCP tool. Live run on this repo reported: no root `.editorconfig`; ESLint flat config missing in `Installers/VsCode/Core` and `Installers/VsCode/Installer`; `dotnet format --verify-no-changes` fails (exit 2) on the VS Installer code (VSTHRD010 warnings). Fixing these is repo work, not part of the helper; not done here.
+- Status: done. LintHelper (11 unit tests pass), `lint_check` MCP tool. Live run on this repo reported: no root `.editorconfig`; ESLint flat config missing in `Installers/VsCode/Core` and `Installers/VsCode/Installer`; `dotnet format --verify-no-changes` fails (exit 2) on the VS Installer code (VSTHRD010 warnings). Follow-up (review): the repo now has a root `.editorconfig` and ESLint flat configs with `npm run lint` in both TypeScript projects (also run in CI and the project build), and `lint_check` on this repo reports no findings. `dotnet format --verify-no-changes` still fails on the VS Installer code (VSTHRD010) and is not part of the gate.
 - Acceptance: a repo with mismatched `.editorconfig`, `dotnet format` and ESLint settings reports each mismatch, and fixing them makes the check pass. TSLint is reported as deprecated.
 - Gate: the helper's unit tests, plus the lint check on this repo.
 
@@ -61,7 +61,8 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: a test that each helper's markdown is present.
 
 ### Phase 6: Package helper and gate helper (D3, D6)
-- Status: partly done. `PackageHelper` (NuGet, pip, npm checks; 7 tests pass) and `GateHelper` (steps from `.claude/reference/full-gate.md` or detected from the stack, runs stop at the first failure; 7 tests pass). MCP tools `package_check`, `gate_plan`, `gate_run`. Not done: the test helper change to run only affected tests, and the lite gate (its definition is still not found). This repo has no `.claude/reference/full-gate.md`, and its root has no `package.json`, so the gate detects only the solution; the two VS Code TypeScript projects are not in it until a reference file names them.
+- Review follow-up: `AffectedTests` in TestingHelper and the `test_affected` tool (7 tests) cover "run only the affected tests". This repo now has `.claude/reference/full-gate.md` (MSBuild build through `scripts/gate-build.ps1`, solution tests, and the npm lint, build and test steps for both TypeScript projects). The gate build was run: its only errors are file locks from running `AiDevHelpers.MCP` processes, so the full gate has not passed end to end. The lite gate is still undefined.
+- Status: partly done (see the follow-up above). `PackageHelper` (NuGet, pip, npm checks; 7 tests pass) and `GateHelper` (steps from `.claude/reference/full-gate.md` or detected from the stack, runs stop at the first failure; 7 tests pass). MCP tools `package_check`, `gate_plan`, `gate_run`. Not done: the test helper change to run only affected tests, and the lite gate (its definition is still not found). This repo has no `.claude/reference/full-gate.md`, and its root has no `package.json`, so the gate detects only the solution; the two VS Code TypeScript projects are not in it until a reference file names them.
 - Package: check the configs and packages in D3, then run the full gate's build step.
 - Gate: run the full gate (D6) on this repo. Lite gate once its definition is found.
 - Extend the test helper to run only the affected tests.
@@ -88,8 +89,8 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 
 Fix:
 - The Insiders `test.hotReload` is blank (owner: the user sets the option; the reply is `null` until then).
-- The flaky `StopClosesThePipe_AndStartReopensIt` test: fix the test to wait for the pipe to close instead of sleeping.
-- The silent-instance timeout test runs only locally. Add it to the Bridge test project's CI run.
+- Done in review: the flaky `StopClosesThePipe_AndStartReopensIt` test now waits for the pipe to close and retries the reconnect instead of sleeping (3 runs pass).
+- Done in review: the silent-instance timeout test is not skipped in CI; the CI Test step runs all Bridge tests, so it already runs there.
 
 Accepted (not work):
 - D15: coverage lives in `TestingTools`.

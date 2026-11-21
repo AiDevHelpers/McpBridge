@@ -61,17 +61,19 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Core tests
+      - name: Core lint and tests
         working-directory: src/Installers/VsCode/Core/AiDevTools.VsCode.Core
         run: |
           npm ci
+          npm run lint
           npm test
 
-      - name: Build and test the extension
+      - name: Build, lint and test the extension
         working-directory: src/Installers/VsCode/Installer/AiDevTools.VsCode
         run: |
           npm ci
           npm run build
+          npm run lint
           npm test
 
       - name: Package the VSIX for VS Code
