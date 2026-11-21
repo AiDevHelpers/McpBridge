@@ -278,6 +278,90 @@ public sealed class SetupApproveTests : IDisposable
         Assert.Contains(ManifestHash(), prompt, StringComparison.Ordinal);
     }
 
+    private static string[] PromptLines(string prompt) =>
+        prompt.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+
+    /// <summary>The trimmed text of the line after the one whose trimmed text is the label.</summary>
+    private static string ValueUnder(string[] lines, string label)
+    {
+        var at = Array.FindIndex(lines, l => l.Trim() == label);
+        Assert.True(at >= 0, $"label '{label}' not found as its own line");
+        return lines[at + 1].Trim();
+    }
+
+    [Fact]
+    public void Prompt_puts_each_value_on_its_own_line_under_a_label()
+    {
+        var c = Commands();
+        RegisterProject(c);
+
+        c.Approve(_root, Script);
+
+        var lines = PromptLines(_confirmer.LastPrompt!);
+        var fp = FingerprintBuilder.Build(_root, Script, _interpreter, _inspector).Fingerprint;
+        Assert.Equal(Path.GetFullPath(_root).TrimEnd('\\'), ValueUnder(lines, "Project"));
+        Assert.Equal(Script, ValueUnder(lines, "Script"));
+        Assert.Equal(fp, ValueUnder(lines, "Fingerprint"));
+        Assert.Equal(ManifestHash(), ValueUnder(lines, "Allowlist hash"));
+    }
+
+    [Fact]
+    public void Prompt_separates_sections_with_a_blank_line_and_lists_each_file_on_its_own_line()
+    {
+        var c = Commands();
+        RegisterProject(c);
+        WriteScript(Script, ". .\\helpers.ps1");
+        WriteScript("scripts/debug/helpers.ps1", "helper");
+
+        c.Approve(_root, Script);
+
+        var lines = PromptLines(_confirmer.LastPrompt!);
+        var header = Array.FindIndex(lines, l => l.Trim() == "Files pinned (2)");
+        Assert.True(header >= 0, "files header not found");
+        Assert.Equal("scripts/debug/helpers.ps1", lines[header + 1].Trim());
+        Assert.Equal("scripts/debug/reset.ps1", lines[header + 2].Trim());
+        Assert.Equal(string.Empty, lines[header + 3]);
+
+        foreach (var label in new[] { "Project", "Script", "Fingerprint", "Allowlist hash" })
+        {
+            var at = Array.FindIndex(lines, l => l.Trim() == label);
+            Assert.Equal(string.Empty, lines[at + 2]);
+        }
+    }
+
+    [Fact]
+    public void Prompt_hashes_stay_on_one_unbroken_line_each_so_they_can_be_compared()
+    {
+        var c = Commands();
+        RegisterProject(c);
+
+        c.Approve(_root, Script);
+
+        var lines = PromptLines(_confirmer.LastPrompt!);
+        var fp = FingerprintBuilder.Build(_root, Script, _interpreter, _inspector).Fingerprint;
+        Assert.Contains(lines, l => l.Trim() == fp);
+        Assert.Contains(lines, l => l.Trim() == ManifestHash());
+    }
+
+    [Fact]
+    public void Allowlist_change_warning_is_its_own_paragraph_with_the_previous_hash()
+    {
+        var c = Commands();
+        RegisterProject(c);
+        WriteScript("scripts/debug/second.ps1", "second");
+        c.Approve(_root, Script);
+        var previousHash = ManifestHash();
+
+        WriteManifest("""{ "scripts": [ { "path": "scripts/debug/*.ps1" }, { "path": "scripts/extra.ps1" } ] }""");
+        c.Approve(_root, "scripts/debug/second.ps1");
+
+        var lines = PromptLines(_confirmer.LastPrompt!);
+        var warning = Array.FindIndex(lines, l => l.Contains("WARNING", StringComparison.Ordinal));
+        Assert.True(warning > 0, "warning not found");
+        Assert.Equal(string.Empty, lines[warning - 1]);
+        Assert.Contains(lines, l => l.Trim() == previousHash);
+    }
+
     [Fact]
     public void Editing_the_manifest_after_approval_denies_until_reapproved()
     {

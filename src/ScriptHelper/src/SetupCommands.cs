@@ -133,21 +133,39 @@ public sealed class SetupCommands : ISetupCommands
     private static string BuildPrompt(
         string root, string rel, FingerprintResult fingerprint, string allowlistHash, ApprovalDocument? existing)
     {
+        // One labelled value per section, a blank line between sections, and the hashes on one
+        // unbroken line each so they can be compared or searched.
         var sb = new StringBuilder();
+        sb.AppendLine();
         sb.AppendLine("Approve this script to run elevated?");
-        sb.AppendLine($"  Project:     {root}");
-        sb.AppendLine($"  Script:      {rel}");
-        sb.AppendLine($"  Fingerprint: {fingerprint.Fingerprint}");
-        sb.AppendLine($"  Allowlist:   {allowlistHash}");
-        sb.AppendLine($"  Files:       {fingerprint.Files.Count} ({string.Join(", ", fingerprint.Files)})");
+        sb.AppendLine();
+        Section(sb, "Project", root);
+        Section(sb, "Script", rel);
+        Section(sb, $"Files pinned ({fingerprint.Files.Count})", fingerprint.Files.OrderBy(f => f, StringComparer.Ordinal).ToArray());
+        Section(sb, "Fingerprint", fingerprint.Fingerprint);
+        Section(sb, "Allowlist hash", allowlistHash);
 
         if (existing is not null && !string.Equals(existing.AllowlistHash, allowlistHash, StringComparison.Ordinal))
         {
-            sb.AppendLine($"  WARNING: allowlist changed since the last approval (was {existing.AllowlistHash}).");
-            sb.AppendLine("  Scripts approved earlier stay pinned by fingerprint under the new allowlist.");
+            sb.AppendLine("WARNING: the allowlist changed since the last approval.");
+            sb.AppendLine("    Previous hash:");
+            sb.AppendLine($"    {existing.AllowlistHash}");
+            sb.AppendLine("    Scripts approved earlier stay pinned by fingerprint under the new allowlist.");
+            sb.AppendLine();
         }
 
         return sb.ToString();
+    }
+
+    private static void Section(StringBuilder sb, string label, params string[] values)
+    {
+        sb.AppendLine(label);
+        foreach (var value in values)
+        {
+            sb.AppendLine($"    {value}");
+        }
+
+        sb.AppendLine();
     }
 
     private static SetupResult Fail(string reason) => new(false, reason);
