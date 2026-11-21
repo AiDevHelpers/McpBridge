@@ -55,6 +55,13 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           dotnet pack src/Bridge/src/AiDevHelpers.Bridge.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj -c Release -o artifacts -p:Version="$VERSION"
+          # Helpers ship as their own packages. LogHelper first: ErrorHelper depends on it.
+          dotnet pack src/Helpers/LogHelper/src/AiDevHelpers.Helpers.LogHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/ConfigHelper/src/AiDevHelpers.Helpers.ConfigHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/ErrorHelper/src/AiDevHelpers.Helpers.ErrorHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
 
       - name: Publish to GitHub Packages
         run: >

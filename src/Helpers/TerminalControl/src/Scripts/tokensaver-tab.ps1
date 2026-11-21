@@ -1,6 +1,6 @@
-# Runs inside one Windows Terminal tab for a TokenSaver standard session.
-# Reads "<id> <command>" lines from the command pipe (TokenSaver is the server), runs each command,
-# and writes to the stdout pipe (TokenSaver is the server):
+# Runs inside one Windows Terminal tab for an AiDevHelpers standard session.
+# Reads "<id> <command>" lines from the command pipe (the host is the server), runs each command,
+# and writes to the stdout pipe (the host is the server):
 #   plain output lines                    -> stdout for the current command
 #   __TOKENSAVER_ERR__ <id> <text>        -> error records, in order with stdout
 #   __TOKENSAVER_END__ <id> <exitcode>    -> end of the command
@@ -15,14 +15,14 @@ $endMarker = '__TOKENSAVER_END__'
 $errorMarker = '__TOKENSAVER_ERR__'
 $closeCommand = '__TOKENSAVER_CLOSE__'
 
-# Output pipe is created by TokenSaver (server side); this tab connects as a client.
+# Output pipe is created by the host (server side); this tab connects as a client.
 $outClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $StdoutPipe, [System.IO.Pipes.PipeDirection]::Out)
 $outClient.Connect(60000)
 $outW = [System.IO.StreamWriter]::new($outClient)
 $outW.AutoFlush = $true
 $outW.NewLine = "`n"
 
-# Command pipe is created by TokenSaver (server side); this tab connects as a client.
+# Command pipe is created by the host (server side); this tab connects as a client.
 $cmdClient = [System.IO.Pipes.NamedPipeClientStream]::new('.', $CommandPipe, [System.IO.Pipes.PipeDirection]::In)
 $cmdClient.Connect(60000)
 $cmdReader = [System.IO.StreamReader]::new($cmdClient)

@@ -1,11 +1,21 @@
 {
-  "name": "aidevhelpers-installers-vscode-installer",
+  "name": "aidevhelpers-vscode",
+  "displayName": "AiDevHelpers IDE Bridge",
+  "description": "Lets the AiDevHelpers MCP server drive VS Code: build, test, debug and document actions.",
   "version": "0.1.0",
-  "private": true,
+  "publisher": "AiDevHelpers",
+  "repository": { "type": "git", "url": "https://github.com/AiDevHelpers/McpBridge" },
+  "engines": { "vscode": "^1.125.0" },
+  "categories": ["Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
   "type": "module",
   "scripts": {
+    "prebuild": "node scripts/vendor-core.mjs",
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "postbuild": "node scripts/copy-vendor.mjs",
+    "test": "vitest run",
+    "package": "npx --yes @vscode/vsce package --skip-license --no-dependencies --out aidevhelpers-vscode.vsix"
   },
   "devDependencies": {
     "@types/node": "26.1.0",

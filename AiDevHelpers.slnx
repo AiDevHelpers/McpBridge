@@ -11,6 +11,26 @@
     <Project Path="src/Helpers/LogHelper/src/AiDevHelpers.Helpers.LogHelper.csproj" />
     <Project Path="src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/ConfigHelper/">
+    <Project Path="src/Helpers/ConfigHelper/src/AiDevHelpers.Helpers.ConfigHelper.csproj" />
+    <Project Path="src/Helpers/ConfigHelper/tests/AiDevHelpers.Helpers.ConfigHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/ErrorHelper/">
+    <Project Path="src/Helpers/ErrorHelper/src/AiDevHelpers.Helpers.ErrorHelper.csproj" />
+    <Project Path="src/Helpers/ErrorHelper/tests/AiDevHelpers.Helpers.ErrorHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/ExtensionsHelper/">
+    <Project Path="src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
+    <Project Path="src/Helpers/ExtensionsHelper/tests/AiDevHelpers.Helpers.ExtensionsHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/TestingHelper/">
+    <Project Path="src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj" />
+    <Project Path="src/Helpers/TestingHelper/tests/AiDevHelpers.Helpers.TestingHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/BookmarkHelper/">
+    <Project Path="src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj" />
+    <Project Path="src/Helpers/BookmarkHelper/tests/AiDevHelpers.Helpers.BookmarkHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/TerminalControl/">
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />

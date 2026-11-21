@@ -117,7 +117,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
             var discovery = new Discovery.TerminalConfigurationDiscovery(discoveryLogger);
             _terminalConfig = await discovery.DiscoverConfigurationAsync(ct);
 
-            // Headless: the wrapper runs under TokenSaver's own account with no window; only the pipes are used.
+            // Headless: the wrapper runs under the host's own account with no window; only the pipes are used.
             _headless = !IsElevated && config.LaunchMode == TerminalLaunchMode.ServiceAccount;
             _clientSid = null;
             if (!_headless && _injectedLauncher is null && ConsoleUserSession.RunningAsLocalSystem())

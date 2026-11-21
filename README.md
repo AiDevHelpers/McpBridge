@@ -4,19 +4,25 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 
 ## Components
 
-- `src/AiDevHelpers.MCP` — MCP server for IDE and terminal tools.
-- `src/AiDevHelpers.Installers.Vs2026.Installer` — Visual Studio 2026 extension.
-- `vscode/` — VS Code extension and bridge implementation.
-- `src/AiDevHelpers.Helpers.LogHelper` — log parsing and query support used by the bridge.
-- `src/AiDevHelpers.Helpers.TerminalControl` — Windows Terminal session management.
+- `src/MCP/Server` (`AiDevHelpers.MCP`) — MCP server exe for IDE and terminal tools. Shared tools live in `src/MCP/Core`.
+- `src/Installers/Vs2026/Installer` — Visual Studio 2026 extension (VSIX). Shared bridge code lives in `src/Installers/Vs2026/Core`.
+- `src/Installers/VsCode/Installer` — VS Code extension. Its protocol and buffer code lives in `src/Installers/VsCode/Core`.
+- `src/Helpers/LogHelper` — log parsing and query support used by the bridge.
+- `src/Helpers/TerminalControl` — Windows Terminal session management.
+- `src/Helpers/WindowsSession` — Windows session helpers.
+- `src/Helpers/ConfigHelper` — real paths and redacted reads for config files.
+- `src/Helpers/ErrorHelper` — build errors, warnings and notices, with snapshots and suppression.
+- `src/Helpers/ExtensionsHelper` — list, describe and add VS Code and Visual Studio extensions; workspace recommendations.
+- `src/Helpers/TestingHelper` — hot-reload test failures, and code coverage.
+- `src/Helpers/BookmarkHelper` — bookmark model and service over the IDE bridge.
 
 ## Documentation
 
-- [IDE bridge tools and setup](https://github.com/rsperry79/TokenSaver/blob/dev/docs/ide-bridge.md)
+- [IDE bridge tools and setup](docs/ide-bridge.md)
 - [Protocol conformance](conformance/protocol.md)
 - [Terminal session tool contract](docs/terminal-session-contract.md)
 - [Bridge self-test checklist](docs/self_test.md)
 - [Remaining work plan](docs/plans/remaining-work-2026-11-19.md)
 - [Windows Terminal standard session plan](docs/plans/wt-standard-session.md)
 
-The bridge follows the shared [protocol fixtures](conformance/fixtures.json). See the linked TokenSaver guide for extension installation and live IDE setup.
+The bridge follows the shared [protocol fixtures](conformance/fixtures.json). See `docs/ide-bridge.md` for extension installation and live IDE setup.

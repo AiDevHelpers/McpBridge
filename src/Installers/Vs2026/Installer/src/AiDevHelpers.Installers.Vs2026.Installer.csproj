@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Core\src\AiDevHelpers.Installers.Vs2026.Core.csproj" SetTargetFramework="TargetFramework=net48" />
+    <ProjectReference Include="..\..\Core\src\AiDevHelpers.Installers.Vs2026.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>

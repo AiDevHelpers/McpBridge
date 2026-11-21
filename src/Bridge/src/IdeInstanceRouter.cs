@@ -17,19 +17,29 @@ namespace AiDevHelpers.Bridge;
 public static class IdeInstanceRouter
 {
     private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(60);
 
     /// <summary>
     /// Runs <paramref name="action"/> on the instance whose solution matches <paramref name="solutionPath"/>.
     /// With no solution given, the single running instance is used; several instances is an error.
     /// Returns a JSON object that always includes <c>ide</c>, <c>instance_pid</c>, and <c>solution_path</c>.
     /// </summary>
-    public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null)
+    public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null, int? instancePid = null)
     {
         var instances = VsInstanceRegistry.ListRunning();
         if (!string.IsNullOrWhiteSpace(ide))
         {
             // Only instances of the requested IDE ("VisualStudio" or "VsCode") are candidates.
             instances = instances.Where(i => string.Equals(i.Ide, ide, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        if (instancePid is int pid)
+        {
+            instances = instances.Where(i => i.Pid == pid).ToList();
+            if (instances.Count == 0)
+            {
+                return Error($"No running IDE instance has process id {pid}.", VsInstanceRegistry.ListRunning());
+            }
         }
 
         VsInstance? target;
@@ -39,6 +49,11 @@ public static class IdeInstanceRouter
             if (matches.Count == 0)
             {
                 return Error($"No open Visual Studio instance has '{solutionPath}' open.", instances);
+            }
+
+            if (matches.Count > 1 && instancePid is null)
+            {
+                return Error("Several instances have this solution open; pass instancePid to choose one.", matches);
             }
 
             target = matches[0];
@@ -70,6 +85,15 @@ public static class IdeInstanceRouter
         });
     }
 
+    // One request line out, one reply line back. Both steps can block on a silent server, so the caller races this.
+    private static async Task<string?> ExchangeAsync(NamedPipeClientStream pipe, string request)
+    {
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
+        using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+        await writer.WriteLineAsync(request);
+        return await reader.ReadLineAsync();
+    }
+
     private static async Task<string> SendAsync(
         VsInstance target,
         string action,
@@ -79,15 +103,26 @@ public static class IdeInstanceRouter
         try
         {
             using var pipe = new NamedPipeClientStream(".", target.PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
-            using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            connectCts.CancelAfter(ConnectTimeout);
-            await pipe.ConnectAsync(connectCts.Token);
+            // ConnectAsync does not reliably honor its token, so race it against the timeout.
+            var connecting = pipe.ConnectAsync();
+            var connected = await Task.WhenAny(connecting, Task.Delay(ConnectTimeout, ct));
+            if (connected != connecting)
+            {
+                throw new TimeoutException("The IDE instance did not accept the connection in time.");
+            }
 
-            using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
-            using var reader = new StreamReader(pipe, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+            await connecting;
 
-            await writer.WriteLineAsync(JsonSerializer.Serialize(new { action, args }));
-            var line = await reader.ReadLineAsync();
+            // The write can block on a pipe whose server never reads, so the write and the read share one timeout.
+            // On timeout the pipe is disposed, which aborts a stuck write.
+            var exchange = ExchangeAsync(pipe, JsonSerializer.Serialize(new { action, args }));
+            var finished = await Task.WhenAny(exchange, Task.Delay(ReplyTimeout, ct));
+            if (finished != exchange)
+            {
+                pipe.Dispose();
+                throw new TimeoutException("No reply from the IDE within the timeout.");
+            }
+            var line = await exchange;
 
             using var reply = JsonDocument.Parse(line ?? "{}");
             var ok = reply.RootElement.TryGetProperty("ok", out var okProp) && okProp.GetBoolean();
@@ -102,15 +137,18 @@ public static class IdeInstanceRouter
                 error = !ok && reply.RootElement.TryGetProperty("error", out var e) ? e.GetString() : null,
             });
         }
-        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException)
+        catch (Exception ex) when (ex is TimeoutException or IOException or JsonException or OperationCanceledException or UnauthorizedAccessException or ObjectDisposedException)
         {
+            var reason = ex is UnauthorizedAccessException
+                ? "the instance's pipe refused this client (often a process running at a different elevation)"
+                : ex.Message;
             return JsonSerializer.Serialize(new
             {
                 ide = target.Ide,
                 instance_pid = target.Pid,
                 solution_path = target.SolutionPath,
                 ok = false,
-                error = $"Could not reach Visual Studio instance {target.Pid}: {ex.Message}",
+                error = $"Could not reach Visual Studio instance {target.Pid}: {reason}",
             });
         }
     }

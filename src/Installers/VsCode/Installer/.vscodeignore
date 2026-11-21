@@ -1,0 +1,7 @@
+src/**
+scripts/**
+node_modules/**
+**/*.test.*
+tsconfig.json
+package-lock.json
+*.vsix

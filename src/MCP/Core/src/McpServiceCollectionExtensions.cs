@@ -32,11 +32,17 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ISessionRegistry, SessionRegistry>();
         services.AddSingleton<ITerminalConfigurationDiscovery, TerminalConfigurationDiscovery>();
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
 
         return services
             .AddMcpServer()
             .WithResources<McpDocumentationResources>()
             .WithTools<IdeTools>()
+            .WithTools<ConfigTools>()
+            .WithTools<ErrorTools>()
+            .WithTools<ExtensionTools>()
+            .WithTools<TestingTools>()
+            .WithTools<BookmarkTools>()
             .WithTools<TerminalSessionTools>();
     }
 }

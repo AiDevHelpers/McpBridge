@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
   <Metadata>
-    <Identity Id="AiDevHelpers.Installers.Vs2026.Installer.A2CE85F0-DEB4-4524-93AE-7854F1FC31FB" Version="0.1.2" Language="en-US" Publisher="AiDevHelpers" />
+    <Identity Id="AiDevHelpers.Installers.Vs2026.Installer.A2CE85F0-DEB4-4524-93AE-7854F1FC31FB" Version="0.1.6" Language="en-US" Publisher="AiDevHelpers" />
     <DisplayName>AiDevHelpers IDE Bridge</DisplayName>
     <Description xml:space="preserve">Named-pipe bridge that lets AiDevHelpers.MCP.Core reach this Visual Studio instance.</Description>
   </Metadata>

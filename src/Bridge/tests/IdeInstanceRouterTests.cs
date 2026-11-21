@@ -68,4 +68,25 @@ public sealed class IdeInstanceRouterTests : IDisposable
         Assert.Equal(pid, json.RootElement.GetProperty("instance_pid").GetInt32());
         Assert.Equal("VisualStudio", json.RootElement.GetProperty("ide").GetString());
     }
+
+    [Fact]
+    public async Task CallAsync_SilentInstance_RepliesWithAnErrorInsteadOfHanging()
+    {
+        // The pipe accepts the client and never reads or writes. Before the fix the call never returned.
+        var pid = Environment.ProcessId;
+        using var server = new System.IO.Pipes.NamedPipeServerStream(InstanceRegistry.PipeNameFor(pid), System.IO.Pipes.PipeDirection.InOut, 1,
+            System.IO.Pipes.PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+        _ = server.WaitForConnectionAsync();
+        var manifest = new VsInstance(pid, InstanceRegistry.PipeNameFor(pid), @"C:\work\app.sln", DateTime.UtcNow, "VisualStudio", Array.Empty<string>());
+        Directory.CreateDirectory(VsInstanceRegistry.Directory);
+        File.WriteAllText(Path.Combine(VsInstanceRegistry.Directory, $"{pid}.json"), JsonSerializer.Serialize(manifest));
+
+        var call = IdeInstanceRouter.CallAsync("health", new { }, null, CancellationToken.None);
+        var finished = await Task.WhenAny(call, Task.Delay(TimeSpan.FromSeconds(90)));
+
+        Assert.Same(call, finished);
+        using var json = JsonDocument.Parse(await call);
+        Assert.False(json.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("No reply", json.RootElement.GetProperty("error").GetString());
+    }
 }

@@ -5,7 +5,7 @@ using System.Security.AccessControl;
 using System.Security.Principal;
 
 /// <summary>
-/// Builds the ACL for a session pipe. TokenSaver (LocalSystem) owns the pipe; a terminal started in the
+/// Builds the ACL for a session pipe. The host (LocalSystem) owns the pipe; a terminal started in the
 /// logged-on user's session connects as that user, so the user's SID is granted read/write. Nobody else is
 /// granted access, so other local users can neither read the command stream nor inject output.
 /// </summary>

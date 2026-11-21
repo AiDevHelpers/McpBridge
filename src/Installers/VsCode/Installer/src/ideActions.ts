@@ -1,11 +1,11 @@
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
-import { OutputBuffer } from "./outputBuffer.js";
+import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
 
-// Common IDE actions for VS Code. The names match the Visual Studio bridge (TokenSaver.Vs.Extension
-// Bridge/IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
+// Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
+// IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
 // perform throw an "not supported" error instead of guessing, so the caller always knows what happened.
 //
 // Output and watches are kept by this bridge, because VS Code has no API to read other output channels or
@@ -13,6 +13,9 @@ import { debugOutputStore } from "./debugOutputTracker.js";
 // evaluated in the active debug session on each listWatches call, so their values only show while paused.
 
 type Args = Record<string, unknown>;
+
+// VS Code has no API to read continuous mode. This is the bridge's own record of the last start or stop it ran.
+let continuousOn = false;
 
 export class UnsupportedActionError extends Error {
     constructor(action: string) {
@@ -247,6 +250,50 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             await vscode.commands.executeCommand("editor.action.sourceAction", { kind: "source.fixAll", apply: "first" });
             return { command: "editor.action.sourceAction", kind: "source.fixAll" };
 
+        case "openSolution": {
+            const solutionPath = requireString(args, "solutionPath");
+            const folder = path.dirname(solutionPath);
+            await vscode.commands.executeCommand("vscode.openFolder", vscode.Uri.file(folder), false);
+            return { folder, opened: true, note: "VS Code opens the solution folder; .sln files are not opened." };
+        }
+
+        case "continuousTestingStart":
+            await vscode.commands.executeCommand("testing.startContinuousRun");
+            continuousOn = true;
+            return { ide: "VsCode", continuous: true, command: "testing.startContinuousRun" };
+
+        case "continuousTestingStop":
+            await vscode.commands.executeCommand("testing.stopContinuousRun");
+            continuousOn = false;
+            return { ide: "VsCode", continuous: false, command: "testing.stopContinuousRun" };
+
+        case "continuousTestingState":
+            return { ide: "VsCode", tracked: continuousOn, note: "Bridge-tracked: set by continuousTestingStart and continuousTestingStop only." };
+
+        case "hotReloadState": {
+            // C# Dev Kit: csharp.experimental.debug.hotReload (Microsoft, Feb 2025). Null when the setting is not present.
+            const value = vscode.workspace.getConfiguration("csharp.experimental.debug").get<boolean>("hotReload");
+            return { ide: "VsCode", enabled: value ?? null, setting: "csharp.experimental.debug.hotReload" };
+        }
+
+        case "openDocument": {
+            const uri = resolveFile(requireString(args, "file"));
+            try {
+                await vscode.workspace.fs.stat(uri);
+            } catch {
+                throw new Error(`File not found: ${uri.fsPath}`);
+            }
+            const line = optionalInt(args, "line");
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const editor = await vscode.window.showTextDocument(doc);
+            if (line !== undefined) {
+                const pos = new vscode.Position(Math.max(0, line - 1), 0);
+                editor.selection = new vscode.Selection(pos, pos);
+                editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+            }
+            return { file: uri.fsPath, line: line ?? null, opened: true };
+        }
+
         case "setBreakpoint": {
             const uri = resolveFile(requireString(args, "file"));
             const line = optionalInt(args, "line");
@@ -375,6 +422,11 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
 
         case "setStartupProject":
         case "prepareKill":
+        // Bookmarks are a Visual Studio feature in v1 (D8). VS Code has no bookmark API in the extension host.
+        case "bookmarkList":
+        case "bookmarkGet":
+        case "bookmarkSet":
+        case "bookmarkRemove":
             throw new UnsupportedActionError(action);
 
         default:

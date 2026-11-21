@@ -4,9 +4,8 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { runIdeAction, UnsupportedActionError } from "./ideActions.js";
-import { replyToBridgeRequest } from "./bridgeProtocol.js";
+import { exthostLogRoot, replyToBridgeRequest } from "./vendor/core/index.js";
 import { registerDebugOutputTracker } from "./debugOutputTracker.js";
-import { exthostLogRoot } from "./logRoots.js";
 
 // Named-pipe bridge for this VS Code window, mirroring the Visual Studio bridge. Each request is one JSON line
 // {"action":"...","args":{...}}; each reply is one JSON line {"ok":true,"pid":N,"result":...} or

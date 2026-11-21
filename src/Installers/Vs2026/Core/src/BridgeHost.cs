@@ -16,18 +16,18 @@ public sealed class BridgeHost : IDisposable
 
     private readonly DTE2 _dte;
     private readonly int _pid;
-    private readonly Func<Task> _switchToMainThread;
+    private readonly Func<Func<object>, Task<object>> _runOnMainThread;
     private BridgeServer? _server;
     private SolutionEvents? _solutionEvents;
     private System.Threading.Timer? _watchdog;
     private volatile string? _solutionPath;
     private bool _disposed;
 
-    private BridgeHost(DTE2 dte, int pid, Func<Task> switchToMainThread)
+    private BridgeHost(DTE2 dte, int pid, Func<Func<object>, Task<object>> runOnMainThread)
     {
         _dte = dte;
         _pid = pid;
-        _switchToMainThread = switchToMainThread;
+        _runOnMainThread = runOnMainThread;
     }
 
     /// <summary>Solution path currently open in this instance, or null.</summary>
@@ -37,9 +37,9 @@ public sealed class BridgeHost : IDisposable
     /// <param name="dte">Visual Studio automation object.</param>
     /// <param name="pid">Process id of this Visual Studio instance.</param>
     /// <param name="switchToMainThread">Marshals a call onto the VS UI thread.</param>
-    public static BridgeHost Start(DTE2 dte, int pid, Func<Task> switchToMainThread)
+    public static BridgeHost Start(DTE2 dte, int pid, Func<Func<object>, Task<object>> runOnMainThread)
     {
-        var host = new BridgeHost(dte, pid, switchToMainThread);
+        var host = new BridgeHost(dte, pid, runOnMainThread);
         host.Initialize();
         return host;
     }
@@ -66,11 +66,7 @@ public sealed class BridgeHost : IDisposable
         var pipeName = InstanceRegistry.PipeNameFor(_pid);
         _server = new BridgeServer(
             pipeName,
-            async (action, args) =>
-            {
-                await _switchToMainThread();
-                return actions.Invoke(action, args);
-            },
+            (action, args) => _runOnMainThread(() => actions.Invoke(action, args)),
             () => _solutionPath,
             new DebugBridgeLogger());
         BridgeControl.Attach(_server, _pid, pipeName, () => _solutionPath);
