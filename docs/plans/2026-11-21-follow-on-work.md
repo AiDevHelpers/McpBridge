@@ -25,6 +25,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 ## Phases (each ends with a review gate)
 
 ### Phase 1: Lint helper (D4, D7 not needed)
+- Status: done. LintHelper (11 unit tests pass), `lint_check` MCP tool. Live run on this repo reported: no root `.editorconfig`; ESLint flat config missing in `Installers/VsCode/Core` and `Installers/VsCode/Installer`; `dotnet format --verify-no-changes` fails (exit 2) on the VS Installer code (VSTHRD010 warnings). Fixing these is repo work, not part of the helper; not done here.
 - Acceptance: a repo with mismatched `.editorconfig`, `dotnet format` and ESLint settings reports each mismatch, and fixing them makes the check pass. TSLint is reported as deprecated.
 - Gate: the helper's unit tests, plus the lint check on this repo.
 
