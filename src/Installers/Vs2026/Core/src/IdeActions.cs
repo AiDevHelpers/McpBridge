@@ -44,6 +44,7 @@ public sealed class IdeActions(DTE2 dte)
         "listOutputPanes" => ListOutputPanes(),
         "searchOutput" => SearchOutput(OptionalString(args, "pane") ?? "Build", RequireString(args, "pattern")),
         "clearOutput" => ClearOutput(OptionalString(args, "pane") ?? "Build"),
+        "outputWrite" => OutputChannelActions.Write(RequireString(args, "channel"), RequireString(args, "text")),
         "getLocals" => GetLocals(OptionalInt(args, "maxItems") ?? 100),
         "openSolution" => OpenSolution(RequireString(args, "solutionPath")),
         "testHotReloadState" => TestHotReloadState(),

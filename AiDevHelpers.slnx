@@ -27,6 +27,10 @@
     <Project Path="src/Helpers/SourceControlHelper/src/AiDevHelpers.Helpers.SourceControlHelper.csproj" />
     <Project Path="src/Helpers/SourceControlHelper/tests/AiDevHelpers.Helpers.SourceControlHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/OutputHelper/">
+    <Project Path="src/Helpers/OutputHelper/src/AiDevHelpers.Helpers.OutputHelper.csproj" />
+    <Project Path="src/Helpers/OutputHelper/tests/AiDevHelpers.Helpers.OutputHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/ExtensionsHelper/">
     <Project Path="src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
     <Project Path="src/Helpers/ExtensionsHelper/tests/AiDevHelpers.Helpers.ExtensionsHelper.Tests.csproj" />

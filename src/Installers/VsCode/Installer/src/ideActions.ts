@@ -28,6 +28,17 @@ const output = new OutputBuffer(OUTPUT_LIMIT);
 const trackedProcesses = new Map<number, ChildProcess>();
 const watches: string[] = [];
 let selectedConfiguration: string | undefined;
+// Named channels written by outputWrite. VS Code cannot read channels back, so each is created once and only appended to.
+const namedChannels = new Map<string, vscode.OutputChannel>();
+
+function writeNamedChannel(name: string, text: string): void {
+    let channel = namedChannels.get(name);
+    if (channel === undefined) {
+        channel = vscode.window.createOutputChannel(name);
+        namedChannels.set(name, channel);
+    }
+    channel.append(text.endsWith("\n") ? text : text + "\n");
+}
 
 function requireString(args: Args, key: string): string {
     const value = args[key];
@@ -201,6 +212,13 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
         case "clearOutput":
             output.clear();
             return { cleared: true };
+
+        case "outputWrite": {
+            const channel = requireString(args, "channel");
+            const text = requireString(args, "text");
+            writeNamedChannel(channel, text);
+            return { channel, written: text.length };
+        }
 
         case "listDebugSessions":
             return {

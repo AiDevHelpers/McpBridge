@@ -49,6 +49,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: tests for the config read and write, and for the precedence rule.
 
 ### Phase 4: Output helper (D2, D5)
+- Status: write path built. `OutputHelper` (per-repo channel IDE in `.claude/aidevhelpers.json` under `outputChannels`; 6 tests pass). MCP tools `output_channel_set`, `output_write` (tool names are `OutputChannelSet` / `OutputWrite`). Bridge action `outputWrite` in VS Code (named `createOutputChannel`, extension tests pass) and Visual Studio (`IVsOutputWindow` pane named by a GUID derived from the channel name; VS Core builds). Reading back is not offered. Live checks in both IDEs are not run; protocol doc and fixtures are Phase 8.
 - New bridge actions for creating and opening a named channel. Needs fixtures and protocol doc entries (Phase 8).
 - VS Code cannot read other channels (ide-bridge.md Limits). Creating and writing is supported, reading back is not.
 - Acceptance: the log helper writes to a channel, and the channel location persists per repo.
