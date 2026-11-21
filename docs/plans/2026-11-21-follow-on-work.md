@@ -74,6 +74,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: a test that fails on a hard-coded string, plus the existing suites.
 
 ### Phase 8: Docs, solution and fixtures
+- Status: done. `docs/ide-bridge.md`, `conformance/protocol.md` and the README list every new tool and action (`outputWrite`, the preferred-IDE routing tie-break, the helper tools, and the previously undocumented `status`, `listOutputPanes`, `listDebugSessions`, `getDebugOutput`, `prepareKill`). New fixture `output_write_refused_by_generic_bridge`. CI packs the five new helpers on a tag. `DocsMatchCodeTests` (red run recorded first) fails when a tool or action is missing from the docs, a project is missing from the solution, or a packable helper is missing from the Pack step. Locally it also flags `ide_get_test_summary`, which is in uncommitted work from another session and not in the committed code.
 - Update `AiDevHelpers.slnx`, `conformance/protocol.md`, `docs/ide-bridge.md` and the README for each new tool and action.
 - Add conformance fixtures for each new bridge action.
 - Give each new helper's library a NuGet package (per-helper versioning, as in D19) and add it to the CI pack list.

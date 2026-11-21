@@ -14,7 +14,8 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
   `solutionPath` matches. With one instance open, the solution is inferred.
 - Routing arguments on every `ide_` tool: `ide` (`VisualStudio` or `VsCode`) and `instancePid` (the process id).
   When the same solution is open in two Visual Studio instances (for example Community and Insiders), a call
-  with only `solutionPath` fails with "Several instances have this solution open". Pass `instancePid` to pick one.
+  with only `solutionPath` fails with "Several instances have this solution open". Pass `instancePid` to pick one,
+  or store `preferredIde` for the solution (`ide_set_preferred`), which breaks that tie only.
   Full rules are in [protocol.md](../conformance/protocol.md#routing-mcp-side).
 - Replies that don't arrive within 60 seconds are errors. An instance whose pipe refuses the client (for
   example, one running at a different elevation) is reported as "refused this client".
@@ -40,7 +41,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
-| `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | same names | |
+| `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |
 | `IdeAddWatch`, `IdeRemoveWatch`, `IdeListWatches` | `addWatch`, `removeWatch`, `listWatches` | Watches are kept by the bridge. Values show only while paused. |
 | `IdeKillProcess` | `killProcess` | Kills only processes this bridge started. VS starts none, so it refuses every pid. VS Code kills its clean/publish processes. |
@@ -49,13 +50,30 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `ide_open_document` | `openDocument` | Opens a file and moves the caret to an optional line. |
 | `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. |
 | `bookmark_list`, `bookmark_get`, `bookmark_set`, `bookmark_remove` | `bookmarkList`, `bookmarkGet`, `bookmarkSet`, `bookmarkRemove` | Visual Studio bookmarks. VS Code returns not-supported. See Limits. |
+| `output_channel_set`, `output_write` | `outputWrite` | Writes text to a named output channel: an Output window pane in Visual Studio, an output channel in VS Code. The IDE for each channel is stored per repo. Reading back is not offered. |
+| `ide_set_preferred`, `ide_get_preferred` | (MCP only) | Stores or reads `preferredIde` in `.claude/aidevhelpers.json` next to the solution. See Settings. |
+
+### Bridge actions used by other tools
+
+These actions are called by the MCP server's own services, not by a single tool of the same name.
+
+| Action | Used by | Notes |
+|---|---|---|
+| `status` | routing and health checks | Returns `solution_path`. |
+| `listOutputPanes` | the Visual Studio output log source | Visual Studio only. Lists the Output window pane names. |
+| `listDebugSessions`, `getDebugOutput` | the VS Code debug log source | VS Code only. Lists debug sessions and reads a session's output. |
+| `prepareKill` | `IdeKillInstance` | Asks the instance to save every document, and reports any that stay unsaved. |
 
 ### Helper tools (MCP only, no bridge action)
 
 | Tools | Helper | Notes |
 |---|---|---|
 | `live_test_start`, `live_test_stop` | TestingHelper | Live testing with `dotnet watch test`. Works in Visual Studio Community, which has no Live Unit Testing. Failures reach `test_failures`, the error log and MCP log notifications. |
-|---|---|---|
+| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, and optionally `dotnet format --verify-no-changes`. |
+| `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. |
+| `package_check` | PackageHelper | NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, .NET analyzers), pip (pinned requirements) and npm (a lockfile). Reads files only. |
+| `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. |
+| `self_test_list`, `self_test_read` | each helper | Lists helpers with their versions and the server version, and reads a helper's embedded self-test markdown. |
 | `config_resolve`, `config_read` | ConfigHelper | Real paths for remote debugger, launchSettings, appsettings, user and solution settings. Reads are limited to allowed roots and redact secrets. |
 | `error_ingest`, `error_list`, `error_snapshot`, `error_changes` | ErrorHelper | Caller supplies build output. Filters by code and source. Suppression comes from the solution's `.vsconfig` key `aidevhelpersErrors`. |
 | `test_watch`, `test_unwatch`, `test_failures`, `test_coverage` | TestingHelper | Watches TestResults while hot reload is active. Coverage uses Coverlet, or the `dotnet-coverage` CLI for Visual Studio. |
@@ -75,6 +93,10 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - **VS coverage through the bridge:** not built. Visual Studio coverage uses the `dotnet-coverage` CLI.
 - **Hot reload:** `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio) read the settings. TestingHelper uses them when the caller passes them, and otherwise falls back to `dotnet watch`.
 - **Continuous testing:** VS Code only, through Test Explorer's run commands. Visual Studio has no continuous testing setting, so it uses `live_test_start`.
+- **Output channels:** `outputWrite` creates a channel on first use and appends. VS Code can't read a channel back, and Visual Studio reads panes through `IdeGetOutput` only for the panes it lists.
+- **Source control:** Visual Studio has no public Git operation API, so `git_*` runs `git.exe` for both IDEs. The VS Code git API is not used yet.
+- **Gate:** `gate_run` runs the repo's build and test commands. It does not read `package.json` in subfolders, so list those steps in `.claude/reference/full-gate.md`. The lite gate is not defined.
+- **Live checks not run:** `outputWrite` in both IDEs, the `git_*` tools in an IDE, and `ide_set_preferred` routing with two live instances.
 - **Unverified on a real install:** the `.vsconfig` key `aidevhelpersErrors`, and the
   Marketplace query shape used by ExtensionsHelper.
 
@@ -90,6 +112,11 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
   the extra key, which is not yet verified.
 - `csharp.experimental.debug.hotReload` (VS Code) and `test.hotReload` (Visual Studio): hot reload state, read by
   `hotReloadState` and `testHotReloadState`. Both are set by the IDE, not by this project.
+- `.claude/aidevhelpers.json` next to the solution: `preferredIde` (`VisualStudio` or `VsCode`) breaks a routing tie
+  when two IDE instances have the same solution open and the call has no `ide` or `instancePid`. `outputChannels`
+  maps a channel name to the IDE that `output_write` uses. Other keys in the file are kept.
+- `.claude/reference/full-gate.md`: the repo's own gate. Its `gate` code block lists one command per line; a line
+  starting with `!` may fail without stopping the gate.
 - `dotnet.defaultSolution` (C# Dev Kit): set on install by `extension_workspace_setup` when C# Dev Kit is installed.
   Verified: with two solutions in a folder and this key set, C# Dev Kit restores and loads the chosen one.
 - Extension recommendations go to `.vscode/extensions.json` in the folder: `ms-dotnettools.csdevkit` and

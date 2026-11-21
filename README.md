@@ -15,6 +15,11 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 - `src/Helpers/ExtensionsHelper` — list, describe and add VS Code and Visual Studio extensions; workspace recommendations.
 - `src/Helpers/TestingHelper` — hot-reload test failures, and code coverage.
 - `src/Helpers/BookmarkHelper` — bookmark model and service over the IDE bridge.
+- `src/Helpers/LintHelper` — lint setup checks: editorconfig, NoWarn, tsconfig strict, ESLint, TSLint, dotnet format.
+- `src/Helpers/SourceControlHelper` — git status, diff, and two-step approved writes through git.exe.
+- `src/Helpers/OutputHelper` — writes to named output channels in Visual Studio and VS Code.
+- `src/Helpers/PackageHelper` — NuGet, pip and npm package setup checks.
+- `src/Helpers/GateHelper` — the full gate, from the repo reference file or the detected stack.
 
 ## Documentation
 
@@ -31,4 +36,4 @@ The bridge follows the shared [protocol fixtures](conformance/fixtures.json). Se
 
 - Pull requests to `main` and `dev`, and `v*` tags, run `build-and-test` (the solution build, tests and the Visual Studio VSIX) and `vscode-extension` (the VS Code extension tests and package). Pushes to branches don't run CI.
 - `main` and `dev` require both checks before a merge. `wip` requires none, blocks deletion, and allows force pushes.
-- A `v*` tag also publishes the Bridge, MCP.Core and each helper to GitHub Packages.
+- A `v*` tag also publishes the Bridge, MCP.Core and each helper that is packable to GitHub Packages.

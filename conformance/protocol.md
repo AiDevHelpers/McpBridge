@@ -49,7 +49,11 @@ Every `ide_` tool takes these optional arguments, and the router applies them in
 2. `instancePid` keeps only the instance with that process id. No match is an error.
 3. `solutionPath` keeps instances whose solution matches. No match is an error. More than one match is an
    error unless `instancePid` picked one.
+   When more than one instance still matches, no `ide` was given, and `.claude/aidevhelpers.json` next to the
+   solution holds `preferredIde`, the preferred IDE's instance is used if exactly one of the matches is that IDE.
+   Otherwise it stays an error. The preference only breaks this tie; `ide` and `instancePid` always win.
 4. With no `solutionPath`: one instance is used; several is an error that asks for `solutionPath` or `instancePid`.
+   The stored preference is not consulted, because there is no solution to find the repo config from.
 
 A reply that does not arrive within 60 seconds is an error, so a stalled bridge cannot hang the caller.
 
@@ -63,6 +67,7 @@ A reply that does not arrive within 60 seconds is an error, so a stalled bridge 
 | `bookmarkGet` | `id` (`file|line`) | one bookmark, or null | VS only. |
 | `bookmarkSet` | `file`, `line`, optional `name` | the bookmark | VS only. `name` is not stored by VS and comes back null. |
 | `bookmarkRemove` | `id` | true or false | VS only. |
+| `outputWrite` | `channel`, `text` | `{channel, written}` | Appends `text` and a newline to a named channel, creating it on first use. VS: an Output window pane found by a GUID derived from the name. VS Code: an output channel. Missing `channel` or `text` is an error. Channels can't be read back. |
 
 VS Code replies to the four bookmark actions with `"unsupported":true` (D8).
 
