@@ -55,4 +55,13 @@
     <Project Path="src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.csproj" />
     <Project Path="src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj" />
   </Folder>
+  <Folder Name="/Core/">
+    <Project Path="src/Core/src/AiDevHelpers.Core.csproj" />
+    <Project Path="src/Core/tests/AiDevHelpers.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/ScriptHelper/">
+    <Project Path="src/ScriptHelper/src/AiDevHelpers.ScriptHelper.Core.csproj" />
+    <Project Path="src/ScriptHelper/setup/AiDevHelpers.ScriptHelper.Setup.csproj" />
+    <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
+  </Folder>
 </Solution>
