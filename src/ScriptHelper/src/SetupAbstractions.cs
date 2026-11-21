@@ -79,16 +79,35 @@ public sealed class PwshInterpreterInfo : IInterpreterInfo
 /// <summary>Prompts on the console and accepts only an explicit "y". Redirected input is never a yes.</summary>
 public sealed class ConsoleConfirmer : IConfirmer
 {
+    private readonly TextReader _input;
+    private readonly TextWriter _output;
+    private readonly Func<bool> _isInputRedirected;
+
+    public ConsoleConfirmer()
+        : this(Console.In, Console.Out, () => Console.IsInputRedirected)
+    {
+    }
+
+    public ConsoleConfirmer(TextReader input, TextWriter output, Func<bool> isInputRedirected)
+    {
+        _input = input;
+        _output = output;
+        _isInputRedirected = isInputRedirected;
+    }
+
     public bool Confirm(string prompt)
     {
-        if (Console.IsInputRedirected)
+        if (_isInputRedirected())
         {
             return false;
         }
 
-        Console.WriteLine(prompt);
-        Console.Write("Approve? [y/N] ");
-        var answer = Console.ReadLine();
+        // End the question with a newline: the terminal wrapper relays output line by line, so an
+        // unterminated question would only appear after the answer was typed.
+        _output.WriteLine(prompt);
+        _output.WriteLine("Approve? [y/N]");
+        _output.Flush();
+        var answer = _input.ReadLine();
         return string.Equals(answer?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
     }
 }
