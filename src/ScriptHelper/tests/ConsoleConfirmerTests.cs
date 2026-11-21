@@ -32,9 +32,45 @@ public class ConsoleConfirmerTests
     {
         var output = new StringWriter();
         var reader = new RecordingReader(output, answer);
-        var confirmer = new ConsoleConfirmer(reader, output, () => redirected);
+        var confirmer = new ConsoleConfirmer(reader, output, () => redirected, () => { });
 
         return (confirmer.Confirm("Approve this script to run elevated?"), reader, output);
+    }
+
+    [Fact]
+    public void Keystrokes_typed_before_the_question_are_discarded_just_before_reading()
+    {
+        // Stray input typed into the window earlier must not become part of the answer.
+        var output = new StringWriter();
+        var reader = new RecordingReader(output, "y");
+        var discards = 0;
+        string? outputAtDiscard = null;
+        var readsAtDiscard = -1;
+        var confirmer = new ConsoleConfirmer(reader, output, () => false, () =>
+        {
+            discards++;
+            outputAtDiscard = output.ToString();
+            readsAtDiscard = reader.Reads;
+        });
+
+        confirmer.Confirm("Approve this script to run elevated?");
+
+        Assert.Equal(1, discards);
+        Assert.Contains("Approve? [y/N]", outputAtDiscard, StringComparison.Ordinal);
+        Assert.Equal(0, readsAtDiscard);
+    }
+
+    [Fact]
+    public void Redirected_input_never_discards_or_reads()
+    {
+        var output = new StringWriter();
+        var reader = new RecordingReader(output, "y");
+        var discards = 0;
+        var confirmer = new ConsoleConfirmer(reader, output, () => true, () => discards++);
+
+        Assert.False(confirmer.Confirm("Approve?"));
+        Assert.Equal(0, discards);
+        Assert.Equal(0, reader.Reads);
     }
 
     [Fact]

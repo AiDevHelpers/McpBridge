@@ -82,17 +82,32 @@ public sealed class ConsoleConfirmer : IConfirmer
     private readonly TextReader _input;
     private readonly TextWriter _output;
     private readonly Func<bool> _isInputRedirected;
+    private readonly Action _discardPendingInput;
 
     public ConsoleConfirmer()
-        : this(Console.In, Console.Out, () => Console.IsInputRedirected)
+        : this(Console.In, Console.Out, () => Console.IsInputRedirected, DiscardConsoleInput)
     {
     }
 
-    public ConsoleConfirmer(TextReader input, TextWriter output, Func<bool> isInputRedirected)
+    public ConsoleConfirmer(
+        TextReader input,
+        TextWriter output,
+        Func<bool> isInputRedirected,
+        Action discardPendingInput)
     {
         _input = input;
         _output = output;
         _isInputRedirected = isInputRedirected;
+        _discardPendingInput = discardPendingInput;
+    }
+
+    /// <summary>Drops keystrokes typed ahead, so only an answer given after the question is read.</summary>
+    private static void DiscardConsoleInput()
+    {
+        while (Console.KeyAvailable)
+        {
+            Console.ReadKey(intercept: true);
+        }
     }
 
     public bool Confirm(string prompt)
@@ -107,6 +122,9 @@ public sealed class ConsoleConfirmer : IConfirmer
         _output.WriteLine(prompt);
         _output.WriteLine("Approve? [y/N]");
         _output.Flush();
+
+        // Anything typed before the question was shown cannot be an answer to it.
+        _discardPendingInput();
         var answer = _input.ReadLine();
         return string.Equals(answer?.Trim(), "y", StringComparison.OrdinalIgnoreCase);
     }
