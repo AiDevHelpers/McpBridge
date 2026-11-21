@@ -78,6 +78,29 @@ public sealed class BrokerRuntimeTests : IDisposable
     }
 
     [Fact]
+    public void A_heartbeat_held_open_by_another_process_is_skipped_not_fatal()
+    {
+        var path = Path_("heartbeat.json");
+        BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now);
+
+        using var holder = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+        var written = BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now.AddSeconds(1));
+
+        Assert.False(written);
+    }
+
+    [Fact]
+    public void Reading_the_heartbeat_does_not_block_the_next_write()
+    {
+        var path = Path_("heartbeat.json");
+        BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now);
+        Assert.NotNull(BrokerHeartbeat.TryRead(path));
+
+        Assert.True(BrokerHeartbeat.Write(path, 4242, ProtectionMode.Tpm, Now.AddSeconds(1)));
+    }
+
+    [Fact]
     public void Only_one_broker_holds_the_lock_at_a_time()
     {
         var name = "ScriptHelper.Test." + Guid.NewGuid().ToString("N");

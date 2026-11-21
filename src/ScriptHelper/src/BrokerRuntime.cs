@@ -15,12 +15,28 @@ public static class BrokerHeartbeat
 
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
-    public static void Write(string path, int pid, ProtectionMode mode, DateTime utcNow, string exePath = "")
+    /// <summary>
+    /// Writes the heartbeat. Returns false, without throwing, when another process has the file open
+    /// and the replace is refused; the next beat tries again.
+    /// </summary>
+    public static bool Write(string path, int pid, ProtectionMode mode, DateTime utcNow, string exePath = "")
     {
         var doc = new Doc(pid, mode == ProtectionMode.Tpm ? "tpm" : "acl", utcNow.ToUniversalTime(), exePath);
         var temp = path + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(doc, Options));
-        File.Move(temp, path, overwrite: true);
+        try
+        {
+            File.WriteAllText(temp, JsonSerializer.Serialize(doc, Options));
+            File.Move(temp, path, overwrite: true);
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     /// <summary>Reads the heartbeat, or null when it is missing or unreadable.</summary>
@@ -31,7 +47,10 @@ public static class BrokerHeartbeat
 
         try
         {
-            var doc = JsonSerializer.Deserialize<Doc>(File.ReadAllText(path));
+            // Share delete, so the broker can replace the file while a client is reading it.
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            var doc = JsonSerializer.Deserialize<Doc>(reader.ReadToEnd());
             return doc is null ? null : new Snapshot(doc.Pid, doc.Exe, doc.Utc);
         }
         catch (JsonException)
