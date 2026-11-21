@@ -56,6 +56,7 @@ Status: revised after the Sonnet review. Awaiting approval. Builds on the archiv
 - Gate: live check in both IDEs.
 
 ### Phase 5: Self tests (Q4)
+- Status: done. Each helper's `SelfTest.md` is an embedded resource (`AiDevHelpers.SelfTest.md`). MCP tools `self_test_list` (helper versions and the Core version) and `self_test_read`. Coverage tests (3 pass): every helper embeds a self-test, and every MCP tool of each helper is named in its self-test. Full self tests are written as steps; they are not run automatically. Live steps are marked NOT RUN where they need an IDE.
 - Acceptance: each helper has an embedded self-test markdown, and the bridge reports its version from the Core DLL. Criteria for "full" come from Q4.
 - Gate: a test that each helper's markdown is present.
 

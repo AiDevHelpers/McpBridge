@@ -8,4 +8,7 @@
   <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />
+  </ItemGroup>
 </Project>

@@ -19,4 +19,7 @@
   <ItemGroup>
     <None Include="Scripts\tokensaver-tab.ps1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />
+  </ItemGroup>
 </Project>
