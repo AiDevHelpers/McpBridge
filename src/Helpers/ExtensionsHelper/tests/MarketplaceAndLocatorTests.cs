@@ -62,3 +62,24 @@ public sealed class MarketplaceAndLocatorTests : IDisposable
         Assert.Null(VsixInstallerLocator.Find(new[] { _pf }));
     }
 }
+
+public sealed class MarketplaceRealShapeTests
+{
+    // Shape of a live Visual Studio Marketplace response (MadsKristensen.BookmarkStudio, checked 2026-11-21):
+    // the package is named "<Name>.vsix" and carries no generic VSIXPackage asset.
+    private const string Response =
+        "{\"results\":[{\"extensions\":[{\"extensionName\":\"BookmarkStudio\",\"publisher\":{\"publisherName\":\"MadsKristensen\"}," +
+        "\"shortDescription\":\"Bookmarks\",\"displayName\":\"Bookmark Studio\",\"versions\":[{\"version\":\"1.0.99\",\"files\":[" +
+        "{\"assetType\":\"art/glyphs.png\",\"source\":\"https://example.test/glyphs.png\"}," +
+        "{\"assetType\":\"BookmarkStudio.vsix\",\"source\":\"https://example.test/BookmarkStudio.vsix\"}]}]}]}]}";
+
+    [Fact]
+    public void ReadsTheVsixPackageNamedByItsExtension()
+    {
+        var ext = MarketplaceResponse.ParseExtension(Response, "MadsKristensen.BookmarkStudio");
+
+        Assert.NotNull(ext);
+        Assert.Equal("1.0.99", ext!.Version);
+        Assert.Equal("https://example.test/BookmarkStudio.vsix", ext.VsixUrl);
+    }
+}
