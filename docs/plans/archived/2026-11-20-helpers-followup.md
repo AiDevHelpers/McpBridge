@@ -1,6 +1,6 @@
 # AiDevHelpers helpers follow-up, 2026-11-20
 
-Status: draft, revised after the read-only Sonnet review. Awaiting approval. Builds on [the reorg plan](2026-11-20-aidevhelpers-mcpbridge-reorg.md), which is executed.
+Status: done 2026-11-21, archived. Outcome and remaining gaps are in the Outcome section below. Builds on [the reorg plan](2026-11-20-aidevhelpers-mcpbridge-reorg.md), which is executed.
 
 ## Decisions
 
@@ -93,7 +93,7 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Acceptance: Coverlet path runs against a sample test project and returns Cobertura data; provider selection is unit-tested; a hot-reload test failure is pushed to the caller.
 - Note: VS coverage may require VS Enterprise and `dotnet-coverage`. Tool dependency is to be stated before coding.
 
-### Phase 6: BookmarkHelper (DONE 2026-11-20: VS side live-tested set, get, list, remove on the bridge; VS Code not-supported reply still pending, see D34)
+### Phase 6: BookmarkHelper (DONE 2026-11-20: VS side live-tested set, get, list, remove on the bridge; VS Code not-supported reply done, see D34)
 
 - API: `Get`, `List`, `Set`, `Remove`, backed by Visual Studio bookmarks through the IDE bridge (D5, D8).
 - New bridge actions and protocol changes are required (Q-BM). The existing `conformance/fixtures.json` covers only health, unknown_action and malformed_line; new fixtures are added in this phase.
@@ -108,6 +108,24 @@ Each phase lists acceptance criteria, and each phase that adds an MCP tool ends 
 - Update `conformance/protocol.md` and `docs/ide-bridge.md`, and the README component list.
 - Check the new tool names do not collide with the 33 existing ones.
 - Update the CI pack list if any helper ships as NuGet (Q-NUGET).
+
+## Outcome (2026-11-21)
+
+Done:
+- Phases 2 to 7: ConfigHelper, ErrorHelper, ExtensionsHelper (plus workspace setup), TestingHelper, BookmarkHelper, the MCP tools, docs, per-helper NuGet packages (D19), and CI for the VSIX and VS Code extension.
+- Hot reload: `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio), live-checked in both.
+- Continuous testing (VS Code actions) and live testing with `dotnet watch test` for Community (not in the plan).
+- Routing: `ide`, `instancePid`, and the ambiguity error when two instances share a solution (live-checked).
+- The bridge reply timeout: the write, the read and the connect all have timeouts. Live-checked against a silent instance.
+
+Not done or deviated:
+- D28, Visual Studio extension listing: not built.
+- D30, Visual Studio coverage through the bridge: not built. The CLI is used.
+- D15: coverage lives in `TestingTools`, not `IdeTestRunService`.
+- D23 (`aidevhelpersErrors` in `.vsconfig`), D26 (`dotnet.defaultSolution`), and the Marketplace query shape: unverified on a real install.
+- Bookmarks: open documents only, and names are not stored by Visual Studio.
+- The MCP log notifications are sent, but whether Claude Code displays them is unverified.
+- Unresolved: the `2005` error for a multi-ID VSIX install, the VS Code stall after stacked-window restarts, and an intermittent failure of `StopClosesThePipe_AndStartReopensIt`.
 
 ## Verification gate per phase
 
