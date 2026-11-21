@@ -85,6 +85,15 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - The VS options page also edits the MCP advanced settings: verbose logging, context helper and token
   economy switches, context size limit, endpoint strategy, and endpoints. Endpoints are one per line as
   `name|url|primary|models`, and at least one must have `primary` set to `true` when the list isn't empty.
+- `aidevhelpersErrors` in the solution's `.vsconfig`: `{ "suppressCodes": [...], "suppressSources": [...] }`.
+  ErrorHelper hides those codes and sources. The solution wins over user settings. Visual Studio may reject
+  the extra key, which is not yet verified.
+- `csharp.experimental.debug.hotReload` (VS Code) and `test.hotReload` (Visual Studio): hot reload state, read by
+  `hotReloadState` and `testHotReloadState`. Both are set by the IDE, not by this project.
+- `dotnet.defaultSolution` (C# Dev Kit): set on install by `extension_workspace_setup` when C# Dev Kit is installed.
+  Its behavior is not yet verified.
+- Extension recommendations go to `.vscode/extensions.json` in the folder: `ms-dotnettools.csdevkit` and
+  `ms-dotnettools.csharp`.
 
 ## Build and install
 
@@ -95,16 +104,25 @@ pwsh -File scripts/update-vs-extension.ps1
 ```
 
 This rebuilds the VSIX and opens VsixInstaller for each VS 2026 instance. Expect a UAC prompt and a
-dialog per instance. Commit first: the version comes from git height, so an uncommitted rebuild can
-install the same version as before and do nothing.
+dialog per instance. Commit first: the version is 0.1.<commit count>, which the build script writes into the
+manifest for that build only. The VS Installer dialog installs one VSIX into both Community and Insiders
+when both are ticked. The command-line form with more than one instance ID fails with exit code 2005.
 
-VS Code bridge (build the Core package first; the Installer depends on it through `file:../Core`):
+VS Code bridge (the Core library is vendored into the extension at build time, so the package is self-contained):
 
 ```bash
-pushd src/Installers/VsCode/Core && npm install && npm run build && popd
-pushd src/Installers/VsCode/Installer && npm install && npm run build && npx vsce package --out aidevhelpers.vsix && popd
-code --install-extension src/Installers/VsCode/Installer/aidevhelpers.vsix --force
+cd src/Installers/VsCode/Installer
+npm install
+npm run build
+npm test
+npm run package
+code --install-extension aidevhelpers-vscode.vsix --force
 ```
+
+`npm run build` runs `prebuild` (copies Core into `src/vendor`) and `postbuild` (copies it into `dist`). Restart
+VS Code after installing. The extension activates on startup.
+
+CI builds both packages on pull requests and `v*` tags. See the README for the required checks.
 
 ## Live checks
 
