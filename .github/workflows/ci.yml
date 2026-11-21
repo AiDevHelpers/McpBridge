@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
     tags: ["v*"]
   pull_request:
     branches: [main, dev]
@@ -12,6 +11,7 @@ permissions:
 
 jobs:
   build-and-test:
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +52,7 @@ jobs:
           path: src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.vsix
 
   vscode-extension:
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
