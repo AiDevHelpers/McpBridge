@@ -18,6 +18,9 @@ internal static class IdeInstanceLifecycle
 {
     private static readonly TimeSpan LaunchTimeout = TimeSpan.FromSeconds(120);
 
+    /// <summary>The devenv arguments that open <paramref name="solutionPath"/> in a new instance.</summary>
+    internal static IReadOnlyList<string> LaunchArguments(string solutionPath) => [solutionPath];
+
     public static async Task<string> LaunchAsync(string solutionPath, CancellationToken ct)
     {
         if (!File.Exists(solutionPath))
@@ -38,8 +41,11 @@ internal static class IdeInstanceLifecycle
         }
 
         var startInfo = new ProcessStartInfo(devenv) { UseShellExecute = false };
-        startInfo.ArgumentList.Add("/edit");
-        startInfo.ArgumentList.Add(solutionPath);
+        // No /edit: that switch opens the file in a running instance, so a second solution never gets its own.
+        foreach (var argument in LaunchArguments(solutionPath))
+        {
+            startInfo.ArgumentList.Add(argument);
+        }
 
         using (var process = Process.Start(startInfo))
         {

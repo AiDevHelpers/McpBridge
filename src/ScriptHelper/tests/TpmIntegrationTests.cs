@@ -5,7 +5,8 @@ namespace AiDevHelpers.ScriptHelper.Core.Tests;
 
 /// <summary>
 /// Real TPM checks. Run on demand: dotnet test --filter "Category=Tpm".
-/// Needs a TPM 2.0 on this machine. Creates and deletes a throwaway key.
+/// Needs a TPM 2.0 on this machine. Creating the throwaway key needs administrator rights, so that test skips itself
+/// when not elevated (Visual Studio Test Explorer ignores runsettings filters).
 /// </summary>
 [Trait("Category", "Tpm")]
 public class TpmIntegrationTests
@@ -16,7 +17,7 @@ public class TpmIntegrationTests
         Assert.True(TbsTpmDetector.Tpm20Present());
     }
 
-    [Fact]
+    [RequiresAdministratorFact]
     public void Real_tpm_key_signs_and_verifies_then_is_deleted()
     {
         var name = "ScriptHelper.Test." + Guid.NewGuid().ToString("N");

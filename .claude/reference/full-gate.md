@@ -32,7 +32,7 @@ instance on the solution, is below. Stop at the first failing step. Close the ru
    `mcp__aidevtools__ide_get_build_diagnostics` with severity `error`.
 3. **Warnings.** `mcp__aidevtools__ide_get_build_diagnostics` with severity `warning`. Any warning fails the gate.
 4. **Tests.** `mcp__aidevtools__ide_run_tests`, then `mcp__aidevtools__ide_get_test_results`. Any failure fails the gate.
-   `.runsettings` excludes `Category=Tpm` from Test Explorer, so run `scripts/gate-tpm.ps1` as well: only the tests that
-   need administrator rights are elevated.
+   Test Explorer ignores the `.runsettings` filter, so it shows the key-creation Tpm test as skipped when not elevated.
+   Run `scripts/gate-tpm.ps1` as well: only the tests that need administrator rights are elevated.
 5. **Format, outdated packages, npm.** No aidevtools tool covers these. Run the matching lines from the `gate` block:
    `dotnet format ... --verify-no-changes`, `dotnet list ... package --outdated` (advisory), and the npm lines for both TypeScript projects.
