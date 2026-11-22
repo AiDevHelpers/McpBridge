@@ -11,5 +11,6 @@ Steps done by hand this session that a tool should cover. Add a line each time a
 | 5 | Check PR checks while waiting | `gh pr checks --watch` | `pr_checks` (PR number): status per job, no watch loop |
 | 6 | Pick tests for a change | Not used; ran full runs | `test_affected` (exposed in MCP Core, not loaded in this session) |
 | 7 | Git status and commit/push | Bash `git` | `git_status` and `git_plan`/`git_confirm` (in MCP Core, not loaded in this session) |
+| 8 | Read failed tests after a Test Explorer run | `ide_search_output` on the `Tests` pane for `[FAIL]`, since `ide_get_test_summary` gives counts only and `ide_get_test_results` finds no TRX | `ide_get_test_summary` returns failing names and messages |
 
 Open: confirm which MCP Core tools a session can load, so the work above can be dogfooded.
