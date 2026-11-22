@@ -4,7 +4,8 @@ param([string]$Configuration = 'Release')
 
 $root = Split-Path -Parent $PSScriptRoot
 $project = Join-Path $root 'src\ScriptHelper\tests\AiDevHelpers.ScriptHelper.Core.Tests.csproj'
-$testArgs = @('test', $project, '-c', $Configuration, '--no-build', '--filter', 'Category=Tpm')
+# .runsettings excludes Category=Tpm and a command-line filter is combined with it, so clear the settings file here.
+$testArgs = @('test', $project, '-c', $Configuration, '--no-build', '--filter', 'Category=Tpm', '-p:RunSettingsFilePath=')
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $elevated = ([Security.Principal.WindowsPrincipal]$identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)

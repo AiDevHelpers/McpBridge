@@ -107,7 +107,9 @@ These actions are called by the MCP server's own services, not by a single tool 
 ## Settings
 
 - `IdeTestRunMode` in the MCP `appsettings.json` (`IdeTools` section): `DotnetTest` or `TestExplorer`
-  (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it.
+  (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it. `DotnetTest` passes
+  `--logger trx` to VSTest projects and `--report-xunit-trx` when a project or props file references Microsoft.Testing.Platform
+  or xunit.v3. This repo's `Directory.Build.props` points `dotnet test` at `.runsettings`, which excludes `Category=Tpm`.
 - The VS options page also edits the MCP advanced settings: verbose logging, context helper and token
   economy switches, context size limit, endpoint strategy, and endpoints. Endpoints are one per line as
   `name|url|primary|models`, and at least one must have `primary` set to `true` when the list isn't empty.
