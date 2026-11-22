@@ -265,7 +265,8 @@ public sealed class IdeActions(DTE2 dte)
             throw new InvalidOperationException(Strings.Get("SettingsJsonNotFound"));
         }
 
-        var value = (bool?)null;
+        // Visual Studio leaves the option out of settings.json until it is set, and an unset option is off.
+        var value = false;
         using (var doc = JsonDocument.Parse(StripComments(File.ReadAllText(settingsPath))))
         {
             if (doc.RootElement.TryGetProperty("test.hotReload", out var prop) && (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
