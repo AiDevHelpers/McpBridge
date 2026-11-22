@@ -11,6 +11,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class SourceControlTools
 {
     private static readonly SourceControlService Service = new(new ProcessGitRunner());
+    private static readonly GitHubService GitHub = new(new ProcessGhRunner());
 
     [McpServerTool]
     [Description("Branch, upstream, ahead and behind counts, and changed paths for a git repo folder.")]
@@ -93,6 +94,37 @@ internal sealed class SourceControlTools
     {
         var result = await Service.ConfirmAsync(token);
         return Json(new { ok = result.Ok, exitCode = result.ExitCode, output = result.Output });
+    }
+
+    [McpServerTool]
+    [Description("Status of each CI check of a pull request, read through the GitHub CLI (gh). Read only. " +
+                 "bucket is pass, fail, pending, skipping or cancel. Use it instead of waiting in a loop.")]
+    public static async Task<string> PrChecks(
+        [Description("Repo folder")] string repoPath,
+        [Description("Pull request number")] int pr,
+        CancellationToken ct = default)
+    {
+        var result = await GitHub.ChecksAsync(repoPath, pr, ct);
+        return Json(new
+        {
+            ok = result.Error is null,
+            count = result.Checks.Count,
+            checks = result.Checks.Select(c => new { name = c.Name, state = c.State, bucket = c.Bucket, link = c.Link }),
+            error = result.Error,
+        });
+    }
+
+    [McpServerTool]
+    [Description("The first failing CI job of a pull request and the error lines of its log, through gh. Read only. " +
+                 "When no line looks like an error, the end of the log is returned. maxLines caps the lines.")]
+    public static async Task<string> CiFailure(
+        [Description("Repo folder")] string repoPath,
+        [Description("Pull request number")] int pr,
+        [Description("Most log lines to return")] int maxLines = 40,
+        CancellationToken ct = default)
+    {
+        var failure = await GitHub.CiFailureAsync(repoPath, pr, maxLines, ct);
+        return Json(new { ok = failure.Error is null, job = failure.Job, runId = failure.RunId, lines = failure.Lines, error = failure.Error });
     }
 
     private static string Json(object value) => JsonSerializer.Serialize(value);
