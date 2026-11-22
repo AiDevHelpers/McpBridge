@@ -60,3 +60,5 @@ All ten units are committed on `wip`, the full gate passes, `DocsMatchCodeTests`
 - Unit 4: done. `BuildEnvironment` in ExtensionsHelper (vswhere through `ICommandRunner`, 5 tests; 25 pass); tool `build_env`.
 - Unit 5: done. `GitHubService` over `IGhRunner` in SourceControlHelper (8 tests; 23 pass); tools `pr_checks` and `ci_failure`. The gh JSON fields were checked against the real CLI.
 - Unit 6: done. `TestSummaryParser` returns `failures` (the [FAIL] lines between the previous summary line and the newest one); `IdeGetTestSummary` searches for both patterns. 2 new tests; 161 pass.
+- Unit 7: done. `.claude/reference/lite-gate.md` now runs git_status, test_affected, lint_check, resx_check, string_scan, ide_build and the test steps; step 5 is skipped when test_affected lists nothing.
+- Unit 8: done. Backlog rows 1 to 8 marked done; README helper list updated.
