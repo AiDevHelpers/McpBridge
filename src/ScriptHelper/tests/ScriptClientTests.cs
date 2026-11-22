@@ -73,7 +73,7 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void The_request_is_queued_under_the_requesters_sid_and_the_answer_comes_back()
+    public async Task The_request_is_queued_under_the_requesters_sid_and_the_answer_comes_back()
     {
         var q = Queue();
         var ping = new FakePing();
@@ -87,7 +87,7 @@ public sealed class ScriptClientTests : IDisposable
         });
 
         var r = client.Run(@"C:\repo", "scripts/a.ps1", new[] { "-Port", "5000" }, TimeSpan.FromSeconds(20));
-        broker.Wait();
+        await broker;
 
         Assert.True(r.Ok, r.Reason);
         Assert.Equal(0, r.ExitCode);
@@ -96,7 +96,7 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void A_broker_exit_code_passes_through_to_the_caller()
+    public async Task A_broker_exit_code_passes_through_to_the_caller()
     {
         var q = Queue();
         var client = new ScriptClient(q, new FakePing(), Sid);
@@ -107,13 +107,13 @@ public sealed class ScriptClientTests : IDisposable
         });
 
         var r = client.Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
-        broker.Wait();
+        await broker;
 
         Assert.Equal(7, r.ExitCode);
     }
 
     [Fact]
-    public void A_denial_from_the_broker_is_returned_with_its_reason()
+    public async Task A_denial_from_the_broker_is_returned_with_its_reason()
     {
         var q = Queue();
         var client = new ScriptClient(q, new FakePing(), Sid);
@@ -124,7 +124,7 @@ public sealed class ScriptClientTests : IDisposable
         });
 
         var r = client.Run(@"C:\repo", "scripts/evil.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
-        broker.Wait();
+        await broker;
 
         Assert.False(r.Ok);
         Assert.Contains("not in the allowlist", r.Reason, StringComparison.Ordinal);

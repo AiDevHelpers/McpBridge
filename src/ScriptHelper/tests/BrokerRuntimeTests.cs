@@ -160,7 +160,7 @@ public sealed class BrokerRuntimeTests : IDisposable
     }
 
     [Fact]
-    public void Host_answers_requests_and_is_not_idle_while_they_arrive()
+    public async Task Host_answers_requests_and_is_not_idle_while_they_arrive()
     {
         var queue = new RequestQueue(Path_("queue"), Path_("results"));
         var sid = "S-1-5-21-1111111111-2222222222-3333333333-1001";
@@ -182,7 +182,7 @@ public sealed class BrokerRuntimeTests : IDisposable
         });
 
         var reason = host.Run();
-        stopper.Wait(TimeSpan.FromSeconds(15));
+        await Task.WhenAny(stopper, Task.Delay(TimeSpan.FromSeconds(15)));
 
         Assert.True(queue.TryReadResult(sid, id) is not null, "the request was never answered");
         Assert.True(queue.TryReadResult(sid, id)!.Ok);
