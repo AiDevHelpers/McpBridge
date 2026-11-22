@@ -18,8 +18,8 @@
 
   <!-- .NET Framework 4.8 lacks System.Text.Json and the records/required-member support the code uses. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-    <PackageReference Include="System.Text.Json" Version="9.0.0" />
-    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="all" />
+    <PackageReference Include="System.Text.Json" Version="10.0.15" />
+    <PackageReference Include="PolySharp" Version="1.17.1" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
