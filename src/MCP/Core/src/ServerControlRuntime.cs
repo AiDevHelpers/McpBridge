@@ -73,6 +73,10 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
         }
 
         var suffix = string.IsNullOrWhiteSpace(state.Message) ? string.Empty : ": " + state.Message;
+
+        // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. A client that ignores the
+        // notice still sees the state from server_control_status and from the refused tool calls. Revisit when the SDK offers a replacement.
+#pragma warning disable MCP9005
         var (level, text) = state.State switch
         {
             ServerControl.Paused => (LoggingLevel.Warning, Strings.Format("PausedNotice", suffix)),
@@ -92,6 +96,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
                 },
                 cancellationToken: ct);
         }
+#pragma warning restore MCP9005
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)
         {
             // The client is gone; nothing to tell.
