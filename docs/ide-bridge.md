@@ -71,7 +71,9 @@ These actions are called by the MCP server's own services, not by a single tool 
 | Tools | Helper | Notes |
 |---|---|---|
 | `live_test_start`, `live_test_stop` | TestingHelper | Live testing with `dotnet watch test`. Works in Visual Studio Community, which has no Live Unit Testing. Failures reach `test_failures`, the error log and MCP log notifications. |
-| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, and optionally `dotnet format --verify-no-changes`. |
+| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, duplicate names in `Strings.resx` files, and optionally `dotnet format --verify-no-changes`. |
+| `string_scan` | LintHelper | Lists multi-word string literals in a C# file or folder that should be in `Resources/Strings.resx`, with the resource key when the text is already there. Skips comments, attributes, logger calls, `Strings.cs`, and `bin` or `obj` folders. |
+| `resx_check` | LintHelper | Checks each `Resources/Strings.resx` under a folder: duplicate names, keys used in code but missing, and keys never used. |
 | `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. |
 | `package_check` | PackageHelper | NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, .NET analyzers), pip (pinned requirements) and npm (a lockfile). Reads files only. |
 | `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. |

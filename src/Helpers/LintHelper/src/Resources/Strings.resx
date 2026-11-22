@@ -12,5 +12,6 @@
   <data name="TypeScriptWithoutEslint" xml:space="preserve"><value>TypeScript project without an ESLint flat config (eslint.config.mjs).</value></data>
   <data name="TslintDeprecated" xml:space="preserve"><value>TSLint is deprecated. Use ESLint with typescript-eslint instead.</value></data>
   <data name="NoSolutionForFormat" xml:space="preserve"><value>No solution file at the root, so dotnet format was not run.</value></data>
+  <data name="ResxDuplicateName" xml:space="preserve"><value>Resource name '{0}' is defined more than once. The build ignores all but the first.</value></data>
   <data name="FormatFailed" xml:space="preserve"><value>dotnet format --verify-no-changes failed (exit {0}): {1}</value></data>
 </root>

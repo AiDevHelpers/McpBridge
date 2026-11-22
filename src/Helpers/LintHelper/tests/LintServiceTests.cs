@@ -137,6 +137,17 @@ public sealed class LintServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ReportsADuplicateResxName()
+    {
+        Write(".editorconfig", "root = true\n");
+        Write("H/src/Resources/Strings.resx", "<root><data name=\"One\"><value>a</value></data><data name=\"One\"><value>b</value></data></root>");
+
+        var findings = await Service().AnalyzeAsync(_root);
+
+        Assert.Contains(findings, f => f.Area == "resx" && f.Severity == "error" && f.Message.Contains("One"));
+    }
+
+    [Fact]
     public async Task MissingFolderThrows()
     {
         await Assert.ThrowsAsync<DirectoryNotFoundException>(() => Service().AnalyzeAsync(Path.Combine(_root, "nope")));
