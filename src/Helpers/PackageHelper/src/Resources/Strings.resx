@@ -11,4 +11,8 @@
   <data name="NetAnalyzersDisabled" xml:space="preserve"><value>EnableNETAnalyzers is false. The .NET analyzers (Microsoft.CodeAnalysis.NetAnalyzers) are off.</value></data>
   <data name="NotPinned" xml:space="preserve"><value>'{0}' is not pinned with ==.</value></data>
   <data name="NoLockfile" xml:space="preserve"><value>No lockfile next to package.json. npm ci needs one.</value></data>
+  <data name="DotnetNotFound" xml:space="preserve"><value>dotnet was not found, or is not on PATH.</value></data>
+  <data name="PackageListFailed" xml:space="preserve"><value>dotnet list package failed (exit {0}): {1}</value></data>
+  <data name="UpdateCapped" xml:space="preserve"><value>Latest {0} needs .NET {1}; this project targets .NET {2}, so {3} is the newest allowed.</value></data>
+  <data name="UpdateNothingAllowed" xml:space="preserve"><value>Latest {0} needs .NET {1}; no newer version up to {2}.x exists, so the package stays.</value></data>
 </root>

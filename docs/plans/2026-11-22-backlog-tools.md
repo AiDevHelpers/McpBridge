@@ -62,3 +62,4 @@ All ten units are committed on `wip`, the full gate passes, `DocsMatchCodeTests`
 - Unit 6: done. `TestSummaryParser` returns `failures` (the [FAIL] lines between the previous summary line and the newest one); `IdeGetTestSummary` searches for both patterns. 2 new tests; 161 pass.
 - Unit 7: done. `.claude/reference/lite-gate.md` now runs git_status, test_affected, lint_check, resx_check, string_scan, ide_build and the test steps; step 5 is skipped when test_affected lists nothing.
 - Unit 8: done. Backlog rows 1 to 8 marked done; README helper list updated.
+- Unit 9: done. `PackageUpdateRule` and `OutdatedPlanner` in PackageHelper (21 new tests; 28 pass); tool `package_outdated`. Decision: only packages that version with .NET (System.*, Microsoft.Extensions.*, Microsoft.AspNetCore.*, Microsoft.EntityFrameworkCore*, Microsoft.Bcl.*) are capped at the project's .NET major; Microsoft.NET.Test.Sdk and similar are not.
