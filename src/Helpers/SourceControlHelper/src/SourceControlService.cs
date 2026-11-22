@@ -31,7 +31,13 @@ public sealed class SourceControlService(IGitRunner git)
     public async Task<GitStatusResult> StatusAsync(string repoPath, CancellationToken ct = default)
     {
         var result = await git.RunAsync(repoPath, ["status", "--porcelain=v1", "--branch"], ct);
-        return result.Ok ? GitStatusParser.Parse(result.Output) : new GitStatusResult(null, null, 0, 0, [], result.Output);
+        if (result.Ok)
+        {
+            return GitStatusParser.Parse(result.Output);
+        }
+
+        var error = string.IsNullOrWhiteSpace(result.Output) ? Strings.Format("GitFailedSilently", result.ExitCode) : result.Output;
+        return new GitStatusResult(null, null, 0, 0, [], error);
     }
 
     public Task<GitResult> DiffAsync(string repoPath, bool staged, string? path = null, CancellationToken ct = default)
@@ -151,6 +157,12 @@ public sealed class ProcessGitRunner : IGitRunner
             throw new InvalidOperationException(Strings.Get("CouldNotStartGit"));
         }
 
-        return new GitResult(result.ExitCode == 0, result.ExitCode, result.StdOut + result.StdErr);
+        var output = result.StdOut + result.StdErr;
+        if (result.TimedOut)
+        {
+            output = Strings.Get("GitTimedOut") + output;
+        }
+
+        return new GitResult(result.Success, result.ExitCode, output);
     }
 }

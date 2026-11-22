@@ -13,4 +13,6 @@
   <data name="DeleteBranchNeedsName" xml:space="preserve"><value>delete_branch needs a branch name.</value></data>
   <data name="SwitchNeedsName" xml:space="preserve"><value>switch needs a branch name.</value></data>
   <data name="CouldNotStartGit" xml:space="preserve"><value>Could not start git.</value></data>
+  <data name="GitFailedSilently" xml:space="preserve"><value>git exited with code {0} and printed nothing.</value></data>
+  <data name="GitTimedOut" xml:space="preserve"><value>git did not finish in time and was stopped.</value></data>
 </root>

@@ -38,3 +38,21 @@ Status: draft, not approved. Q1 and Q2 answered.
 ## Done when
 
 All ten units are committed on `wip`, the full gate passes, `DocsMatchCodeTests` and `HardCodedStringTests` pass, and one PR to `dev` has green `build-and-test` and `vscode-extension`.
+
+## Review findings folded in (Sonnet, read-only)
+
+- Every tool unit also updates the owning helper's `src/Helpers/<H>/src/SelfTest.md` (`SelfTestCoverageTests`) and adds its row to `docs/ide-bridge.md` (`DocsMatchCodeTests`) in the same unit. Unit 8 is then only `tool-backlog.md` and the README.
+- Unit 1: the fix is in `StatusAsync` (exit code when git prints nothing) and `ProcessGitRunner` (timeout text, `Success`). The server-side cause still needs a reproduction once the `aidevtools` servers are back.
+- Unit 2: the service takes the allowlist as a parameter (LintHelper cannot know the test path); its own regex literals get allowlist entries; the resx-key lookup is new.
+- Unit 3: move `EveryStringsKeyUsedInCodeExistsInTheHelpersResx` into the service; update the `lint_check` description in `LintTools.cs` and its docs row.
+- Unit 4: vswhere through `ICommandRunner` in `ExtensionsHelper`; `BuildEnv` in `ExtensionTools.cs`; targets at `MSBuild\Microsoft\VisualStudio\v*\VSSDK\Microsoft.VsSDK.targets`.
+- Unit 5: an `IGhRunner` over `CommandRunner`. `ci_failure`: `gh pr checks --json` for the failing run id, then `gh run view <id> --log-failed`, capped lines. A message for `gh` missing or not signed in. Tools in `SourceControlTools.cs`.
+- Unit 6: change the `searchOutput` pattern in `IdeGetTestSummary` to `Test run finished|\[FAIL\]`; update the tool description and docs. The parser stays in MCP Core.
+- Unit 7: runs after units 1 and 5.
+- Unit 9: a runner interface for `dotnet list package --outdated --format json` (after a restore), so tests fake it. Rule: the cap is the highest `netX.Y` major among the project's target frameworks (net10.0 caps at 10); with no such framework there is no cap. The Bridge project targets `net48` and `net10.0-windows`, so its cap is 10. Tool class `PackageTools`.
+- Unit 10: versions are per csproj (no `Directory.Packages.props`). Edit every test csproj for `xunit.runner.visualstudio`, the Bridge csproj for `System.Text.Json` and `PolySharp`, and check whether `Microsoft.Extensions.Options` (already 10.0.9 in Common) is outdated at all.
+- Backlog row 9 (`ide_launch_instance` launch failure) is deferred: no unit.
+
+## Progress
+
+- Unit 1: done in code and tests (red then green). Server-side reproduction pending.
