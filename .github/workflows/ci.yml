@@ -37,6 +37,16 @@ jobs:
       - name: Test
         run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm"
 
+      - name: Install VSSDK
+        shell: pwsh
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+          $install = & $vswhere -latest -products '*' -property installationPath
+          if (-not $install) { throw 'No Visual Studio installation was found on the runner.' }
+          $installer = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vs_installer.exe'
+          & $installer modify --installPath $install --add Microsoft.VisualStudio.Component.VSSDK --quiet --norestart --wait
+          if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 3010) { exit $LASTEXITCODE }
+
       - name: Build VSIX
         shell: pwsh
         run: |
