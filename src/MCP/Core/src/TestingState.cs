@@ -42,6 +42,9 @@ internal sealed class TestMonitorService(ILogger<TestMonitorService> logger) : B
             return;
         }
 
+        // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. Clients that ignore it still
+        // get every failure from the test_failures tool, so the push is a convenience. Revisit when the SDK offers a replacement.
+#pragma warning disable MCP9005
         _ = server.SendNotificationAsync(
             NotificationMethods.LoggingMessageNotification,
             new LoggingMessageNotificationParams
@@ -50,6 +53,7 @@ internal sealed class TestMonitorService(ILogger<TestMonitorService> logger) : B
                 Logger = "AiDevHelpers.Testing",
                 Data = System.Text.Json.JsonSerializer.SerializeToElement(new { test = failure.TestName, message = failure.Message, trx = failure.Trx }),
             });
+#pragma warning restore MCP9005
     }
 
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
