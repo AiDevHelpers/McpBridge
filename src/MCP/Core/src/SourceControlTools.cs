@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using AiDevHelpers.Bridge;
 using AiDevHelpers.Helpers.SourceControlHelper;
 using ModelContextProtocol.Server;
 
@@ -14,8 +15,16 @@ internal sealed class SourceControlTools
     [McpServerTool]
     [Description("Branch, upstream, ahead and behind counts, and changed paths for a git repo folder.")]
     public static async Task<string> GitStatus(
-        [Description("Repo folder, e.g. the folder that holds the .sln")] string repoPath)
+        [Description("Repo folder, e.g. the folder that holds the .sln")] string repoPath,
+        CancellationToken ct = default)
     {
+        // Prefer the open VS Code window's git view when it has this folder; otherwise run git.exe.
+        var viaVsCode = await TryVsCodeStatusAsync(repoPath, ct);
+        if (viaVsCode is not null)
+        {
+            return viaVsCode;
+        }
+
         var status = await Service.StatusAsync(repoPath);
         return Json(new
         {
@@ -27,6 +36,22 @@ internal sealed class SourceControlTools
             changes = status.Changes.Select(c => new { path = c.Path, index = c.Index.ToString(), worktree = c.WorkTree.ToString() }),
             error = status.Error,
         });
+    }
+
+    // Returns the VS Code reply for this folder, or null when no VS Code instance has it open.
+    private static async Task<string?> TryVsCodeStatusAsync(string repoPath, CancellationToken ct)
+    {
+        var full = Path.GetFullPath(repoPath);
+        var open = VsInstanceRegistry.ListRunning().Any(i =>
+            string.Equals(i.Ide, "VsCode", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrEmpty(i.SolutionPath)
+            && string.Equals(Path.GetFullPath(i.SolutionPath), full, StringComparison.OrdinalIgnoreCase));
+        if (!open)
+        {
+            return null;
+        }
+
+        return await IdeInstanceRouter.CallAsync("gitStatus", new { repoPath = full }, full, ct, ide: "VsCode");
     }
 
     [McpServerTool]
