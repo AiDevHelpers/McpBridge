@@ -42,7 +42,7 @@ internal sealed class BridgeStatusCommand
         var commandService = (await package.GetServiceAsync(typeof(IMenuCommandService))) as OleMenuCommandService;
         if (commandService is null)
         {
-            throw new InvalidOperationException("IMenuCommandService is unavailable.");
+            throw new InvalidOperationException(AiDevHelpers.Installers.Vs2026.Core.Strings.Get("MenuCommandServiceUnavailable"));
         }
 
         _ = new BridgeStatusCommand(package, commandService);

@@ -20,7 +20,12 @@
   <data name="MissingIntegerArgument" xml:space="preserve"><value>Missing integer argument '{0}'.</value></data>
   <data name="MissingStringArgument" xml:space="preserve"><value>Missing string argument '{0}'.</value></data>
   <data name="ProcessNotStartedByBridge" xml:space="preserve"><value>Process {0} was not started by this bridge; it will not be killed.</value></data>
-  <data name="BookmarkIdFormat" xml:space="preserve"><value>Bookmark id must be 'file|line'.</value></data>
+  <data name="BookmarkNotPlaced" xml:space="preserve"><value>Visual Studio did not place a bookmark at {0}:{1}.</value></data>
+  <data name="OutputWindowUnavailable" xml:space="preserve"><value>The Output window service is not available.</value></data>
+  <data name="DteUnavailable" xml:space="preserve"><value>Visual Studio DTE service is unavailable.</value></data>
+  <data name="MenuCommandServiceUnavailable" xml:space="preserve"><value>IMenuCommandService is unavailable.</value></data>
+  <data name="NotAtBreakpointReason" xml:space="preserve"><value>not stopped at a breakpoint</value></data>
+  <data name="BookmarkIdFormat"xml:space="preserve"><value>Bookmark id must be 'file|line'.</value></data>
   <data name="BridgeWindowNotCreated" xml:space="preserve"><value>Could not create the IDE Bridge window.</value></data>
   <data name="BridgeSettingsNote" xml:space="preserve"><value>The IDE bridge starts automatically when Visual Studio opens.
 It uses a per-process named pipe and registers this instance for MCP routing.

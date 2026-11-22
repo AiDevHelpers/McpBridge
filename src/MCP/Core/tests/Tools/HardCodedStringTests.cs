@@ -35,7 +35,9 @@ public sealed partial class HardCodedStringTests
         var helpers = Path.Combine(RepoRoot(), "src", "Helpers");
         var roots = Directory.EnumerateDirectories(helpers)
             .Select(dir => (Name: Path.GetFileName(dir), Src: Path.Combine(dir, "src")))
-            .Append((Name: "MCP.Core", Src: Path.Combine(RepoRoot(), "src", "MCP", "Core", "src")));
+            .Append((Name: "MCP.Core", Src: Path.Combine(RepoRoot(), "src", "MCP", "Core", "src")))
+            .Append((Name: "Vs2026.Core", Src: Path.Combine(RepoRoot(), "src", "Installers", "Vs2026", "Core", "src")))
+            .Append((Name: "Vs2026.Installer", Src: Path.Combine(RepoRoot(), "src", "Installers", "Vs2026", "Installer", "src")));
         foreach (var (helper, src) in roots)
         {
             if (!Directory.Exists(src))
