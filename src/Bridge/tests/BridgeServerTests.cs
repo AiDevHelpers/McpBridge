@@ -45,7 +45,7 @@ public sealed class BridgeServerTests
         using var server = NewServer(pipe);
 
         server.Start();
-        var first = await SendAsync(pipe, "{\"action\":\"health\"}");
+        var first = await SendWithRetryAsync(pipe, "{\"action\":\"health\"}");
         Assert.NotNull(first);
         Assert.Contains("\"listener_running\":true", first);
 
