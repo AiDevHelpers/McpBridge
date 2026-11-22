@@ -35,6 +35,39 @@ internal static class IdeTestRunService
             : Path.GetDirectoryName(full) ?? throw new InvalidOperationException(Strings.Get("NoSolutionDirectory"));
     }
 
+    /// <summary>The <c>dotnet test</c> arguments that write TRX files into <paramref name="runDir"/>.</summary>
+    internal static IReadOnlyList<string> TestArguments(string solutionPath, string solutionDir, string runDir) =>
+        UsesTestingPlatform(solutionDir)
+            ? ["test", solutionPath, "--report-xunit-trx", "--results-directory", runDir]
+            : ["test", solutionPath, "--logger", "trx", "--results-directory", runDir];
+
+    private static readonly string[] TestingPlatformMarkers =
+        ["xunit.v3", "Microsoft.Testing.Platform", "UseMicrosoftTestingPlatformRunner", "TestingPlatformDotnetTestSupport"];
+
+    private static readonly string[] SkippedFolders = ["bin", "obj", "node_modules", ".git", "TestResults"];
+
+    // Microsoft.Testing.Platform projects take --report-xunit-trx; VSTest projects reject it and need the trx logger.
+    // A marker in any project or build props file under the solution folder counts, since props files apply to every project.
+    private static bool UsesTestingPlatform(string solutionDir)
+    {
+        if (!Directory.Exists(solutionDir))
+        {
+            return false;
+        }
+
+        return Directory.EnumerateFiles(solutionDir, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase)
+                        || f.EndsWith(".props", StringComparison.OrdinalIgnoreCase)
+                        || f.EndsWith(".targets", StringComparison.OrdinalIgnoreCase))
+            .Where(f => !Path.GetRelativePath(solutionDir, f).Split(Path.DirectorySeparatorChar)
+                .Any(part => SkippedFolders.Contains(part, StringComparer.OrdinalIgnoreCase)))
+            .Any(f =>
+            {
+                var text = File.ReadAllText(f);
+                return TestingPlatformMarkers.Any(m => text.Contains(m, StringComparison.OrdinalIgnoreCase));
+            });
+    }
+
     /// <summary>Runs <c>dotnet test</c> on the solution, writing one TRX per test project into a new run folder under TestResults.</summary>
     public static async Task<string> RunDotnetTestAsync(string solutionPath, CancellationToken ct)
     {
@@ -45,7 +78,7 @@ internal static class IdeTestRunService
             new CommandRequest
             {
                 FileName = "dotnet",
-                Arguments = ["test", solutionPath, "--report-xunit-trx", "--results-directory", runDir],
+                Arguments = [.. TestArguments(solutionPath, solutionDir, runDir)],
                 WorkingDirectory = solutionDir,
                 Timeout = TimeSpan.FromMinutes(30),
                 OnStarted = process => ManagedProcessRegistry.Track(process, "test run"),

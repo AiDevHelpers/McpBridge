@@ -184,3 +184,34 @@ public sealed class SourceControlServiceTests : IAsyncLifetime, IDisposable
         Assert.Throws<ArgumentException>(() => _service.Plan(_repo, "rebase_hard"));
     }
 }
+
+/// <summary>A git call that fails without printing anything must still say why.</summary>
+public sealed class StatusFailureTests
+{
+    private sealed class FailingRunner(GitResult result) : IGitRunner
+    {
+        public Task<GitResult> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken ct = default) =>
+            Task.FromResult(result);
+    }
+
+    [Fact]
+    public async Task SilentFailureReportsTheExitCode()
+    {
+        var service = new SourceControlService(new FailingRunner(new GitResult(false, 128, "")));
+
+        var status = await service.StatusAsync("anywhere");
+
+        Assert.False(string.IsNullOrWhiteSpace(status.Error));
+        Assert.Contains("128", status.Error);
+    }
+
+    [Fact]
+    public async Task FailureWithOutputKeepsTheOutput()
+    {
+        var service = new SourceControlService(new FailingRunner(new GitResult(false, 128, "fatal: not a git repository")));
+
+        var status = await service.StatusAsync("anywhere");
+
+        Assert.Equal("fatal: not a git repository", status.Error);
+    }
+}

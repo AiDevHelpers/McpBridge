@@ -17,7 +17,7 @@ internal static class OutputChannelActions
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         var output = ServiceProvider.GetGlobalService<SVsOutputWindow, IVsOutputWindow>()
-            ?? throw new InvalidOperationException("The Output window service is not available.");
+            ?? throw new InvalidOperationException(Strings.Get("OutputWindowUnavailable"));
 
         var paneGuid = PaneGuid(channel);
         if (output.GetPane(ref paneGuid, out var pane) != VSConstants.S_OK || pane is null)

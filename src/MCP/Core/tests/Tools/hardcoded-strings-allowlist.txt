@@ -80,3 +80,18 @@ MCP.Core|AiDevHelpers.McpBridge MCP Full Self-Test
 MCP.Core|Test run finished: \\d+ Tests
 MCP.Core|Test run finished: (\d+) Tests \((\d+) Passed, (\d+) Failed, (\d+) Skipped\)
 
+# Visual Studio bridge: log lines, the product name, and attribute justifications. Not text shown to a client.
+Vs2026.Core|Every entry point runs on the UI thread: BridgePackage switches to it before calling Invoke, and Invoke asserts it with ThreadHelper.ThrowIfNotOnUIThread.
+Vs2026.Core|Visual Studio bridge package initialized for process {_pid}.
+Vs2026.Core|[IdeBridge] Watchdog error: {ex}
+Vs2026.Core|AiDevHelpers IDE Bridge
+Vs2026.Core|{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}
+Vs2026.Installer|AiDevHelpers IDE Bridge
+Vs2026.Installer|Could not open IDE Bridge page {page}: {ex}
+Vs2026.Installer|Status requested: {BridgeControl.Describe()}
+
+# MCP.Core: a folder name on disk (where vswhere.exe lives).
+MCP.Core|Microsoft Visual Studio
+
+# MCP.Core: the pattern sent to the IDE to find summary and [FAIL] lines in the Tests pane.
+MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]

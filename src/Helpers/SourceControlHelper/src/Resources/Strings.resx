@@ -13,4 +13,10 @@
   <data name="DeleteBranchNeedsName" xml:space="preserve"><value>delete_branch needs a branch name.</value></data>
   <data name="SwitchNeedsName" xml:space="preserve"><value>switch needs a branch name.</value></data>
   <data name="CouldNotStartGit" xml:space="preserve"><value>Could not start git.</value></data>
+  <data name="GitFailedSilently" xml:space="preserve"><value>git exited with code {0} and printed nothing.</value></data>
+  <data name="GhNotFound" xml:space="preserve"><value>gh (the GitHub CLI) was not found, or is not on PATH.</value></data>
+  <data name="GhFailedSilently" xml:space="preserve"><value>gh exited with code {0} and printed nothing. Check that it is signed in (gh auth status).</value></data>
+  <data name="NoFailingCheck" xml:space="preserve"><value>No check of this pull request has failed.</value></data>
+  <data name="NoRunLink" xml:space="preserve"><value>Check '{0}' failed but has no GitHub Actions run link, so its log cannot be read.</value></data>
+  <data name="GitTimedOut" xml:space="preserve"><value>git did not finish in time and was stopped.</value></data>
 </root>

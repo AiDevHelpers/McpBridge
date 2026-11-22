@@ -265,7 +265,8 @@ public sealed class IdeActions(DTE2 dte)
             throw new InvalidOperationException(Strings.Get("SettingsJsonNotFound"));
         }
 
-        var value = (bool?)null;
+        // Visual Studio leaves the option out of settings.json until it is set, and an unset option is off.
+        var value = false;
         using (var doc = JsonDocument.Parse(StripComments(File.ReadAllText(settingsPath))))
         {
             if (doc.RootElement.TryGetProperty("test.hotReload", out var prop) && (prop.ValueKind == JsonValueKind.True || prop.ValueKind == JsonValueKind.False))
@@ -470,7 +471,7 @@ public sealed class IdeActions(DTE2 dte)
         {
             if (!breakMode)
             {
-                return new { expression, valid = false, value = (string?)null, type = (string?)null, reason = (string?)"not stopped at a breakpoint" };
+                return new { expression, valid = false, value = (string?)null, type = (string?)null, reason = (string?)Strings.Get("NotAtBreakpointReason") };
             }
 
             var result = dte.Debugger.GetExpression(expression, false, 5000);

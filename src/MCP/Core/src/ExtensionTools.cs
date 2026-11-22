@@ -109,6 +109,41 @@ internal sealed class ExtensionTools
         });
     }
 
+    [McpServerTool]
+    [Description("List the Visual Studio installs on this machine (stable and prerelease) with their MSBuild path and whether the VSSDK targets " +
+                 "a VSIX build needs are present. vsSdkTargetsPath is null when the extension development workload is missing.")]
+    public static async Task<string> BuildEnv(CancellationToken ct = default)
+    {
+        var vswhere = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        if (!File.Exists(vswhere))
+        {
+            return Json(new { ok = false, error = Strings.Format("VsWhereNotFound", vswhere) });
+        }
+
+        try
+        {
+            var installs = await new BuildEnvironment(new ProcessCommandRunner(), vswhere).ListAsync(ct);
+            return Json(new
+            {
+                ok = true,
+                count = installs.Count,
+                installs = installs.Select(i => new
+                {
+                    path = i.Path,
+                    displayName = i.DisplayName,
+                    version = i.Version,
+                    isPrerelease = i.IsPrerelease,
+                    msBuildPath = i.MsBuildPath,
+                    vsSdkTargetsPath = i.VsSdkTargetsPath,
+                }),
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static bool TryParseIde(string ide, out ExtensionIde parsed, out string? error)
     {
         if (Enum.TryParse(ide, ignoreCase: true, out parsed) && Enum.IsDefined(parsed))

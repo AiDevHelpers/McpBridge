@@ -37,7 +37,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeSetStartupProject` | `setStartupProject` | VS only. VS Code returns `unsupported`. |
 | `IdeRunTests` | `runTests` | VS: `dotnet test` with TRX when `IdeTestRunMode` is `DotnetTest`, otherwise Test Explorer. VS Code: `testing.runAll`. |
 | `IdeGetTestResults` | (MCP only) | Reads the newest TRX file in the solution's `TestResults` folder. |
-| `IdeGetTestSummary` | (MCP only) | Counts from the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. Counts only; failing test names are not printed at the default log level. |
+| `IdeGetTestSummary` | (MCP only) | Counts from the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. `failures` lists the tests the runner marked `[FAIL]` in that run (between the previous summary line and this one); it is empty when the pane has no such lines. |
 | `IdeBuild`, `IdeClean`, `IdePublish` | `build`, `clean`, `publish` | VS: the IDE build. VS Code: `build` runs the build task; `clean` and `publish` run `dotnet` in the workspace folder. |
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
@@ -71,9 +71,13 @@ These actions are called by the MCP server's own services, not by a single tool 
 | Tools | Helper | Notes |
 |---|---|---|
 | `live_test_start`, `live_test_stop` | TestingHelper | Live testing with `dotnet watch test`. Works in Visual Studio Community, which has no Live Unit Testing. Failures reach `test_failures`, the error log and MCP log notifications. |
-| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, and optionally `dotnet format --verify-no-changes`. |
+| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, duplicate names in `Strings.resx` files, and optionally `dotnet format --verify-no-changes`. |
+| `string_scan` | LintHelper | Lists multi-word string literals in a C# file or folder that should be in `Resources/Strings.resx`, with the resource key when the text is already there. Skips comments, attributes, logger calls, `Strings.cs`, and `bin` or `obj` folders. |
+| `resx_check` | LintHelper | Checks each `Resources/Strings.resx` under a folder: duplicate names, keys used in code but missing, and keys never used. |
 | `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. |
+| `pr_checks`, `ci_failure` | SourceControlHelper | Read only, through the GitHub CLI (`gh`). `pr_checks` lists each CI check of a pull request with its state and bucket. `ci_failure` returns the first failing job and the error lines of its log (the end of the log when no line looks like an error). |
 | `package_check` | PackageHelper | NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, .NET analyzers), pip (pinned requirements) and npm (a lockfile). Reads files only. |
+| `package_outdated` | PackageHelper | Lists the outdated NuGet packages of a solution (`dotnet list package --outdated`) with the version to move to. A package that versions with .NET (`System.*`, `Microsoft.Extensions.*` and the like) is never moved past the .NET major of its project, so a net10.0 project does not get an 11.x package. Edits nothing. |
 | `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. |
 | `server_control_set`, `server_control_status` | (server) | Pause, close and resume every aidevtools server on this machine for an update. `paused` makes each server refuse tool calls with a message and pushes a log notification (`AiDevHelpers.Control`) to its chat. `closing` makes each server exit after a short pause, which releases its files. `running` resumes. These two tools work in every state. State lives in `%ProgramData%\AiDevHelpers\control\state.json`. `scripts/update-aidevtools.ps1` runs pause, close, update, resume and always resumes at the end. |
 | `self_test_list`, `self_test_read` | each helper | Lists helpers with their versions and the server version, and reads a helper's embedded self-test markdown. |
@@ -83,6 +87,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `test_affected` | TestingHelper | Lists the test projects a change can affect, with a `dotnet test` command for each. A changed file affects its project and every project that references it; a build-wide file (`Directory.Build.props`, `.editorconfig`, a solution file) affects all test projects. Uses git's changed files when none are given. Runs nothing. |
 | `extension_list`, `extension_info`, `extension_add_plan`, `extension_add_confirm` | ExtensionsHelper | VS Code list and info are local. Visual Studio info queries the Marketplace. Adds are two-step and need approval. |
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
+| `build_env` | ExtensionsHelper | Lists the Visual Studio installs (stable and prerelease) with their MSBuild path and whether the VSSDK targets a VSIX build needs are present. |
 
 ## Limits
 
@@ -107,7 +112,9 @@ These actions are called by the MCP server's own services, not by a single tool 
 ## Settings
 
 - `IdeTestRunMode` in the MCP `appsettings.json` (`IdeTools` section): `DotnetTest` or `TestExplorer`
-  (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it.
+  (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it. `DotnetTest` passes
+  `--logger trx` to VSTest projects and `--report-xunit-trx` when a project or props file references Microsoft.Testing.Platform
+  or xunit.v3. This repo's `Directory.Build.props` points `dotnet test` at `.runsettings`, which excludes `Category=Tpm`.
 - The VS options page also edits the MCP advanced settings: verbose logging, context helper and token
   economy switches, context size limit, endpoint strategy, and endpoints. Endpoints are one per line as
   `name|url|primary|models`, and at least one must have `primary` set to `true` when the list isn't empty.

@@ -36,6 +36,47 @@ public sealed class IdeTestRunServiceTests : IDisposable
     }
 
     [Fact]
+    public void TestArguments_ForVsTestProjects_UseTheTrxLogger()
+    {
+        WriteProject("Tests/A.Tests.csproj", """<PackageReference Include="xunit" Version="2.9.3" />""");
+
+        var args = IdeTestRunService.TestArguments(Path.Combine(_root, "S.slnx"), _root, "out");
+
+        Assert.Equal(["test", Path.Combine(_root, "S.slnx"), "--logger", "trx", "--results-directory", "out"], args);
+    }
+
+    [Theory]
+    [InlineData("""<PackageReference Include="xunit.v3" Version="3.0.0" />""")]
+    [InlineData("""<PackageReference Include="Microsoft.Testing.Platform" Version="2.5.1" />""")]
+    [InlineData("""<UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>""")]
+    public void TestArguments_ForMtpProjects_UseTheXunitTrxReporter(string marker)
+    {
+        WriteProject("Tests/A.Tests.csproj", marker);
+
+        var args = IdeTestRunService.TestArguments(Path.Combine(_root, "S.slnx"), _root, "out");
+
+        Assert.Equal(["test", Path.Combine(_root, "S.slnx"), "--report-xunit-trx", "--results-directory", "out"], args);
+    }
+
+    [Fact]
+    public void TestArguments_WhenTheMarkerIsInDirectoryBuildProps_UsesTheMtpReporter()
+    {
+        WriteProject("Tests/A.Tests.csproj", """<PackageReference Include="xunit" Version="2.9.3" />""");
+        WriteProject("Directory.Build.props", """<PackageReference Include="Microsoft.Testing.Platform" Version="2.5.1" />""");
+
+        var args = IdeTestRunService.TestArguments(Path.Combine(_root, "S.slnx"), _root, "out");
+
+        Assert.Contains("--report-xunit-trx", args);
+    }
+
+    private void WriteProject(string relativePath, string body)
+    {
+        var path = Path.Combine(_root, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, $"<Project><ItemGroup>{body}</ItemGroup></Project>");
+    }
+
+    [Fact]
     public void GetLatestResult_WithoutTestResultsFolder_ReportsNotOk()
     {
         Directory.CreateDirectory(_root);

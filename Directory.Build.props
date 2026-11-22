@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- dotnet test and Visual Studio read the Category!=Tpm filter from here. A filter given on the command line is combined with it, so pass an empty RunSettingsFilePath to run the Tpm tests. -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory).runsettings</RunSettingsFilePath>
+  </PropertyGroup>
+</Project>

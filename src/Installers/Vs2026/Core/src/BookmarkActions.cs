@@ -64,7 +64,7 @@ internal static class BookmarkActions
 
         if (!HasBookmark(file, line))
         {
-            throw new InvalidOperationException($"Visual Studio did not place a bookmark at {file}:{line}.");
+            throw new InvalidOperationException(Strings.Format("BookmarkNotPlaced", file, line));
         }
 
         return Project(file, line);

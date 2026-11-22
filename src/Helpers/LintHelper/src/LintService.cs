@@ -31,12 +31,22 @@ public sealed partial class LintService(ICommandRunner runner)
         CheckNoWarnAgainstEditorConfig(root, findings);
         CheckTsConfigStrict(root, findings);
         CheckEslintAndTslint(root, findings);
+        CheckResxDuplicates(root, findings);
         if (runDotnetFormat)
         {
             await CheckDotnetFormatAsync(root, findings, ct);
         }
 
         return findings;
+    }
+
+    // A repeated resource name fails the build late (MSB3568), so it is reported here as an error.
+    private static void CheckResxDuplicates(string root, List<LintFinding> findings)
+    {
+        foreach (var finding in ResxChecker.Check(root).Where(f => f.Kind == "duplicate"))
+        {
+            findings.Add(new LintFinding("resx", "error", finding.Resx, Strings.Format("ResxDuplicateName", finding.Key)));
+        }
     }
 
     private static void CheckEditorConfig(string root, List<LintFinding> findings)

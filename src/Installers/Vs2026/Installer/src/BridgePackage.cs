@@ -38,7 +38,7 @@ public sealed class BridgePackage : AsyncPackage
         }
 
         var dte = (DTE2?)await GetServiceAsync(typeof(DTE))
-            ?? throw new InvalidOperationException("Visual Studio DTE service is unavailable.");
+            ?? throw new InvalidOperationException(AiDevHelpers.Installers.Vs2026.Core.Strings.Get("DteUnavailable"));
 
         _host = BridgeHost.Start(dte, pid, async run => { await JoinableTaskFactory.SwitchToMainThreadAsync(); return run(); });
         await BridgeStatusCommand.InitializeAsync(this);
