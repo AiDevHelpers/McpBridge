@@ -71,4 +71,9 @@
   <data name="ElevDidNotStart" xml:space="preserve"><value>elev.exe did not start.</value></data>
   <data name="ScriptHelperNeedsArgs" xml:space="preserve"><value>Error: runElevatedScript needs projectRoot and script.</value></data>
   <data name="ScriptHelperError" xml:space="preserve"><value>Error: {0}</value></data>
+  <data name="SolutionFileMissing" xml:space="preserve"><value>Solution file not found.</value></data>
+  <data name="PassSolutionPathNoInstance" xml:space="preserve"><value>Pass solutionPath: no single open instance to infer it from.</value></data>
+  <data name="CouldNotReadTestsPane" xml:space="preserve"><value>Could not read the Tests output pane.</value></data>
+  <data name="UnreadableIdeOutput" xml:space="preserve"><value>Unreadable output from the IDE.</value></data>
+  <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
 </root>
