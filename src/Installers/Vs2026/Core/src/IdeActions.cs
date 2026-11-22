@@ -68,18 +68,18 @@ public sealed class IdeActions(DTE2 dte)
         "publish" => Publish(),
         "prepareKill" => PrepareKill(),
         "killProcess" => KillProcess(RequireInt(args, "pid")),
-        _ => throw new NotSupportedException($"Unknown action '{action}'."),
+        _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
     // Clean and publish run through the IDE's build, not a child process this bridge starts, so no process is
     // tracked here. Every pid is refused; only processes the bridge started may be killed.
     private object KillProcess(int pid) =>
-        throw new InvalidOperationException($"Process {pid} was not started by this bridge; it will not be killed.");
+        throw new InvalidOperationException(Strings.Format("ProcessNotStartedByBridge", pid));
 
     private object SetStartupProject(string projectName)
     {
         var project = FindProject(projectName)
-            ?? throw new InvalidOperationException($"No project named '{projectName}' in the open solution.");
+            ?? throw new InvalidOperationException(Strings.Format("NoProjectNamed", projectName));
 
         dte.Solution.SolutionBuild.StartupProjects = new object[] { project.UniqueName };
         return new { startup_project = project.UniqueName };
@@ -108,7 +108,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (dte.ActiveDocument is null)
         {
-            throw new InvalidOperationException("No active document to format.");
+            throw new InvalidOperationException(Strings.Get("NoActiveDocumentToFormat"));
         }
 
         dte.ExecuteCommand("Edit.FormatDocument");
@@ -155,7 +155,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (dte.ActiveDocument is null)
         {
-            throw new InvalidOperationException("No active document to clean up.");
+            throw new InvalidOperationException(Strings.Get("NoActiveDocumentToCleanUp"));
         }
 
         dte.ExecuteCommand("Edit.RunCodeCleanup");
@@ -184,7 +184,7 @@ public sealed class IdeActions(DTE2 dte)
             return new { pane = pane.Name, lines = tail.Select(l => l.TrimEnd('\r')).ToList() };
         }
 
-        throw new InvalidOperationException($"No output pane named '{paneName}'.");
+        throw new InvalidOperationException(Strings.Format("NoOutputPaneNamed", paneName));
     }
 
     private object ListOutputPanes()
@@ -227,18 +227,18 @@ public sealed class IdeActions(DTE2 dte)
             }
         }
 
-        throw new InvalidOperationException($"No output pane named '{paneName}'.");
+        throw new InvalidOperationException(Strings.Format("NoOutputPaneNamed", paneName));
     }
 
     private object GetLocals(int maxItems)
     {
         if (dte.Debugger.CurrentMode != dbgDebugMode.dbgBreakMode)
         {
-            throw new InvalidOperationException("Not stopped at a breakpoint; locals are only available in break mode.");
+            throw new InvalidOperationException(Strings.Get("NotAtBreakpointLocals"));
         }
 
         var frame = dte.Debugger.CurrentStackFrame
-            ?? throw new InvalidOperationException("No current stack frame.");
+            ?? throw new InvalidOperationException(Strings.Get("NoCurrentStackFrame"));
 
         var locals = new List<object>();
         foreach (Expression expression in frame.Locals)
@@ -262,7 +262,7 @@ public sealed class IdeActions(DTE2 dte)
         var settingsPath = InstanceSettingsPath();
         if (settingsPath is null)
         {
-            throw new InvalidOperationException("Could not find this Visual Studio instance's settings.json.");
+            throw new InvalidOperationException(Strings.Get("SettingsJsonNotFound"));
         }
 
         var value = (bool?)null;
@@ -344,7 +344,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (!File.Exists(solutionPath))
         {
-            throw new FileNotFoundException("Solution file not found.", solutionPath);
+            throw new FileNotFoundException(Strings.Get("SolutionFileNotFound"), solutionPath);
         }
 
         dte.Solution.Open(solutionPath);
@@ -355,7 +355,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (!File.Exists(file))
         {
-            throw new FileNotFoundException("File not found.", file);
+            throw new FileNotFoundException(Strings.Get("FileNotFound"), file);
         }
 
         dte.ItemOperations.OpenFile(file);
@@ -417,7 +417,7 @@ public sealed class IdeActions(DTE2 dte)
                 dte.Debugger.StepOut(false);
                 break;
             default:
-                throw new ArgumentException("Step mode must be 'over', 'into', or 'out'.");
+                throw new ArgumentException(Strings.Get("StepModeInvalid"));
         }
 
         return new { mode, debugger_mode = dte.Debugger.CurrentMode.ToString() };
@@ -505,7 +505,7 @@ public sealed class IdeActions(DTE2 dte)
             }
         }
 
-        throw new ArgumentException($"No solution configuration named '{name}'.");
+        throw new ArgumentException(Strings.Format("NoSolutionConfiguration", name));
     }
 
     private object Clean()
@@ -545,7 +545,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (dte.Debugger.CurrentMode != dbgDebugMode.dbgBreakMode)
         {
-            throw new InvalidOperationException("Not stopped at a breakpoint; expressions can only be evaluated in break mode.");
+            throw new InvalidOperationException(Strings.Get("NotAtBreakpointExpressions"));
         }
     }
 
@@ -612,7 +612,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Number)
         {
-            throw new ArgumentException($"Missing integer argument '{name}'.");
+            throw new ArgumentException(Strings.Format("MissingIntegerArgument", name));
         }
 
         return value.GetInt32();
@@ -622,7 +622,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
         {
-            throw new ArgumentException($"Missing string argument '{name}'.");
+            throw new ArgumentException(Strings.Format("MissingStringArgument", name));
         }
 
         return value.GetString()!;
