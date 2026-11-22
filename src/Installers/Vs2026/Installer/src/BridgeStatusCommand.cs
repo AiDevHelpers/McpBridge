@@ -51,8 +51,9 @@ internal sealed class BridgeStatusCommand
     private static void Add(OleMenuCommandService commandService, int commandId, EventHandler handler) =>
         commandService.AddCommand(new MenuCommand(handler, new CommandID(CommandSet, commandId)));
 
-    [SuppressMessage("Usage", "VSTHRD100:Avoid async void methods", Justification = "This is a Visual Studio menu event handler; exceptions are handled below.")]
-    private async void ShowPage(int page)
+    private void ShowPage(int page) => _ = _package.JoinableTaskFactory.RunAsync(() => ShowPageAsync(page));
+
+    private async Task ShowPageAsync(int page)
     {
         try
         {

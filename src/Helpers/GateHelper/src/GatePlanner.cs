@@ -8,7 +8,7 @@ public sealed record GateStep(string Name, string Tool, IReadOnlyList<string> Ar
 /// <summary>Runs one gate command. Injected so tests don't start tools.</summary>
 public interface IGateRunner
 {
-    (int ExitCode, string Output) Run(GateStep step, string workingDirectory);
+    Task<(int ExitCode, string Output)> RunAsync(GateStep step, string workingDirectory, CancellationToken ct = default);
 }
 
 /// <summary>The result of one step. Skipped steps never ran because an earlier step failed.</summary>
@@ -143,7 +143,7 @@ public static class GatePlanner
 /// <summary>Runs the steps in order and stops at the first failure. Later steps are reported as skipped.</summary>
 public static class GateRunner
 {
-    public static IReadOnlyList<GateStepResult> Run(IReadOnlyList<GateStep> steps, string root, IGateRunner runner)
+    public static async Task<IReadOnlyList<GateStepResult>> RunAsync(IReadOnlyList<GateStep> steps, string root, IGateRunner runner, CancellationToken ct = default)
     {
         var results = new List<GateStepResult>();
         var stopped = false;
@@ -156,7 +156,7 @@ public static class GateRunner
                 continue;
             }
 
-            var (code, output) = runner.Run(step, root);
+            var (code, output) = await runner.RunAsync(step, root, ct);
             var passed = code == 0 || step.AllowFailure;
             results.Add(new GateStepResult(step.Name, command.Trim(), passed, Skipped: false, code, output));
             if (!passed)

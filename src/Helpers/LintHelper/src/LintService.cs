@@ -5,7 +5,7 @@ namespace AiDevHelpers.Helpers.LintHelper;
 /// <summary>Runs an external command. Injected so tests don't start dotnet.</summary>
 public interface ICommandRunner
 {
-    (int ExitCode, string Output) Run(string fileName, IReadOnlyList<string> arguments, string workingDirectory);
+    Task<(int ExitCode, string Output)> RunAsync(string fileName, IReadOnlyList<string> arguments, string workingDirectory, CancellationToken ct = default);
 }
 
 /// <summary>One mismatch or gap in the lint setup. Severity is error, warning or info.</summary>
@@ -19,7 +19,7 @@ public sealed partial class LintService(ICommandRunner runner)
 {
     private static readonly string[] SkipFolders = ["bin", "obj", "node_modules", "dist", ".git"];
 
-    public IReadOnlyList<LintFinding> Analyze(string root, bool runDotnetFormat = false)
+    public async Task<IReadOnlyList<LintFinding>> AnalyzeAsync(string root, bool runDotnetFormat = false, CancellationToken ct = default)
     {
         if (!Directory.Exists(root))
         {
@@ -33,7 +33,7 @@ public sealed partial class LintService(ICommandRunner runner)
         CheckEslintAndTslint(root, findings);
         if (runDotnetFormat)
         {
-            CheckDotnetFormat(root, findings);
+            await CheckDotnetFormatAsync(root, findings, ct);
         }
 
         return findings;
@@ -131,7 +131,7 @@ public sealed partial class LintService(ICommandRunner runner)
         }
     }
 
-    private void CheckDotnetFormat(string root, List<LintFinding> findings)
+    private async Task CheckDotnetFormatAsync(string root, List<LintFinding> findings, CancellationToken ct)
     {
         var solution = Directory.EnumerateFiles(root, "*.sln*", SearchOption.TopDirectoryOnly).FirstOrDefault();
         if (solution is null)
@@ -140,7 +140,7 @@ public sealed partial class LintService(ICommandRunner runner)
             return;
         }
 
-        var (code, output) = runner.Run("dotnet", ["format", solution, "--verify-no-changes"], root);
+        var (code, output) = await runner.RunAsync("dotnet", ["format", solution, "--verify-no-changes"], root, ct);
         if (code != 0)
         {
             var firstLines = string.Join(" | ", output.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(3));

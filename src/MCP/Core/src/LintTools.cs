@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text.Json;
+using AiDevHelpers.Common.Processes;
 using AiDevHelpers.Helpers.LintHelper;
 using ModelContextProtocol.Server;
 
@@ -13,13 +13,13 @@ internal sealed class LintTools
     [McpServerTool]
     [Description("Check a folder's lint setup for mismatches: .editorconfig vs csproj NoWarn, tsconfig strict, ESLint flat config for TypeScript, deprecated TSLint. " +
                  "Set runDotnetFormat to also run 'dotnet format --verify-no-changes' on the root solution.")]
-    public static string LintCheck(
+    public static async Task<string> LintCheck(
         [Description("Folder to check, usually the repo root")] string root,
         [Description("Run dotnet format --verify-no-changes on the root solution (slower)")] bool runDotnetFormat = false)
     {
         try
         {
-            var findings = new LintService(new LintProcessCommandRunner()).Analyze(root, runDotnetFormat);
+            var findings = await new LintService(new LintProcessCommandRunner()).AnalyzeAsync(root, runDotnetFormat);
             return Json(new { ok = true, count = findings.Count, findings });
         }
         catch (DirectoryNotFoundException ex)
@@ -34,25 +34,16 @@ internal sealed class LintTools
 /// <summary>Runs a command and captures stdout and stderr together.</summary>
 internal sealed class LintProcessCommandRunner : ICommandRunner
 {
-    public (int ExitCode, string Output) Run(string fileName, IReadOnlyList<string> arguments, string workingDirectory)
+    public async Task<(int ExitCode, string Output)> RunAsync(string fileName, IReadOnlyList<string> arguments, string workingDirectory, CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo(fileName)
+        var result = await CommandRunner.RunAsync(
+            new CommandRequest { FileName = fileName, Arguments = arguments, WorkingDirectory = workingDirectory },
+            ct);
+        if (!result.Launched)
         {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments)
-        {
-            psi.ArgumentList.Add(argument);
+            throw new InvalidOperationException(Strings.Format("CouldNotStart", fileName));
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStart", fileName));
-        var stderr = process.StandardError.ReadToEndAsync();
-        var stdout = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-        return (process.ExitCode, stdout + stderr.GetAwaiter().GetResult());
+        return (result.ExitCode, result.StdOut + result.StdErr);
     }
 }

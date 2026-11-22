@@ -79,15 +79,15 @@ public sealed class GatePlannerTests : IDisposable
     {
         public List<string> Ran { get; } = [];
 
-        public (int ExitCode, string Output) Run(GateStep step, string workingDirectory)
+        public Task<(int ExitCode, string Output)> RunAsync(GateStep step, string workingDirectory, CancellationToken ct = default)
         {
             Ran.Add(step.Name);
-            return (exitCodes.GetValueOrDefault(step.Name, 0), "output of " + step.Name);
+            return Task.FromResult((exitCodes.GetValueOrDefault(step.Name, 0), "output of " + step.Name));
         }
     }
 
     [Fact]
-    public void RunnerStopsAtTheFirstFailureAndSkipsTheRest()
+    public async Task RunnerStopsAtTheFirstFailureAndSkipsTheRest()
     {
         var steps = new List<GateStep>
         {
@@ -97,7 +97,7 @@ public sealed class GatePlannerTests : IDisposable
         };
         var runner = new FakeRunner(new() { ["test"] = 1 });
 
-        var results = GateRunner.Run(steps, _root, runner);
+        var results = await GateRunner.RunAsync(steps, _root, runner);
 
         Assert.True(results[0].Passed);
         Assert.False(results[1].Passed);
@@ -106,7 +106,7 @@ public sealed class GatePlannerTests : IDisposable
     }
 
     [Fact]
-    public void AdvisoryStepFailureDoesNotStopTheGate()
+    public async Task AdvisoryStepFailureDoesNotStopTheGate()
     {
         var steps = new List<GateStep>
         {
@@ -115,7 +115,7 @@ public sealed class GatePlannerTests : IDisposable
         };
         var runner = new FakeRunner(new() { ["outdated"] = 1 });
 
-        var results = GateRunner.Run(steps, _root, runner);
+        var results = await GateRunner.RunAsync(steps, _root, runner);
 
         Assert.True(results[0].Passed);
         Assert.True(results[1].Passed);

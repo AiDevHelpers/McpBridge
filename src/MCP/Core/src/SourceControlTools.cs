@@ -13,10 +13,10 @@ internal sealed class SourceControlTools
 
     [McpServerTool]
     [Description("Branch, upstream, ahead and behind counts, and changed paths for a git repo folder.")]
-    public static string GitStatus(
+    public static async Task<string> GitStatus(
         [Description("Repo folder, e.g. the folder that holds the .sln")] string repoPath)
     {
-        var status = Service.Status(repoPath);
+        var status = await Service.StatusAsync(repoPath);
         return Json(new
         {
             ok = status.Error is null,
@@ -31,12 +31,12 @@ internal sealed class SourceControlTools
 
     [McpServerTool]
     [Description("Diff of the working tree (or the staged changes when staged is true), optionally for one path.")]
-    public static string GitDiff(
+    public static async Task<string> GitDiff(
         [Description("Repo folder")] string repoPath,
         [Description("true for staged changes, false for unstaged")] bool staged = false,
         [Description("Optional: one path to diff")] string? path = null)
     {
-        var result = Service.Diff(repoPath, staged, path);
+        var result = await Service.DiffAsync(repoPath, staged, path);
         return Json(new { ok = result.Ok, output = result.Output });
     }
 
@@ -63,10 +63,10 @@ internal sealed class SourceControlTools
 
     [McpServerTool]
     [Description("Run a write planned by git_plan, once. The token is single use.")]
-    public static string GitConfirm(
+    public static async Task<string> GitConfirm(
         [Description("Token returned by git_plan")] string token)
     {
-        var result = Service.Confirm(token);
+        var result = await Service.ConfirmAsync(token);
         return Json(new { ok = result.Ok, exitCode = result.ExitCode, output = result.Output });
     }
 

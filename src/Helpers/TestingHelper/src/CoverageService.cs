@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using AiDevHelpers.Common.Processes;
 
 namespace AiDevHelpers.Helpers.TestingHelper;
 
@@ -11,28 +11,18 @@ public interface ITestCommandRunner
     Task<TestCommandResult> RunAsync(string file, IReadOnlyList<string> args, CancellationToken ct = default);
 }
 
-/// <summary>Real runner: argument list, no shell parsing.</summary>
+/// <summary>Real runner: delegates to the shared Common runner, so no argument is shell-parsed.</summary>
 public sealed class ProcessTestCommandRunner : ITestCommandRunner
 {
     public async Task<TestCommandResult> RunAsync(string file, IReadOnlyList<string> args, CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo(file)
+        var result = await CommandRunner.RunAsync(new CommandRequest { FileName = file, Arguments = args }, ct);
+        if (!result.Launched)
         {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var arg in args)
-        {
-            psi.ArgumentList.Add(arg);
+            throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", file));
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", file));
-        var stdout = process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-        return new TestCommandResult(process.ExitCode, await stdout, await stderr);
+        return new TestCommandResult(result.ExitCode, result.StdOut, result.StdErr);
     }
 }
 
