@@ -25,7 +25,7 @@ internal sealed class SourceControlTools
             return viaVsCode;
         }
 
-        var status = await Service.StatusAsync(repoPath);
+        var status = await Service.StatusAsync(repoPath, ct);
         return Json(new
         {
             ok = status.Error is null,
