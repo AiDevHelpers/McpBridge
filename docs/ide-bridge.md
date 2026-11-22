@@ -85,6 +85,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `test_affected` | TestingHelper | Lists the test projects a change can affect, with a `dotnet test` command for each. A changed file affects its project and every project that references it; a build-wide file (`Directory.Build.props`, `.editorconfig`, a solution file) affects all test projects. Uses git's changed files when none are given. Runs nothing. |
 | `extension_list`, `extension_info`, `extension_add_plan`, `extension_add_confirm` | ExtensionsHelper | VS Code list and info are local. Visual Studio info queries the Marketplace. Adds are two-step and need approval. |
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
+| `build_env` | ExtensionsHelper | Lists the Visual Studio installs (stable and prerelease) with their MSBuild path and whether the VSSDK targets a VSIX build needs are present. |
 
 ## Limits
 

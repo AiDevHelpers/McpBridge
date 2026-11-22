@@ -57,3 +57,4 @@ All ten units are committed on `wip`, the full gate passes, `DocsMatchCodeTests`
 
 - Unit 1: done in code and tests (red then green). Server-side reproduction pending.
 - Units 2 and 3: done. `StringScanner` and `ResxChecker` in LintHelper with tests (24 pass); `HardCodedStringTests` uses them; tools `string_scan` and `resx_check`; `lint_check` reports duplicate resx names.
+- Unit 4: done. `BuildEnvironment` in ExtensionsHelper (vswhere through `ICommandRunner`, 5 tests; 25 pass); tool `build_env`.

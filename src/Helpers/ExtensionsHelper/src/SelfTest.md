@@ -1,6 +1,6 @@
 # ExtensionsHelper self test
 
-Tools: `ExtensionList`, `ExtensionInfo`, `ExtensionAddPlan`, `ExtensionAddConfirm`, `ExtensionWorkspaceSetup`.
+Tools: `ExtensionList`, `ExtensionInfo`, `ExtensionAddPlan`, `ExtensionAddConfirm`, `ExtensionWorkspaceSetup`, `BuildEnv`.
 
 ## Full self test
 
@@ -15,3 +15,7 @@ Fixture: a scratch folder with a `.sln`, and a folder for `.vscode`.
 - `ExtensionWorkspaceSetup` (folderPath = fixture, solutionPath = fixture): PASS when `.vscode/extensions.json` lists the C# extensions and existing keys are kept.
 
 Record each as PASS, FAIL or NOT RUN with the exact arguments and reply.
+
+## BuildEnv
+
+- `BuildEnv`: PASS when `ok` is true and `installs` lists each Visual Studio install with `msBuildPath` and `vsSdkTargetsPath` (null where the extension development workload is missing). PASS with `ok` false only when `error` says vswhere was not found.
