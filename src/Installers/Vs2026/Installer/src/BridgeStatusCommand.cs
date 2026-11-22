@@ -61,7 +61,7 @@ internal sealed class BridgeStatusCommand
             var window = _package.FindToolWindow(typeof(BridgeToolWindow), 0, true) as BridgeToolWindow;
             if (window is null)
             {
-                VsShellUtilities.ShowMessageBox(_package, "Could not create the IDE Bridge window.",
+                VsShellUtilities.ShowMessageBox(_package, AiDevHelpers.Installers.Vs2026.Core.Strings.Get("BridgeWindowNotCreated"),
                     "AiDevHelpers IDE Bridge", OLEMSGICON.OLEMSGICON_WARNING, OLEMSGBUTTON.OLEMSGBUTTON_OK,
                     OLEMSGDEFBUTTON.OLEMSGDEFBUTTON_FIRST);
                 return;

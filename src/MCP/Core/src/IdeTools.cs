@@ -61,7 +61,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     {
         if (!File.Exists(solutionPath))
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = "Solution file not found." });
+            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = Strings.Get("SolutionFileMissing") });
         }
 
         var error = DevenvLauncher.Open(solutionPath);
@@ -105,7 +105,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         {
             var solution = ResolveSolution(solutionPath);
             return solution is null
-                ? Task.FromResult(JsonSerializer.Serialize(new { ok = false, error = "Pass solutionPath: no single open instance to infer it from." }))
+                ? Task.FromResult(JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") }))
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
@@ -120,7 +120,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     {
         var solution = ResolveSolution(solutionPath);
         return solution is null
-            ? JsonSerializer.Serialize(new { ok = false, error = "Pass solutionPath: no single open instance to infer it from." })
+            ? JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") })
             : IdeTestRunService.GetLatestResult(solution);
     }
 

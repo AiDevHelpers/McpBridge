@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="UnknownAction" xml:space="preserve"><value>Unknown action '{0}'.</value></data>
+  <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
+  <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>
+  <data name="NoActiveDocumentToCleanUp" xml:space="preserve"><value>No active document to clean up.</value></data>
+  <data name="NoOutputPaneNamed" xml:space="preserve"><value>No output pane named '{0}'.</value></data>
+  <data name="NotAtBreakpointLocals" xml:space="preserve"><value>Not stopped at a breakpoint; locals are only available in break mode.</value></data>
+  <data name="NoCurrentStackFrame" xml:space="preserve"><value>No current stack frame.</value></data>
+  <data name="SettingsJsonNotFound" xml:space="preserve"><value>Could not find this Visual Studio instance's settings.json.</value></data>
+  <data name="SolutionFileNotFound" xml:space="preserve"><value>Solution file not found.</value></data>
+  <data name="FileNotFound" xml:space="preserve"><value>File not found.</value></data>
+  <data name="StepModeInvalid" xml:space="preserve"><value>Step mode must be 'over', 'into', or 'out'.</value></data>
+  <data name="NoSolutionConfiguration" xml:space="preserve"><value>No solution configuration named '{0}'.</value></data>
+  <data name="NotAtBreakpointExpressions" xml:space="preserve"><value>Not stopped at a breakpoint; expressions can only be evaluated in break mode.</value></data>
+  <data name="MissingIntegerArgument" xml:space="preserve"><value>Missing integer argument '{0}'.</value></data>
+  <data name="MissingStringArgument" xml:space="preserve"><value>Missing string argument '{0}'.</value></data>
+  <data name="ProcessNotStartedByBridge" xml:space="preserve"><value>Process {0} was not started by this bridge; it will not be killed.</value></data>
+  <data name="BookmarkIdFormat" xml:space="preserve"><value>Bookmark id must be 'file|line'.</value></data>
+  <data name="BridgeWindowNotCreated" xml:space="preserve"><value>Could not create the IDE Bridge window.</value></data>
+  <data name="BridgeSettingsNote" xml:space="preserve"><value>The IDE bridge starts automatically when Visual Studio opens.
+It uses a per-process named pipe and registers this instance for MCP routing.
+
+There are no user-configurable bridge settings at this time.</value></data>
+</root>

@@ -65,9 +65,7 @@ public sealed class BridgeToolWindow : ToolWindowPane
             Dock = DockStyle.Top,
             AutoSize = true,
             Padding = new Padding(12),
-            Text = "The IDE bridge starts automatically when Visual Studio opens.\r\n" +
-                   "It uses a per-process named pipe and registers this instance for MCP routing.\r\n\r\n" +
-                   "There are no user-configurable bridge settings at this time.",
+            Text = AiDevHelpers.Installers.Vs2026.Core.Strings.Get("BridgeSettingsNote"),
         });
         return page;
     }

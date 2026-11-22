@@ -80,10 +80,3 @@ MCP.Core|AiDevHelpers.McpBridge MCP Full Self-Test
 MCP.Core|Test run finished: \\d+ Tests
 MCP.Core|Test run finished: (\d+) Tests \((\d+) Passed, (\d+) Failed, (\d+) Skipped\)
 
-# PENDING, user-facing: these are in uncommitted work from another session (IdeTools.cs, TestSummaryParser.cs).
-# Move them to Resources/Strings.resx when that work is committed, then delete these lines.
-MCP.Core|Solution file not found.
-MCP.Core|Pass solutionPath: no single open instance to infer it from.
-MCP.Core|Could not read the Tests output pane.
-MCP.Core|Unreadable output from the IDE.
-MCP.Core|No finished test run found in the Tests output pane.

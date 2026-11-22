@@ -25,7 +25,7 @@ internal static class TestSummaryParser
             using var doc = JsonDocument.Parse(searchOutputJson);
             if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.False)
             {
-                return JsonSerializer.Serialize(new { ok = false, error = "Could not read the Tests output pane." });
+                return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("CouldNotReadTestsPane") });
             }
 
             if (doc.RootElement.TryGetProperty("result", out var result)
@@ -39,12 +39,12 @@ internal static class TestSummaryParser
         }
         catch (JsonException)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = "Unreadable output from the IDE." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("UnreadableIdeOutput") });
         }
 
         if (line is null)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = "No finished test run found in the Tests output pane." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("NoFinishedTestRunInPane") });
         }
 
         var m = SummaryLine.Match(line);

@@ -175,7 +175,7 @@ internal static class BookmarkActions
         var bar = id.LastIndexOf('|');
         if (bar <= 0 || !int.TryParse(id.Substring(bar + 1), out var line))
         {
-            throw new ArgumentException("Bookmark id must be 'file|line'.");
+            throw new ArgumentException(Strings.Get("BookmarkIdFormat"));
         }
 
         return (id.Substring(0, bar), line);
