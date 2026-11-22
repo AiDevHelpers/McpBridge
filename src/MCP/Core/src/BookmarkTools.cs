@@ -35,7 +35,7 @@ internal sealed class BookmarkTools
         {
             var item = await Service().GetAsync(id, ct);
             return item is null
-                ? Json(new { ok = false, error = $"Bookmark '{id}' was not found." })
+                ? Json(new { ok = false, error = Strings.Format("BookmarkNotFound", id) })
                 : Json(new { ok = true, item = Project(item) });
         }
         catch (Exception ex) when (ex is BookmarkException or ArgumentException)
@@ -93,7 +93,7 @@ internal sealed class IdeBookmarkBridge(IIdeBridge bridge) : IBookmarkBridge
         var reply = await bridge.CallAsync("VisualStudio", action, args, ct);
         if (!reply.Ok)
         {
-            throw new BookmarkException(reply.Error ?? $"The IDE refused '{action}'.");
+            throw new BookmarkException(reply.Error ?? Strings.Format("BookmarkRefused", action));
         }
 
         return reply.Result ?? JsonDocument.Parse("null").RootElement.Clone();

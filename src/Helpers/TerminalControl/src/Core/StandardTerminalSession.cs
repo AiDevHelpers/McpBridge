@@ -29,7 +29,8 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
     public string SessionId { get; } = $"standard_{Guid.NewGuid():N}".Substring(0, 20);
     private string WindowName => $"tokensaver-{SessionId}";
-    private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "tokensaver-tab.ps1");
+    // The wrapper is copied under Scripts\ in the output folder (see TerminalControl.csproj).
+    private static string WrapperPath => Path.Combine(AppContext.BaseDirectory, "Scripts", "terminal-tab.ps1");
     public bool IsElevated { get; }
     public int ProcessId => _process?.Id ?? -1;
     public TerminalSessionState State { get; private set; } = TerminalSessionState.Initializing;
@@ -233,7 +234,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
 
         if (!_tabs.TryGetValue(tabId, out var runtime))
         {
-            throw new InvalidOperationException($"Tab '{tabId}' does not exist in session {SessionId}.");
+            throw new InvalidOperationException(Strings.Format("TabDoesNotExist", tabId, SessionId));
         }
 
         if (_logger.IsEnabled(LogLevel.Debug))
@@ -308,10 +309,10 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
                 Stdout: string.Join("\n", collected),
                 Stderr: errors.Count == 0 ? null : string.Join("\n", errors),
                 ExecutionTimeMs: stopwatch.ElapsedMilliseconds,
-                Errors: new[] { $"Command timed out after {stopwatch.Elapsed.TotalSeconds:F0}s." });
+                Errors: new[] { Strings.Format("CommandTimedOut", stopwatch.Elapsed.TotalSeconds) });
         }
 
-        throw new InvalidOperationException($"Tab '{tabId}' closed before the command finished.");
+        throw new InvalidOperationException(Strings.Format("TabClosedBeforeCommandFinished", tabId));
     }
 
     /// <summary>
@@ -448,7 +449,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
     {
         if (State != TerminalSessionState.Ready)
         {
-            throw new InvalidOperationException($"Session is not in Ready state. Current state: {State}");
+            throw new InvalidOperationException(Strings.Format("SessionNotReady", State));
         }
     }
 
@@ -456,7 +457,7 @@ public class StandardTerminalSession : ITerminalSession, IDisposable
     private async Task<NamedCommandPipe> EnsureCommandConnectedAsync(TabRuntime runtime, CancellationToken ct)
     {
         var commandPipe = _pipeManager.GetCommandPipe(runtime.CommandPipeName)
-            ?? throw new InvalidOperationException($"Command pipe {runtime.CommandPipeName} is not open.");
+            ?? throw new InvalidOperationException(Strings.Format("CommandPipeNotOpen", runtime.CommandPipeName));
 
         if (!runtime.CommandConnected)
         {

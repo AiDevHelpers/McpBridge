@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="UnknownControlState" xml:space="preserve"><value>Unknown state. Use one of: {0}.</value></data>
+  <data name="PausedRefusal" xml:space="preserve"><value>aidevtools is paused for an update{0}. Do not call its tools until it resumes.</value></data>
+  <data name="ClosingRefusal" xml:space="preserve"><value>aidevtools is closing for an update{0}. Wait for it to resume, then reconnect.</value></data>
+  <data name="ResumedNotice" xml:space="preserve"><value>aidevtools has resumed. Its tools work again.</value></data>
+  <data name="PausedNotice" xml:space="preserve"><value>aidevtools is pausing for an update{0}. Stop calling its tools and wait for the resume signal.</value></data>
+  <data name="ClosingNotice" xml:space="preserve"><value>aidevtools is closing for an update{0}. Reconnect after the resume signal.</value></data>
+  <data name="BookmarkNotFound" xml:space="preserve"><value>Bookmark '{0}' was not found.</value></data>
+  <data name="BookmarkRefused" xml:space="preserve"><value>The IDE refused '{0}'.</value></data>
+  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind '{0}'.</value></data>
+  <data name="DebuggingStarted" xml:space="preserve"><value>Debugging started in {0}</value></data>
+  <data name="DebugNotStarted" xml:space="preserve"><value>The IDE did not start debugging.</value></data>
+  <data name="ConditionsNotSupported" xml:space="preserve"><value>Conditions and hit counts are not supported by the IDE bridge; no breakpoint was set.</value></data>
+  <data name="BreakpointSet" xml:space="preserve"><value>Breakpoint set</value></data>
+  <data name="BreakpointNotSet" xml:space="preserve"><value>The IDE did not set the breakpoint.</value></data>
+  <data name="CommandNotSupported" xml:space="preserve"><value>{0} is not supported by the IDE bridge.</value></data>
+  <data name="UnknownDebuggerIdeType" xml:space="preserve"><value>Unknown IDE type: {0}. Expected 'VsCode' or 'VisualStudio2026'</value></data>
+  <data name="NotBreakpointId" xml:space="preserve"><value>'{0}' is not a breakpoint id (expected 'file:line').</value></data>
+  <data name="IdeCouldNotAct" xml:space="preserve"><value>The IDE could not {0}.</value></data>
+  <data name="DevenvNotFound" xml:space="preserve"><value>Visual Studio 18 (devenv.exe) was not found.</value></data>
+  <data name="DevenvNotFoundByVswhere" xml:space="preserve"><value>Visual Studio 18 (devenv.exe) was not found by vswhere.</value></data>
+  <data name="UnknownErrorKind" xml:space="preserve"><value>Unknown kind '{0}'. Use errors, warnings or notices.</value></data>
+  <data name="UnknownErrorSource" xml:space="preserve"><value>Unknown source '{0}'. Use Compiler, CodeAnalysis, NuGet or Other.</value></data>
+  <data name="ExtensionListingUnavailable" xml:space="preserve"><value>Listing Visual Studio extensions is not available yet.</value></data>
+  <data name="ExtensionNotFound" xml:space="preserve"><value>Extension '{0}' was not found.</value></data>
+  <data name="UnknownIde" xml:space="preserve"><value>Unknown ide '{0}'. Use VsCode or VisualStudio.</value></data>
+  <data name="CouldNotStart" xml:space="preserve"><value>Could not start {0}.</value></data>
+  <data name="SolutionFileNotFound" xml:space="preserve"><value>Solution file not found: {0}</value></data>
+  <data name="BridgeNotRegistered" xml:space="preserve"><value>Visual Studio did not register a bridge for {0} within {1} seconds.</value></data>
+  <data name="NotKilledUnsaved" xml:space="preserve"><value>Not killed: these documents are still unsaved.</value></data>
+  <data name="NotKilledWrongProcess" xml:space="preserve"><value>Not killed: process {0} is {1}, not devenv.</value></data>
+  <data name="WorkspaceRootMissing" xml:space="preserve"><value>Workspace root does not exist: {0}</value></data>
+  <data name="UnknownLauncherIdeType" xml:space="preserve"><value>Unknown IDE type: {0}</value></data>
+  <data name="IdeStarted" xml:space="preserve"><value>{0} started successfully</value></data>
+  <data name="IdeLaunchFailed" xml:space="preserve"><value>Failed to launch {0}: {1}</value></data>
+  <data name="VisualStudioNotInstalled" xml:space="preserve"><value>Visual Studio 2026+ installation not found</value></data>
+  <data name="InvalidIdeType" xml:space="preserve"><value>Invalid IDE type '{0}'. Must be 'VsCode' or 'VisualStudio2026'.</value></data>
+  <data name="UnknownError" xml:space="preserve"><value>unknown error</value></data>
+  <data name="MalformedBridgeReply" xml:space="preserve"><value>The IDE bridge returned a malformed reply: {0}</value></data>
+  <data name="NoSolutionDirectory" xml:space="preserve"><value>No solution directory.</value></data>
+  <data name="DotnetTestNotStarted" xml:space="preserve"><value>dotnet test did not start: {0}</value></data>
+  <data name="NoResultsFolder" xml:space="preserve"><value>No {0} folder under {1}.</value></data>
+  <data name="NoTrxResults" xml:space="preserve"><value>No TRX test results found.</value></data>
+  <data name="TrxFileNotFound" xml:space="preserve"><value>TRX file not found.</value></data>
+  <data name="ProcessNotStartedByServer" xml:space="preserve"><value>Process {0} was not started by the MCP server; refusing to kill it.</value></data>
+  <data name="ProcessAlreadyExited" xml:space="preserve"><value>Process {0} has already exited.</value></data>
+  <data name="ProcessKilled" xml:space="preserve"><value>Killed process {0} ({1}) and its child processes.</value></data>
+  <data name="EmbeddedResourceNotFound" xml:space="preserve"><value>Embedded resource '{0}' not found. Available: </value></data>
+  <data name="UnknownHelper" xml:space="preserve"><value>Unknown helper '{0}'. Use one of: {1}.</value></data>
+  <data name="HelperHasNoSelfTest" xml:space="preserve"><value>Helper '{0}' has no embedded self-test.</value></data>
+  <data name="InvalidLaunchMode" xml:space="preserve"><value>Error: launchMode must be InteractiveUser or ServiceAccount, got '{0}'.</value></data>
+  <data name="SessionOpened" xml:space="preserve"><value>Opened session {0} (launchMode {1}) with tab {2}.</value></data>
+  <data name="TabNeedsSession" xml:space="preserve"><value>Error: tab needs sessionId.</value></data>
+  <data name="NoSession" xml:space="preserve"><value>no session '{0}'. Use action=list.</value></data>
+  <data name="TabCreated" xml:space="preserve"><value>Created tab {0} in {1}.</value></data>
+  <data name="ExecNeedsArgs" xml:space="preserve"><value>Error: exec needs sessionId, tabId and command.</value></data>
+  <data name="NoOpenSessions" xml:space="preserve"><value>No open terminal sessions.</value></data>
+  <data name="CloseNeedsSession" xml:space="preserve"><value>Error: close needs sessionId.</value></data>
+  <data name="InvalidTerminalAction" xml:space="preserve"><value>Error: action must be open, tab, exec, list or close.</value></data>
+  <data name="HotReloadInvalid" xml:space="preserve"><value>ideHotReload must be on, off or unknown.</value></data>
+  <data name="UnknownProvider" xml:space="preserve"><value>Unknown provider '{0}'. Use Coverlet or VisualStudio.</value></data>
+  <data name="WatchNotStarted" xml:space="preserve"><value>dotnet watch test did not start.</value></data>
+  <data name="NoLiveTesting" xml:space="preserve"><value>No live testing is running for this solution.</value></data>
+  <data name="IdeAlreadyRunning" xml:space="preserve"><value>{0} is already running</value></data>
+  <data name="ElevNotFound" xml:space="preserve"><value>elev.exe not found next to the MCP server ({0}).</value></data>
+  <data name="ElevDidNotStart" xml:space="preserve"><value>elev.exe did not start.</value></data>
+  <data name="ScriptHelperNeedsArgs" xml:space="preserve"><value>Error: runElevatedScript needs projectRoot and script.</value></data>
+  <data name="ScriptHelperError" xml:space="preserve"><value>Error: {0}</value></data>
+</root>

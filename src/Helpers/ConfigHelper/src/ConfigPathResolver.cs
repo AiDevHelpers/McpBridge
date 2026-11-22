@@ -21,20 +21,20 @@ public sealed class ConfigPathResolver
         ConfigFileKind.AppSettings => ResolveProjectFile(kind, projectPath, "appsettings.json"),
         ConfigFileKind.UserSettings => ResolveUserSettings(),
         ConfigFileKind.SolutionSettings => ResolveSolutionSettings(),
-        _ => new ConfigPathResult(kind, null, false, "Unknown config kind."),
+        _ => new ConfigPathResult(kind, null, false, Strings.Get("UnknownConfigKind")),
     };
 
     private ConfigPathResult ResolveProjectFile(ConfigFileKind kind, string? projectPath, string relative)
     {
         if (string.IsNullOrWhiteSpace(projectPath))
         {
-            return new ConfigPathResult(kind, null, false, "A project path is required for this kind.");
+            return new ConfigPathResult(kind, null, false, Strings.Get("ProjectPathRequired"));
         }
 
         var full = Path.GetFullPath(projectPath);
         var projectDir = Path.HasExtension(full) ? Path.GetDirectoryName(full)! : full;
         var path = Path.Combine(projectDir, relative);
-        return new ConfigPathResult(kind, path, File.Exists(path), File.Exists(path) ? null : "File not found.");
+        return new ConfigPathResult(kind, path, File.Exists(path), File.Exists(path) ? null : Strings.Get("FileNotFound"));
     }
 
     private ConfigPathResult ResolveSolutionSettings()
@@ -42,7 +42,7 @@ public sealed class ConfigPathResolver
         const ConfigFileKind kind = ConfigFileKind.SolutionSettings;
         if (string.IsNullOrWhiteSpace(_options.SolutionPath))
         {
-            return new ConfigPathResult(kind, null, false, "No solution is open.");
+            return new ConfigPathResult(kind, null, false, Strings.Get("NoSolutionOpen"));
         }
 
         var sln = Path.GetFullPath(_options.SolutionPath);
@@ -59,7 +59,7 @@ public sealed class ConfigPathResolver
             return new ConfigPathResult(kind, vsFolder, true, null);
         }
 
-        return new ConfigPathResult(kind, vsconfig, false, "No .vsconfig or .vs folder beside the solution.");
+        return new ConfigPathResult(kind, vsconfig, false, Strings.Get("NoVsconfigOrVsFolder"));
     }
 
     private ConfigPathResult ResolveUserSettings()
@@ -84,7 +84,7 @@ public sealed class ConfigPathResolver
             }
         }
 
-        return new ConfigPathResult(kind, vsCode, false, "No VS Code settings.json or Visual Studio CurrentSettings.vssettings found.");
+        return new ConfigPathResult(kind, vsCode, false, Strings.Get("NoUserSettingsFound"));
     }
 
     private ConfigPathResult ResolveRemoteDebugger()
@@ -108,7 +108,7 @@ public sealed class ConfigPathResolver
             }
         }
 
-        return new ConfigPathResult(kind, null, false, "No Remote Debugger config found under the search roots.");
+        return new ConfigPathResult(kind, null, false, Strings.Get("NoRemoteDebuggerConfig"));
     }
 
     private static string? FindRemoteDebuggerFolder(string dir, int depth)

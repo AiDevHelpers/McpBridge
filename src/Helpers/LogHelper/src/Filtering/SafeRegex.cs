@@ -17,7 +17,7 @@ public static class SafeRegex
 
         if (pattern.Length > options.MaxRegexLength)
         {
-            error = $"Pattern is too long ({pattern.Length} chars; max {options.MaxRegexLength}).";
+            error = Strings.Format("PatternTooLong", pattern.Length, options.MaxRegexLength);
             return false;
         }
 
@@ -33,7 +33,7 @@ public static class SafeRegex
         }
         catch (ArgumentException ex)
         {
-            error = $"Invalid regex: {ex.Message}";
+            error = Strings.Format("InvalidRegex", ex.Message);
             return false;
         }
     }
@@ -45,9 +45,9 @@ public static class SafeRegex
             || pattern.Contains("(?<=", StringComparison.Ordinal)
             || pattern.Contains("(?<!", StringComparison.Ordinal))
         {
-            return "Unsupported: lookaround assertions are not allowed. Remove the (?=, (?!, (?<= or (?<! construct.";
+            return Strings.Get("UnsupportedLookaround");
         }
 
-        return $"Unsupported: backreferences and other backtracking-only constructs are not allowed ({message}).";
+        return Strings.Format("UnsupportedBackreference", message);
     }
 }

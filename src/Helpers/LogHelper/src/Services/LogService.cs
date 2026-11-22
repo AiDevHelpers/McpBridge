@@ -1,4 +1,3 @@
-using System.Globalization;
 using AiDevHelpers.Helpers.LogHelper.Contracts;
 using AiDevHelpers.Helpers.LogHelper.Filtering;
 using AiDevHelpers.Helpers.LogHelper.Models;
@@ -84,7 +83,7 @@ public sealed class LogService : ILogService
     {
         if (request.View is not ("summary" or "traces" or "ignored"))
         {
-            return Fail($"Unknown view '{request.View}'. Use summary, traces or ignored.");
+            return Fail(Strings.Format("UnknownView", request.View));
         }
 
         if (IsRunDiffRequest(request.Since))
@@ -124,9 +123,9 @@ public sealed class LogService : ILogService
         };
 
         string text = batch.Reset
-            ? "(cursor reset: source changed)\n" + body.Text
+            ? Strings.Get("CursorReset") + "\n" + body.Text
             : batch.Rotated
-                ? "(log rolled: includes the rest of the previous file)\n" + body.Text
+                ? Strings.Get("LogRolled") + "\n" + body.Text
                 : body.Text;
 
         return Ok(text, RawCharsOf(batch.Entries), batch.NextCursor, body.Truncated);
@@ -137,7 +136,7 @@ public sealed class LogService : ILogService
         RunSnapshotStore? runs = GetRuns();
         if (runs is null)
         {
-            return Fail("No state directory is configured, so runs cannot be marked.");
+            return Fail(Strings.Get("NoStateDirectoryMark"));
         }
 
         LogReadResult read = await ReadAllAsync(channel, null, ct);
@@ -154,7 +153,7 @@ public sealed class LogService : ILogService
         await runs.AppendAsync(channel.ToString(), snapshot, ct);
 
         return Ok(
-            string.Create(CultureInfo.InvariantCulture, $"{runId} marked: {rows.Count} templates from {entries.Count} entries"),
+            Strings.Format("RunMarked", runId, rows.Count, entries.Count),
             RawCharsOf(entries),
             nextCursor: null,
             truncated: false);
@@ -181,7 +180,7 @@ public sealed class LogService : ILogService
             TemplateAggregator.Aggregate(sinkEntries, _options));
 
         SummaryText summary = rows.Count == 0
-            ? new SummaryText("no messages in either channel to compare.", Truncated: false, Omitted: 0)
+            ? new SummaryText(Strings.Get("NoMessagesToCompare"), Truncated: false, Omitted: 0)
             : SinkComparer.Format(rows, maxTokens);
 
         return Ok(summary.Text, RawCharsOf(appEntries) + RawCharsOf(sinkEntries), null, summary.Truncated);
@@ -229,7 +228,7 @@ public sealed class LogService : ILogService
     {
         if (dropped.Count == 0)
         {
-            return new SummaryText("nothing was dropped by the filter.", Truncated: false, Omitted: 0);
+            return new SummaryText(Strings.Get("NothingDropped"), Truncated: false, Omitted: 0);
         }
 
         return SummaryFormatter.Format(TemplateAggregator.Aggregate(dropped, _options), maxTokens);
@@ -245,7 +244,7 @@ public sealed class LogService : ILogService
         RunSnapshotStore? runs = GetRuns();
         if (runs is null)
         {
-            return Fail("No state directory is configured, so runs cannot be compared.");
+            return Fail(Strings.Get("NoStateDirectoryCompare"));
         }
 
         IReadOnlyList<RunSnapshot> stored = await runs.ListAsync(request.Channel.ToString(), ct);
@@ -255,7 +254,7 @@ public sealed class LogService : ILogService
             baseline = stored.Count > 0 ? stored[^1] : null;
             if (baseline is null)
             {
-                return Ok("no baseline for this channel yet; call LogMarkRun first.", 0, null, false);
+                return Ok(Strings.Get("NoBaseline"), 0, null, false);
             }
         }
         else
@@ -263,7 +262,7 @@ public sealed class LogService : ILogService
             baseline = stored.FirstOrDefault(s => string.Equals(s.RunId, request.Since, StringComparison.Ordinal));
             if (baseline is null)
             {
-                return Fail($"unknown run '{request.Since}' for this channel.");
+                return Fail(Strings.Format("UnknownRun", request.Since));
             }
         }
 
@@ -279,7 +278,7 @@ public sealed class LogService : ILogService
 
         if (diff.BaselineReset)
         {
-            return Ok("baseline reset: masking rules changed since the last run; call LogMarkRun to set a new baseline.",
+            return Ok(Strings.Get("BaselineReset"),
                 RawCharsOf(entries), null, false);
         }
 
@@ -305,10 +304,10 @@ public sealed class LogService : ILogService
 
         SummaryText summary = SummaryFormatter.Format(rows, request.MaxTokens);
         var text = new System.Text.StringBuilder();
-        text.Append(rows.Count == 0 ? "no new or changed messages since " + baseline.RunId : summary.Text);
+        text.Append(rows.Count == 0 ? Strings.Format("NoChangesSince", baseline.RunId) : summary.Text);
         if (diff.Gone.Count > 0)
         {
-            text.Append('\n').Append(string.Create(CultureInfo.InvariantCulture, $"{diff.Gone.Count} template(s) no longer present."));
+            text.Append('\n').Append(Strings.Format("TemplatesGone", diff.Gone.Count));
         }
 
         return Ok(text.ToString(), RawCharsOf(entries), null, summary.Truncated);
@@ -317,7 +316,7 @@ public sealed class LogService : ILogService
     private static (TemplateRow Row, LogEntry Entry) ToCandidate(string template, LogSeverity severity, int count, string sample, int? previousCount)
     {
         string label = previousCount is int prev
-            ? string.Create(CultureInfo.InvariantCulture, $"{template} (was {prev})")
+            ? Strings.Format("TemplateWas", template, prev)
             : template;
         var row = new TemplateRow(string.Empty, label, severity, count, null, null, sample);
         var entry = new LogEntry(null, severity, null, template, sample);
@@ -330,7 +329,7 @@ public sealed class LogService : ILogService
             string.Equals(p.Scheme, channel.Scheme, StringComparison.OrdinalIgnoreCase));
         if (provider is null)
         {
-            return LogReadResult.Failed($"No log provider is registered for scheme '{channel.Scheme}'.");
+            return LogReadResult.Failed(Strings.Format("NoProviderForScheme", channel.Scheme));
         }
 
         try

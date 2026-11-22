@@ -46,17 +46,17 @@ public sealed class BookmarkService(IBookmarkBridge bridge)
     {
         if (!Path.IsPathFullyQualified(file))
         {
-            throw new ArgumentException("file must be a full path.", nameof(file));
+            throw new ArgumentException(Strings.Get("FileMustBeFullPath"), nameof(file));
         }
 
         if (line < 1)
         {
-            throw new ArgumentException("line must be 1 or greater.", nameof(line));
+            throw new ArgumentException(Strings.Get("LineMustBePositive"), nameof(line));
         }
 
         if (name is { Length: > MaxNameLength })
         {
-            throw new ArgumentException($"name must be {MaxNameLength} characters or fewer.", nameof(name));
+            throw new ArgumentException(Strings.Format("NameTooLong", MaxNameLength), nameof(name));
         }
 
         var result = await bridge.CallAsync("bookmarkSet", new { file, line, name }, ct);
@@ -74,7 +74,7 @@ public sealed class BookmarkService(IBookmarkBridge bridge)
     {
         if (string.IsNullOrWhiteSpace(id))
         {
-            throw new ArgumentException("id is required.", nameof(id));
+            throw new ArgumentException(Strings.Get("IdRequired"), nameof(id));
         }
     }
 }

@@ -23,7 +23,7 @@ internal sealed class TestingTools
             "on" => true,
             "off" => false,
             "unknown" => null,
-            _ => throw new ArgumentException("ideHotReload must be on, off or unknown."),
+            _ => throw new ArgumentException(Strings.Get("HotReloadInvalid")),
         };
         var full = Path.GetFullPath(solutionPath);
         TestingState.Watches[full] = new TestWatch(full, ide, dotnetWatchRunning);
@@ -36,6 +36,43 @@ internal sealed class TestingTools
     {
         var full = Path.GetFullPath(solutionPath);
         return Json(new { ok = TestingState.Watches.TryRemove(full, out _), watching = full });
+    }
+
+    [McpServerTool]
+    [Description("List the test projects a change can affect, and the dotnet test command for each. A changed file affects its project and every project that references it. " +
+                 "With no changedFiles, the files git reports as changed (working tree and untracked) are used. Nothing is run.")]
+    public static string TestAffected(
+        [Description("Repo root")] string root,
+        [Description("Optional: changed files, relative to the root or absolute")] string[]? changedFiles = null)
+    {
+        try
+        {
+            var files = changedFiles ?? GitChangedFiles(root);
+            var projects = AffectedTests.Find(root, files);
+            return Json(new
+            {
+                ok = true,
+                changed = files.Count(),
+                count = projects.Count,
+                projects = projects.Select(p => new { project = p, command = $"dotnet test \"{p}\"" }),
+            });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
+    private static IReadOnlyList<string> GitChangedFiles(string root)
+    {
+        var git = new AiDevHelpers.Helpers.SourceControlHelper.ProcessGitRunner();
+        var tracked = git.Run(root, ["diff", "--name-only", "HEAD"]);
+        var untracked = git.Run(root, ["ls-files", "--others", "--exclude-standard"]);
+        return (tracked.Output + "\n" + untracked.Output)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => !line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase))
+            .Distinct()
+            .ToList();
     }
 
     [McpServerTool]
@@ -68,7 +105,7 @@ internal sealed class TestingTools
         }
         else if (!Enum.TryParse<CoverageProvider>(provider, ignoreCase: true, out chosen))
         {
-            return Json(new { ok = false, error = $"Unknown provider '{provider}'. Use Coverlet or VisualStudio." });
+            return Json(new { ok = false, error = Strings.Format("UnknownProvider", provider) });
         }
 
         var service = new CoverageService(new ProcessTestCommandRunner(), Path.Combine(TestingState.ResultsDirectory(full), "coverage"));
@@ -116,7 +153,7 @@ internal sealed class TestingTools
             var process = System.Diagnostics.Process.Start(psi);
             if (process is null)
             {
-                return Json(new { ok = false, error = "dotnet watch test did not start." });
+                return Json(new { ok = false, error = Strings.Get("WatchNotStarted") });
             }
 
             LiveRuns[full] = process;
@@ -135,7 +172,7 @@ internal sealed class TestingTools
         {
             if (!LiveRuns.TryGetValue(full, out var process))
             {
-                return Json(new { ok = false, error = "No live testing is running for this solution." });
+                return Json(new { ok = false, error = Strings.Get("NoLiveTesting") });
             }
 
             LiveRuns.Remove(full);

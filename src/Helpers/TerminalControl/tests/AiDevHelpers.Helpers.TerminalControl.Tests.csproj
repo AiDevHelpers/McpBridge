@@ -10,8 +10,8 @@
     <ProjectReference Include="..\src\AiDevHelpers.Helpers.TerminalControl.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\src\Scripts\tokensaver-tab.ps1">
-      <Link>Scripts\tokensaver-tab.ps1</Link>
+    <Content Include="..\src\Scripts\terminal-tab.ps1">
+      <Link>Scripts\terminal-tab.ps1</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

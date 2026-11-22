@@ -33,7 +33,7 @@ public sealed class SyslogSourceProvider : ILogSourceProvider
     {
         IReadOnlyList<LogChannelInfo> channels = _isWindows
             ? Array.Empty<LogChannelInfo>()
-            : new[] { new LogChannelInfo(ChannelId.Parse("syslog:journal/all"), "journalctl, all units", null) };
+            : new[] { new LogChannelInfo(ChannelId.Parse("syslog:journal/all"), Strings.Get("JournalAllDescription"), null) };
         return Task.FromResult(channels);
     }
 
@@ -49,7 +49,7 @@ public sealed class SyslogSourceProvider : ILogSourceProvider
             return new SyslogFileSource(id.Name["file/".Length..]);
         }
 
-        throw new ArgumentException($"Unknown syslog channel '{id.Name}'. Use journal/<unit> or file/<name>.");
+        throw new ArgumentException(Strings.Format("UnknownSyslogChannel", id.Name));
     }
 
     internal static bool IsSafeName(string name) =>
@@ -68,7 +68,7 @@ public sealed class SyslogSourceProvider : ILogSourceProvider
         {
             if (!IsSafeName(_name))
             {
-                throw new ArgumentException($"Invalid syslog file name '{_name}'.");
+                throw new ArgumentException(Strings.Format("InvalidSyslogFileName", _name));
             }
 
             var options = new LogHelperOptions { AllowedRoots = new[] { "/var/log" } };
@@ -96,7 +96,7 @@ public sealed class SyslogSourceProvider : ILogSourceProvider
             {
                 if (!IsSafeName(_unit))
                 {
-                    throw new ArgumentException($"Invalid journal unit name '{_unit}'.");
+                    throw new ArgumentException(Strings.Format("InvalidJournalUnit", _unit));
                 }
 
                 args.Add("-u");

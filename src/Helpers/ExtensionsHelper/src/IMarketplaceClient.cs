@@ -62,6 +62,10 @@ public static class MarketplaceResponse
 {
     private const string VsixAssetType = "Microsoft.VisualStudio.Services.VSIXPackage";
 
+    // Visual Studio items name the package "<Name>.vsix" (for example BookmarkStudio.vsix), and some use the generic type.
+    private static bool IsVsixAsset(string? assetType) =>
+        assetType == VsixAssetType || (assetType is not null && assetType.EndsWith(".vsix", StringComparison.OrdinalIgnoreCase));
+
     public static MarketplaceExtension? ParseExtension(string json, string id)
     {
         using var doc = JsonDocument.Parse(json);
@@ -88,7 +92,7 @@ public static class MarketplaceResponse
 
                 var version = ext.GetProperty("versions")[0];
                 var vsixUrl = version.GetProperty("files").EnumerateArray()
-                    .First(f => f.GetProperty("assetType").GetString() == VsixAssetType)
+                    .First(f => IsVsixAsset(f.GetProperty("assetType").GetString()))
                     .GetProperty("source").GetString() ?? string.Empty;
 
                 return new MarketplaceExtension(

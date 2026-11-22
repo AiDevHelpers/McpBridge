@@ -19,7 +19,7 @@ internal sealed class ConfigTools
     {
         if (!Enum.TryParse<ConfigFileKind>(kind, ignoreCase: true, out var parsed))
         {
-            return Json(new { ok = false, error = $"Unknown config kind '{kind}'." });
+            return Json(new { ok = false, error = Strings.Format("UnknownConfigKind", kind) });
         }
 
         var resolver = new ConfigPathResolver(new ConfigPathOptions { SolutionPath = solutionPath });

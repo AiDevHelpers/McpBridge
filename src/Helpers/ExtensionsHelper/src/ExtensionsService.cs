@@ -95,12 +95,12 @@ public sealed class ExtensionsService
         }
 
         var ext = await _market.FindAsync(id, ct)
-            ?? throw new ArgumentException($"Visual Studio extension '{id}' was not found on the Marketplace.", nameof(id));
+            ?? throw new ArgumentException(Strings.Format("VisualStudioExtensionNotFound", id), nameof(id));
         return Store(new PendingAdd(
             string.Empty,
             ide,
             id,
-            $"download {ext.VsixUrl} then VSIXInstaller.exe <downloaded .vsix> /q",
+            Strings.Format("VsixManualInstallStep", ext.VsixUrl),
             ext));
     }
 
@@ -109,7 +109,7 @@ public sealed class ExtensionsService
     {
         if (!_pending.TryRemove(token, out var pending))
         {
-            return new AddResult(false, -1, "Unknown or already used token. Plan the add again.");
+            return new AddResult(false, -1, Strings.Get("UnknownOrUsedToken"));
         }
 
         if (pending.Ide == ExtensionIde.VsCode)
@@ -121,7 +121,7 @@ public sealed class ExtensionsService
         var installer = _locateVsixInstaller();
         if (installer is null)
         {
-            return new AddResult(false, -1, "VSIXInstaller.exe was not found under the Visual Studio install folders.");
+            return new AddResult(false, -1, Strings.Get("VsixInstallerNotFound"));
         }
 
         var destination = Path.Combine(Path.GetTempPath(), VsixDirName, pending.Id + ".vsix");

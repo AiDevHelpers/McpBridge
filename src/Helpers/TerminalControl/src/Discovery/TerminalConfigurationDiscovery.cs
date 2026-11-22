@@ -223,7 +223,7 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
             var nameElement = profileElement.GetProperty("name");
             var guidElement = profileElement.GetProperty("guid");
 
-            var name = nameElement.GetString() ?? "Unknown";
+            var name = nameElement.GetString() ?? Strings.Get("Unknown");
             var guid = guidElement.GetString() ?? "";
 
             var commandLine = profileElement.TryGetProperty("commandline", out var cmd)
@@ -293,7 +293,7 @@ public sealed class TerminalConfigurationDiscovery : ITerminalConfigurationDisco
         try
         {
             var dirName = new DirectoryInfo(packageDir).Name;
-            var author = "Unknown";
+            var author = Strings.Get("Unknown");
             var version = "1.0.0";
 
             // Try to extract version and author from package directory name or manifest

@@ -11,9 +11,9 @@ using System.Xml.Linq;
 namespace AiDevHelpers.MCP.Core.Services;
 
 /// <summary>
-/// Runs tests for an IDE solution with <c>dotnet test</c> and a TRX logger, and reads the newest TRX file back.
+/// Runs tests for an IDE solution with <c>dotnet test</c> and a TRX reporter, and reads the newest run's TRX files back.
 /// TRX is a documented, IDE-independent format. Visual Studio's Test Explorer results aren't exposed to extensions,
-/// so IdeGetTestResults reads TRX files instead.
+/// so IdeGetTestResults reads TRX files instead. Each run writes into its own folder under TestResults, one TRX per test project.
 /// </summary>
 internal static class IdeTestRunService
 {
@@ -32,21 +32,20 @@ internal static class IdeTestRunService
         var full = Path.GetFullPath(solutionPath);
         return Directory.Exists(full)
             ? full
-            : Path.GetDirectoryName(full) ?? throw new InvalidOperationException("No solution directory.");
+            : Path.GetDirectoryName(full) ?? throw new InvalidOperationException(Strings.Get("NoSolutionDirectory"));
     }
 
-    /// <summary>Runs <c>dotnet test</c> on the solution, writing a TRX file into the solution's TestResults folder.</summary>
+    /// <summary>Runs <c>dotnet test</c> on the solution, writing one TRX per test project into a new run folder under TestResults.</summary>
     public static async Task<string> RunDotnetTestAsync(string solutionPath, CancellationToken ct)
     {
         var solutionDir = SolutionDirectory(solutionPath);
-        var resultsDir = Path.Combine(solutionDir, ResultsFolder);
-        var trxName = $"tokensaver-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}.trx";
+        var runDir = Path.Combine(solutionDir, ResultsFolder, $"tokensaver-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}");
 
         CommandResult run = await CommandRunner.RunAsync(
             new CommandRequest
             {
                 FileName = "dotnet",
-                Arguments = ["test", solutionPath, "--logger", $"trx;LogFileName={trxName}", "--results-directory", resultsDir],
+                Arguments = ["test", solutionPath, "--report-xunit-trx", "--results-directory", runDir],
                 WorkingDirectory = solutionDir,
                 Timeout = TimeSpan.FromMinutes(30),
                 OnStarted = process => ManagedProcessRegistry.Track(process, "test run"),
@@ -54,76 +53,93 @@ internal static class IdeTestRunService
             ct);
         if (!run.Launched)
         {
-            throw new InvalidOperationException($"dotnet test did not start: {run.LaunchError}");
+            throw new InvalidOperationException(Strings.Format("DotnetTestNotStarted", run.LaunchError));
         }
 
-        var summary = ReadSummary(Path.Combine(resultsDir, trxName));
+        var trxFiles = TrxFilesIn(runDir);
+        var summary = ReadSummary(trxFiles);
         return JsonSerializer.Serialize(new
         {
             ok = run.Success,
             exit_code = run.ExitCode,
             mode = DotnetTestMode,
-            trx = Path.Combine(resultsDir, trxName),
+            trx = runDir,
+            trx_files = trxFiles.Select(f => f.FullName).ToList(),
             summary,
             timed_out = run.TimedOut,
             output_tail = Tail(run.StdOut + run.StdErr, 4000),
         });
     }
 
-    /// <summary>Reads the newest TRX file in the solution's TestResults folder.</summary>
+    /// <summary>Reads every TRX file of the newest run folder under TestResults, summed across test projects.</summary>
     public static string GetLatestResult(string solutionPath)
     {
         var solutionDir = SolutionDirectory(solutionPath);
         var resultsDir = Path.Combine(solutionDir, ResultsFolder);
         if (!Directory.Exists(resultsDir))
         {
-            return JsonSerializer.Serialize(new { ok = false, error = $"No {ResultsFolder} folder under {solutionDir}." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Format("NoResultsFolder", ResultsFolder, solutionDir) });
         }
 
-        var newest = new DirectoryInfo(resultsDir).EnumerateFiles("*.trx", SearchOption.AllDirectories)
-            .OrderByDescending(f => f.LastWriteTimeUtc)
+        // Newest run folder that holds TRX files; a TRX written directly in TestResults counts as its own run.
+        var newestRun = new DirectoryInfo(resultsDir).EnumerateDirectories()
+            .Where(d => TrxFilesIn(d.FullName).Count > 0)
+            .OrderByDescending(d => d.LastWriteTimeUtc)
             .FirstOrDefault();
-        if (newest is null)
+        var trxFiles = newestRun is not null
+            ? TrxFilesIn(newestRun.FullName)
+            : new DirectoryInfo(resultsDir).EnumerateFiles("*.trx")
+                .OrderByDescending(f => f.LastWriteTimeUtc)
+                .Take(1)
+                .ToList();
+        if (trxFiles.Count == 0)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = "No TRX test results found." });
+            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("NoTrxResults") });
         }
 
         return JsonSerializer.Serialize(new
         {
             ok = true,
-            trx = newest.FullName,
-            recorded_utc = newest.LastWriteTimeUtc,
-            summary = ReadSummary(newest.FullName),
+            trx = trxFiles.OrderByDescending(f => f.LastWriteTimeUtc).First().FullName,
+            trx_files = trxFiles.Select(f => f.FullName).ToList(),
+            recorded_utc = trxFiles.Max(f => f.LastWriteTimeUtc),
+            summary = ReadSummary(trxFiles),
         });
     }
 
-    private static object ReadSummary(string trxPath)
+    private static List<FileInfo> TrxFilesIn(string directory) =>
+        Directory.Exists(directory)
+            ? new DirectoryInfo(directory).EnumerateFiles("*.trx", SearchOption.AllDirectories).ToList()
+            : [];
+
+    private static object ReadSummary(IReadOnlyList<FileInfo> trxFiles)
     {
-        if (!File.Exists(trxPath))
+        if (trxFiles.Count == 0)
         {
-            return new { error = "TRX file not found." };
+            return new { error = Strings.Get("TrxFileNotFound") };
         }
 
-        var doc = XDocument.Load(trxPath);
-        var counters = doc.Descendants(Trx + "Counters").FirstOrDefault();
-        var failures = doc.Descendants(Trx + "UnitTestResult")
-            .Where(r => string.Equals((string?)r.Attribute("outcome"), "Failed", StringComparison.OrdinalIgnoreCase))
-            .Select(r => new
-            {
-                test_name = (string?)r.Attribute("testName"),
-                message = (string?)r.Descendants(Trx + "Message").FirstOrDefault(),
-                stack_trace = (string?)r.Descendants(Trx + "StackTrace").FirstOrDefault(),
-            })
-            .ToList();
-
-        return new
+        int total = 0, passed = 0, failed = 0, skipped = 0;
+        var failures = new List<object>();
+        foreach (var file in trxFiles)
         {
-            total = (int?)counters?.Attribute("total") ?? 0,
-            passed = (int?)counters?.Attribute("passed") ?? 0,
-            failed = (int?)counters?.Attribute("failed") ?? 0,
-            skipped = (int?)counters?.Attribute("notExecuted") ?? 0,
-            failures,
-        };
+            var doc = XDocument.Load(file.FullName);
+            var counters = doc.Descendants(Trx + "Counters").FirstOrDefault();
+            total += (int?)counters?.Attribute("total") ?? 0;
+            passed += (int?)counters?.Attribute("passed") ?? 0;
+            failed += (int?)counters?.Attribute("failed") ?? 0;
+            skipped += (int?)counters?.Attribute("notExecuted") ?? 0;
+            failures.AddRange(doc.Descendants(Trx + "UnitTestResult")
+                .Where(r => string.Equals((string?)r.Attribute("outcome"), "Failed", StringComparison.OrdinalIgnoreCase))
+                .Select(r => (object)new
+                {
+                    test_name = (string?)r.Attribute("testName"),
+                    message = (string?)r.Descendants(Trx + "Message").FirstOrDefault(),
+                    stack_trace = (string?)r.Descendants(Trx + "StackTrace").FirstOrDefault(),
+                }));
+        }
+
+        return new { total, passed, failed, skipped, failures };
     }
 
     private static string Tail(string text, int maxChars) =>

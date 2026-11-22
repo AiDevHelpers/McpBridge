@@ -19,6 +19,26 @@
     <Project Path="src/Helpers/ErrorHelper/src/AiDevHelpers.Helpers.ErrorHelper.csproj" />
     <Project Path="src/Helpers/ErrorHelper/tests/AiDevHelpers.Helpers.ErrorHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/LintHelper/">
+    <Project Path="src/Helpers/LintHelper/src/AiDevHelpers.Helpers.LintHelper.csproj" />
+    <Project Path="src/Helpers/LintHelper/tests/AiDevHelpers.Helpers.LintHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/SourceControlHelper/">
+    <Project Path="src/Helpers/SourceControlHelper/src/AiDevHelpers.Helpers.SourceControlHelper.csproj" />
+    <Project Path="src/Helpers/SourceControlHelper/tests/AiDevHelpers.Helpers.SourceControlHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/OutputHelper/">
+    <Project Path="src/Helpers/OutputHelper/src/AiDevHelpers.Helpers.OutputHelper.csproj" />
+    <Project Path="src/Helpers/OutputHelper/tests/AiDevHelpers.Helpers.OutputHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/PackageHelper/">
+    <Project Path="src/Helpers/PackageHelper/src/AiDevHelpers.Helpers.PackageHelper.csproj" />
+    <Project Path="src/Helpers/PackageHelper/tests/AiDevHelpers.Helpers.PackageHelper.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Helpers/GateHelper/">
+    <Project Path="src/Helpers/GateHelper/src/AiDevHelpers.Helpers.GateHelper.csproj" />
+    <Project Path="src/Helpers/GateHelper/tests/AiDevHelpers.Helpers.GateHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/ExtensionsHelper/">
     <Project Path="src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
     <Project Path="src/Helpers/ExtensionsHelper/tests/AiDevHelpers.Helpers.ExtensionsHelper.Tests.csproj" />
@@ -27,6 +47,7 @@
     <Project Path="src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj" />
     <Project Path="src/Helpers/TestingHelper/tests/AiDevHelpers.Helpers.TestingHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/" />
   <Folder Name="/Helpers/BookmarkHelper/">
     <Project Path="src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj" />
     <Project Path="src/Helpers/BookmarkHelper/tests/AiDevHelpers.Helpers.BookmarkHelper.Tests.csproj" />
@@ -39,6 +60,7 @@
     <Project Path="src/Helpers/WindowsSession/src/AiDevHelpers.Helpers.WindowsSession.csproj" />
     <Project Path="src/Helpers/WindowsSession/tests/AiDevHelpers.Helpers.WindowsSession.Tests.csproj" />
   </Folder>
+  <Folder Name="/MCP/" />
   <Folder Name="/MCP/Core/">
     <Project Path="src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj" />
     <Project Path="src/MCP/Core/tests/AiDevHelpers.MCP.Core.Tests.csproj" />
@@ -47,6 +69,8 @@
     <Project Path="src/MCP/Server/src/AiDevHelpers.MCP.csproj" />
     <Project Path="src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj" />
   </Folder>
+  <Folder Name="/Installers/" />
+  <Folder Name="/Installers/Vs2026/" />
   <Folder Name="/Installers/Vs2026/Core/">
     <Project Path="src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj" />
     <Project Path="src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj" />
@@ -54,5 +78,25 @@
   <Folder Name="/Installers/Vs2026/Installer/">
     <Project Path="src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.csproj" />
     <Project Path="src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Installers/VsCode/Core/">
+    <Project Path="src/Installers/VsCode/Core/AiDevTools.VsCode.Core/AiDevTools.VsCode.Core.esproj">
+      <Build />
+      <Deploy />
+    </Project>
+  </Folder>
+  <Folder Name="/Installers/VsCode/Installer/">
+    <Project Path="src/Installers/VsCode/Installer/AiDevTools.VsCode/AiDevTools.VsCode.csproj" Id="72da9984-0174-4b54-a39f-bbe9f56d38e8" />
+  </Folder>
+  <Folder Name="/Core/">
+    <Project Path="src/Core/src/AiDevHelpers.Core.csproj" />
+    <Project Path="src/Core/tests/AiDevHelpers.Core.Tests.csproj" />
+  </Folder>
+  <Folder Name="/ScriptHelper/">
+    <Project Path="src/ScriptHelper/src/AiDevHelpers.ScriptHelper.Core.csproj" />
+    <Project Path="src/ScriptHelper/setup/AiDevHelpers.ScriptHelper.Setup.csproj" />
+    <Project Path="src/ScriptHelper/broker/AiDevHelpers.ScriptHelper.Broker.csproj" />
+    <Project Path="src/ScriptHelper/client/AiDevHelpers.ScriptHelper.Client.csproj" />
+    <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
   </Folder>
 </Solution>

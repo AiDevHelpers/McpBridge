@@ -92,14 +92,14 @@ internal static class ManagedProcessRegistry
     {
         if (!Entries.TryGetValue(pid, out var entry))
         {
-            return (false, $"Process {pid} was not started by the MCP server; refusing to kill it.");
+            return (false, Strings.Format("ProcessNotStartedByServer", pid));
         }
 
         var process = FindMatch(entry);
         if (process is null)
         {
             Entries.TryRemove(pid, out _);
-            return (false, $"Process {pid} has already exited.");
+            return (false, Strings.Format("ProcessAlreadyExited", pid));
         }
 
         using (process)
@@ -108,7 +108,7 @@ internal static class ManagedProcessRegistry
         }
 
         Entries.TryRemove(pid, out _);
-        return (true, $"Killed process {pid} ({entry.Label}) and its child processes.");
+        return (true, Strings.Format("ProcessKilled", pid, entry.Label));
     }
 
     // Returns the live process for this entry, or null if the pid is gone or was reused by a different process.

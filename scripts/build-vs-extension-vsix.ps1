@@ -31,6 +31,15 @@ if (-not (Test-Path -LiteralPath $MSBuildPath)) {
     throw "MSBuild.exe not found at $MSBuildPath."
 }
 
+# The VSSDK targets sit in the Visual Studio install that owns this MSBuild, under a version folder (v17.0 on
+# VS 2022, v18.0 on VS 18). The project's default path names one edition, so point the build at the one in use.
+$vsRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MSBuildPath)))
+$vsSdkTargets = Get-ChildItem -Path (Join-Path $vsRoot 'MSBuild\Microsoft\VisualStudio\v*\VSSDK\Microsoft.VsSDK.targets') -ErrorAction SilentlyContinue |
+    Select-Object -First 1
+if (-not $vsSdkTargets) {
+    throw "Microsoft.VsSDK.targets was not found under $vsRoot. Install the Visual Studio extension development workload."
+}
+
 # The VSSDK does not replace $version$, and CreateVsixContainer regenerates the manifest from source, so the
 # version is written into the source manifest for this build only and restored afterwards. The version is the
 # git commit count, the height Nerdbank.GitVersioning would give (0.1.<height>).
@@ -42,7 +51,7 @@ $patched = [regex]::Replace($original, '(<Identity [^>]*?Version=")[^"]*(")', "`
 Write-Host "VSIX version $version" -ForegroundColor Cyan
 try {
     [IO.File]::WriteAllText($sourceManifest, $patched)
-    & $MSBuildPath $Project "/t:Build;CreateVsixContainer" /restore "/p:Configuration=$Configuration" /verbosity:minimal
+    & $MSBuildPath $Project "/t:Build;CreateVsixContainer" /restore "/p:Configuration=$Configuration" "/p:VsSdkTargetsPath=$($vsSdkTargets.FullName)" /verbosity:minimal
     if ($LASTEXITCODE -ne 0) {
         throw "MSBuild failed for $Project with exit code $LASTEXITCODE."
     }

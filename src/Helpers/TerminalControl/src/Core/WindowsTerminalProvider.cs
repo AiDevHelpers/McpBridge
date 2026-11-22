@@ -41,7 +41,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
                         IsInstalled: false,
                         Version: null,
                         InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"),
-                        ErrorMessage: "Windows Terminal is not installed");
+                        ErrorMessage: Strings.Get("WindowsTerminalNotInstalled"));
                 }
 
                 var version = await GetWindowsTerminalVersionAsync(ct);
@@ -68,7 +68,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
                     return new TerminalProviderAvailability(
                         Provider: TerminalProviderType.WindowsTerminal,
                         IsInstalled: false,
-                        ErrorMessage: $"Error checking availability: {ex.Message}",
+                        ErrorMessage: Strings.Format("ErrorCheckingAvailability", ex.Message),
                         InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"));
                 }
             }
@@ -78,7 +78,7 @@ public sealed class WindowsTerminalProvider : ITerminalProvider
         return new TerminalProviderAvailability(
             Provider: TerminalProviderType.WindowsTerminal,
             IsInstalled: false,
-            ErrorMessage: "Unable to check Windows Terminal availability",
+            ErrorMessage: Strings.Get("UnableToCheckAvailability"),
             InstallUrl: new Uri("https://www.microsoft.com/store/productId/9N0DX20HK701"));
     }
 

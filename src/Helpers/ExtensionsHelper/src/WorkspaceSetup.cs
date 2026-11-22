@@ -36,7 +36,7 @@ public sealed class WorkspaceSetup
         }
         catch (JsonException ex)
         {
-            return new WorkspaceSetupResult(false, false, [], $"Could not parse {extensionsPath}: {ex.Message}");
+            return new WorkspaceSetupResult(false, false, [], Strings.Format("CouldNotParseFile", extensionsPath, ex.Message));
         }
 
         var installed = await InstalledIdsAsync(ct);
@@ -50,7 +50,7 @@ public sealed class WorkspaceSetup
             }
             catch (JsonException ex)
             {
-                return new WorkspaceSetupResult(false, false, Recommended, $"Could not parse {settingsPath}: {ex.Message}");
+                return new WorkspaceSetupResult(false, false, Recommended, Strings.Format("CouldNotParseFile", settingsPath, ex.Message));
             }
         }
 
@@ -99,7 +99,7 @@ public sealed class WorkspaceSetup
         }
 
         return JsonNode.Parse(File.ReadAllText(path), new JsonNodeOptions { PropertyNameCaseInsensitive = false }) as JsonObject
-            ?? throw new JsonException("Root is not an object.");
+            ?? throw new JsonException(Strings.Get("RootIsNotObject"));
     }
 
     private static void Save(string path, JsonObject root)

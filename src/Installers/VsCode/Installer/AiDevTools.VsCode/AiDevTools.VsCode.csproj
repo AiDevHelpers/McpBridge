@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Build wrapper for the VS Code extension, which is TypeScript in this folder. It compiles no C#.
+       A build installs, builds and tests the extension with npm. Pass -p:SkipNpm=true to skip that.
+       It also packages the extension into aidevhelpers-vscode.vsix. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+  <!-- Show the extension's files in Solution Explorer. They are not compiled by MSBuild. -->
+  <ItemGroup>
+    <None Include="**/*" Exclude="node_modules/**;dist/**;bin/**;obj/**;src/vendor/**;*.vsix;$(MSBuildProjectFile)" />
+  </ItemGroup>
+
+  <Target Name="NpmBuild" BeforeTargets="BeforeBuild" Condition="'$(SkipNpm)' != 'true'">
+    <Exec Command="npm ci" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run build" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm run lint" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec Command="npm test" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <!-- Produces aidevhelpers-vscode.vsix in this folder, the package VS Code installs. -->
+    <Exec Command="npm run package" WorkingDirectory="$(MSBuildProjectDirectory)" />
+  </Target>
+</Project>

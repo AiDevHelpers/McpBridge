@@ -64,7 +64,7 @@ public static class SinkComparer
 
         var trimmed = Pack(ordered, budget - TrailerReserve);
         int omitted = ordered.Count - trimmed.Used;
-        string trailer = $"+{omitted} more rows (raise maxTokens to see)";
+        string trailer = Strings.Format("MoreRows", omitted);
         string text = trimmed.Used == 0 ? trailer : trimmed.Text + "\n" + trailer;
         return new SummaryText(text, Truncated: true, Omitted: omitted);
     }

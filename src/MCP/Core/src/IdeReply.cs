@@ -16,12 +16,12 @@ internal static class IdeReply
                 return root.TryGetProperty("result", out JsonElement result) ? result.Clone() : default;
             }
 
-            string error = root.TryGetProperty("error", out JsonElement e) ? e.GetString() ?? "unknown error" : "unknown error";
+            string error = root.TryGetProperty("error", out JsonElement e) ? e.GetString() ?? Strings.Get("UnknownError") : Strings.Get("UnknownError");
             throw new IOException(error);
         }
         catch (JsonException ex)
         {
-            throw new IOException("The IDE bridge returned a malformed reply: " + ex.Message, ex);
+            throw new IOException(Strings.Format("MalformedBridgeReply", ex.Message), ex);
         }
     }
 }

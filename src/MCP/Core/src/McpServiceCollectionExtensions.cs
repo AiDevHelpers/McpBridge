@@ -33,9 +33,29 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ITerminalConfigurationDiscovery, TerminalConfigurationDiscovery>();
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.ServerControlService>();
+        services.AddSingleton<IElevRunner, ProcessElevRunner>();
 
         return services
             .AddMcpServer()
+            .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
+            {
+                // Remember this chat's server so a control change can be pushed to it, and refuse calls while not running.
+                AiDevHelpers.MCP.Core.Services.ControlSession.Server = context.Server;
+                var refusal = AiDevHelpers.MCP.Core.Services.ServerControlGate.Refusal(
+                    context.Params?.Name,
+                    AiDevHelpers.MCP.Core.Services.ServerControl.Read());
+                if (refusal is not null)
+                {
+                    return new ModelContextProtocol.Protocol.CallToolResult
+                    {
+                        IsError = true,
+                        Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = refusal }],
+                    };
+                }
+
+                return await next(context, ct);
+            }))
             .WithResources<McpDocumentationResources>()
             .WithTools<IdeTools>()
             .WithTools<ConfigTools>()
@@ -43,6 +63,14 @@ public static class McpServiceCollectionExtensions
             .WithTools<ExtensionTools>()
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
-            .WithTools<TerminalSessionTools>();
+            .WithTools<LintTools>()
+            .WithTools<PreferredIdeTools>()
+            .WithTools<SourceControlTools>()
+            .WithTools<OutputTools>()
+            .WithTools<SelfTestTools>()
+            .WithTools<GateTools>()
+            .WithTools<ServerControlTools>()
+            .WithTools<TerminalSessionTools>()
+            .WithTools<ScriptHelperTools>();
     }
 }

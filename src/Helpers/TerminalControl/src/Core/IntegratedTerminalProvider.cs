@@ -59,7 +59,7 @@ public sealed class IntegratedTerminalProvider : ITerminalProvider
         return session;
     }
 
-    public string GetDisplayName() => "Integrated Terminal (PowerShell/CMD)";
+    public string GetDisplayName() => Strings.Get("IntegratedTerminalDisplayName");
 
     private static string? GetPowerShellVersion()
     {

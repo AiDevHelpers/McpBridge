@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
+  <data name="NoNugetConfig" xml:space="preserve"><value>No nuget.config. Package sources come from the machine defaults.</value></data>
+  <data name="NoCentralPackageManagement" xml:space="preserve"><value>No Directory.Packages.props. Package versions are not centrally managed.</value></data>
+  <data name="TestProjectWithoutAnalyzers" xml:space="preserve"><value>Test project without the xunit.analyzers package.</value></data>
+  <data name="NetAnalyzersDisabled" xml:space="preserve"><value>EnableNETAnalyzers is false. The .NET analyzers (Microsoft.CodeAnalysis.NetAnalyzers) are off.</value></data>
+  <data name="NotPinned" xml:space="preserve"><value>'{0}' is not pinned with ==.</value></data>
+  <data name="NoLockfile" xml:space="preserve"><value>No lockfile next to package.json. npm ci needs one.</value></data>
+</root>

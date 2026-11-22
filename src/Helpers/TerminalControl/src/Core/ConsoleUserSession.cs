@@ -38,7 +38,7 @@ public static class ConsoleUserSession
         uint sessionId = UserSession.FindFirstLoggedOnSession();
         if (sessionId == UserSession.NoSession)
         {
-            throw new InvalidOperationException("No active user session with a logged-on user was found.");
+            throw new InvalidOperationException(Strings.Get("NoActiveUserSession"));
         }
 
         using var token = UserSession.OpenPrimaryToken(sessionId, bindToSession: true);
@@ -60,7 +60,7 @@ public static class ConsoleUserSession
             if (!CreateProcessAsUserW(token.Handle, null, commandLine.ToCharArray(), IntPtr.Zero, IntPtr.Zero, false,
                     CreateUnicodeEnvironment, environment, null, ref startup, out var info))
             {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), "CreateProcessAsUser failed.");
+                throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("CreateProcessAsUserFailed"));
             }
 
             _ = CloseHandle(info.hThread);

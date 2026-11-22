@@ -28,7 +28,7 @@ public sealed class ProcessTestCommandRunner : ITestCommandRunner
             psi.ArgumentList.Add(arg);
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Could not start '{file}'.");
+        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", file));
         var stdout = process.StandardOutput.ReadToEndAsync(ct);
         var stderr = process.StandardError.ReadToEndAsync(ct);
         await process.WaitForExitAsync(ct);
@@ -68,7 +68,7 @@ public sealed class CoverageService(ITestCommandRunner runner, string resultsDir
         if (version.ExitCode != 0)
         {
             return new CoverageRunResult(false, null, null, null,
-                "The dotnet-coverage tool is not installed. Install it with: dotnet tool install -g dotnet-coverage");
+                Strings.Get("DotnetCoverageNotInstalled"));
         }
 
         var report = Path.Combine(resultsDirectory, CoberturaName);

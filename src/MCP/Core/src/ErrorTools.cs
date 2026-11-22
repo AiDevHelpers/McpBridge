@@ -47,7 +47,7 @@ internal sealed class ErrorTools
             case "errors": items = service.GetErrors(filter); break;
             case "warnings": items = service.GetWarnings(filter); break;
             case "notices": items = service.GetNotices(filter); break;
-            default: return Json(new { ok = false, error = $"Unknown kind '{kind}'. Use errors, warnings or notices." });
+            default: return Json(new { ok = false, error = Strings.Format("UnknownErrorKind", kind) });
         }
         return Json(new { ok = true, count = items.Count, items = items.Select(Project) });
     }
@@ -107,7 +107,7 @@ internal sealed class ErrorTools
             if (!Enum.TryParse<DiagnosticSource>(name, ignoreCase: true, out var source))
             {
                 filter = new DiagnosticFilter();
-                error = $"Unknown source '{name}'. Use Compiler, CodeAnalysis, NuGet or Other.";
+                error = Strings.Format("UnknownErrorSource", name);
                 return false;
             }
 

@@ -7,14 +7,15 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 
 - Each IDE window runs a bridge on a named pipe, one pipe per window process:
   - Visual Studio: `InstanceRegistry.PipeNameFor(pid)` in the `AiDevHelpers.Bridge` package (source: AiDevHelpers/McpBridge). The VS extension hosts it.
-  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`src/Installers/VsCode/Installer/src/ideBridge.ts`).
+  - VS Code: `\\.\pipe\AiDevHelpers.VSCode.<pid>` (`src/Installers/VsCode/Installer/AiDevTools.VsCode/src/ideBridge.ts`).
 - Each window writes a manifest to `%ProgramData%\AiDevHelpers\vs-instances\<pid>.json`:
   `{ pid, pipeName, solutionPath, updatedUtc, ide }`. `ide` is `VisualStudio` or `VsCode`.
 - The MCP server reads the manifests (`VsInstanceRegistry`, in the package) and routes each call (`IdeInstanceRouter`, in the package) to the window whose
   `solutionPath` matches. With one instance open, the solution is inferred.
 - Routing arguments on every `ide_` tool: `ide` (`VisualStudio` or `VsCode`) and `instancePid` (the process id).
   When the same solution is open in two Visual Studio instances (for example Community and Insiders), a call
-  with only `solutionPath` fails with "Several instances have this solution open". Pass `instancePid` to pick one.
+  with only `solutionPath` fails with "Several instances have this solution open". Pass `instancePid` to pick one,
+  or store `preferredIde` for the solution (`ide_set_preferred`), which breaks that tie only.
   Full rules are in [protocol.md](../conformance/protocol.md#routing-mcp-side).
 - Replies that don't arrive within 60 seconds are errors. An instance whose pipe refuses the client (for
   example, one running at a different elevation) is reported as "refused this client".
@@ -36,11 +37,12 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeSetStartupProject` | `setStartupProject` | VS only. VS Code returns `unsupported`. |
 | `IdeRunTests` | `runTests` | VS: `dotnet test` with TRX when `IdeTestRunMode` is `DotnetTest`, otherwise Test Explorer. VS Code: `testing.runAll`. |
 | `IdeGetTestResults` | (MCP only) | Reads the newest TRX file in the solution's `TestResults` folder. |
+| `IdeGetTestSummary` | (MCP only) | Counts from the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. Counts only; failing test names are not printed at the default log level. |
 | `IdeBuild`, `IdeClean`, `IdePublish` | `build`, `clean`, `publish` | VS: the IDE build. VS Code: `build` runs the build task; `clean` and `publish` run `dotnet` in the workspace folder. |
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
-| `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | same names | |
+| `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |
 | `IdeAddWatch`, `IdeRemoveWatch`, `IdeListWatches` | `addWatch`, `removeWatch`, `listWatches` | Watches are kept by the bridge. Values show only while paused. |
 | `IdeKillProcess` | `killProcess` | Kills only processes this bridge started. VS starts none, so it refuses every pid. VS Code kills its clean/publish processes. |
@@ -49,14 +51,36 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `ide_open_document` | `openDocument` | Opens a file and moves the caret to an optional line. |
 | `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. |
 | `bookmark_list`, `bookmark_get`, `bookmark_set`, `bookmark_remove` | `bookmarkList`, `bookmarkGet`, `bookmarkSet`, `bookmarkRemove` | Visual Studio bookmarks. VS Code returns not-supported. See Limits. |
+| `output_channel_set`, `output_write` | `outputWrite` | Writes text to a named output channel: an Output window pane in Visual Studio, an output channel in VS Code. The IDE for each channel is stored per repo. Reading back is not offered. |
+| `ide_set_preferred`, `ide_get_preferred` | (MCP only) | Stores or reads `preferredIde` in `.claude/aidevhelpers.json` next to the solution. See Settings. |
+| `run_elevated_script` | (MCP only) | Runs an approved script elevated through the Script Helper broker (`elev.exe`, next to the server). Needs `projectRoot`, `script` and optional `args`. Returns the exit code and output, or a refusal. The script must be in the project's `.elevated.json` and approved by a person. |
+
+### Bridge actions used by other tools
+
+These actions are called by the MCP server's own services, not by a single tool of the same name.
+
+| Action | Used by | Notes |
+|---|---|---|
+| `status` | routing and health checks | Returns `solution_path`. |
+| `listOutputPanes` | the Visual Studio output log source | Visual Studio only. Lists the Output window pane names. |
+| `listDebugSessions`, `getDebugOutput` | the VS Code debug log source | VS Code only. Lists debug sessions and reads a session's output. |
+| `prepareKill` | `IdeKillInstance` | Asks the instance to save every document, and reports any that stay unsaved. |
 
 ### Helper tools (MCP only, no bridge action)
 
 | Tools | Helper | Notes |
 |---|---|---|
+| `live_test_start`, `live_test_stop` | TestingHelper | Live testing with `dotnet watch test`. Works in Visual Studio Community, which has no Live Unit Testing. Failures reach `test_failures`, the error log and MCP log notifications. |
+| `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, and optionally `dotnet format --verify-no-changes`. |
+| `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. |
+| `package_check` | PackageHelper | NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, .NET analyzers), pip (pinned requirements) and npm (a lockfile). Reads files only. |
+| `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. |
+| `server_control_set`, `server_control_status` | (server) | Pause, close and resume every aidevtools server on this machine for an update. `paused` makes each server refuse tool calls with a message and pushes a log notification (`AiDevHelpers.Control`) to its chat. `closing` makes each server exit after a short pause, which releases its files. `running` resumes. These two tools work in every state. State lives in `%ProgramData%\AiDevHelpers\control\state.json`. `scripts/update-aidevtools.ps1` runs pause, close, update, resume and always resumes at the end. |
+| `self_test_list`, `self_test_read` | each helper | Lists helpers with their versions and the server version, and reads a helper's embedded self-test markdown. |
 | `config_resolve`, `config_read` | ConfigHelper | Real paths for remote debugger, launchSettings, appsettings, user and solution settings. Reads are limited to allowed roots and redact secrets. |
 | `error_ingest`, `error_list`, `error_snapshot`, `error_changes` | ErrorHelper | Caller supplies build output. Filters by code and source. Suppression comes from the solution's `.vsconfig` key `aidevhelpersErrors`. |
 | `test_watch`, `test_unwatch`, `test_failures`, `test_coverage` | TestingHelper | Watches TestResults while hot reload is active. Coverage uses Coverlet, or the `dotnet-coverage` CLI for Visual Studio. |
+| `test_affected` | TestingHelper | Lists the test projects a change can affect, with a `dotnet test` command for each. A changed file affects its project and every project that references it; a build-wide file (`Directory.Build.props`, `.editorconfig`, a solution file) affects all test projects. Uses git's changed files when none are given. Runs nothing. |
 | `extension_list`, `extension_info`, `extension_add_plan`, `extension_add_confirm` | ExtensionsHelper | VS Code list and info are local. Visual Studio info queries the Marketplace. Adds are two-step and need approval. |
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
 
@@ -71,8 +95,13 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - **VS bookmarks:** only bookmarks in open documents are visible. Names are not stored by VS, so `name` comes back null.
 - **VS Code bookmarks:** not supported in v1 (`unsupported: true`).
 - **VS coverage through the bridge:** not built. Visual Studio coverage uses the `dotnet-coverage` CLI.
-- **VS Code hot reload setting:** the bridge action that reads it is not built yet. TestingHelper falls back to `dotnet watch`.
-- **Unverified on a real install:** `dotnet.defaultSolution`, the `.vsconfig` key `aidevhelpersErrors`, and the
+- **Hot reload:** `hotReloadState` (VS Code) and `testHotReloadState` (Visual Studio) read the settings. TestingHelper uses them when the caller passes them, and otherwise falls back to `dotnet watch`.
+- **Continuous testing:** VS Code only, through Test Explorer's run commands. Visual Studio has no continuous testing setting, so it uses `live_test_start`.
+- **Output channels:** `outputWrite` creates a channel on first use and appends. VS Code can't read a channel back, and Visual Studio reads panes through `IdeGetOutput` only for the panes it lists.
+- **Source control:** Visual Studio has no public Git operation API, so `git_*` runs `git.exe` for both IDEs. VS Code has a git API (its built-in git extension), used by the `git*` bridge actions in the VS Code extension. The MCP `git_*` tools do not route to it yet, so they still run `git.exe`.
+- **Gate:** `gate_run` runs the repo's build and test commands. It does not read `package.json` in subfolders, so list those steps in `.claude/reference/full-gate.md`. The lite gate is not defined.
+- **Live checks not run:** `outputWrite` in both IDEs, the `git_*` tools in an IDE, and `ide_set_preferred` routing with two live instances.
+- **Unverified on a real install:** the `.vsconfig` key `aidevhelpersErrors`, and the
   Marketplace query shape used by ExtensionsHelper.
 
 ## Settings
@@ -82,6 +111,20 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - The VS options page also edits the MCP advanced settings: verbose logging, context helper and token
   economy switches, context size limit, endpoint strategy, and endpoints. Endpoints are one per line as
   `name|url|primary|models`, and at least one must have `primary` set to `true` when the list isn't empty.
+- `aidevhelpersErrors` in the solution's `.vsconfig`: `{ "suppressCodes": [...], "suppressSources": [...] }`.
+  ErrorHelper hides those codes and sources. The solution wins over user settings. Visual Studio may reject
+  the extra key, which is not yet verified.
+- `csharp.experimental.debug.hotReload` (VS Code) and `test.hotReload` (Visual Studio): hot reload state, read by
+  `hotReloadState` and `testHotReloadState`. Both are set by the IDE, not by this project.
+- `.claude/aidevhelpers.json` next to the solution: `preferredIde` (`VisualStudio` or `VsCode`) breaks a routing tie
+  when two IDE instances have the same solution open and the call has no `ide` or `instancePid`. `outputChannels`
+  maps a channel name to the IDE that `output_write` uses. Other keys in the file are kept.
+- `.claude/reference/full-gate.md`: the repo's own gate. Its `gate` code block lists one command per line; a line
+  starting with `!` may fail without stopping the gate.
+- `dotnet.defaultSolution` (C# Dev Kit): set on install by `extension_workspace_setup` when C# Dev Kit is installed.
+  Verified: with two solutions in a folder and this key set, C# Dev Kit restores and loads the chosen one.
+- Extension recommendations go to `.vscode/extensions.json` in the folder: `ms-dotnettools.csdevkit` and
+  `ms-dotnettools.csharp`.
 
 ## Build and install
 
@@ -92,16 +135,25 @@ pwsh -File scripts/update-vs-extension.ps1
 ```
 
 This rebuilds the VSIX and opens VsixInstaller for each VS 2026 instance. Expect a UAC prompt and a
-dialog per instance. Commit first: the version comes from git height, so an uncommitted rebuild can
-install the same version as before and do nothing.
+dialog per instance. Commit first: the version is 0.1.<commit count>, which the build script writes into the
+manifest for that build only. The VS Installer dialog installs one VSIX into both Community and Insiders
+when both are ticked. The command-line form with more than one instance ID fails with exit code 2005.
 
-VS Code bridge (build the Core package first; the Installer depends on it through `file:../Core`):
+VS Code bridge (the Core library is vendored into the extension at build time, so the package is self-contained):
 
 ```bash
-pushd src/Installers/VsCode/Core && npm install && npm run build && popd
-pushd src/Installers/VsCode/Installer && npm install && npm run build && npx vsce package --out aidevhelpers.vsix && popd
-code --install-extension src/Installers/VsCode/Installer/aidevhelpers.vsix --force
+cd src/Installers/VsCode/Installer/AiDevTools.VsCode
+npm install
+npm run build
+npm test
+npm run package
+code --install-extension aidevhelpers-vscode.vsix --force
 ```
+
+`npm run build` runs `prebuild` (copies Core into `src/vendor`) and `postbuild` (copies it into `dist`). Restart
+VS Code after installing. The extension activates on startup.
+
+CI builds both packages on pull requests and `v*` tags. See the README for the required checks.
 
 ## Live checks
 

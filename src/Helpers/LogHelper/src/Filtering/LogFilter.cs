@@ -97,7 +97,7 @@ public static class LogFilter
             int equals = part.IndexOf('=', StringComparison.Ordinal);
             if (equals <= 0 || equals == part.Length - 1)
             {
-                error = $"Invalid field term '{part}'. Use key=value.";
+                error = Strings.Format("InvalidFieldTerm", part);
                 return false;
             }
 

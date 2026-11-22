@@ -1,7 +1,7 @@
 namespace AiDevHelpers.Helpers.TerminalControl.Core;
 
 /// <summary>
-/// Line protocol shared with Scripts/tokensaver-tab.ps1.
+/// Line protocol shared with Scripts/terminal-tab.ps1.
 /// Commands go in as "&lt;id&gt; &lt;command&gt;"; the tab writes "__TOKENSAVER_END__ &lt;id&gt; &lt;exitcode&gt;" after each command.
 /// </summary>
 public static class TabProtocol
@@ -32,7 +32,7 @@ public static class TabProtocol
     {
         if (command.Contains('\n', StringComparison.Ordinal) || command.Contains('\r', StringComparison.Ordinal))
         {
-            throw new ArgumentException("Commands must be a single line.", nameof(command));
+            throw new ArgumentException(Strings.Get("CommandMustBeSingleLine"), nameof(command));
         }
 
         return $"{requestId} {command}";

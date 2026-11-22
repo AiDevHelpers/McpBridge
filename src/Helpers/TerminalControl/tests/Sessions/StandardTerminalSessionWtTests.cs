@@ -45,7 +45,7 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
 
         var tabLaunch = Assert.Single(launcher.Started.Skip(1));
         Assert.Contains("new-tab", tabLaunch.Arguments, StringComparison.Ordinal);
-        Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains(Path.Combine("Scripts", "terminal-tab.ps1"), tabLaunch.Arguments, StringComparison.Ordinal);
         Assert.NotNull(tab.StdoutPipe);
         Assert.Contains(tab.StdoutPipe!.PipeName, tabLaunch.Arguments, StringComparison.Ordinal);
         Assert.Contains("-CommandPipe", tabLaunch.Arguments, StringComparison.Ordinal);
@@ -66,7 +66,7 @@ public sealed class StandardTerminalSessionWtTests : IDisposable
         var tabLaunch = Assert.Single(launcher.Started);
         Assert.Equal("pwsh", tabLaunch.FileName);
         Assert.DoesNotContain("new-tab", tabLaunch.Arguments, StringComparison.Ordinal);
-        Assert.Contains("tokensaver-tab.ps1", tabLaunch.Arguments, StringComparison.Ordinal);
+        Assert.Contains(Path.Combine("Scripts", "terminal-tab.ps1"), tabLaunch.Arguments, StringComparison.Ordinal);
     }
 
     [Fact]

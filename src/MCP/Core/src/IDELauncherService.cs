@@ -35,7 +35,7 @@ internal sealed class IDELauncherService : IIDELauncher
                 ProcessId: 0,
                 Port: null,
                 Ready: false,
-                Message: $"Workspace root does not exist: {workspaceRoot}");
+                Message: Strings.Format("WorkspaceRootMissing", workspaceRoot));
         }
 
         try
@@ -48,7 +48,7 @@ internal sealed class IDELauncherService : IIDELauncher
                         ProcessId: existing.Process.Id,
                         Port: existing.Port,
                         Ready: true,
-                        Message: $"{ideType} is already running");
+                        Message: Strings.Format("IdeAlreadyRunning", ideType));
                 }
             }
 
@@ -56,7 +56,7 @@ internal sealed class IDELauncherService : IIDELauncher
             {
                 "VsCode" => LaunchVsCode(workspaceRoot),
                 "VisualStudio2026" => LaunchVisualStudio(workspaceRoot),
-                _ => throw new ArgumentException($"Unknown IDE type: {ideType}")
+                _ => throw new ArgumentException(Strings.Format("UnknownLauncherIdeType", ideType))
             };
 
             lock (_lock)
@@ -78,7 +78,7 @@ internal sealed class IDELauncherService : IIDELauncher
                 ProcessId: process.Id,
                 Port: port,
                 Ready: true,
-                Message: $"{ideType} started successfully");
+                Message: Strings.Format("IdeStarted", ideType));
         }
         catch (Exception ex)
         {
@@ -87,7 +87,7 @@ internal sealed class IDELauncherService : IIDELauncher
                 ProcessId: 0,
                 Port: null,
                 Ready: false,
-                Message: $"Failed to launch {ideType}: {ex.Message}");
+                Message: Strings.Format("IdeLaunchFailed", ideType, ex.Message));
         }
     }
 
@@ -211,7 +211,7 @@ internal sealed class IDELauncherService : IIDELauncher
 
         if (vsPath == null)
         {
-            throw new InvalidOperationException("Visual Studio 2026+ installation not found");
+            throw new InvalidOperationException(Strings.Get("VisualStudioNotInstalled"));
         }
 
         var slnFile = FindSolutionFile(workspaceRoot);
@@ -269,16 +269,8 @@ internal sealed class IDELauncherService : IIDELauncher
 
     internal static string? FindVisualStudioPath()
     {
-        // Common VS 2022/2026 paths on Windows
-        var possiblePaths = new[]
-        {
-            @"C:\Program Files\Microsoft Visual Studio\2026\Preview\Common7\IDE\devenv.exe",
-            @"C:\Program Files\Microsoft Visual Studio\2026\Professional\Common7\IDE\devenv.exe",
-            @"C:\Program Files (x86)\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe",
-            @"C:\Program Files\Microsoft Visual Studio\2022\Professional\Common7\IDE\devenv.exe"
-        };
-
-        return possiblePaths.FirstOrDefault(File.Exists);
+        // Locates the newest VS 18 install through vswhere, so Community, Professional and Insiders all resolve.
+        return DevenvLauncher.Find();
     }
 
     private string? FindSolutionFile(string workspaceRoot)
@@ -298,7 +290,7 @@ internal sealed class IDELauncherService : IIDELauncher
     {
         if (ideType != "VsCode" && ideType != "VisualStudio2026")
         {
-            throw new ArgumentException($"Invalid IDE type '{ideType}'. Must be 'VsCode' or 'VisualStudio2026'.", nameof(ideType));
+            throw new ArgumentException(Strings.Format("InvalidIdeType", ideType), nameof(ideType));
         }
     }
 

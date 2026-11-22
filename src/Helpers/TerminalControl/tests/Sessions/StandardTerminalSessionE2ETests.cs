@@ -73,12 +73,48 @@ public sealed class StandardTerminalSessionE2ETests : IDisposable
         Assert.Null(await session.GetTabAsync(tab.TabId));
     }
 
+    [Fact]
+    public async Task Wrapper_EchoesCommandsAndOutputToTheWindow()
+    {
+        var wrapper = FindWrapperScript();
+        var console = new System.Text.StringBuilder();
+        using var pipes = new NamedPipeManager(_loggerFactory.CreateLogger<NamedPipeManager>());
+        var session = new StandardTerminalSession(
+            _loggerFactory.CreateLogger<StandardTerminalSession>(),
+            pipes,
+            new DirectTabLauncher(wrapper, _tabProcesses, console));
+        await session.InitializeAsync(new TerminalSessionConfig());
+        var tab = await session.CreateTabAsync("echo");
+
+        await session.ExecuteInTabAsync(tab.TabId, "Write-Output 'visible-line'", timeout: TimeSpan.FromSeconds(60));
+
+        // The redirected console stream lags the pipe slightly; poll for the exit line.
+        for (var i = 0; i < 50 && !ConsoleText(console).Contains("[exit 0]", StringComparison.Ordinal); i++)
+        {
+            await Task.Delay(100);
+        }
+
+        var text = ConsoleText(console);
+        Assert.Contains("ready", text, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Write-Output 'visible-line'", text, StringComparison.Ordinal);
+        Assert.Contains("visible-line", text, StringComparison.Ordinal);
+        Assert.Contains("[exit 0]", text, StringComparison.Ordinal);
+    }
+
+    private static string ConsoleText(System.Text.StringBuilder console)
+    {
+        lock (console)
+        {
+            return console.ToString();
+        }
+    }
+
     private static string FindWrapperScript()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            var candidate = Path.Combine(dir.FullName, "src", "Helpers", "TerminalControl", "src", "Scripts", "tokensaver-tab.ps1");
+            var candidate = Path.Combine(dir.FullName, "src", "Helpers", "TerminalControl", "src", "Scripts", "terminal-tab.ps1");
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -87,7 +123,7 @@ public sealed class StandardTerminalSessionE2ETests : IDisposable
             dir = dir.Parent;
         }
 
-        throw new FileNotFoundException("tokensaver-tab.ps1 not found above the test output folder.");
+        throw new FileNotFoundException("terminal-tab.ps1 not found above the test output folder.");
     }
 
     /// <summary>
@@ -98,11 +134,13 @@ public sealed class StandardTerminalSessionE2ETests : IDisposable
         private static readonly Regex WrapperArg = new("-File \"([^\"]+)\"", RegexOptions.Compiled);
         private readonly string _wrapperPath;
         private readonly List<Process> _processes;
+        private readonly System.Text.StringBuilder? _console;
 
-        public DirectTabLauncher(string wrapperPath, List<Process> processes)
+        public DirectTabLauncher(string wrapperPath, List<Process> processes, System.Text.StringBuilder? console = null)
         {
             _wrapperPath = wrapperPath;
             _processes = processes;
+            _console = console;
         }
 
         public Process? Start(ProcessStartInfo startInfo)
@@ -121,11 +159,27 @@ public sealed class StandardTerminalSessionE2ETests : IDisposable
                 Arguments = pwshArgs,
                 UseShellExecute = false,
                 CreateNoWindow = true,
+                RedirectStandardOutput = _console is not null,
             });
 
             if (process is not null)
             {
                 _processes.Add(process);
+
+                if (_console is not null)
+                {
+                    process.OutputDataReceived += (_, e) =>
+                    {
+                        if (e.Data is not null)
+                        {
+                            lock (_console)
+                            {
+                                _console.AppendLine(e.Data);
+                            }
+                        }
+                    };
+                    process.BeginOutputReadLine();
+                }
             }
 
             return process;

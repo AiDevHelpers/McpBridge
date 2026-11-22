@@ -60,19 +60,19 @@ public sealed class StructuredParser
         string name = NameOf(spec);
         if (Array.IndexOf(KnownNames, name) < 0)
         {
-            return $"Unknown format '{spec.Name}'. Use auto, plain, json, xml, logfmt or regex.";
+            return Strings.Format("UnknownFormat", spec.Name);
         }
 
         if (spec.Pattern is not null && name != "regex")
         {
-            return "A pattern applies only to format regex.";
+            return Strings.Get("PatternOnlyForRegex");
         }
 
         if (name == "regex")
         {
             if (string.IsNullOrEmpty(spec.Pattern))
             {
-                return "Format regex needs a pattern with named groups.";
+                return Strings.Get("RegexNeedsPattern");
             }
 
             if (!SafeRegex.TryCreate(spec.Pattern, options, out _, out string? regexError))
@@ -97,7 +97,7 @@ public sealed class StructuredParser
         string name = NameOf(spec);
         if (name is "auto" or "plain")
         {
-            error = "Format must be resolved before parsing.";
+            error = Strings.Get("FormatNotResolved");
             return false;
         }
 
@@ -174,7 +174,7 @@ public sealed class StructuredParser
             using JsonDocument document = JsonDocument.Parse(schema);
             if (document.RootElement.ValueKind != JsonValueKind.Object)
             {
-                error = "Schema must be a JSON object that maps slots to field names.";
+                error = Strings.Get("SchemaNotObject");
                 return false;
             }
 
@@ -184,13 +184,13 @@ public sealed class StructuredParser
                 string slot = property.Name.ToLowerInvariant();
                 if (Array.IndexOf(SlotNames, slot) < 0)
                 {
-                    error = $"Unknown schema slot '{property.Name}'. Use timestamp, level, message, category or exception.";
+                    error = Strings.Format("UnknownSchemaSlot", property.Name);
                     return false;
                 }
 
                 if (property.Value.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(property.Value.GetString()))
                 {
-                    error = $"Schema slot '{property.Name}' must map to a non-empty field name.";
+                    error = Strings.Format("SchemaSlotEmpty", property.Name);
                     return false;
                 }
 
@@ -202,7 +202,7 @@ public sealed class StructuredParser
         }
         catch (JsonException)
         {
-            error = "Schema is not valid JSON.";
+            error = Strings.Get("SchemaNotJson");
             return false;
         }
     }

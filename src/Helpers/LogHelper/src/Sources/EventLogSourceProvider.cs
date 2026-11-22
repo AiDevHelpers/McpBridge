@@ -31,7 +31,7 @@ public sealed class EventLogSourceProvider : ILogSourceProvider
     public Task<IReadOnlyList<LogChannelInfo>> ListChannelsAsync(CancellationToken ct)
     {
         IReadOnlyList<LogChannelInfo> channels = _options.EventLogAllowList
-            .Select(name => new LogChannelInfo(ChannelId.Parse("eventlog:" + name), "Windows event log", null))
+            .Select(name => new LogChannelInfo(ChannelId.Parse("eventlog:" + name), Strings.Get("WindowsEventLogDescription"), null))
             .ToList();
         return Task.FromResult(channels);
     }
@@ -57,7 +57,7 @@ public sealed class EventLogSourceProvider : ILogSourceProvider
             if (allowed is null)
             {
                 throw new UnauthorizedAccessException(
-                    $"Event log '{_log}' is not in the allow-list. Add it to LogHelperOptions.EventLogAllowList to read it.");
+                    Strings.Format("EventLogNotAllowed", _log));
             }
 
             long? afterRecord = ReadRecordId(cursor);
@@ -74,7 +74,7 @@ public sealed class EventLogSourceProvider : ILogSourceProvider
             catch (IOException ex) when (ex.Message.Contains("Access is denied", StringComparison.OrdinalIgnoreCase))
             {
                 throw new IOException(
-                    $"Event Log access denied for '{allowed}'. Add this user to the Event Log Readers group, or run elevated.", ex);
+                    Strings.Format("EventLogAccessDenied", allowed), ex);
             }
 
             var entries = new List<(long Record, LogEntry Entry)>();

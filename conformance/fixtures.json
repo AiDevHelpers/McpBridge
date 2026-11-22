@@ -23,5 +23,10 @@
     "request": { "action": "openDocument", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "output_write_refused_by_generic_bridge": {
+    "request": { "action": "outputWrite", "args": { "channel": "SelfTest", "text": "self test" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }

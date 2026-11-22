@@ -29,7 +29,7 @@ public sealed class ProcessRunner : IProcessRunner
         }
         catch (Win32Exception ex)
         {
-            throw new IOException($"{file} could not be started: {ex.Message}", ex);
+            throw new IOException(Strings.Format("ProcessNotStarted", file, ex.Message), ex);
         }
 
         Task<string> stdout = process.StandardOutput.ReadToEndAsync(ct);
@@ -39,7 +39,7 @@ public sealed class ProcessRunner : IProcessRunner
 
         if (process.ExitCode != 0)
         {
-            throw new IOException($"{file} exited with code {process.ExitCode}: {stderr.Trim()}");
+            throw new IOException(Strings.Format("ProcessExited", file, process.ExitCode, stderr.Trim()));
         }
 
         return output;

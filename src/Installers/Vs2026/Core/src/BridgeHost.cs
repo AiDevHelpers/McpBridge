@@ -39,6 +39,7 @@ public sealed class BridgeHost : IDisposable
     /// <param name="switchToMainThread">Marshals a call onto the VS UI thread.</param>
     public static BridgeHost Start(DTE2 dte, int pid, Func<Func<object>, Task<object>> runOnMainThread)
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         var host = new BridgeHost(dte, pid, runOnMainThread);
         host.Initialize();
         return host;
@@ -59,6 +60,7 @@ public sealed class BridgeHost : IDisposable
 
     private void Initialize()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         _solutionPath = NullIfEmpty(_dte.Solution?.FullName);
 
         var actions = new IdeActions(_dte);
@@ -66,7 +68,9 @@ public sealed class BridgeHost : IDisposable
         var pipeName = InstanceRegistry.PipeNameFor(_pid);
         _server = new BridgeServer(
             pipeName,
+#pragma warning disable VSTHRD010 // _runOnMainThread marshals the call onto the UI thread before Invoke runs.
             (action, args) => _runOnMainThread(() => actions.Invoke(action, args)),
+#pragma warning restore VSTHRD010
             () => _solutionPath,
             new DebugBridgeLogger());
         BridgeControl.Attach(_server, _pid, pipeName, () => _solutionPath);

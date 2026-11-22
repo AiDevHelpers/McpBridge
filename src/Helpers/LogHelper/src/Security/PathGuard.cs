@@ -14,25 +14,25 @@ public static class PathGuard
 
         if (string.IsNullOrWhiteSpace(path))
         {
-            reason = "Path is empty.";
+            reason = Strings.Get("PathEmpty");
             return false;
         }
 
         if (allowedRoots.Count == 0)
         {
-            reason = "No log roots are configured.";
+            reason = Strings.Get("NoLogRoots");
             return false;
         }
 
         if (path.StartsWith(@"\\", StringComparison.Ordinal))
         {
-            reason = "UNC, device and extended-length paths are not allowed.";
+            reason = Strings.Get("UncPathNotAllowed");
             return false;
         }
 
         if (HasStreamSuffix(path))
         {
-            reason = "Alternate data streams are not allowed.";
+            reason = Strings.Get("AdsNotAllowed");
             return false;
         }
 
@@ -43,19 +43,19 @@ public static class PathGuard
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         {
-            reason = "Path is invalid.";
+            reason = Strings.Get("PathInvalid");
             return false;
         }
 
         if (!TryFindRoot(full, allowedRoots, out string root))
         {
-            reason = "Path is outside the allowed log roots.";
+            reason = Strings.Get("PathOutsideRoots");
             return false;
         }
 
         if (HasLinkInPath(full, root))
         {
-            reason = "Symbolic links and junctions are not allowed in log paths.";
+            reason = Strings.Get("LinkNotAllowed");
             return false;
         }
 
