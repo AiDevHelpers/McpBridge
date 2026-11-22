@@ -25,7 +25,7 @@
   <data name="DteUnavailable" xml:space="preserve"><value>Visual Studio DTE service is unavailable.</value></data>
   <data name="MenuCommandServiceUnavailable" xml:space="preserve"><value>IMenuCommandService is unavailable.</value></data>
   <data name="NotAtBreakpointReason" xml:space="preserve"><value>not stopped at a breakpoint</value></data>
-  <data name="BookmarkIdFormat"xml:space="preserve"><value>Bookmark id must be 'file|line'.</value></data>
+  <data name="BookmarkIdFormat" xml:space="preserve"><value>Bookmark id must be 'file|line'.</value></data>
   <data name="BridgeWindowNotCreated" xml:space="preserve"><value>Could not create the IDE Bridge window.</value></data>
   <data name="BridgeSettingsNote" xml:space="preserve"><value>The IDE bridge starts automatically when Visual Studio opens.
 It uses a per-process named pipe and registers this instance for MCP routing.
