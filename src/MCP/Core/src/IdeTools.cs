@@ -126,7 +126,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
     [McpServerTool]
     [Description("Get the counts of the newest finished Test Explorer run, read from the Visual Studio Tests output pane. " +
-                 "Works in TestExplorer mode, where no TRX is written. Counts only: failing test names aren't printed at the default log level.")]
+                 "Works in TestExplorer mode, where no TRX is written. failures lists the tests the runner marked [FAIL] in that run; it is empty when the pane has no such lines.")]
     public async Task<string> IdeGetTestSummary(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
@@ -135,7 +135,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     {
         var raw = await IdeInstanceRouter.CallAsync(
             "searchOutput",
-            new { pattern = "Test run finished: \\d+ Tests", pane = "Tests" },
+            new { pattern = "Test run finished: \\d+ Tests|\\[FAIL\\]", pane = "Tests" },
             solutionPath, ct, ide, instancePid);
         return TestSummaryParser.ParseLatest(raw);
     }

@@ -59,3 +59,4 @@ All ten units are committed on `wip`, the full gate passes, `DocsMatchCodeTests`
 - Units 2 and 3: done. `StringScanner` and `ResxChecker` in LintHelper with tests (24 pass); `HardCodedStringTests` uses them; tools `string_scan` and `resx_check`; `lint_check` reports duplicate resx names.
 - Unit 4: done. `BuildEnvironment` in ExtensionsHelper (vswhere through `ICommandRunner`, 5 tests; 25 pass); tool `build_env`.
 - Unit 5: done. `GitHubService` over `IGhRunner` in SourceControlHelper (8 tests; 23 pass); tools `pr_checks` and `ci_failure`. The gh JSON fields were checked against the real CLI.
+- Unit 6: done. `TestSummaryParser` returns `failures` (the [FAIL] lines between the previous summary line and the newest one); `IdeGetTestSummary` searches for both patterns. 2 new tests; 161 pass.

@@ -92,3 +92,6 @@ Vs2026.Installer|Status requested: {BridgeControl.Describe()}
 
 # MCP.Core: a folder name on disk (where vswhere.exe lives).
 MCP.Core|Microsoft Visual Studio
+
+# MCP.Core: the pattern sent to the IDE to find summary and [FAIL] lines in the Tests pane.
+MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]
