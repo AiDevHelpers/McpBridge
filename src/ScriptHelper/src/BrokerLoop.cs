@@ -11,11 +11,13 @@ public sealed class BrokerLoop
 
     private readonly RequestQueue _queue;
     private readonly Func<BrokerRequest, BrokerResponse> _decide;
+    private readonly Action<Exception> _onDecideFailed;
 
-    public BrokerLoop(RequestQueue queue, Func<BrokerRequest, BrokerResponse> decide)
+    public BrokerLoop(RequestQueue queue, Func<BrokerRequest, BrokerResponse> decide, Action<Exception>? onDecideFailed = null)
     {
         _queue = queue;
         _decide = decide;
+        _onDecideFailed = onDecideFailed ?? (_ => { });
     }
 
     /// <summary>One pass over the pending requests. Returns how many were answered.</summary>
@@ -31,8 +33,9 @@ public sealed class BrokerLoop
             {
                 response = _decide(request);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _onDecideFailed(ex);
                 response = new BrokerResponse(false, InternalErrorReason, null, string.Empty, string.Empty);
             }
 

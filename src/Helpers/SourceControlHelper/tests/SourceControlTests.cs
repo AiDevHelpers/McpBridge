@@ -76,21 +76,23 @@ public sealed class BuildArgumentsTests
 }
 
 /// <summary>Real git against a scratch repo: reads, planned writes and the approval gate.</summary>
-public sealed class SourceControlServiceTests : IDisposable
+public sealed class SourceControlServiceTests : IAsyncLifetime, IDisposable
 {
     private readonly string _repo = Path.Combine(Path.GetTempPath(), "sc-tests", Guid.NewGuid().ToString("N"));
     private readonly SourceControlService _service = new(new ProcessGitRunner());
 
-    public SourceControlServiceTests()
+    public async Task InitializeAsync()
     {
         Directory.CreateDirectory(_repo);
-        Git("init", "-q", "-b", "main");
-        Git("config", "user.email", "test@example.invalid");
-        Git("config", "user.name", "Test");
+        await GitAsync("init", "-q", "-b", "main");
+        await GitAsync("config", "user.email", "test@example.invalid");
+        await GitAsync("config", "user.name", "Test");
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "one\n");
-        Git("add", "a.txt");
-        Git("commit", "-q", "-m", "first");
+        await GitAsync("add", "a.txt");
+        await GitAsync("commit", "-q", "-m", "first");
     }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     public void Dispose()
     {
@@ -108,18 +110,18 @@ public sealed class SourceControlServiceTests : IDisposable
         Directory.Delete(_repo, recursive: true);
     }
 
-    private void Git(params string[] args)
+    private async Task GitAsync(params string[] args)
     {
-        var result = new ProcessGitRunner().Run(_repo, args);
+        var result = await new ProcessGitRunner().RunAsync(_repo, args);
         Assert.True(result.Ok, result.Output);
     }
 
     [Fact]
-    public void StatusReportsAModifiedFile()
+    public async Task StatusReportsAModifiedFile()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
 
-        var status = _service.Status(_repo);
+        var status = await _service.StatusAsync(_repo);
 
         Assert.Equal("main", status.Branch);
         var change = Assert.Single(status.Changes);
@@ -129,48 +131,48 @@ public sealed class SourceControlServiceTests : IDisposable
     }
 
     [Fact]
-    public void DiffShowsTheChange()
+    public async Task DiffShowsTheChange()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
 
-        var diff = _service.Diff(_repo, staged: false, path: "a.txt");
+        var diff = await _service.DiffAsync(_repo, staged: false, path: "a.txt");
 
         Assert.True(diff.Ok);
         Assert.Contains("+two", diff.Output);
     }
 
     [Fact]
-    public void PlannedStageAndCommitRunOnlyWhenConfirmed()
+    public async Task PlannedStageAndCommitRunOnlyWhenConfirmed()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
 
         var stage = _service.Plan(_repo, "stage", paths: ["a.txt"]);
-        Assert.Equal('M', Assert.Single(_service.Status(_repo).Changes).WorkTree);
-        Assert.True(_service.Confirm(stage.Token).Ok);
+        Assert.Equal('M', Assert.Single((await _service.StatusAsync(_repo)).Changes).WorkTree);
+        Assert.True((await _service.ConfirmAsync(stage.Token)).Ok);
 
         var commit = _service.Plan(_repo, "commit", message: "second");
-        Assert.True(_service.Confirm(commit.Token).Ok);
-        Assert.Empty(_service.Status(_repo).Changes);
+        Assert.True((await _service.ConfirmAsync(commit.Token)).Ok);
+        Assert.Empty((await _service.StatusAsync(_repo)).Changes);
     }
 
     [Fact]
-    public void PlanRunsNothingUntilConfirmed()
+    public async Task PlanRunsNothingUntilConfirmed()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
 
         _service.Plan(_repo, "stage", paths: ["a.txt"]);
 
-        Assert.Equal('M', Assert.Single(_service.Status(_repo).Changes).WorkTree);
+        Assert.Equal('M', Assert.Single((await _service.StatusAsync(_repo)).Changes).WorkTree);
     }
 
     [Fact]
-    public void ConfirmedTokenCannotBeUsedTwice()
+    public async Task ConfirmedTokenCannotBeUsedTwice()
     {
         File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
         var stage = _service.Plan(_repo, "stage", paths: ["a.txt"]);
-        _service.Confirm(stage.Token);
+        await _service.ConfirmAsync(stage.Token);
 
-        var again = _service.Confirm(stage.Token);
+        var again = await _service.ConfirmAsync(stage.Token);
 
         Assert.False(again.Ok);
         Assert.Contains("Unknown or already used token", again.Output);

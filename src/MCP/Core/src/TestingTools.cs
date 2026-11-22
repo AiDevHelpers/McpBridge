@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using AiDevHelpers.Common.Processes;
 using AiDevHelpers.Helpers.TestingHelper;
 using AiDevHelpers.MCP.Core.Services;
 using ModelContextProtocol.Server;
@@ -41,13 +42,13 @@ internal sealed class TestingTools
     [McpServerTool]
     [Description("List the test projects a change can affect, and the dotnet test command for each. A changed file affects its project and every project that references it. " +
                  "With no changedFiles, the files git reports as changed (working tree and untracked) are used. Nothing is run.")]
-    public static string TestAffected(
+    public static async Task<string> TestAffected(
         [Description("Repo root")] string root,
         [Description("Optional: changed files, relative to the root or absolute")] string[]? changedFiles = null)
     {
         try
         {
-            var files = changedFiles ?? GitChangedFiles(root);
+            var files = changedFiles ?? await GitChangedFilesAsync(root);
             var projects = AffectedTests.Find(root, files);
             return Json(new
             {
@@ -63,16 +64,21 @@ internal sealed class TestingTools
         }
     }
 
-    private static IReadOnlyList<string> GitChangedFiles(string root)
+    private static async Task<IReadOnlyList<string>> GitChangedFilesAsync(string root)
     {
-        var git = new AiDevHelpers.Helpers.SourceControlHelper.ProcessGitRunner();
-        var tracked = git.Run(root, ["diff", "--name-only", "HEAD"]);
-        var untracked = git.Run(root, ["ls-files", "--others", "--exclude-standard"]);
-        return (tracked.Output + "\n" + untracked.Output)
+        var tracked = await GitOutputAsync(root, ["diff", "--name-only", "HEAD"]);
+        var untracked = await GitOutputAsync(root, ["ls-files", "--others", "--exclude-standard"]);
+        return (tracked + "\n" + untracked)
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Where(line => !line.StartsWith("warning:", StringComparison.OrdinalIgnoreCase))
             .Distinct()
             .ToList();
+    }
+
+    private static async Task<string> GitOutputAsync(string root, string[] arguments)
+    {
+        var result = await CommandRunner.RunAsync(new CommandRequest { FileName = "git", Arguments = arguments, WorkingDirectory = root });
+        return result.StdOut + result.StdErr;
     }
 
     [McpServerTool]

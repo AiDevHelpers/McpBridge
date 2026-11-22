@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text.Json;
+using AiDevHelpers.Common.Processes;
 using AiDevHelpers.Helpers.GateHelper;
 using AiDevHelpers.Helpers.PackageHelper;
 using ModelContextProtocol.Server;
@@ -46,12 +46,12 @@ internal sealed class GateTools
 
     [McpServerTool]
     [Description("Run the full gate for a repo, step by step, and stop at the first failure. Runs build and test commands in the repo.")]
-    public static string GateRun(
+    public static async Task<string> GateRun(
         [Description("Repo root")] string root)
     {
         try
         {
-            var results = GateRunner.Run(GatePlanner.Plan(root), root, new GateProcessRunner());
+            var results = await GateRunner.RunAsync(GatePlanner.Plan(root), root, new GateProcessRunner());
             var passed = results.All(r => r.Passed);
             return Json(new
             {
@@ -73,28 +73,19 @@ internal sealed class GateTools
 /// <summary>Runs one gate step through cmd, so npm and pip (which are .cmd on Windows) resolve.</summary>
 internal sealed class GateProcessRunner : IGateRunner
 {
-    public (int ExitCode, string Output) Run(GateStep step, string workingDirectory)
+    public async Task<(int ExitCode, string Output)> RunAsync(GateStep step, string workingDirectory, CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("cmd.exe")
+        var arguments = new List<string> { "/d", "/c", step.Tool };
+        arguments.AddRange(step.Arguments);
+
+        var result = await CommandRunner.RunAsync(
+            new CommandRequest { FileName = "cmd.exe", Arguments = arguments, WorkingDirectory = workingDirectory },
+            ct);
+        if (!result.Launched)
         {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        psi.ArgumentList.Add("/d");
-        psi.ArgumentList.Add("/c");
-        psi.ArgumentList.Add(step.Tool);
-        foreach (var argument in step.Arguments)
-        {
-            psi.ArgumentList.Add(argument);
+            throw new InvalidOperationException(Strings.Format("CouldNotStart", step.Tool));
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStart", step.Tool));
-        var stderr = process.StandardError.ReadToEndAsync();
-        var stdout = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-        return (process.ExitCode, stdout + stderr.GetAwaiter().GetResult());
+        return (result.ExitCode, result.StdOut + result.StdErr);
     }
 }

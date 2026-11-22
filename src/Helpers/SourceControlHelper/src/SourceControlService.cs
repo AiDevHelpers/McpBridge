@@ -1,5 +1,5 @@
 using System.Collections.Concurrent;
-using System.Diagnostics;
+using AiDevHelpers.Common.Processes;
 using System.Text;
 
 namespace AiDevHelpers.Helpers.SourceControlHelper;
@@ -7,13 +7,13 @@ namespace AiDevHelpers.Helpers.SourceControlHelper;
 /// <summary>Runs git. Injected so tests can see the exact arguments.</summary>
 public interface IGitRunner
 {
-    GitResult Run(string workingDirectory, IReadOnlyList<string> arguments);
+    Task<GitResult> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken ct = default);
 }
 
 /// <summary>Result of one git call: exit code and combined stdout and stderr.</summary>
 public sealed record GitResult(bool Ok, int ExitCode, string Output);
 
-/// <summary>A write waiting for approval. Nothing runs until <see cref="SourceControlService.Confirm"/> is called with its token.</summary>
+/// <summary>A write waiting for approval. Nothing runs until <see cref="SourceControlService.ConfirmAsync"/> is called with its token.</summary>
 public sealed record PendingWrite(string Token, string Action, string Description, IReadOnlyList<string> Arguments, string RepoPath);
 
 /// <summary>
@@ -28,13 +28,13 @@ public sealed class SourceControlService(IGitRunner git)
     public static readonly IReadOnlyList<string> WriteActions =
         ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply"];
 
-    public GitStatusResult Status(string repoPath)
+    public async Task<GitStatusResult> StatusAsync(string repoPath, CancellationToken ct = default)
     {
-        var result = git.Run(repoPath, ["status", "--porcelain=v1", "--branch"]);
+        var result = await git.RunAsync(repoPath, ["status", "--porcelain=v1", "--branch"], ct);
         return result.Ok ? GitStatusParser.Parse(result.Output) : new GitStatusResult(null, null, 0, 0, [], result.Output);
     }
 
-    public GitResult Diff(string repoPath, bool staged, string? path = null)
+    public Task<GitResult> DiffAsync(string repoPath, bool staged, string? path = null, CancellationToken ct = default)
     {
         var args = new List<string> { "diff" };
         if (staged)
@@ -48,7 +48,7 @@ public sealed class SourceControlService(IGitRunner git)
             args.Add(path);
         }
 
-        return git.Run(repoPath, args);
+        return git.RunAsync(repoPath, args, ct);
     }
 
     /// <summary>Plans a write. Returns the exact command and a token; runs nothing.</summary>
@@ -71,14 +71,14 @@ public sealed class SourceControlService(IGitRunner git)
     }
 
     /// <summary>Runs a planned write once. An unknown or reused token is refused.</summary>
-    public GitResult Confirm(string token)
+    public Task<GitResult> ConfirmAsync(string token, CancellationToken ct = default)
     {
         if (!_pending.TryRemove(token, out var pending))
         {
-            return new GitResult(false, -1, Strings.Get("UnknownToken"));
+            return Task.FromResult(new GitResult(false, -1, Strings.Get("UnknownToken")));
         }
 
-        return git.Run(pending.RepoPath, pending.Arguments);
+        return git.RunAsync(pending.RepoPath, pending.Arguments, ct);
     }
 
     public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch)
@@ -139,29 +139,18 @@ public sealed class SourceControlService(IGitRunner git)
         argument.Any(char.IsWhiteSpace) ? "\"" + argument + "\"" : argument;
 }
 
-/// <summary>Runs git.exe with an argument list (no shell), capturing stdout and stderr.</summary>
+/// <summary>Runs git.exe with an argument list (no shell), capturing stdout and stderr through the shared Common runner.</summary>
 public sealed class ProcessGitRunner : IGitRunner
 {
-    public GitResult Run(string workingDirectory, IReadOnlyList<string> arguments)
+    public async Task<GitResult> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken ct = default)
     {
-        var psi = new ProcessStartInfo("git")
+        var result = await CommandRunner.RunAsync(
+            new CommandRequest { FileName = "git", Arguments = arguments, WorkingDirectory = workingDirectory }, ct);
+        if (!result.Launched)
         {
-            WorkingDirectory = workingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var argument in arguments)
-        {
-            psi.ArgumentList.Add(argument);
+            throw new InvalidOperationException(Strings.Get("CouldNotStartGit"));
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Get("CouldNotStartGit"));
-        var stderr = process.StandardError.ReadToEndAsync();
-        var stdout = process.StandardOutput.ReadToEnd();
-        process.WaitForExit();
-        var output = stdout + stderr.GetAwaiter().GetResult();
-        return new GitResult(process.ExitCode == 0, process.ExitCode, output);
+        return new GitResult(result.ExitCode == 0, result.ExitCode, result.StdOut + result.StdErr);
     }
 }

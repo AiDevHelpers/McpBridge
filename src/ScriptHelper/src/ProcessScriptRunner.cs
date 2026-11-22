@@ -38,18 +38,10 @@ public sealed class ProcessScriptRunner : IScriptRunner
         var stdout = Drain(process.StandardOutput);
         var stderr = Drain(process.StandardError);
 
-        var timedOut = false;
-        using (var cts = new CancellationTokenSource(timeout))
+        var timedOut = !process.WaitForExit(timeout);
+        if (timedOut)
         {
-            try
-            {
-                process.WaitForExitAsync(cts.Token).GetAwaiter().GetResult();
-            }
-            catch (OperationCanceledException)
-            {
-                timedOut = true;
-                KillTree(process);
-            }
+            KillTree(process);
         }
 
         // Drain tasks finish once the pipes close; bound the wait so a stuck pipe cannot hang the broker.

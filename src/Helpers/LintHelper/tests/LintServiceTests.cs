@@ -28,123 +28,123 @@ public sealed class LintServiceTests : IDisposable
         new(new FakeRunner(formatExit, formatOutput));
 
     [Fact]
-    public void ReportsMissingEditorConfig()
+    public async Task ReportsMissingEditorConfig()
     {
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.Contains(findings, f => f.Area == "editorconfig" && f.Severity == "error");
     }
 
     [Fact]
-    public void ReportsMissingRootTrue()
+    public async Task ReportsMissingRootTrue()
     {
         Write(".editorconfig", "[*.cs]\nindent_size = 4\n");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.Contains(findings, f => f.Area == "editorconfig" && f.Message.Contains("root = true"));
     }
 
     [Fact]
-    public void ReportsNoWarnThatSuppressesAnErrorSeverityRule()
+    public async Task ReportsNoWarnThatSuppressesAnErrorSeverityRule()
     {
         Write(".editorconfig", "root = true\n[*.cs]\ndotnet_diagnostic.CA1822.severity = error\n");
         Write("src/App/App.csproj", "<Project><PropertyGroup><NoWarn>$(NoWarn);CA1822;CS1591</NoWarn></PropertyGroup></Project>");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         var mismatch = Assert.Single(findings, f => f.Message.Contains("CA1822"));
         Assert.Equal("error", mismatch.Severity);
     }
 
     [Fact]
-    public void NoWarnForWarningSeverityIsNotAMismatch()
+    public async Task NoWarnForWarningSeverityIsNotAMismatch()
     {
         Write(".editorconfig", "root = true\n[*.cs]\ndotnet_diagnostic.CA1822.severity = warning\n");
         Write("src/App/App.csproj", "<Project><PropertyGroup><NoWarn>CA1822</NoWarn></PropertyGroup></Project>");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.DoesNotContain(findings, f => f.Message.Contains("CA1822"));
     }
 
     [Fact]
-    public void ReportsTsConfigWithoutStrict()
+    public async Task ReportsTsConfigWithoutStrict()
     {
         Write(".editorconfig", "root = true\n");
         Write("web/tsconfig.json", "{ \"compilerOptions\": { \"target\": \"es2022\" } }");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.Contains(findings, f => f.Area == "typescript" && f.Message.Contains("strict"));
     }
 
     [Fact]
-    public void ReportsTypeScriptProjectWithoutEslintConfig()
+    public async Task ReportsTypeScriptProjectWithoutEslintConfig()
     {
         Write(".editorconfig", "root = true\n");
         Write("web/package.json", "{ \"devDependencies\": { \"typescript\": \"5.6.0\" } }");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.Contains(findings, f => f.Message.Contains("ESLint flat config") && f.Severity == "error");
     }
 
     [Fact]
-    public void FlatConfigSatisfiesEslintCheck()
+    public async Task FlatConfigSatisfiesEslintCheck()
     {
         Write(".editorconfig", "root = true\n");
         Write("web/package.json", "{ \"devDependencies\": { \"typescript\": \"5.6.0\" } }");
         Write("web/eslint.config.mjs", "export default [];");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         Assert.DoesNotContain(findings, f => f.Message.Contains("ESLint flat config"));
     }
 
     [Fact]
-    public void ReportsTslintAsDeprecatedWhenTslintJsonExists()
+    public async Task ReportsTslintAsDeprecatedWhenTslintJsonExists()
     {
         Write(".editorconfig", "root = true\n");
         Write("web/tslint.json", "{}");
 
-        var findings = Service().Analyze(_root);
+        var findings = await Service().AnalyzeAsync(_root);
 
         var finding = Assert.Single(findings, f => f.Message.Contains("TSLint is deprecated"));
         Assert.Equal("warning", finding.Severity);
     }
 
     [Fact]
-    public void DotnetFormatFailureIsReported()
+    public async Task DotnetFormatFailureIsReported()
     {
         Write(".editorconfig", "root = true\n");
         Write("App.sln", "");
 
-        var findings = Service(formatExit: 2, formatOutput: "Formatting changes needed\nsrc/A.cs").Analyze(_root, runDotnetFormat: true);
+        var findings = await Service(formatExit: 2, formatOutput: "Formatting changes needed\nsrc/A.cs").AnalyzeAsync(_root, runDotnetFormat: true);
 
         Assert.Contains(findings, f => f.Area == "dotnet" && f.Message.Contains("exit 2"));
     }
 
     [Fact]
-    public void DotnetFormatIsNotRunUnlessAsked()
+    public async Task DotnetFormatIsNotRunUnlessAsked()
     {
         Write(".editorconfig", "root = true\n");
         Write("App.sln", "");
 
-        var findings = Service(formatExit: 2).Analyze(_root);
+        var findings = await Service(formatExit: 2).AnalyzeAsync(_root);
 
         Assert.DoesNotContain(findings, f => f.Message.Contains("dotnet format"));
     }
 
     [Fact]
-    public void MissingFolderThrows()
+    public async Task MissingFolderThrows()
     {
-        Assert.Throws<DirectoryNotFoundException>(() => Service().Analyze(Path.Combine(_root, "nope")));
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => Service().AnalyzeAsync(Path.Combine(_root, "nope")));
     }
 
     private sealed class FakeRunner(int exitCode, string output) : ICommandRunner
     {
-        public (int ExitCode, string Output) Run(string fileName, IReadOnlyList<string> arguments, string workingDirectory) =>
-            (exitCode, output);
+        public Task<(int ExitCode, string Output)> RunAsync(string fileName, IReadOnlyList<string> arguments, string workingDirectory, CancellationToken ct = default) =>
+            Task.FromResult((exitCode, output));
     }
 }

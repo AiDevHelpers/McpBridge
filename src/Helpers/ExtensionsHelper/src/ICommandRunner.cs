@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using AiDevHelpers.Common.Processes;
 
 namespace AiDevHelpers.Helpers.ExtensionsHelper;
 
@@ -8,7 +8,7 @@ public interface ICommandRunner
     Task<CommandResult> RunAsync(string file, IReadOnlyList<string> args, CancellationToken ct = default);
 }
 
-/// <summary>Real runner: starts the process with its arguments as a list, so no argument is shell-parsed.</summary>
+/// <summary>Real runner: delegates to the shared Common runner, so no argument is shell-parsed.</summary>
 public sealed class ProcessCommandRunner : ICommandRunner
 {
     public async Task<CommandResult> RunAsync(string file, IReadOnlyList<string> args, CancellationToken ct = default)
@@ -16,22 +16,12 @@ public sealed class ProcessCommandRunner : ICommandRunner
         // VS Code's CLI is a .cmd shim on Windows.
         var exe = file == "code" && OperatingSystem.IsWindows() ? "code.cmd" : file;
 
-        var psi = new ProcessStartInfo(exe)
+        var result = await CommandRunner.RunAsync(new CommandRequest { FileName = exe, Arguments = args }, ct);
+        if (!result.Launched)
         {
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        foreach (var arg in args)
-        {
-            psi.ArgumentList.Add(arg);
+            throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", exe));
         }
 
-        using var process = Process.Start(psi) ?? throw new InvalidOperationException(Strings.Format("CouldNotStartProcess", exe));
-        var stdout = process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = process.StandardError.ReadToEndAsync(ct);
-        await process.WaitForExitAsync(ct);
-        return new CommandResult(process.ExitCode, await stdout, await stderr);
+        return new CommandResult(result.ExitCode, result.StdOut, result.StdErr);
     }
 }
