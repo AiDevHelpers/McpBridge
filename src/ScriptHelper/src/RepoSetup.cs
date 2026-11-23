@@ -12,7 +12,11 @@ public sealed record RepoScanReport(
     string Root,
     IReadOnlyList<ElevationFinding> Findings,
     RepoElevation Elevation,
-    IReadOnlyList<string> PendingProjects);
+    IReadOnlyList<string> PendingProjects,
+    RulesReport Rules,
+    RepoRules RecordedRules,
+    IReadOnlyList<string> PendingProtectedBranches,
+    IReadOnlyList<string> PendingRequiredChecks);
 
 /// <summary>
 /// The repo setup helper for the unelevated <c>elev</c> client. <see cref="Scan"/> only reads. <see cref="Setup"/> creates the
@@ -36,7 +40,107 @@ public static class RepoSetup
             .Order(StringComparer.Ordinal)
             .ToList();
 
-        return new RepoScanReport(full, findings, elevation, pending);
+        var rules = RulesScanner.Scan(full);
+        var recorded = RepoRulesFile.Read(full);
+        var declinedRules = DeclinedRules(full);
+        var pendingBranches = rules.CandidateProtectedBranches
+            .Where(b => !recorded.ProtectedBranches.Contains(b, StringComparer.OrdinalIgnoreCase) && !declinedRules.Contains("branch:" + b))
+            .ToList();
+        var pendingChecks = rules.CandidateRequiredChecks
+            .Where(c => !recorded.RequiredChecks.Contains(c, StringComparer.OrdinalIgnoreCase) && !declinedRules.Contains("check:" + c))
+            .ToList();
+
+        return new RepoScanReport(full, findings, elevation, pending, rules, recorded, pendingBranches, pendingChecks);
+    }
+
+    // The rule candidates this user said no to ("branch:main", "check:build"), kept in the gitignored user file.
+    private static HashSet<string> DeclinedRules(string root)
+    {
+        try
+        {
+            var path = RepoSettingsFile.UserFilePath(root);
+            var node = File.Exists(path) ? System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path)) : null;
+            return node?["rulesDeclined"] is System.Text.Json.Nodes.JsonArray array
+                ? array.OfType<System.Text.Json.Nodes.JsonValue>().Select(v => v.TryGetValue<string>(out var s) ? s : null).OfType<string>().ToHashSet(StringComparer.OrdinalIgnoreCase)
+                : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException)
+        {
+            return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private static void DeclineRules(string root, IEnumerable<string> keys) =>
+        RepoSettingsFile.UpdateUserFile(root, node =>
+        {
+            var array = node["rulesDeclined"] as System.Text.Json.Nodes.JsonArray ?? new System.Text.Json.Nodes.JsonArray();
+            node["rulesDeclined"] = array;
+            foreach (var key in keys)
+                array.Add(key);
+        });
+
+    // Shows what the repo's own files say, then asks before recording each kind of candidate rule.
+    private static void SetupRules(RepoScanReport report, TextWriter output, IConfirmer confirmer)
+    {
+        var rules = report.Rules;
+        foreach (var file in rules.Instructions)
+        {
+            output.WriteLine($"  instructions  {file.Path}");
+            foreach (var line in file.Lines)
+                output.WriteLine($"      {line}");
+        }
+
+        foreach (var workflow in rules.Workflows)
+            output.WriteLine($"  ci  {workflow.Path}: branches [{string.Join(", ", workflow.Branches)}], jobs [{string.Join(", ", workflow.Jobs)}]");
+
+        foreach (var hook in rules.Hooks)
+            output.WriteLine($"  hook  {hook}");
+
+        if (rules.CodeOwners is not null)
+            output.WriteLine($"  codeowners  {rules.CodeOwners}");
+
+        if (rules.Instructions.Count > 0)
+            output.WriteLine("The instruction files above are for you to read; only the CI branches and checks below can become enforced rules.");
+
+        var recorded = report.RecordedRules;
+        var changed = false;
+        if (report.PendingProtectedBranches.Count > 0)
+        {
+            var list = string.Join(", ", report.PendingProtectedBranches);
+            if (confirmer.Confirm($"Record these as protected branches in repo-rules.json: {list}? The git tools will then refuse commits and pushes on them."))
+            {
+                recorded = recorded with
+                {
+                    ProtectedBranches = [.. recorded.ProtectedBranches, .. report.PendingProtectedBranches],
+                    DefaultBranch = recorded.DefaultBranch ?? rules.DefaultBranch,
+                };
+                changed = true;
+            }
+            else
+            {
+                DeclineRules(report.Root, report.PendingProtectedBranches.Select(b => "branch:" + b));
+            }
+        }
+
+        if (report.PendingRequiredChecks.Count > 0)
+        {
+            var list = string.Join(", ", report.PendingRequiredChecks);
+            if (confirmer.Confirm($"Record these as required checks in repo-rules.json: {list}? pr_checks will then report any that a pull request lacks."))
+            {
+                recorded = recorded with { RequiredChecks = [.. recorded.RequiredChecks, .. report.PendingRequiredChecks] };
+                changed = true;
+            }
+            else
+            {
+                DeclineRules(report.Root, report.PendingRequiredChecks.Select(c => "check:" + c));
+            }
+        }
+
+        if (changed)
+        {
+            RepoRulesFile.Write(report.Root, recorded);
+            output.WriteLine($"wrote {RepoRulesFile.FileName}");
+        }
     }
 
     /// <summary>Exit codes: 0 done, 1 refused, 2 bad usage.</summary>
@@ -88,6 +192,7 @@ public static class RepoSetup
         if (report.PendingProjects.Count == 0 && report.Findings.Count == 0)
             output.WriteLine("Nothing in this repo asks for elevation.");
 
+        SetupRules(report, output, confirmer);
         return 0;
     }
 
@@ -109,14 +214,20 @@ public static class ElevLocalCommands
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
-    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>";
+    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>\n  elev rules override <repoRoot> <requestId>";
 
     /// <summary>True when the first argument is a local verb; <paramref name="exit"/> then holds the exit code.</summary>
     public static bool TryRun(string[] args, TextWriter output, IConfirmer confirmer, out int exit)
     {
         exit = 0;
-        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup"))
+        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "rules"))
             return false;
+
+        if (args[0] == "rules")
+        {
+            exit = args.Length == 4 && args[1] == "override" ? OverrideRule(args[2], args[3], output, confirmer) : Usage2(output);
+            return true;
+        }
 
         if (args.Length != 2)
         {
@@ -140,5 +251,39 @@ public static class ElevLocalCommands
 
         exit = RepoSetup.Setup(args[1], output, confirmer);
         return true;
+    }
+
+    private static int Usage2(TextWriter output)
+    {
+        output.WriteLine(Usage);
+        return 2;
+    }
+
+    // The person waives one refused git write. The question comes from this console, so a tool caller cannot answer it.
+    private static int OverrideRule(string root, string id, TextWriter output, IConfirmer confirmer)
+    {
+        if (!Directory.Exists(root))
+        {
+            output.WriteLine($"refused: '{root}' is not a folder");
+            return 1;
+        }
+
+        var full = Path.GetFullPath(root);
+        if (RuleOverrides.Find(full, id, DateTime.UtcNow) is not { } request)
+        {
+            output.WriteLine($"refused: no pending request '{id}' for this repo (it may have expired)");
+            return 1;
+        }
+
+        if (!confirmer.Confirm($"Allow ONE '{request.Action}' on '{request.Branch}' in {full}, against this repo's rules? It is valid for 10 minutes."))
+        {
+            output.WriteLine("not allowed; the rule still applies");
+            return 1;
+        }
+
+        output.WriteLine(RuleOverrides.Grant(full, id, DateTime.UtcNow)
+            ? $"allowed once: {request.Action} on {request.Branch}. Plan it again."
+            : "refused: the request was already used or has expired");
+        return 0;
     }
 }

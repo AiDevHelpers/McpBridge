@@ -15,6 +15,22 @@ public static class RepoSettingsFile
 
     private const string UserFileIgnoreLine = ".aidevtools/user.json";
 
+    /// <summary>The nearest folder at or above <paramref name="folder"/> with a <c>.git</c> folder or file (a worktree or submodule has a file), or null.</summary>
+    public static string? FindRepoRootFromFolder(string? folder)
+    {
+        if (string.IsNullOrWhiteSpace(folder))
+            return null;
+
+        for (var dir = Path.GetFullPath(folder); dir is not null; dir = Path.GetDirectoryName(dir))
+        {
+            var git = Path.Combine(dir, ".git");
+            if (Directory.Exists(git) || File.Exists(git))
+                return dir;
+        }
+
+        return null;
+    }
+
     public static string SettingsPath(string repoRoot) => Path.Combine(repoRoot, FolderName, SettingsFileName);
 
     public static string UserFilePath(string repoRoot) => Path.Combine(repoRoot, FolderName, UserFileName);

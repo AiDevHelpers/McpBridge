@@ -36,7 +36,17 @@ internal sealed class GateTools
         try
         {
             var steps = GatePlanner.Plan(root);
-            return Json(new { ok = true, steps = steps.Select(s => new { name = s.Name, command = s.Tool + " " + string.Join(" ", s.Arguments), allowFailure = s.AllowFailure }) });
+            var commands = steps.Select(s => s.Tool + " " + string.Join(" ", s.Arguments)).ToList();
+
+            // The gate commands this repo's rules name that no planned step runs.
+            var repo = AiDevHelpers.Common.RepoSettingsFile.FindRepoRootFromFolder(root);
+            var required = repo is null ? [] : AiDevHelpers.Common.RepoRulesFile.Read(repo).GateCommands;
+            return Json(new
+            {
+                ok = true,
+                steps = steps.Select(s => new { name = s.Name, command = s.Tool + " " + string.Join(" ", s.Arguments), allowFailure = s.AllowFailure }),
+                missingRequiredCommands = AiDevHelpers.Helpers.SourceControlHelper.RuleGuard.MissingGateCommands(required, commands),
+            });
         }
         catch (Exception ex) when (ex is DirectoryNotFoundException or InvalidOperationException)
         {

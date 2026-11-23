@@ -95,3 +95,6 @@ MCP.Core|Microsoft Visual Studio
 
 # MCP.Core: the pattern sent to the IDE to find summary, [FAIL] and failure message lines in the Tests pane.
 MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]|\\[xUnit\\.net
+
+# The text of the GitHub API 404 body for a branch without protection (matched, never shown).
+SourceControlHelper|not protected

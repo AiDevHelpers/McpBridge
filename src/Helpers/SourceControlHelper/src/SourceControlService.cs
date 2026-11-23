@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using AiDevHelpers.Common;
 using AiDevHelpers.Common.Processes;
 using System.Text;
 
@@ -14,14 +15,21 @@ public interface IGitRunner
 public sealed record GitResult(bool Ok, int ExitCode, string Output);
 
 /// <summary>A write waiting for approval. Nothing runs until <see cref="SourceControlService.ConfirmAsync"/> is called with its token.</summary>
-public sealed record PendingWrite(string Token, string Action, string Description, IReadOnlyList<string> Arguments, string RepoPath);
+public sealed record PendingWrite(
+    string Token,
+    string Action,
+    string Description,
+    IReadOnlyList<string> Arguments,
+    string RepoPath,
+    string? Branch = null,
+    bool Overridden = false);
 
 /// <summary>
 /// Git status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step:
 /// Plan returns the exact git command and a token, and Confirm runs it once (D7, as in the extension Add flow).
 /// Visual Studio has no public git write API, so this runs git.exe for both IDEs (see the plan's Phase 2 spike).
 /// </summary>
-public sealed class SourceControlService(IGitRunner git)
+public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules = null)
 {
     private readonly ConcurrentDictionary<string, PendingWrite> _pending = new();
 
@@ -57,8 +65,43 @@ public sealed class SourceControlService(IGitRunner git)
         return git.RunAsync(repoPath, args, ct);
     }
 
-    /// <summary>Plans a write. Returns the exact command and a token; runs nothing.</summary>
-    public PendingWrite Plan(string repoPath, string action, IReadOnlyList<string>? paths = null, string? message = null, string? branch = null)
+    /// <summary>
+    /// Plans a write and checks it against the repo's rules first, so a refused write never gets a token. A refusal records a request
+    /// the person can grant in a console (<c>elev rules override</c>); the next matching plan then uses that waiver once. With no
+    /// rules source, or no rules, it plans like <see cref="Plan"/>.
+    /// </summary>
+    public async Task<PendingWrite> PlanAsync(
+        string repoPath,
+        string action,
+        IReadOnlyList<string>? paths = null,
+        string? message = null,
+        string? branch = null,
+        CancellationToken ct = default)
+    {
+        var overridden = false;
+        if (rules?.For(repoPath) is { } source && !source.Rules.IsEmpty && WriteActions.Contains(action))
+        {
+            var current = RuleGuard.NeedsCurrentBranch(action, branch) ? await CurrentBranchAsync(repoPath, ct) : null;
+            if (RuleGuard.Check(source.Rules, action, branch, current) is { } refusal)
+            {
+                if (!RuleOverrides.TryConsume(source.Root, refusal.Action, refusal.Branch, DateTime.UtcNow))
+                {
+                    var id = RuleOverrides.Request(source.Root, refusal.Action, refusal.Branch, DateTime.UtcNow);
+                    throw new RuleRefusedException(refusal.Message + " " + Strings.Format("RuleOverrideHint", source.Root, id));
+                }
+
+                overridden = true;
+            }
+        }
+
+        return PlanCore(repoPath, action, paths, message, branch, overridden);
+    }
+
+    /// <summary>Plans a write without checking the rules. Returns the exact command and a token; runs nothing. The tools use <see cref="PlanAsync"/>.</summary>
+    public PendingWrite Plan(string repoPath, string action, IReadOnlyList<string>? paths = null, string? message = null, string? branch = null) =>
+        PlanCore(repoPath, action, paths, message, branch, overridden: false);
+
+    private PendingWrite PlanCore(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden)
     {
         if (!WriteActions.Contains(action))
         {
@@ -71,20 +114,42 @@ public sealed class SourceControlService(IGitRunner git)
             Action: action,
             Description: "git " + string.Join(" ", args.Select(Quote)),
             Arguments: args,
-            RepoPath: repoPath);
+            RepoPath: repoPath,
+            Branch: branch,
+            Overridden: overridden);
         _pending[pending.Token] = pending;
         return pending;
     }
 
-    /// <summary>Runs a planned write once. An unknown or reused token is refused.</summary>
-    public Task<GitResult> ConfirmAsync(string token, CancellationToken ct = default)
+    /// <summary>
+    /// Runs a planned write once. An unknown or reused token is refused. The rules are checked again here, so a rule added between
+    /// plan and confirm is seen; a write that was waived at plan time is not checked again.
+    /// </summary>
+    public async Task<GitResult> ConfirmAsync(string token, CancellationToken ct = default)
     {
         if (!_pending.TryRemove(token, out var pending))
         {
-            return Task.FromResult(new GitResult(false, -1, Strings.Get("UnknownToken")));
+            return new GitResult(false, -1, Strings.Get("UnknownToken"));
         }
 
-        return git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+        if (!pending.Overridden && rules?.For(pending.RepoPath) is { } source && !source.Rules.IsEmpty)
+        {
+            var current = RuleGuard.NeedsCurrentBranch(pending.Action, pending.Branch) ? await CurrentBranchAsync(pending.RepoPath, ct) : null;
+            if (RuleGuard.Check(source.Rules, pending.Action, pending.Branch, current) is { } refusal)
+            {
+                return new GitResult(false, -1, Strings.Format("RulesChangedBeforeConfirm", refusal.Message));
+            }
+        }
+
+        return await git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+    }
+
+    // The checked-out branch, or null when git cannot say (a detached HEAD reports "HEAD", which no rule names).
+    private async Task<string?> CurrentBranchAsync(string repoPath, CancellationToken ct)
+    {
+        var result = await git.RunAsync(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"], ct);
+        var text = result.Output.Trim();
+        return result.Ok && text.Length > 0 && !text.Contains('\n') ? text : null;
     }
 
     public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch)
