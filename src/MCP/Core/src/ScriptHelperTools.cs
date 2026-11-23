@@ -23,9 +23,21 @@ public interface IElevVerifier
     Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct);
 }
 
-/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
-internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier
+/// <summary>
+/// Scans a repo for projects that need elevation through <c>elev --repo-scan</c>. Local and read only: it needs no broker and
+/// writes nothing. The output is the scan as JSON.
+/// </summary>
+public interface IElevScanner
 {
+    Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct);
+}
+
+/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
+internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner
+{
+    public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
+        RunElevAsync(["--repo-scan", repoRoot], ct);
+
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
 
     public Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>

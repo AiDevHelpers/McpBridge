@@ -42,6 +42,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ProcessElevRunner>();
         services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevScanner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
 
         return services
@@ -79,6 +80,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<GateTools>()
             .WithTools<ServerControlTools>()
             .WithTools<TerminalSessionTools>()
-            .WithTools<ScriptHelperTools>();
+            .WithTools<ScriptHelperTools>()
+            .WithTools<RepoSetupTools>();
     }
 }
