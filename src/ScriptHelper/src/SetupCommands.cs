@@ -1,4 +1,5 @@
 using System.Text;
+using AiDevHelpers.Common;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
@@ -75,6 +76,83 @@ public sealed class SetupCommands : ISetupCommands
             return Fail("approval declined");
 
         return Write(analysis);
+    }
+
+    /// <summary>
+    /// Approves allow-all for a registered project whose repo settings request it: any script inside the repo may then run
+    /// elevated without per-script approval. Two separate confirmations are asked from the elevated console, the second repeating
+    /// the repo path; nothing is written unless both are yes. The signed approval goes to the admin-only data root, bound to the
+    /// project, the checkout and the hash of the settings file, and this user's gitignored .aidevtools/user.json gets a pointer to it.
+    /// </summary>
+    public SetupResult AllowAll(string root)
+    {
+        if (!_elevation.IsElevated())
+            return Fail("setup needs an elevated shell");
+
+        var project = _registry.Find(root);
+        if (project is null)
+            return Fail("project is not registered; run register first");
+
+        var settingsPath = RepoSettingsFile.SettingsPath(project.Root);
+        if (!SettingsRequestAllowAll(settingsPath))
+            return Fail($"{RepoSettingsFile.FolderName}/{RepoSettingsFile.SettingsFileName} does not request allowAll");
+
+        var hash = RepoSettingsFile.Hash(settingsPath);
+        var repo = Path.GetFullPath(project.Root);
+
+        if (!_confirmer.Confirm(
+                $"Allow ALL scripts in {repo} to run elevated, without per-script approval?\n" +
+                "Anyone who can change files in this repo, including a teammate's later commit, can then run code as administrator on this machine.\n" +
+                $"Settings hash: {hash}"))
+        {
+            return Fail("allow-all declined");
+        }
+
+        if (!_confirmer.Confirm(
+                $"Second confirmation. Really allow all scripts in {repo} to run elevated on this machine? " +
+                "Editing the repo's settings file will revoke this until you approve again."))
+        {
+            return Fail("allow-all declined at the second confirmation");
+        }
+
+        _ensureDirectory(_config.AllowAllDirectory);
+        _ensureDirectory(_config.VersionsDirectory);
+        var version = Versions.Get(project.Id) + 1;
+        AllowAllStore.Save(_config.AllowAllPath(project.Id), new AllowAllApproval(project.Id, project.Root, version, hash, ""), _signer);
+        Versions.Bump(project.Id, version);
+
+        WriteUserPointer(project, hash);
+        return new SetupResult(true, $"allow-all approved for '{repo}' (version {version})", project.Id);
+    }
+
+    private static bool SettingsRequestAllowAll(string settingsPath)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settingsPath));
+            return doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("allowAll", out var value)
+                && value.ValueKind == System.Text.Json.JsonValueKind.True;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
+    // The gitignored per-user file only points at the approval; the approval itself lives in the admin store.
+    private static void WriteUserPointer(ProjectEntry project, string hash)
+    {
+        var path = RepoSettingsFile.UserFilePath(project.Root);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(
+            new { allowAll = new { projectId = project.Id, settingsHash = hash } },
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        RepoSettingsFile.EnsureUserFileGitIgnored(project.Root);
     }
 
     public ApprovalPreview PrepareApproval(string root, string relativeScript)

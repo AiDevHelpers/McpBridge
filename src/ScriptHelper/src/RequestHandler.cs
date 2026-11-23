@@ -74,21 +74,6 @@ public sealed class RequestHandler
             return Deny(request, "requester is not the project owner");
         }
 
-        var manifestPath = Path.Combine(project.Root, ".elevated.json");
-        byte[] manifestBytes;
-        try
-        {
-            manifestBytes = File.ReadAllBytes(manifestPath);
-        }
-        catch (IOException)
-        {
-            return Deny(request, ".elevated.json cannot be read");
-        }
-
-        var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(manifestBytes));
-        if (!manifest.Ok)
-            return Deny(request, manifest.Reason);
-
         var resolved = PathRules.ResolveInsideRoot(project.Root, request.Script);
         if (!resolved.Ok)
             return Deny(request, $"'{request.Script}': {resolved.Reason}");
@@ -98,9 +83,31 @@ public sealed class RequestHandler
         if (key is null)
             return Deny(request, $"'{request.Script}' is not a valid relative path");
 
-        var allow = Allowlist.Evaluate(manifest.Entries, rel, request.Args);
-        if (!allow.Allowed)
-            return Deny(request, allow.Reason);
+        // Allow-all (requested by the repo's settings file, approved by this machine's admin store) replaces the manifest
+        // allowlist and the per-script approval. The owner and inside-the-repo checks above still apply.
+        var allowAll = AllowAllApproved(project);
+
+        byte[] manifestBytes = [];
+        if (!allowAll)
+        {
+            var manifestPath = Path.Combine(project.Root, ".elevated.json");
+            try
+            {
+                manifestBytes = File.ReadAllBytes(manifestPath);
+            }
+            catch (IOException)
+            {
+                return Deny(request, ".elevated.json cannot be read");
+            }
+
+            var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(manifestBytes));
+            if (!manifest.Ok)
+                return Deny(request, manifest.Reason);
+
+            var allow = Allowlist.Evaluate(manifest.Entries, rel, request.Args);
+            if (!allow.Allowed)
+                return Deny(request, allow.Reason);
+        }
 
         // Stage the whole approved file set, then check the approval against the staged bytes.
         var source = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
@@ -121,23 +128,60 @@ public sealed class RequestHandler
         if (!staged.Ok)
             return Deny(request, staged.Reason);
 
-        var allowHash = Fingerprint.Sha256Hex(manifestBytes);
-        var decision = ApprovalStore.Authorize(
-            _config.ApprovalsPath(project.Id),
-            _signer,
-            project.Id,
-            project.Root,
-            _versions.Get(project.Id),
-            rel,
-            staged.Fingerprint,
-            allowHash);
-        if (!decision.Allowed)
-            return Deny(request, decision.Reason);
+        if (!allowAll)
+        {
+            var allowHash = Fingerprint.Sha256Hex(manifestBytes);
+            var decision = ApprovalStore.Authorize(
+                _config.ApprovalsPath(project.Id),
+                _signer,
+                project.Id,
+                project.Root,
+                _versions.Get(project.Id),
+                rel,
+                staged.Fingerprint,
+                allowHash);
+            if (!decision.Allowed)
+                return Deny(request, decision.Reason);
+        }
 
         var stagedScript = Path.Combine(stage, rel.Replace('/', '\\'));
         var run = _runner.Run(stagedScript, request.Args, RunTimeout);
-        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}");
+        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(allowAll ? " allow-all" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
+    }
+
+    // True only when the repo's settings file requests allowAll and the signed approval in the admin store matches that exact file.
+    private bool AllowAllApproved(ProjectEntry project)
+    {
+        var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(project.Root);
+        if (!File.Exists(settings))
+            return false;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settings));
+            var requested = doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("allowAll", out var value)
+                && value.ValueKind == System.Text.Json.JsonValueKind.True;
+            if (!requested)
+                return false;
+
+            return AllowAllStore.Check(
+                _config.AllowAllPath(project.Id),
+                _signer,
+                project.Id,
+                project.Root,
+                _versions.Get(project.Id),
+                AiDevHelpers.Common.RepoSettingsFile.Hash(settings)).Allowed;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     private BrokerResponse Deny(BrokerRequest request, string reason)

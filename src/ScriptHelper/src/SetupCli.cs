@@ -26,6 +26,11 @@ public static class SetupCli
             return Report(commands.Register(args[1]), output);
         }
 
+        if (args.Length == 2 && args[0] == "allow-all")
+        {
+            return Report(commands.AllowAll(args[1]), output);
+        }
+
         if (args.Length >= 3 && args[0] == "approve")
         {
             return Approve(args, commands, output);

@@ -26,6 +26,20 @@ public sealed class ScriptHelperConfig
     /// <summary>One signed approvals file per project.</summary>
     public string ApprovalsDirectory => Path.Combine(DataRoot, "approvals");
 
+    /// <summary>One signed allow-all approval per project, kept here and never in the repo.</summary>
+    public string AllowAllDirectory => Path.Combine(DataRoot, "allowall");
+
+    /// <summary>The allow-all approval file for a project; the id is checked the same way as for approvals.</summary>
+    public string AllowAllPath(string projectId)
+    {
+        if (string.IsNullOrEmpty(projectId) || !projectId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+        {
+            throw new ArgumentException("A project id may only contain letters, digits, '-' and '_'.", nameof(projectId));
+        }
+
+        return Path.Combine(AllowAllDirectory, projectId + ".json");
+    }
+
     /// <summary>Per-project replay high-water marks.</summary>
     public string VersionsDirectory => Path.Combine(DataRoot, "versions");
 

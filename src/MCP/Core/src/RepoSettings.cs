@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 
@@ -82,34 +80,13 @@ internal static class RepoSettings
             ? Strings.Get("GlobalAllowAllIgnored")
             : null;
 
-    /// <summary>
-    /// SHA-256 of a settings file with a leading BOM removed and line endings turned into LF, so a checkout on another
-    /// platform or an editor that adds a BOM does not change the hash.
-    /// </summary>
-    public static string HashFile(string path)
-    {
-        var bytes = File.ReadAllBytes(path);
-        var start = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF ? 3 : 0;
-        var text = Encoding.UTF8.GetString(bytes, start, bytes.Length - start).Replace("\r\n", "\n");
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
-    }
+    /// <summary>The canonical hash of a settings file; the same value Script Helper binds an approval to.</summary>
+    public static string HashFile(string path) => AiDevHelpers.Common.RepoSettingsFile.Hash(path);
 
     /// <summary>Adds <c>.aidevtools/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
-    public static void EnsureUserFileGitIgnored(string repoRoot)
-    {
-        var path = Path.Combine(repoRoot, ".gitignore");
-        var lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : [];
-        if (lines.Contains(UserFileIgnoreLine))
-        {
-            return;
-        }
-
-        lines.Add(UserFileIgnoreLine);
-        File.WriteAllText(path, string.Join('\n', lines) + "\n");
-    }
+    public static void EnsureUserFileGitIgnored(string repoRoot) => AiDevHelpers.Common.RepoSettingsFile.EnsureUserFileGitIgnored(repoRoot);
 
     private const string AllowAllKey = "allowAll";
-    private const string UserFileIgnoreLine = ".aidevtools/user.json";
 
     /// <summary>The nearest folder at or above the solution that has a <c>.git</c> folder or file (a worktree or submodule has a file).</summary>
     public static string? FindRepoRoot(string? solutionPath)

@@ -91,6 +91,84 @@ public sealed class RequestHandlerTests : IDisposable
     private BrokerRequest Request(string script = Script, params string[] args) =>
         new(_root, script, args, Owner);
 
+private void ApproveAllowAll(string settingsJson)
+    {
+        var reg = _registry.Register(_root);
+        Assert.True(reg.Ok, reg.Reason);
+        _projectId = reg.ProjectId!;
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root);
+        File.WriteAllText(settings, settingsJson);
+        var version = _versions.Get(_projectId) + 1;
+        AllowAllStore.Save(
+            _config.AllowAllPath(_projectId),
+            new AllowAllApproval(_projectId, _root, version, AiDevHelpers.Common.RepoSettingsFile.Hash(settings), ""),
+            _signer);
+        _versions.Bump(_projectId, version);
+    }
+
+    [Fact]
+    public void AllowAll_RunsAScriptThatIsNotInTheManifestOrApproved()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Single(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllRequestedWithoutAnApproval_UsesTheNormalChecks()
+    {
+        _registry.Register(_root);
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root), """{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void EditingTheSettingsAfterAllowAllWasApproved_FallsBackToTheNormalChecks()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root), """{"allowAll":true,"IdeTools":{}}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllDoesNotLiftTheInsideTheRepoRule()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+
+        var r = Handler().Handle(Request("../outside.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllDoesNotLiftTheOwnerCheck()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(new BrokerRequest(_root, "tools/anything.ps1", Array.Empty<string>(), "S-1-5-21-someone-else"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
     [Fact]
     public void Request_from_a_sid_that_is_not_the_owner_is_denied_and_nothing_runs()
     {

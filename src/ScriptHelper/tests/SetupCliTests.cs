@@ -28,6 +28,14 @@ public sealed class SetupCliTests
 
         public SetupResult ConfirmResult { get; set; } = new(true, "approved");
 
+        public SetupResult AllowAllResult { get; set; } = new(true, "allow-all approved");
+
+        public SetupResult AllowAll(string root)
+        {
+            Calls.Add($"allow-all {root}");
+            return AllowAllResult;
+        }
+
         public ApprovalPreview PrepareApproval(string root, string relativeScript)
         {
             Calls.Add($"prepare {root} {relativeScript}");
@@ -39,6 +47,27 @@ public sealed class SetupCliTests
             Calls.Add($"confirm {root} {relativeScript} {fingerprint} {allowlistHash}");
             return ConfirmResult;
         }
+    }
+
+    [Fact]
+    public void AllowAll_CallsTheSetupAndExitsZero()
+    {
+        var (code, output, setup) = Run(null, "allow-all", @"C:epo");
+
+        Assert.Equal(0, code);
+        Assert.Equal([@"allow-all C:epo"], setup.Calls);
+        Assert.Contains("allow-all approved", output);
+    }
+
+    [Fact]
+    public void AllowAll_Refused_ExitsOne()
+    {
+        var setup = new RecordingSetup { AllowAllResult = new(false, "allow-all declined") };
+
+        var (code, output, _) = Run(setup, "allow-all", @"C:epo");
+
+        Assert.Equal(1, code);
+        Assert.Contains("refused: allow-all declined", output);
     }
 
     private static (int Code, string Output, RecordingSetup Setup) Run(RecordingSetup? setup, params string[] args)

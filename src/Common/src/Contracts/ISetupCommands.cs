@@ -26,4 +26,10 @@ public interface ISetupCommands
     /// values that were shown. The caller is responsible for having asked a person.
     /// </summary>
     SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash);
+
+    /// <summary>
+    /// Approves allow-all for a registered project whose repo settings request it, after two separate confirmations in the
+    /// elevated console. Any script inside the repo may then run elevated without per-script approval.
+    /// </summary>
+    SetupResult AllowAll(string root);
 }
