@@ -84,7 +84,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
+        DebugElevationGuard.Check(solutionPath, ide, instancePid) is { } refusal
+            ? Task.FromResult(System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = refusal }))
+            : IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Stop debugging in an IDE instance. Pass solutionPath when several instances are open.")]
@@ -293,11 +295,14 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
     [McpServerTool]
     [Description("Launch a Visual Studio instance with a solution open. Reuses an instance that already has it open. " +
-                 "Waits for the instance's bridge to come up.")]
+                 "Waits for the instance's bridge to come up. Launches elevated (UAC prompt) only for a solution with a project the repo lists as needing " +
+                 "administrator rights, or when this user's mode for the repo is always; a running non-elevated instance of such a solution is not reused " +
+                 "unless relaunchElevated is true.")]
     public Task<string> IdeLaunchInstance(
         [Description("Full path of the .sln file to open")] string solutionPath,
+        [Description("Only after the user agreed: when the solution needs administrator rights and its open instance is not elevated, save and close that instance and start it elevated (one UAC prompt)")] bool relaunchElevated = false,
         CancellationToken ct = default) =>
-        IdeInstanceLifecycle.LaunchAsync(solutionPath, ct);
+        IdeInstanceLifecycle.LaunchAsync(solutionPath, ct, relaunchElevated);
 
     [McpServerTool]
     [Description("Save all documents and then kill a Visual Studio instance. Refuses, killing nothing, if any document is still unsaved.")]

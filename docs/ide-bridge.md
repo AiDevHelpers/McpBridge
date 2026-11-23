@@ -32,7 +32,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 |---|---|---|
 | `IdeListInstances` | (MCP only) | Lists manifests and their solutions. |
 | `IdeBridgeHealth` | `health` | Listener state and request counters. |
-| `IdeStartDebugging` / `IdeStopDebugging` | `startDebugging` / `stopDebugging` | VS Code uses the selected or first launch configuration. |
+| `IdeStartDebugging` / `IdeStopDebugging` | `startDebugging` / `stopDebugging` | VS Code uses the selected or first launch configuration. In Visual Studio, `IdeStartDebugging` is refused, naming the reason, when the one matching instance is not elevated and its solution needs administrator rights (see `IdeLaunchInstance`); an ambiguous target is left to the router. |
 | `IdeSetConfiguration` / `IdeListConfigurations` | `setConfiguration` / `listConfigurations` | VS Code keeps the selected name for `startDebugging`. |
 | `IdeSetStartupProject` | `setStartupProject` | VS only. VS Code returns `unsupported`. |
 | `IdeRunTests` | `runTests` | VS: `dotnet test` with TRX when `IdeTestRunMode` is `DotnetTest`, otherwise Test Explorer. VS Code: `testing.runAll`. |
@@ -46,10 +46,10 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |
 | `IdeAddWatch`, `IdeRemoveWatch`, `IdeListWatches` | `addWatch`, `removeWatch`, `listWatches` | Watches are kept by the bridge. Values show only while paused. |
 | `IdeKillProcess` | `killProcess` | Kills only processes this bridge started. VS starts none, so it refuses every pid. VS Code kills its clean/publish processes. |
-| `IdeLaunchInstance` / `IdeKillInstance` | (MCP lifecycle) | Launch or save-and-kill a VS instance. Kill refuses if any document is unsaved. |
+| `IdeLaunchInstance` / `IdeKillInstance` | (MCP lifecycle) | Launch or save-and-kill a VS instance. Kill refuses if any document is unsaved. Launch is elevated (UAC prompt, `runas`) only when the solution has a project listed in the repo's `.aidevtools/elevation.json`, or this user's mode for the repo is `always` (`user.json`); a user mode of `never` always launches normally. A running non-elevated instance of such a solution is not reused: the result says `needs_elevated_relaunch`, and only with `relaunchElevated: true` (after the user agrees) is it saved, closed and started elevated. An elevated instance cannot be closed from the non-elevated server; kill says so. |
 | `TerminalSession` | `open`, `tab`, `exec`, `list`, `close` | Runs commands in visible Windows Terminal sessions or headless service-account sessions. See [terminal-session-contract.md](terminal-session-contract.md). |
 | `ide_open_document` | `openDocument` | Opens a file and moves the caret to an optional line. |
-| `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. |
+| `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. Elevated under the same rule as `IdeLaunchInstance`. |
 | `bookmark_list`, `bookmark_get`, `bookmark_set`, `bookmark_remove` | `bookmarkList`, `bookmarkGet`, `bookmarkSet`, `bookmarkRemove` | Visual Studio bookmarks. VS Code returns not-supported. See Limits. |
 | `output_channel_set`, `output_write` | `outputWrite` | Writes text to a named output channel: an Output window pane in Visual Studio, an output channel in VS Code. The IDE for each channel is stored per repo. Reading back is not offered. |
 | `ide_set_preferred`, `ide_get_preferred` | (MCP only) | Stores or reads `preferredIde` in `.claude/aidevhelpers.json` next to the solution. See Settings. |

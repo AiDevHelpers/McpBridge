@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using System.Xml.Linq;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
@@ -30,7 +29,6 @@ public static class ElevationScanner
 
     private static readonly Regex AdminLevel = new(@"requestedExecutionLevel[^>]*level\s*=\s*""requireAdministrator""", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     private static readonly Regex ManifestProperty = new(@"<ApplicationManifest>\s*([^<]+?)\s*</ApplicationManifest>", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-    private static readonly Regex SlnProject = new(@"^Project\(""[^""]*""\)\s*=\s*""[^""]*""\s*,\s*""([^""]+\.\w+proj)""", RegexOptions.CultureInvariant);
 
     private static readonly (string Name, Regex Pattern)[] PowerShellMarkers =
     [
@@ -91,7 +89,7 @@ public static class ElevationScanner
         var listed = new List<string>();
         foreach (var solution in Directory.EnumerateFiles(root).Where(f => f.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".sln", StringComparison.OrdinalIgnoreCase)))
         {
-            listed.AddRange(SolutionProjects(solution));
+            listed.AddRange(AiDevHelpers.Common.SolutionProjects.Read(solution));
         }
 
         var projects = listed
@@ -109,41 +107,6 @@ public static class ElevationScanner
             .Select(f => Inside(root, f.File))
             .OfType<string>()
             .Order(StringComparer.Ordinal)
-            .ToList();
-    }
-
-    private static IEnumerable<string> SolutionProjects(string solution)
-    {
-        string text;
-        try
-        {
-            text = File.ReadAllText(solution);
-        }
-        catch (IOException)
-        {
-            return [];
-        }
-
-        if (solution.EndsWith(".slnx", StringComparison.OrdinalIgnoreCase))
-        {
-            try
-            {
-                return XDocument.Parse(text).Descendants()
-                    .Where(e => e.Name.LocalName == "Project")
-                    .Select(e => e.Attribute("Path")?.Value)
-                    .OfType<string>()
-                    .ToList();
-            }
-            catch (System.Xml.XmlException)
-            {
-                return [];
-            }
-        }
-
-        return text.Split('\n')
-            .Select(line => SlnProject.Match(line.Trim()))
-            .Where(m => m.Success)
-            .Select(m => m.Groups[1].Value)
             .ToList();
     }
 

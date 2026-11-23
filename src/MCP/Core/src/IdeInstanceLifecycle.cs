@@ -21,17 +21,41 @@ internal static class IdeInstanceLifecycle
     /// <summary>The devenv arguments that open <paramref name="solutionPath"/> in a new instance.</summary>
     internal static IReadOnlyList<string> LaunchArguments(string solutionPath) => [solutionPath];
 
-    public static async Task<string> LaunchAsync(string solutionPath, CancellationToken ct)
+    public static async Task<string> LaunchAsync(string solutionPath, CancellationToken ct, bool relaunchElevated = false)
     {
         if (!File.Exists(solutionPath))
         {
             return Error(Strings.Format("SolutionFileNotFound", solutionPath));
         }
 
+        var decision = AiDevHelpers.Common.ElevationPolicy.Decide(solutionPath);
         var existing = Find(solutionPath);
-        if (existing is not null)
+        var state = existing is null ? AiDevHelpers.Common.Processes.ElevationState.Unknown : AiDevHelpers.Common.Processes.ProcessElevation.Of(existing.Pid);
+        var action = ElevatedLaunch.Plan(decision, existing is not null, state, relaunchElevated);
+
+        switch (action)
         {
-            return Ok(new { already_running = true, instance_pid = existing.Pid, solution_path = existing.SolutionPath });
+            case LaunchAction.Reuse:
+                return Ok(new { already_running = true, instance_pid = existing!.Pid, solution_path = existing.SolutionPath, elevated = state == AiDevHelpers.Common.Processes.ElevationState.Elevated });
+            case LaunchAction.AskRelaunch:
+                return Ok(new
+                {
+                    already_running = true,
+                    instance_pid = existing!.Pid,
+                    solution_path = existing.SolutionPath,
+                    elevated = false,
+                    needs_elevated_relaunch = true,
+                    reason = decision.Reason,
+                    message = Strings.Format("IdeNeedsElevatedRelaunch", decision.Reason, existing.Pid),
+                });
+            case LaunchAction.RelaunchElevated:
+                var closed = await KillAsync(solutionPath, ct);
+                if (!closed.Contains("\"killed\":true", StringComparison.Ordinal))
+                {
+                    return closed;
+                }
+
+                break;
         }
 
         var devenv = IDELauncherService.FindVisualStudioPath();
@@ -40,18 +64,34 @@ internal static class IdeInstanceLifecycle
             return Error(Strings.Get("DevenvNotFoundByVswhere"));
         }
 
-        var startInfo = new ProcessStartInfo(devenv) { UseShellExecute = false };
-        // No /edit: that switch opens the file in a running instance, so a second solution never gets its own.
-        foreach (var argument in LaunchArguments(solutionPath))
+        var elevated = action is LaunchAction.StartElevated or LaunchAction.RelaunchElevated;
+        var closedPid = action == LaunchAction.RelaunchElevated ? existing!.Pid : (int?)null;
+        if (elevated)
         {
-            startInfo.ArgumentList.Add(argument);
+            try
+            {
+                ElevatedLaunch.StartElevated(devenv, LaunchArguments(solutionPath));
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                return Error(ElevatedLaunch.IsDeclined(ex) ? Strings.Get("IdeUacDeclined") : ex.Message);
+            }
         }
-
-        using (var process = Process.Start(startInfo))
+        else
         {
-            // devenv can hand the solution to an already-running instance and exit, so the launched pid is not
-            // the instance pid. The instance is found through its bridge manifest below.
-            ManagedProcessRegistry.Track(process, "IDE launch");
+            var startInfo = new ProcessStartInfo(devenv) { UseShellExecute = false };
+            // No /edit: that switch opens the file in a running instance, so a second solution never gets its own.
+            foreach (var argument in LaunchArguments(solutionPath))
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using (var process = Process.Start(startInfo))
+            {
+                // devenv can hand the solution to an already-running instance and exit, so the launched pid is not
+                // the instance pid. The instance is found through its bridge manifest below.
+                ManagedProcessRegistry.Track(process, "IDE launch");
+            }
         }
 
         var deadline = DateTime.UtcNow + LaunchTimeout;
@@ -59,10 +99,16 @@ internal static class IdeInstanceLifecycle
         {
             ct.ThrowIfCancellationRequested();
             var found = Find(solutionPath);
-            if (found is not null)
+
+            // After a relaunch the closed instance's manifest can linger for a moment; only the new instance counts.
+            if (found is not null && found.Pid != closedPid)
             {
-                ManagedProcessRegistry.TrackPid(found.Pid, "IDE launch");
-                return Ok(new { already_running = false, instance_pid = found.Pid, solution_path = found.SolutionPath });
+                if (!elevated)
+                {
+                    ManagedProcessRegistry.TrackPid(found.Pid, "IDE launch");
+                }
+
+                return Ok(new { already_running = false, instance_pid = found.Pid, solution_path = found.SolutionPath, elevated });
             }
 
             await Task.Delay(TimeSpan.FromSeconds(1), ct);
@@ -70,7 +116,6 @@ internal static class IdeInstanceLifecycle
 
         return Error(Strings.Format("BridgeNotRegistered", solutionPath, LaunchTimeout.TotalSeconds));
     }
-
     /// <summary>
     /// Saves all documents in the target instance, then kills it. Refuses, and kills nothing, if any document is
     /// still unsaved. The process must be devenv, so the kill can't reach an unrelated process.
@@ -100,7 +145,15 @@ internal static class IdeInstanceLifecycle
                 return Error(Strings.Format("NotKilledWrongProcess", pid, process.ProcessName));
             }
 
-            process.Kill(entireProcessTree: true);
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // An elevated instance cannot be ended by a non-elevated server.
+                return Error(Strings.Get("IdeKillElevatedDenied"));
+            }
         }
 
         return Ok(new { killed = true, instance_pid = pid });

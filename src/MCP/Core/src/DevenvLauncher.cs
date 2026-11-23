@@ -50,6 +50,20 @@ internal static class DevenvLauncher
             return Strings.Get("DevenvNotFound");
         }
 
+        // A solution with a project that needs administrator rights (or a user mode of always) is opened elevated, with one UAC prompt.
+        if (AiDevHelpers.Common.ElevationPolicy.Decide(solutionPath).Elevated)
+        {
+            try
+            {
+                ElevatedLaunch.StartElevated(devenv, [solutionPath]);
+                return null;
+            }
+            catch (System.ComponentModel.Win32Exception ex)
+            {
+                return ElevatedLaunch.IsDeclined(ex) ? Strings.Get("IdeUacDeclined") : ex.Message;
+            }
+        }
+
         Process.Start(new ProcessStartInfo(devenv) { UseShellExecute = false, ArgumentList = { solutionPath } });
         return null;
     }
