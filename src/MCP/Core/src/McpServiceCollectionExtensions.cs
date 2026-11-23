@@ -51,6 +51,11 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevScanner>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevInstaller>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton(sp => new ToolInstallService(
+            sp.GetRequiredService<IElevInstaller>(),
+            new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
+            AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser()));
         services.AddSingleton(_ => new AiDevHelpers.Helpers.SourceControlHelper.GitHubService(new AiDevHelpers.Helpers.SourceControlHelper.ProcessGhRunner()));
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
 
@@ -91,6 +96,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<TerminalSessionTools>()
             .WithTools<ScriptHelperTools>()
             .WithTools<RepoSetupTools>()
-            .WithTools<ScriptRunTools>();
+            .WithTools<ScriptRunTools>()
+            .WithTools<ToolInstallTools>();
     }
 }

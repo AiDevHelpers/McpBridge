@@ -17,10 +17,16 @@ public static class SetupCli
         "  setup approve <projectRoot> <relativeScript>\n" +
         "  setup approve <projectRoot> <relativeScript> --prepare\n" +
         "  setup approve <projectRoot> <relativeScript> --confirm <fingerprint> <allowlistHash>\n" +
+        "  setup tools\n" +
         "Run from an elevated shell. Add --allow-no-tpm only on a machine without a TPM 2.0.";
 
-    public static int Run(string[] args, ISetupCommands commands, TextWriter output, IVerifyCommands? verify = null, IConfirmer? confirmer = null)
+    public static int Run(string[] args, ISetupCommands commands, TextWriter output, IVerifyCommands? verify = null, IConfirmer? confirmer = null, IToolCommands? tools = null)
     {
+        if (args.Length == 1 && args[0] == "tools" && tools is not null)
+        {
+            return Report(tools.InstallTools(), output);
+        }
+
         if (args.Length == 2 && args[0] == "scan" && verify is not null && confirmer is not null)
         {
             return Scan(args[1], verify, confirmer, output);

@@ -18,6 +18,19 @@ if (args.Length < 2)
 }
 
 var config = ConfigRepository.FromEnvironment().ScriptHelper;
+// elev --install-tool <name>: the installer script the admin approved with "setup tools", run through the broker. The name is checked
+// against the same table the script uses; the project folder is the admin-only tools folder, never a path from the caller.
+if (args is ["--install-tool", var toolName])
+{
+    if (AiDevHelpers.Common.InstallableTools.TryGet(toolName) is not { } tool)
+    {
+        Console.Error.WriteLine($"refused: '{toolName}' is not a tool this helper installs");
+        return 2;
+    }
+
+    args = [InstallToolFiles.ToolsRoot(config), InstallToolFiles.ScriptName, tool.Name];
+}
+
 var sid = WindowsIdentity.GetCurrent().User!.Value;
 var queue = new RequestQueue(config.QueueDirectory, config.ResultsDirectory);
 var ping = new HeartbeatPing(

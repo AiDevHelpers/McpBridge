@@ -26,7 +26,8 @@ public sealed record ScriptRunReport(
     string? TerminalNote,
     bool Interactive = false,
     string? SessionId = null,
-    string? TabId = null);
+    string? TabId = null,
+    string? InstallOffer = null);
 
 /// <summary>
 /// Runs a script from a repo with the interpreter that fits it, with a no-output watchdog and a timeout, and records the run so a
@@ -71,6 +72,7 @@ public sealed class ScriptRunService(
             {
                 Interpreter = info,
                 InstallHint = interpreter.InstallHint,
+                InstallOffer = ToolInstallService.OfferFor(interpreter.Name, choices()),
             };
         }
 

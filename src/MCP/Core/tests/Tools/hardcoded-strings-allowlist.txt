@@ -98,3 +98,6 @@ MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]|\\[xUnit\\.net
 
 # The text of the GitHub API 404 body for a branch without protection (matched, never shown).
 SourceControlHelper|not protected
+
+# The command line shown to the user in an install plan. It is the command that runs, not prose.
+MCP.Core|winget install --id {entry.PackageId} --exact --source winget

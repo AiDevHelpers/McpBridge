@@ -122,7 +122,19 @@ public sealed class ScriptRunServiceTests : IDisposable
         Assert.False(report.Ok);
         Assert.Contains("winget install Git.Git", report.InstallHint);
         Assert.Equal("bash", report.Interpreter!.Name);
+        Assert.Contains("tool_install", report.InstallOffer);
         Assert.Empty(_requests);
+    }
+
+    [Fact]
+    public async Task ADeclinedInstall_IsNotOfferedAgain()
+    {
+        _choices = new TerminalChoices([], ["install:gitbash"]);
+
+        var report = await Run(Service(@"C:\Windows\System32\cmd.exe"), @"scripts\a.sh");
+
+        Assert.Null(report.InstallOffer);
+        Assert.Contains("winget install Git.Git", report.InstallHint);
     }
 
     [Fact]

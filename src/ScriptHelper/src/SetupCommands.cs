@@ -8,7 +8,7 @@ namespace AiDevHelpers.ScriptHelper.Core;
 /// Everything here needs an elevated shell. Approve shows the script, its fingerprint and the
 /// allowlist hash, and writes nothing until a person confirms.
 /// </summary>
-public sealed class SetupCommands : ISetupCommands, IVerifyCommands
+public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolCommands
 {
     private const string ManifestName = ".elevated.json";
 
@@ -63,6 +63,30 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
 
         RequesterFolders.Ensure(_config, project.OwnerSid);
         return result;
+    }
+
+    /// <summary>
+    /// Puts the installer script (<see cref="InstallToolFiles"/>) in the admin-only install folder, registers that folder as a project and
+    /// approves the script. Approval shows the script and its fingerprint and writes nothing until the person confirms.
+    /// </summary>
+    public SetupResult InstallTools()
+    {
+        if (!_elevation.IsElevated())
+            return Fail("setup needs an elevated shell");
+
+        var root = InstallToolFiles.ToolsRoot(_config);
+        try
+        {
+            _ensureDirectory(root);
+            InstallToolFiles.Write(root);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return Fail($"the tools folder could not be written: {ex.Message}");
+        }
+
+        var registered = Register(root);
+        return registered.Ok ? Approve(root, InstallToolFiles.ScriptName) : registered;
     }
 
     public SetupResult Approve(string root, string relativeScript)

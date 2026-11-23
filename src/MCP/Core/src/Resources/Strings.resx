@@ -99,6 +99,18 @@
   <data name="IdeUacDeclined" xml:space="preserve"><value>The elevated launch was cancelled at the UAC prompt.</value></data>
   <data name="IdeKillElevatedDenied" xml:space="preserve"><value>The instance is elevated and cannot be closed from this non-elevated server. Ask the user to close it.</value></data>
   <data name="IdeDebugNeedsElevated" xml:space="preserve"><value>Debugging this solution needs administrator rights ({0}), but the Visual Studio instance (pid {1}) is not elevated. Ask the user. If they agree, call ide_launch_instance with relaunchElevated true, then start debugging again.</value></data>
+  <data name="InstallUnknownTool" xml:space="preserve"><value>Error: '{0}' is not a tool this helper installs. It installs only: {1}.</value></data>
+  <data name="InstallNoWinget" xml:space="preserve"><value>Error: winget is not installed, so nothing can be installed. Get App Installer from the Microsoft Store (aka.ms/getwinget).</value></data>
+  <data name="InstallWslInstructions" xml:space="preserve"><value>WSL is not installed by this helper because it needs a restart. In an elevated terminal run: wsl --install</value></data>
+  <data name="InstallPlanned" xml:space="preserve"><value>Ask the user whether to install {0}. Show them the command. Only if they say yes, call tool_install with action confirm and this token (it works once, for 15 minutes). If they say no, call tool_install with action decline.</value></data>
+  <data name="InstallNeedsAdmin" xml:space="preserve"><value>It installs machine-wide, so Windows may ask for administrator rights (one prompt when the elevated helper starts).</value></data>
+  <data name="InstallUnknownToken" xml:space="preserve"><value>Error: unknown, used or expired token. Plan the install again.</value></data>
+  <data name="InstallDeclined" xml:space="preserve"><value>Noted. {0} will not be offered again.</value></data>
+  <data name="InstallUnknownAction" xml:space="preserve"><value>Error: action must be plan, confirm or decline.</value></data>
+  <data name="InstallOffer" xml:space="preserve"><value>{0} is not installed. If the user wants it, call tool_install with action plan and tool {1}.</value></data>
+  <data name="InstallFailed" xml:space="preserve"><value>The install did not finish (exit {0}): {1}</value></data>
+  <data name="InstallHelperMissing" xml:space="preserve"><value>The elevated installer is not set up. Ask the user to run, in an elevated console: setup tools</value></data>
+  <data name="InstallDone" xml:space="preserve"><value>{0} was installed. Run the script again; the interpreter is found from the usual install folders, not from this server's PATH.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>

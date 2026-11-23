@@ -33,9 +33,21 @@ public interface IElevScanner
     Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct);
 }
 
-/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
-internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner
+/// <summary>
+/// Runs the installer script the admin approved with "setup tools", through the broker, for one tool name from the built-in table.
+/// The name is checked again by elev.exe and by the script itself; nothing the caller supplies reaches winget except that name.
+/// </summary>
+public interface IElevInstaller
 {
+    Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct);
+}
+
+/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
+internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner, IElevInstaller
+{
+    public Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct) =>
+        RunElevAsync(["--install-tool", toolName], ct);
+
     public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
         RunElevAsync(["--repo-scan", repoRoot], ct);
 
