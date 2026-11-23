@@ -9,7 +9,7 @@ public sealed record RegistryDocument(IReadOnlyList<ProjectEntry> Projects);
 
 /// <summary>
 /// The list of project roots the broker may run scripts for. Holds roots only, no hashes.
-/// Registering needs an elevated shell, an existing directory on NTFS, and a root that is not
+/// Registering needs an elevated shell, an existing directory on NTFS or ReFS (both keep the ACLs the setup relies on), and a root that is not
 /// a drive root or the user profile (or a folder containing it).
 /// </summary>
 public sealed class ProjectRegistry
@@ -69,8 +69,9 @@ public sealed class ProjectRegistry
         if (!Directory.Exists(full))
             return Fail("project root does not exist");
 
-        if (!string.Equals(_volumes.FileSystem(full), "NTFS", StringComparison.OrdinalIgnoreCase))
-            return Fail("project root must be on an NTFS volume");
+        var fileSystem = _volumes.FileSystem(full);
+        if (!string.Equals(fileSystem, "NTFS", StringComparison.OrdinalIgnoreCase) && !string.Equals(fileSystem, "ReFS", StringComparison.OrdinalIgnoreCase))
+            return Fail("project root must be on an NTFS or ReFS volume");
 
         if (!TryLoad(out var projects, out var loadReason))
             return Fail(loadReason);
