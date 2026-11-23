@@ -31,6 +31,11 @@ public static class McpServiceCollectionExtensions
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
         services.Configure<ScriptWatchOptions>(configuration.GetSection("ScriptWatch"));
         services.AddSingleton<ScriptRunTracker>(_ => new ScriptRunTracker());
+        services.AddSingleton(sp => new ScriptRunService(
+            sp.GetRequiredService<ScriptRunTracker>(),
+            new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
+            () => AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser().Read(),
+            AiDevHelpers.Common.Processes.CommandRunner.RunAsync));
         if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
         {
             Console.Error.WriteLine(globalAllowAll);
@@ -84,6 +89,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ServerControlTools>()
             .WithTools<TerminalSessionTools>()
             .WithTools<ScriptHelperTools>()
-            .WithTools<RepoSetupTools>();
+            .WithTools<RepoSetupTools>()
+            .WithTools<ScriptRunTools>();
     }
 }

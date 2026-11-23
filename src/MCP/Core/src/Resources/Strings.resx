@@ -88,6 +88,12 @@
   <data name="ScriptHungSilent" xml:space="preserve"><value>it printed nothing for {0} seconds and was stopped</value></data>
   <data name="ScriptHungTimeout" xml:space="preserve"><value>it ran for the whole {0} second limit and was stopped</value></data>
   <data name="ScriptRepeating" xml:space="preserve"><value>it has run {0} times in {1} minutes without finishing cleanly</value></data>
+  <data name="ScriptRunNeedsRepo" xml:space="preserve"><value>Error: repoPath must be a folder inside a git repo.</value></data>
+  <data name="ScriptRunOutsideRepo" xml:space="preserve"><value>Error: the script must be a file inside the repo.</value></data>
+  <data name="ScriptRunUnsupported" xml:space="preserve"><value>Error: {0}.</value></data>
+  <data name="ScriptRunMissingInterpreter" xml:space="preserve"><value>Error: {0} is needed to run this script but is not installed. {1}</value></data>
+  <data name="ScriptRunAdvice" xml:space="preserve"><value>This script looks stuck: {0}. Ask the user whether to run it in a visible terminal so they can see errors it does not report; if they agree, call script_run again with interactive set to true.</value></data>
+  <data name="ScriptRunTerminalNote" xml:space="preserve"><value>The {0} terminal type is not registered for this user. Ask them to run: elev terminals setup</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>

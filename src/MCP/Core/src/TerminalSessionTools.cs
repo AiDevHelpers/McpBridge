@@ -17,12 +17,20 @@ internal sealed class TerminalSessionTools
 
     private readonly ITerminalSessionManager _manager;
     private readonly Func<AiDevHelpers.Common.Terminals.TerminalScan> _scanTypes;
+    private readonly AiDevHelpers.MCP.Core.Services.ScriptRunTracker? _tracker;
+    private readonly AiDevHelpers.MCP.Core.Services.ScriptWatchOptions _watch;
     private readonly object _initGate = new();
     private Task? _initTask;
 
-    public TerminalSessionTools(ITerminalSessionManager manager, Func<AiDevHelpers.Common.Terminals.TerminalScan>? scanTypes = null)
+    public TerminalSessionTools(
+        ITerminalSessionManager manager,
+        Func<AiDevHelpers.Common.Terminals.TerminalScan>? scanTypes = null,
+        AiDevHelpers.MCP.Core.Services.ScriptRunTracker? tracker = null,
+        Microsoft.Extensions.Options.IOptions<AiDevHelpers.MCP.Core.Services.ScriptWatchOptions>? watch = null)
     {
         _manager = manager;
+        _tracker = tracker;
+        _watch = watch?.Value ?? new AiDevHelpers.MCP.Core.Services.ScriptWatchOptions();
         _scanTypes = scanTypes ?? (() => new AiDevHelpers.Common.Terminals.TerminalTypeScanner(
             new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
             AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser()).Scan());
@@ -97,6 +105,17 @@ internal sealed class TerminalSessionTools
                     if (!string.IsNullOrEmpty(result.Stderr))
                     {
                         text.AppendLine().Append("stderr: ").Append(result.Stderr);
+                    }
+
+                    // A command run here feeds the same tracker as script_run, so one that keeps failing is noticed.
+                    if (_tracker is not null)
+                    {
+                        var key = AiDevHelpers.MCP.Core.Services.ScriptRunTracker.Key(sessionId, command, []);
+                        _tracker.Record(key, new AiDevHelpers.MCP.Core.Services.ScriptRunOutcome(result.ExitCode, TimedOut: false, Silent: false));
+                        if (AiDevHelpers.MCP.Core.Services.ScriptRunService.AdviceFor(_tracker.Assess(key, _watch)) is { } advice)
+                        {
+                            text.AppendLine().Append(advice);
+                        }
                     }
 
                     return text.ToString();

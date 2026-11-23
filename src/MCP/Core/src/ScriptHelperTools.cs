@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using AiDevHelpers.Common.Processes;
+using AiDevHelpers.MCP.Core.Services;
 using ModelContextProtocol.Server;
 
 namespace AiDevHelpers.MCP.Core.Tools;
@@ -77,10 +78,14 @@ internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScann
 internal sealed class ScriptHelperTools
 {
     private readonly IElevRunner _runner;
+    private readonly ScriptRunTracker? _tracker;
+    private readonly ScriptWatchOptions _watch;
 
-    public ScriptHelperTools(IElevRunner runner)
+    public ScriptHelperTools(IElevRunner runner, ScriptRunTracker? tracker = null, Microsoft.Extensions.Options.IOptions<ScriptWatchOptions>? watch = null)
     {
         _runner = runner;
+        _tracker = tracker;
+        _watch = watch?.Value ?? new ScriptWatchOptions();
     }
 
     [McpServerTool]
@@ -105,6 +110,18 @@ internal sealed class ScriptHelperTools
             var text = new StringBuilder();
             text.Append("exit ").Append(result.ExitCode).AppendLine();
             text.Append(result.Output);
+
+            // An elevated run feeds the same tracker as script_run, so a script that keeps failing is noticed here too.
+            if (_tracker is not null)
+            {
+                var key = ScriptRunTracker.Key(projectRoot, script, args ?? Array.Empty<string>());
+                _tracker.Record(key, new ScriptRunOutcome(result.ExitCode, TimedOut: false, Silent: false));
+                if (ScriptRunService.AdviceFor(_tracker.Assess(key, _watch)) is { } advice)
+                {
+                    text.AppendLine().Append(advice);
+                }
+            }
+
             return text.ToString();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
