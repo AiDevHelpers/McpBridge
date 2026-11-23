@@ -91,7 +91,7 @@ public sealed class RequestHandlerTests : IDisposable
     private BrokerRequest Request(string script = Script, params string[] args) =>
         new(_root, script, args, Owner);
 
-private void ApproveAllowAll(string settingsJson)
+    private void ApproveAllowAll(string settingsJson)
     {
         var reg = _registry.Register(_root);
         Assert.True(reg.Ok, reg.Reason);

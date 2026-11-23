@@ -52,10 +52,12 @@ public sealed class SetupCliTests
     [Fact]
     public void AllowAll_CallsTheSetupAndExitsZero()
     {
-        var (code, output, setup) = Run(null, "allow-all", @"C:epo");
+        var (code, output, setup) = Run(null, "allow-all", @"C:
+epo");
 
         Assert.Equal(0, code);
-        Assert.Equal([@"allow-all C:epo"], setup.Calls);
+        Assert.Equal([@"allow-all C:
+epo"], setup.Calls);
         Assert.Contains("allow-all approved", output);
     }
 
@@ -64,7 +66,8 @@ public sealed class SetupCliTests
     {
         var setup = new RecordingSetup { AllowAllResult = new(false, "allow-all declined") };
 
-        var (code, output, _) = Run(setup, "allow-all", @"C:epo");
+        var (code, output, _) = Run(setup, "allow-all", @"C:
+epo");
 
         Assert.Equal(1, code);
         Assert.Contains("refused: allow-all declined", output);
