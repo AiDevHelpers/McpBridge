@@ -214,14 +214,27 @@ public static class ElevLocalCommands
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
-    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>\n  elev rules override <repoRoot> <requestId>";
+    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>\n  elev rules override <repoRoot> <requestId>\n  elev terminals scan\n  elev terminals setup [--all]";
 
     /// <summary>True when the first argument is a local verb; <paramref name="exit"/> then holds the exit code.</summary>
-    public static bool TryRun(string[] args, TextWriter output, IConfirmer confirmer, out int exit)
+    public static bool TryRun(string[] args, TextWriter output, IConfirmer confirmer, out int exit, TerminalServices? terminals = null)
     {
         exit = 0;
-        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "rules"))
+        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "rules" && args[0] != "terminals"))
             return false;
+
+        if (args[0] == "terminals")
+        {
+            var services = terminals ?? TerminalServices.System();
+            exit = args switch
+            {
+                [_, "scan"] => TerminalSetup.Scan(services, output),
+                [_, "setup"] => TerminalSetup.Setup(services, askAgain: false, output, confirmer),
+                [_, "setup", "--all"] => TerminalSetup.Setup(services, askAgain: true, output, confirmer),
+                _ => Usage2(output),
+            };
+            return true;
+        }
 
         if (args[0] == "rules")
         {

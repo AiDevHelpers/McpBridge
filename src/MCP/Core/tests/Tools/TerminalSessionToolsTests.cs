@@ -98,6 +98,24 @@ public sealed class TerminalSessionToolsTests
     }
 
     [Fact]
+    public async Task Types_ReturnsTheScanWithTheMissingFlag_WithoutTouchingTheManager()
+    {
+        var scan = new AiDevHelpers.Common.Terminals.TerminalScan(
+            [new AiDevHelpers.Common.Terminals.TerminalType("gitbash", "Git Bash", @"C:\g\bash.exe", "2.0", "bash -i", Installed: true, InHelper: false, InWindowsTerminal: false, Declined: false)],
+            ["no WSL"],
+            WindowsTerminalFound: true);
+        var tools = new TerminalSessionTools(new UnreachableManager(), () => scan);
+
+        var result = await tools.TerminalSession(action: "types");
+
+        using var doc = System.Text.Json.JsonDocument.Parse(result);
+        var type = doc.RootElement.GetProperty("types")[0];
+        Assert.Equal("gitbash", type.GetProperty("id").GetString());
+        Assert.True(type.GetProperty("missing").GetBoolean());
+        Assert.Equal("no WSL", doc.RootElement.GetProperty("hints")[0].GetString());
+    }
+
+    [Fact]
     public async Task Exec_WithoutRequiredArguments_ReturnsErrorWithoutTouchingManager()
     {
         var tools = new TerminalSessionTools(new UnreachableManager());
