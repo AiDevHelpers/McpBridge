@@ -18,3 +18,5 @@ Steps done by hand this session that a tool should cover. Add a line each time a
 | 12 | Stop a hung test host that holds the test outputs | `ide_kill_process` refuses a PID the bridge did not start; the shell `Stop-Process` needed the user's yes | A tool that lists test hosts left by a finished run and stops them by PID with the user's confirmation |
 
 Rows 1 to 8 are built (plan 2026-11-22-backlog-tools.md). Rows 9 and 10 are fixed.
+| 11 | Run the VideoForensics debug script elevated | `run_elevated_script` refused: `elev.exe` not found next to the MCP server (`src/MCP/Server/src/bin/Release/net10.0-windows`). Fell back to `sudo` from `run_in_terminal`. | `run_elevated_script` that works from a fresh build, or a build step that copies `elev.exe`. |
+| 12 | Open Visual Studio elevated so a script can attach to a LocalSystem service | `ide_launch_instance` starts a non-elevated instance; the elevated script's DTE lookup then finds no Visual Studio. | `ide_launch_instance` with `elevated: true` (UAC prompt), like `terminal_session` `elevated: true`. |
