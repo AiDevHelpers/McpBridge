@@ -9,6 +9,7 @@ Status: proposed. Decisions from the user: one UAC prompt then reuse; allow-all 
 3. **Background elevated terminal.** On the first elevated request in a session, open one elevated `terminal_session` (one UAC prompt), keep it, and send every later elevated task through it with no prompt. Session end closes it. Tests: one launch for N tasks, relaunch after the terminal dies, no launch when nothing elevated is asked.
 4. **Route elevated tasks through it.** ScriptHelper `elev` requests and `gate-tpm` style runs use the background terminal instead of a fresh UAC each time. The allowlist and fingerprint checks stay in front of it.
 5. **Allow-all with double confirmation.** A ScriptHelper command that turns on allow-all for a repo: confirmation 1 shows the repo path and the risk and needs a typed phrase; confirmation 2 is a separate prompt that repeats the repo path. Only then is the signed approval written to `.aidevtools/user.json`. Tests: one confirmation is not enough, a wrong phrase aborts, an edited `settings.json` or an unsigned entry is rejected.
+5b. **Verify on repo open (added by the user).** When a repo is opened, ScriptHelper checks that every file in the repo allowlist (the `.elevated.json` entries and the scripts they name) has a valid per-user signature in the admin store. For any file that is unsigned or whose fingerprint changed, it asks the user, from an elevated console, to confirm. Confirming signs the current fingerprint for this user. This lets a team update the committed lists freely while each user re-approves the changes on their own machine. Open: what counts as "repo open" (IDE solution open event, MCP start, or the first elevated request), to settle when the unit starts.
 6. **Docs.** `docs/ide-bridge.md`, `docs/self_test.md`, the repo `CLAUDE.md` dogfood section.
 
 ## Three config layers
@@ -47,3 +48,4 @@ A repo file alone must never grant elevation: anyone who clones a repo with `all
 ## Progress
 
 - Unit 1 done: `RepoSettings` merges `.aidevtools/settings.json` (whitelisted `IdeTestRunMode`) over the global value; `IdeTools` uses it for the test run mode. Warnings are returned by `Resolve` but not yet shown to the caller.
+- Unit 2 done: `allowAll` is read only from the repo file (a global one is ignored with a warning on stderr), `RepoSettings.HashFile` hashes the settings file over canonical bytes, and `EnsureUserFileGitIgnored` adds `.aidevtools/user.json` to `.gitignore`. The `user.json` reader and writer come with unit 5, which owns the signed approval.

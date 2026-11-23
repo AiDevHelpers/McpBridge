@@ -29,6 +29,11 @@ public static class McpServiceCollectionExtensions
     public static IMcpServerBuilder AddAiDevHelpersMcp(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
+        if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
+        {
+            Console.Error.WriteLine(globalAllowAll);
+        }
+
         services.AddSingleton<ISessionRegistry, SessionRegistry>();
         services.AddSingleton<ITerminalConfigurationDiscovery, TerminalConfigurationDiscovery>();
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
