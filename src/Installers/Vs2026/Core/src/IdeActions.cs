@@ -150,7 +150,8 @@ public sealed class IdeActions(DTE2 dte)
         return new { count = items.Count, diagnostics = items };
     }
 
-    // Runs Visual Studio's Code Cleanup on the active document. The command name is not verified against a live IDE.
+    // Runs Visual Studio's default Code Cleanup profile on the active document. The command name was listed from a live VS 18.0
+    // instance; "Edit.RunCodeCleanup" does not exist there and made this action fail with E_FAIL.
     private object CodeCleanup()
     {
         if (dte.ActiveDocument is null)
@@ -158,7 +159,7 @@ public sealed class IdeActions(DTE2 dte)
             throw new InvalidOperationException(Strings.Get("NoActiveDocumentToCleanUp"));
         }
 
-        dte.ExecuteCommand("Edit.RunCodeCleanup");
+        dte.ExecuteCommand("EditorContextMenus.FileHealthIndicator.RunDefaultCodeCleanup");
         return new { document = dte.ActiveDocument.FullName };
     }
 
