@@ -14,12 +14,27 @@ public interface IElevRunner
     Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct);
 }
 
+/// <summary>
+/// Asks the broker, through elev.exe, which of a repo's allowlisted files this user has not approved. Read only; exit 0 means all are
+/// approved, 1 some are not (the output is JSON), 2 the broker did not answer.
+/// </summary>
+public interface IElevVerifier
+{
+    Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct);
+}
+
 /// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
-internal sealed class ProcessElevRunner : IElevRunner
+internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier
 {
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
 
-    public async Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct)
+    public Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
+        RunElevAsync([projectRoot, script, .. args], ct);
+
+    public Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct) =>
+        RunElevAsync(["--verify", projectRoot], ct);
+
+    private static async Task<ElevRunResult> RunElevAsync(IReadOnlyList<string> arguments, CancellationToken ct)
     {
         var exe = Path.Combine(AppContext.BaseDirectory, "elev.exe");
         if (!File.Exists(exe))
@@ -34,9 +49,7 @@ internal sealed class ProcessElevRunner : IElevRunner
             UseShellExecute = false,
             CreateNoWindow = true,
         };
-        info.ArgumentList.Add(projectRoot);
-        info.ArgumentList.Add(script);
-        foreach (var arg in args)
+        foreach (var arg in arguments)
         {
             info.ArgumentList.Add(arg);
         }

@@ -47,6 +47,47 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Verify_QueuesAVerifyRequestAndReturnsTheBrokersAnswer()
+    {
+        var q = Queue();
+        var client = new ScriptClient(q, new FakePing(), Sid);
+        var answered = false;
+        var broker = Task.Run(() =>
+        {
+            while (!answered)
+            {
+                var pending = q.Pending();
+                if (pending.Count == 1)
+                {
+                    Assert.Equal(BrokerRequest.VerifyKind, pending[0].Request.Kind);
+                    q.WriteResult(pending[0].RequesterSid, pending[0].Id, new BrokerResponse(true, "verified", 1, "{}", string.Empty));
+                    answered = true;
+                }
+
+                Thread.Sleep(20);
+            }
+        });
+
+        var r = client.Verify(@"C:\repo", TimeSpan.FromSeconds(5));
+        await broker;
+
+        Assert.True(r.Ok);
+        Assert.Equal(1, r.ExitCode);
+        Assert.Equal("{}", r.Stdout);
+    }
+
+    [Fact]
+    public void Verify_WithASilentBroker_DoesNotQueueAndReportsIt()
+    {
+        var q = Queue();
+
+        var r = new ScriptClient(q, new FakePing { State = BrokerState.Silent }, Sid).Verify(@"C:\repo", Short);
+
+        Assert.False(r.Ok);
+        Assert.Empty(q.Pending());
+    }
+
+    [Fact]
     public void A_silent_broker_is_reported_before_anything_is_queued()
     {
         var q = Queue();

@@ -39,7 +39,10 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.ServerControlService>();
-        services.AddSingleton<IElevRunner, ProcessElevRunner>();
+        services.AddSingleton<ProcessElevRunner>();
+        services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
 
         return services
             .AddMcpServer()

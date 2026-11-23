@@ -155,9 +155,6 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
         RepoSettingsFile.EnsureUserFileGitIgnored(project.Root);
     }
 
-    private const int MaxVerifyFiles = 20000;
-    private static readonly string[] SkippedFolders = [".git", ".vs", "bin", "obj", "node_modules"];
-
     /// <summary>
     /// Checks every file the repo allowlist lists for a valid approval from this machine's admin store. Reads only; use
     /// <see cref="ApproveUnsigned"/> to approve what is missing or changed.
@@ -171,40 +168,7 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
         if (project is null)
             return VerifyReport.Failed("project is not registered; run register first");
 
-        byte[] manifestBytes;
-        try
-        {
-            manifestBytes = File.ReadAllBytes(Path.Combine(project.Root, ManifestName));
-        }
-        catch (IOException)
-        {
-            return VerifyReport.Failed($"{ManifestName} cannot be read");
-        }
-
-        var manifest = ManifestParser.Parse(Encoding.UTF8.GetString(manifestBytes));
-        if (!manifest.Ok)
-            return VerifyReport.Failed(manifest.Reason);
-
-        var allowAll = AllowAllStore.IsActive(_config, _signer, project.Id, project.Root, Versions.Get(project.Id));
-        var allowlistHash = Fingerprint.Sha256Hex(manifestBytes);
-        var approvalsPath = ApprovalsPath(project.Id);
-        var scripts = new List<ScriptStatus>();
-
-        foreach (var rel in RepoFiles(project.Root).Where(r => Allowlist.IsPathListed(manifest.Entries, r)).Order(StringComparer.Ordinal))
-        {
-            var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
-            if (!fingerprint.Ok)
-            {
-                scripts.Add(new ScriptStatus(rel, ApprovalStatus.Invalid, fingerprint.Reason));
-                continue;
-            }
-
-            var decision = ApprovalStore.Authorize(
-                approvalsPath, _signer, project.Id, project.Root, Versions.Get(project.Id), rel, fingerprint.Fingerprint, allowlistHash);
-            scripts.Add(new ScriptStatus(rel, decision.Allowed ? ApprovalStatus.Approved : StatusFor(decision.Reason), decision.Reason));
-        }
-
-        return new VerifyReport(true, "verified", allowAll, scripts);
+        return AllowlistVerifier.Run(_config, _signer, Versions, _interpreter, _inspector, project);
     }
 
     /// <summary>
@@ -228,38 +192,6 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
         }
 
         return results;
-    }
-
-    private static ApprovalStatus StatusFor(string reason) => reason switch
-    {
-        _ when reason.Contains("script changed", StringComparison.Ordinal) => ApprovalStatus.Changed,
-        _ when reason.Contains("allowlist changed", StringComparison.Ordinal) => ApprovalStatus.AllowlistChanged,
-        _ when reason.Contains("not approved", StringComparison.Ordinal) || reason.Contains("missing", StringComparison.Ordinal) => ApprovalStatus.Unsigned,
-        _ => ApprovalStatus.Invalid,
-    };
-
-    private static IEnumerable<string> RepoFiles(string root)
-    {
-        var count = 0;
-        var pending = new Stack<string>();
-        pending.Push(root);
-        while (pending.Count > 0)
-        {
-            var dir = pending.Pop();
-            foreach (var sub in Directory.EnumerateDirectories(dir))
-            {
-                if (!SkippedFolders.Contains(Path.GetFileName(sub), StringComparer.OrdinalIgnoreCase))
-                    pending.Push(sub);
-            }
-
-            foreach (var file in Directory.EnumerateFiles(dir))
-            {
-                if (++count > MaxVerifyFiles)
-                    yield break;
-
-                yield return Path.GetRelativePath(root, file).Replace('\\', '/');
-            }
-        }
     }
 
     public ApprovalPreview PrepareApproval(string root, string relativeScript)

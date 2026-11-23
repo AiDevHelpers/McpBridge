@@ -1,7 +1,7 @@
 using System.Security.Principal;
 using AiDevHelpers.ScriptHelper.Core;
 
-// elev <projectRoot> <script> [args...]
+// elev <projectRoot> <script> [args...]   |   elev --verify <projectRoot>
 // Runs an approved script through the broker, unelevated. Prints the script's output and exits
 // with its exit code. Exit 1 means the request was refused or could not be answered.
 
@@ -19,6 +19,21 @@ var ping = new HeartbeatPing(
     () => DateTime.UtcNow,
     exe => BrokerInstall.IsTrusted(exe, config.InstallDirectory, config.DataRoot));
 var client = new ScriptClient(queue, ping, sid);
+
+// elev --verify <projectRoot>: read-only. Prints the approval status of every allowlisted file as JSON. Exit 0 all approved,
+// 1 some are not, 2 the broker did not answer (it is never started for this).
+if (args.Length == 2 && args[0] == "--verify")
+{
+    var verified = client.Verify(args[1], TimeSpan.FromSeconds(15));
+    if (!verified.Ok)
+    {
+        Console.Error.WriteLine($"unverified: {verified.Reason}");
+        return 2;
+    }
+
+    Console.Out.WriteLine(verified.Stdout);
+    return verified.ExitCode ?? 2;
+}
 
 // First elevated request of a session: start the broker with one UAC prompt. Later requests find it answering.
 var brokerExe = Path.Combine(config.InstallDirectory, "scripthelper-broker.exe");

@@ -7,7 +7,7 @@ namespace AiDevHelpers.ScriptHelper.Core;
 public sealed record QueuedRequest(string Id, string RequesterSid, BrokerRequestFile Request);
 
 /// <summary>The on-disk request body. The requester is never taken from this file.</summary>
-public sealed record BrokerRequestFile(string ProjectRoot, string Script, IReadOnlyList<string> Args);
+public sealed record BrokerRequestFile(string ProjectRoot, string Script, IReadOnlyList<string> Args, string Kind = BrokerRequest.RunKind);
 
 /// <summary>
 /// File-based transport between the requesting user and the broker. Requests live in one folder

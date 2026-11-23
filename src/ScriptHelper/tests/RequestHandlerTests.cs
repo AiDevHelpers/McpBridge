@@ -169,6 +169,57 @@ public sealed class RequestHandlerTests : IDisposable
         Assert.Empty(_runner.Runs);
     }
 
+    private BrokerRequest VerifyRequest(string sid = Owner) => new(_root, string.Empty, Array.Empty<string>(), sid, BrokerRequest.VerifyKind);
+
+    [Fact]
+    public void Verify_ReportsEachListedScript_AndRunsNothing()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Empty(_runner.Runs);
+        using var json = System.Text.Json.JsonDocument.Parse(r.Stdout);
+        var scripts = json.RootElement.GetProperty("scripts").EnumerateArray()
+            .ToDictionary(s => s.GetProperty("path").GetString()!, s => s.GetProperty("status").GetString());
+        Assert.Equal("Approved", scripts[Script]);
+        Assert.Equal("Unsigned", scripts["scripts/debug/other.ps1"]);
+        Assert.Equal(1, r.ExitCode);
+    }
+
+    [Fact]
+    public void Verify_ExitsZeroWhenEverythingListedIsApproved()
+    {
+        RegisterAndApprove();
+        File.Delete(Path.Combine(_root, "scripts", "debug", "other.ps1"));
+
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal(0, r.ExitCode);
+    }
+
+    [Fact]
+    public void Verify_FromANonOwner_IsDenied()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VerifyRequest("S-1-5-21-someone-else"));
+
+        Assert.False(r.Ok);
+        Assert.Contains("not the project owner", r.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Verify_ForAnUnregisteredProject_IsDenied()
+    {
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.False(r.Ok);
+        Assert.Contains("not registered", r.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void Request_from_a_sid_that_is_not_the_owner_is_denied_and_nothing_runs()
     {

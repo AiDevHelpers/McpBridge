@@ -2,7 +2,15 @@ using AiDevHelpers.Common.Contracts;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
-public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args, string RequesterSid = "");
+/// <summary>
+/// One request to the broker. Kind "run" runs a script; Kind "verify" only reports the approval status of the project's allowlisted
+/// files and runs nothing.
+/// </summary>
+public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args, string RequesterSid = "", string Kind = BrokerRequest.RunKind)
+{
+    public const string RunKind = "run";
+    public const string VerifyKind = "verify";
+}
 
 public sealed record BrokerResponse(bool Ok, string Reason, int? ExitCode, string Stdout, string Stderr);
 
@@ -49,6 +57,12 @@ public sealed class RequestHandler
 
     public BrokerResponse Handle(BrokerRequest request)
     {
+        if (request.Kind == BrokerRequest.VerifyKind)
+            return Verify(request);
+
+        if (request.Kind != BrokerRequest.RunKind)
+            return Deny(request, "unknown request kind");
+
         var response = Decide(request, out var stageDir);
         if (stageDir is not null && Directory.Exists(stageDir))
         {
@@ -56,6 +70,33 @@ public sealed class RequestHandler
         }
 
         return response;
+    }
+
+    // Read-only: reports the approval status of every allowlisted file and runs nothing. Exit code 0 means all are approved.
+    private BrokerResponse Verify(BrokerRequest request)
+    {
+        var project = _registry.Find(request.ProjectRoot);
+        if (project is null)
+            return Deny(request, "project is not registered");
+
+        if (string.IsNullOrWhiteSpace(request.RequesterSid)
+            || !string.Equals(project.OwnerSid, request.RequesterSid, StringComparison.OrdinalIgnoreCase))
+        {
+            return Deny(request, "requester is not the project owner");
+        }
+
+        var report = AllowlistVerifier.Run(_config, _signer, _versions, _interpreter, _inspector, project);
+        if (!report.Ok)
+            return Deny(request, report.Reason);
+
+        var body = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            allowAllActive = report.AllowAllActive,
+            fullyApproved = report.FullyApproved,
+            scripts = report.Scripts.Select(s => new { path = s.Path, status = s.Status.ToString(), reason = s.Reason }),
+        });
+        _audit($"verified {project.Id} fullyApproved={report.FullyApproved}");
+        return new BrokerResponse(true, "verified", report.FullyApproved ? 0 : 1, body, string.Empty);
     }
 
     private BrokerResponse Decide(BrokerRequest request, out string? stageDir)
