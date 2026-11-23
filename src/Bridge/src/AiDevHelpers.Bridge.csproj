@@ -18,7 +18,9 @@
 
   <!-- .NET Framework 4.8 lacks System.Text.Json and the records/required-member support the code uses. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
-    <PackageReference Include="System.Text.Json" Version="10.0.15" />
+    <!-- Pinned to the System.Text.Json that Visual Studio 18.12 ships (assembly 10.0.0.10). A newer package has a higher assembly
+         version than the IDE loads, and the VS bridge package then fails to load (SetSite 0x80070002). Raise it with the IDE. -->
+    <PackageReference Include="System.Text.Json" Version="10.0.10" />
     <PackageReference Include="PolySharp" Version="1.17.1" PrivateAssets="all" />
   </ItemGroup>
 

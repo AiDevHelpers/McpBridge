@@ -13,6 +13,6 @@ Steps done by hand this session that a tool should cover. Add a line each time a
 | 7 | Git status and commit/push | Bash `git` | `git_status` and `git_plan`/`git_confirm` (in MCP Core, not loaded in this session) **done** |
 | 8 | Read failed tests after a Test Explorer run | `ide_search_output` on the `Tests` pane for `[FAIL]`, since `ide_get_test_summary` gives counts only and `ide_get_test_results` finds no TRX | `ide_get_test_summary` returns failing names and messages **done** |
 | 9 | Launch a second VS on a scratch `.sln` for the live mutation checks | `ide_launch_instance` waited 120 s and reported no bridge; no new `devenv` started and the open instance kept its solution | `ide_launch_instance` that starts a new instance (or says why it cannot), so `docs/self_test.md` can run its mutation checks. Fixed: `/edit` removed, a new instance starts. |
-| 10 | Run Code Cleanup on a document | `ide_code_cleanup` returned `E_FAIL`: the command `Edit.RunCodeCleanup` does not exist in VS 18.0 | `ide_code_cleanup` that runs the default profile. Fixed: now runs `EditorContextMenus.FileHealthIndicator.RunDefaultCodeCleanup`; needs the VS extension reinstalled and a live check. |
+| 10 | Run Code Cleanup on a document | `ide_code_cleanup` returned `E_FAIL`: the command `Edit.RunCodeCleanup` does not exist in VS 18.0 | `ide_code_cleanup` that runs the default profile. Fixed and checked live: runs `EditorContextMenus.FileHealthIndicator.RunDefaultCodeCleanup`. |
 
-Rows 1 to 8 are built (plan 2026-11-22-backlog-tools.md). Rows 9 and 10 are open.
+Rows 1 to 8 are built (plan 2026-11-22-backlog-tools.md). Rows 9 and 10 are fixed.
