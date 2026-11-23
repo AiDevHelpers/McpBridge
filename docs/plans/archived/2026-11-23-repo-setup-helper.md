@@ -1,6 +1,6 @@
 # Repo setup helper: elevation scan, repo rules, script helper
 
-Status: proposed. Checked against the code on `wip` (8ca1c5b) and reviewed three times (the third by a read-only Sonnet pass). Builds on `docs/plans/archived/2026-11-23-elevated-terminal-and-repo-config.md` (all units done).
+Status: done except the open items in docs/dogfood.md rows 18 to 20. Checked against the code on `wip` (8ca1c5b) and reviewed three times (the third by a read-only Sonnet pass). Builds on `docs/plans/archived/2026-11-23-elevated-terminal-and-repo-config.md` (all units done).
 
 ## Decisions
 
