@@ -16,3 +16,5 @@ Steps done by hand this session that a tool should cover. Add a line each time a
 | 10 | Run Code Cleanup on a document | `ide_code_cleanup` returned `E_FAIL`: the command `Edit.RunCodeCleanup` does not exist in VS 18.0 | `ide_code_cleanup` that runs the default profile. Fixed and checked live: runs `EditorContextMenus.FileHealthIndicator.RunDefaultCodeCleanup`. |
 
 Rows 1 to 8 are built (plan 2026-11-22-backlog-tools.md). Rows 9 and 10 are fixed.
+| 11 | Run the VideoForensics debug script elevated | `run_elevated_script` refused: `elev.exe` not found next to the MCP server (`src/MCP/Server/src/bin/Release/net10.0-windows`). Fell back to `sudo` from `run_in_terminal`. | `run_elevated_script` that works from a fresh build, or a build step that copies `elev.exe`. |
+| 12 | Open Visual Studio elevated so a script can attach to a LocalSystem service | `ide_launch_instance` starts a non-elevated instance; the elevated script's DTE lookup then finds no Visual Studio. | `ide_launch_instance` with `elevated: true` (UAC prompt), like `terminal_session` `elevated: true`. |
