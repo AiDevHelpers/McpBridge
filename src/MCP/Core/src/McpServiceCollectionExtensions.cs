@@ -35,7 +35,8 @@ public static class McpServiceCollectionExtensions
             sp.GetRequiredService<ScriptRunTracker>(),
             new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
             () => AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser().Read(),
-            AiDevHelpers.Common.Processes.CommandRunner.RunAsync));
+            AiDevHelpers.Common.Processes.CommandRunner.RunAsync,
+            new InteractiveScriptRunner(sp.GetRequiredService<ITerminalSessionManager>()).RunAsync));
         if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
         {
             Console.Error.WriteLine(globalAllowAll);

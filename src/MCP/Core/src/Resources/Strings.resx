@@ -94,6 +94,7 @@
   <data name="ScriptRunMissingInterpreter" xml:space="preserve"><value>Error: {0} is needed to run this script but is not installed. {1}</value></data>
   <data name="ScriptRunAdvice" xml:space="preserve"><value>This script looks stuck: {0}. Ask the user whether to run it in a visible terminal so they can see errors it does not report; if they agree, call script_run again with interactive set to true.</value></data>
   <data name="ScriptRunTerminalNote" xml:space="preserve"><value>The {0} terminal type is not registered for this user. Ask them to run: elev terminals setup</value></data>
+  <data name="ScriptRunInteractiveUnavailable" xml:space="preserve"><value>Error: running in a visible terminal is not available in this server.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>

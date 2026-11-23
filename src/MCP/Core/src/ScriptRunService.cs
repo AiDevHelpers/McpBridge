@@ -23,7 +23,10 @@ public sealed record ScriptRunReport(
     string? InstallHint,
     ScriptFlag Flag,
     string? Advice,
-    string? TerminalNote);
+    string? TerminalNote,
+    bool Interactive = false,
+    string? SessionId = null,
+    string? TabId = null);
 
 /// <summary>
 /// Runs a script from a repo with the interpreter that fits it, with a no-output watchdog and a timeout, and records the run so a
@@ -34,7 +37,8 @@ public sealed class ScriptRunService(
     ScriptRunTracker tracker,
     ITerminalProbe probe,
     Func<TerminalChoices> choices,
-    Func<CommandRequest, CancellationToken, Task<CommandResult>> run)
+    Func<CommandRequest, CancellationToken, Task<CommandResult>> run,
+    Func<InteractiveRequest, CancellationToken, Task<InteractiveResult>>? interactiveRun = null)
 {
     private const int TailChars = 4000;
 
@@ -43,7 +47,8 @@ public sealed class ScriptRunService(
         string script,
         IReadOnlyList<string> args,
         ScriptWatchOptions serverOptions,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool interactive = false)
     {
         var root = Directory.Exists(repoPath) ? RepoSettingsFile.FindRepoRootFromFolder(repoPath) : null;
         if (root is null)
@@ -70,6 +75,9 @@ public sealed class ScriptRunService(
         }
 
         var options = serverOptions.WithUserOverride(root);
+        if (interactive)
+            return await RunInTabAsync(interpreter, info, full, relative, root, args, options, ct);
+
         var result = await run(
             new CommandRequest
             {
@@ -101,6 +109,49 @@ public sealed class ScriptRunService(
             assessment.Flag,
             assessment.Flag == ScriptFlag.None ? null : Strings.Format("ScriptRunAdvice", assessment.Reason),
             TerminalNote(interpreter));
+    }
+
+    // Runs the script in a visible terminal tab. It is recorded like any other run, so a script that still fails is still counted.
+    private async Task<ScriptRunReport> RunInTabAsync(
+        ResolvedInterpreter interpreter,
+        InterpreterInfo info,
+        string full,
+        string relative,
+        string root,
+        IReadOnlyList<string> args,
+        ScriptWatchOptions options,
+        CancellationToken ct)
+    {
+        if (interactiveRun is null)
+            return Failed(Strings.Get("ScriptRunInteractiveUnavailable")) with { Interpreter = info };
+
+        var request = new InteractiveRequest(
+            interpreter.Path!,
+            interpreter.BuildArguments(full, args, interactive: true),
+            root,
+            Path.GetFileName(full),
+            TimeSpan.FromSeconds(Math.Max(600, options.TimeoutSeconds * 3)));
+        var tab = await interactiveRun(request, ct);
+
+        var key = ScriptRunTracker.Key(root, relative, args);
+        tracker.Record(key, new ScriptRunOutcome(tab.ExitCode, TimedOut: false, Silent: false));
+        var assessment = tracker.Assess(key, options);
+        return new ScriptRunReport(
+            tab.Success && tab.ExitCode == 0,
+            tab.Errors is { Count: > 0 } ? string.Join("; ", tab.Errors) : null,
+            tab.ExitCode,
+            false,
+            false,
+            Tail(tab.Stdout ?? string.Empty),
+            Tail(tab.Stderr ?? string.Empty),
+            info,
+            null,
+            assessment.Flag,
+            assessment.Flag == ScriptFlag.None ? null : Strings.Format("ScriptRunAdvice", assessment.Reason),
+            TerminalNote(interpreter),
+            Interactive: true,
+            SessionId: tab.SessionId,
+            TabId: tab.TabId);
     }
 
     // The advice for a run that did not go through script_run (an elev run), or null when the script is not flagged.

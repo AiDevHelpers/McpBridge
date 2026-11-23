@@ -12,10 +12,15 @@ public sealed record ResolvedInterpreter(string Name, string? Path, string? Vers
 {
     public bool Installed => Path is not null;
 
-    /// <summary>The arguments that run the script with this interpreter, without a shell in between.</summary>
-    public IReadOnlyList<string> BuildArguments(string scriptPath, IReadOnlyList<string> scriptArguments) => Name switch
+    /// <summary>
+    /// The arguments that run the script with this interpreter, without a shell in between. A visible terminal run (<paramref name="interactive"/>)
+    /// leaves out PowerShell's -NonInteractive, so the script may prompt the person.
+    /// </summary>
+    public IReadOnlyList<string> BuildArguments(string scriptPath, IReadOnlyList<string> scriptArguments, bool interactive = false) => Name switch
     {
-        "pwsh" or "powershell" => ["-NoProfile", "-NonInteractive", "-File", scriptPath, .. scriptArguments],
+        "pwsh" or "powershell" => interactive
+            ? ["-NoProfile", "-File", scriptPath, .. scriptArguments]
+            : ["-NoProfile", "-NonInteractive", "-File", scriptPath, .. scriptArguments],
         "cmd" => ["/c", scriptPath, .. scriptArguments],
         _ => [scriptPath, .. scriptArguments],
     };

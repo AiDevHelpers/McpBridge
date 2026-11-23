@@ -180,6 +180,45 @@ public sealed class ScriptRunServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Interactive_RunsInATab_WithoutNonInteractive_AndStillCountsAsARun()
+    {
+        InteractiveRequest? seen = null;
+        var service = new ScriptRunService(
+            _tracker,
+            new Probe(Pwsh),
+            () => _choices,
+            (_, _) => throw new InvalidOperationException("the captured runner must not be used"),
+            (request, _) =>
+            {
+                seen = request;
+                return Task.FromResult(new InteractiveResult(true, 1, "tab out", "tab err", "s1", "t1", null));
+            });
+
+        var first = await service.RunAsync(_root, @"scripts\a.ps1", ["x"], new ScriptWatchOptions(), CancellationToken.None, interactive: true);
+        await service.RunAsync(_root, @"scripts\a.ps1", ["x"], new ScriptWatchOptions(), CancellationToken.None, interactive: true);
+        var third = await service.RunAsync(_root, @"scripts\a.ps1", ["x"], new ScriptWatchOptions(), CancellationToken.None, interactive: true);
+
+        Assert.True(first.Interactive);
+        Assert.Equal(("s1", "t1"), (first.SessionId, first.TabId));
+        Assert.Equal("tab out", first.StdOut);
+        Assert.False(first.Ok);
+        Assert.DoesNotContain("-NonInteractive", seen!.Arguments);
+        Assert.Equal(_root, seen.WorkingDirectory);
+        Assert.Equal("a.ps1", seen.TabName);
+        Assert.Equal(ScriptFlag.Repeating, third.Flag);
+    }
+
+    [Fact]
+    public async Task Interactive_WithNoTerminalAvailable_IsAnError()
+    {
+        var report = await Service().RunAsync(_root, @"scripts\a.ps1", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true);
+
+        Assert.False(report.Ok);
+        Assert.Contains("not available", report.Error);
+        Assert.Empty(_requests);
+    }
+
+    [Fact]
     public async Task ACommandThatCouldNotStart_IsAnError_NotARecordedRun()
     {
         _next = new CommandResult { Launched = false, LaunchError = "no such file" };
