@@ -56,6 +56,30 @@ scripthelper-setup.exe approve C:\path\to\repo scripts/debug/attach.ps1 --confir
 `--confirm` writes the approval only if the script and manifest still hash to the values the
 person was shown.
 
+## Verify, scan and allow-all
+
+```
+scripthelper-setup.exe verify C:\path\to\repo
+scripthelper-setup.exe scan C:\path\to\repo
+scripthelper-setup.exe allow-all C:\path\to\repo
+```
+
+- `verify` lists every file the repo's `.elevated.json` allowlist lists with its approval status for this machine: Approved, Unsigned
+  (never approved), Changed (edited since approval) or AllowlistChanged (the team edited the allowlist). It then asks per file whether to
+  approve the ones that are not. A teammate can update the committed lists freely; each user re-approves on their own machine.
+- `scan` reads `Properties/launchSettings.json`, `.vscode/launch.json` and `.vscode/tasks.json` for scripts they run (`.ps1`, `.cmd`,
+  `.bat`, `.sh` inside the repo) and asks per script whether to add it to `.elevated.json`. Adding changes the allowlist, so run `verify`
+  afterwards.
+- `allow-all` is for a registered repo whose `.aidevtools/settings.json` contains `"allowAll": true`. It asks two separate confirmations
+  (the second repeats the repo path), then writes a signed approval to the admin-only data root, bound to the project, the checkout and the
+  hash of `settings.json`. While the approval matches, the broker runs any script inside the repo without the allowlist or per-script
+  approval; the owner and inside-the-repo checks still apply. Editing `settings.json` revokes it. The gitignored per-user
+  `.aidevtools/user.json` only points at the approval. A repo file alone, or a global `allowAll`, grants nothing.
+
+`elev --verify C:\path\to\repo` asks the broker for the same status read-only (exit 0 all approved, 1 some are not, 2 no answer) and never
+starts a broker. The MCP server runs it when a repo with an `.elevated.json` is opened in an IDE and pushes a warning naming the unapproved
+files.
+
 ## Running the broker
 
 The broker must run from `%ProgramData%\AiDevHelpers\script-helper\bin`, the admin-only folder
@@ -83,8 +107,9 @@ Stops are recorded in `script-helper\logs\audit.log`.
 elev.exe C:\path\to\repo scripts/debug/attach.ps1 -Port 5000
 ```
 
-`elev` checks the broker's heartbeat first and does not send anything if the broker is not
-answering. It then waits up to 10 minutes for the answer.
+The first run of a session starts the broker for you: `elev` checks the heartbeat, and if the broker is silent it starts the installed
+broker hidden with one UAC prompt, waits for it to answer, and reuses it afterwards. A declined prompt is not repeated for a minute, and a
+broker outside the install folder is refused, never started over. `elev` then waits up to 10 minutes for the answer.
 
 ## Threat model
 

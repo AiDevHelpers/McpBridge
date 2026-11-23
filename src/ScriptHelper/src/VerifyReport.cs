@@ -16,6 +16,17 @@ public interface IVerifyCommands
     VerifyReport Verify(string root);
 
     IReadOnlyList<SetupResult> ApproveUnsigned(string root, Func<string, bool> confirm);
+
+    /// <summary>Finds the scripts the repo's launch and debug configuration runs and whether the allowlist already lists them.</summary>
+    ScanReport Scan(string root);
+
+    /// <summary>Adds each unlisted script the confirm function accepts to the repo's .elevated.json. Approval is a separate step.</summary>
+    IReadOnlyList<SetupResult> AddToAllowlist(string root, Func<string, bool> confirm);
+}
+
+public sealed record ScanReport(bool Ok, string Reason, IReadOnlyList<FoundScript> Scripts)
+{
+    public static ScanReport Failed(string reason) => new(false, reason, []);
 }
 
 public sealed record ScriptStatus(string Path, ApprovalStatus Status, string Reason);

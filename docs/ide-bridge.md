@@ -111,6 +111,11 @@ These actions are called by the MCP server's own services, not by a single tool 
 
 ## Settings
 
+- **Layers.** Global (the MCP `appsettings.json`), then the repo's committed `.aidevtools/settings.json` (repo root is the nearest folder with a
+  `.git` folder or file above the solution), then the per-user `.aidevtools/user.json` (gitignored; Script Helper's pointer to this user's
+  signed allow-all approval). The repo overrides global per key, but only for keys a repo may set (today `IdeTools.IdeTestRunMode`); other keys,
+  and a malformed file, fall back to global with a warning. `allowAll` is read only from the repo file, never from the global settings.
+
 - `IdeTestRunMode` in the MCP `appsettings.json` (`IdeTools` section): `DotnetTest` or `TestExplorer`
   (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it. `DotnetTest` passes
   `--logger trx` to VSTest projects and `--report-xunit-trx` when a project or props file references Microsoft.Testing.Platform

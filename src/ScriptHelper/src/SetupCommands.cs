@@ -171,6 +171,56 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
         return AllowlistVerifier.Run(_config, _signer, Versions, _interpreter, _inspector, project);
     }
 
+    /// <summary>Scans the repo's launch and debug configuration for scripts. Reads only.</summary>
+    public ScanReport Scan(string root)
+    {
+        if (!_elevation.IsElevated())
+            return ScanReport.Failed("setup needs an elevated shell");
+
+        var project = _registry.Find(root);
+        if (project is null)
+            return ScanReport.Failed("project is not registered; run register first");
+
+        string text;
+        try
+        {
+            text = File.ReadAllText(Path.Combine(project.Root, ManifestName));
+        }
+        catch (IOException)
+        {
+            return ScanReport.Failed($"{ManifestName} cannot be read");
+        }
+
+        var manifest = ManifestParser.Parse(text);
+        return manifest.Ok
+            ? new ScanReport(true, "scanned", LaunchScriptScanner.Scan(project.Root, manifest.Entries))
+            : ScanReport.Failed(manifest.Reason);
+    }
+
+    /// <summary>
+    /// Adds each script the confirm function accepts to the project's .elevated.json. The edit changes the allowlist, so every
+    /// script needs approving again afterwards (setup verify). Scripts already listed are never offered.
+    /// </summary>
+    public IReadOnlyList<SetupResult> AddToAllowlist(string root, Func<string, bool> confirm)
+    {
+        var report = Scan(root);
+        if (!report.Ok)
+            return [Fail(report.Reason)];
+
+        var manifestPath = Path.Combine(_registry.Find(root)!.Root, ManifestName);
+        var results = new List<SetupResult>();
+        foreach (var script in report.Scripts.Where(s => !s.Listed))
+        {
+            if (!confirm(script.Path))
+                continue;
+
+            File.WriteAllText(manifestPath, ManifestEditor.AddScript(File.ReadAllText(manifestPath), script.Path));
+            results.Add(new SetupResult(true, $"added '{script.Path}' to {ManifestName}"));
+        }
+
+        return results;
+    }
+
     /// <summary>
     /// Approves each listed script that is not approved, asking the confirm function for each one first (the console asks the
     /// person). Scripts the person declines stay unsigned. Returns one result per approval attempted.

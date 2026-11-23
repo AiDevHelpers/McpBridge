@@ -21,6 +21,11 @@ public static class SetupCli
 
     public static int Run(string[] args, ISetupCommands commands, TextWriter output, IVerifyCommands? verify = null, IConfirmer? confirmer = null)
     {
+        if (args.Length == 2 && args[0] == "scan" && verify is not null && confirmer is not null)
+        {
+            return Scan(args[1], verify, confirmer, output);
+        }
+
         if (args.Length == 2 && args[0] == "verify" && verify is not null && confirmer is not null)
         {
             return Verify(args[1], verify, confirmer, output);
@@ -43,6 +48,43 @@ public static class SetupCli
 
         output.WriteLine(Usage);
         return 2;
+    }
+
+    // Lists the launch and debug scripts found, then asks per unlisted one whether to add it to the allowlist.
+    private static int Scan(string root, IVerifyCommands verify, IConfirmer confirmer, TextWriter output)
+    {
+        var report = verify.Scan(root);
+        if (!report.Ok)
+        {
+            output.WriteLine($"refused: {report.Reason}");
+            return 1;
+        }
+
+        if (report.Scripts.Count == 0)
+        {
+            output.WriteLine("No launch or debug scripts found.");
+            return 0;
+        }
+
+        foreach (var script in report.Scripts)
+        {
+            output.WriteLine($"  {(script.Listed ? "listed" : "new"),-8} {script.Path}  ({script.Source})");
+        }
+
+        var results = verify.AddToAllowlist(
+            root,
+            path => confirmer.Confirm($"Add '{path}' to this repo's allowlist? It is run by a launch or debug configuration. You still approve it separately."));
+        foreach (var result in results)
+        {
+            output.WriteLine(result.Ok ? result.Reason : $"refused: {result.Reason}");
+        }
+
+        if (results.Any(r => r.Ok))
+        {
+            output.WriteLine($"The allowlist changed. Run: setup verify {root}");
+        }
+
+        return results.All(r => r.Ok) ? 0 : 1;
     }
 
     // Lists each allowlisted file's approval status, then asks per file whether to approve the ones that are not approved.
