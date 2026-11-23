@@ -10,7 +10,7 @@ Use this checklist to exercise the standalone `AiDevHelpers.MCP` server and a li
 - `IdeGetBuildDiagnostics` — read the current Error List.
 - `IdeListConfigurations` — read the solution configurations.
 - `IdeGetDebugState`, `IdeListBreakpoints`, and `IdeListWatches` — read the debugger state.
-- `IdeGetTestResults` — read the newest TRX result for a supplied solution path.
+- `IdeGetTestResults` — read the newest test result: the Tests pane after a Test Explorer run (names and messages of failures), or the newest TRX in DotnetTest mode.
 - `IdeGetLocals` — inspect locals only when the debugger is already stopped at a breakpoint.
 
 Record each result as PASS, FAIL, or NOT RUN with the exact tool arguments and any error message.

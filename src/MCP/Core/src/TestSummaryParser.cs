@@ -25,6 +25,7 @@ internal static class TestSummaryParser
     {
         string? line = null;
         var failures = new List<string>();
+        var details = new List<object>();
         try
         {
             using var doc = JsonDocument.Parse(searchOutputJson);
@@ -51,6 +52,7 @@ internal static class TestSummaryParser
                         if (fail.Success && !failures.Contains(fail.Groups["name"].Value))
                         {
                             failures.Add(fail.Groups["name"].Value);
+                            details.Add(new { name = fail.Groups["name"].Value, message = MessageAfter(all, i + 1, last) });
                         }
                     }
                 }
@@ -76,7 +78,33 @@ internal static class TestSummaryParser
             failed = int.Parse(m.Groups[3].Value),
             skipped = int.Parse(m.Groups[4].Value),
             failures,
+            failure_details = details,
             line = line.Trim('=', ' '),
         });
     }
+
+    private const int MaxMessageLines = 8;
+
+    /// <summary>The runner lines after a [FAIL] line, up to the next [FAIL] line or the summary, without the "[xUnit.net time]" prefix.</summary>
+    private static string MessageAfter(List<string> lines, int from, int end)
+    {
+        var message = new List<string>();
+        for (var i = from; i < end && message.Count < MaxMessageLines; i++)
+        {
+            if (FailLine.IsMatch(lines[i]))
+            {
+                break;
+            }
+
+            var text = XunitPrefix.Replace(lines[i], string.Empty).Trim();
+            if (text.Length > 0)
+            {
+                message.Add(text);
+            }
+        }
+
+        return string.Join('\n', message);
+    }
+
+    private static readonly Regex XunitPrefix = new(@"^\s*\[xUnit\.net [\d:.]+\]\s*", RegexOptions.CultureInvariant);
 }

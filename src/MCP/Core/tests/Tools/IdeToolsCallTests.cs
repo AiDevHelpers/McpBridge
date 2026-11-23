@@ -51,9 +51,16 @@ public sealed class IdeToolsCallTests
     }
 
     [Fact]
-    public void IdeGetTestResults_MissingSolution_ReportsError()
+    public async Task IdeGetTestResults_NoInstance_ReportsError()
     {
-        AssertNotOk(Tools.IdeGetTestResults(MissingSolution));
+        AssertNotOk(await Tools.IdeGetTestResults(MissingSolution));
+    }
+
+    [Fact]
+    public async Task IdeGetTestResults_DotnetTestMode_MissingSolution_ReportsError()
+    {
+        var tools = new IdeTools(Options.Create(new IdeToolsOptions { IdeTestRunMode = IdeTestRunService.DotnetTestMode }));
+        AssertNotOk(await tools.IdeGetTestResults(MissingSolution));
     }
 
     [Fact]

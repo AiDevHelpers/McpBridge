@@ -113,11 +113,20 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     }
 
     [McpServerTool]
-    [Description("Get the outcome of the newest test run for the solution: counts and failure messages from its TRX file. " +
-                 "Covers runs from IdeRunTests in either mode, and TRX files written by other test runs in the solution's TestResults folder.")]
-    public string IdeGetTestResults(
-        [Description("Optional: full path of the solution to read results for")] string? solutionPath = null)
+    [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
+                 "counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, " +
+                 "which also covers TRX files written by other test runs in the solution's TestResults folder.")]
+    public async Task<string> IdeGetTestResults(
+        [Description("Optional: full path of the solution to read results for")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open (TestExplorer mode).")] string? ide = null,
+        [Description("Optional: process id of the instance to read (TestExplorer mode).")] int? instancePid = null,
+        CancellationToken ct = default)
     {
+        if (IdeTestRunService.NormalizeMode(options.Value.IdeTestRunMode) != IdeTestRunService.DotnetTestMode)
+        {
+            return await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+        }
+
         var solution = ResolveSolution(solutionPath);
         return solution is null
             ? JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") })
@@ -135,7 +144,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     {
         var raw = await IdeInstanceRouter.CallAsync(
             "searchOutput",
-            new { pattern = "Test run finished: \\d+ Tests|\\[FAIL\\]", pane = "Tests" },
+            new { pattern = "Test run finished: \\d+ Tests|\\[FAIL\\]|\\[xUnit\\.net", pane = "Tests" },
             solutionPath, ct, ide, instancePid);
         return TestSummaryParser.ParseLatest(raw);
     }
