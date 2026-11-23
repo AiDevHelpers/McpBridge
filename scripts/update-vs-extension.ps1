@@ -3,8 +3,7 @@
 param(
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release",
-    [switch]$NoBuild,
-    [switch]$IncludePreview
+    [switch]$NoBuild
 )
 
 Set-StrictMode -Version Latest
@@ -33,9 +32,8 @@ if ($instances.Count -eq 0) {
     return
 }
 
-$stable = @($instances | Where-Object { -not $_.isPrerelease })
-$selected = if ($IncludePreview -or $stable.Count -eq 0) { $instances } else { $stable }
-foreach ($instance in $selected) {
+# Every Visual Studio 18 instance gets the extension, stable and preview alike, all installers running at once.
+$running = foreach ($instance in $instances) {
     $installer = Join-Path $instance.installationPath "Common7\IDE\VsixInstaller.exe"
     if (-not (Test-Path -LiteralPath $installer)) {
         Write-Warning "VsixInstaller.exe not found for $($instance.displayName); skipping that instance."
@@ -43,5 +41,6 @@ foreach ($instance in $selected) {
     }
 
     Write-Host "Installing the AiDevHelpers IDE Bridge into $($instance.displayName) $($instance.catalog.productDisplayVersion)..." -ForegroundColor Cyan
-    Start-Process -FilePath $installer -ArgumentList @("/instanceIds:$($instance.instanceId)", "`"$Vsix`"") -Wait
+    Start-Process -FilePath $installer -ArgumentList @("/instanceIds:$($instance.instanceId)", "`"$Vsix`"") -PassThru
 }
+$running | Wait-Process
