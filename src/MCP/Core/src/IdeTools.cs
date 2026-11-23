@@ -28,6 +28,10 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         return instances.Count == 1 ? instances[0].SolutionPath : null;
     }
 
+    // The test run mode in effect for a solution: the repo's .aidevtools/settings.json wins over the global setting.
+    private string EffectiveTestRunMode(string? solutionPath) =>
+        IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
+
     [McpServerTool]
     [Description("List running IDE instances (currently Visual Studio) with their process id and the solution each has open.")]
     public string IdeListInstances() => IdeInstanceRouter.ListInstances();
@@ -101,7 +105,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        if (IdeTestRunService.NormalizeMode(options.Value.IdeTestRunMode) == IdeTestRunService.DotnetTestMode)
+        if (EffectiveTestRunMode(solutionPath) == IdeTestRunService.DotnetTestMode)
         {
             var solution = ResolveSolution(solutionPath);
             return solution is null
@@ -122,7 +126,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Optional: process id of the instance to read (TestExplorer mode).")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        if (IdeTestRunService.NormalizeMode(options.Value.IdeTestRunMode) != IdeTestRunService.DotnetTestMode)
+        if (EffectiveTestRunMode(solutionPath) != IdeTestRunService.DotnetTestMode)
         {
             return await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
         }

@@ -75,6 +75,8 @@
   <data name="PassSolutionPathNoInstance" xml:space="preserve"><value>Pass solutionPath: no single open instance to infer it from.</value></data>
   <data name="CouldNotReadTestsPane" xml:space="preserve"><value>Could not read the Tests output pane.</value></data>
   <data name="UnreadableIdeOutput" xml:space="preserve"><value>Unreadable output from the IDE.</value></data>
+  <data name="RepoSettingIgnored" xml:space="preserve"><value>Ignored the repo setting {0} in {1}: a repo file may not set it.</value></data>
+  <data name="RepoSettingsUnreadable" xml:space="preserve"><value>Could not read the repo settings file {0}: {1} The global settings are used.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
