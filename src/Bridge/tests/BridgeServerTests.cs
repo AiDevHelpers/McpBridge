@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.IO.Pipes;
 using System.Text;
 using System.Threading;
@@ -110,5 +111,31 @@ public sealed class BridgeServerTests
 
         Assert.True(server.IsRunning);
         server.Stop();
+    }
+
+    [Fact]
+    public void CreatePipeSecurity_AllowsTheCurrentUser_SoANonElevatedClientCanConnectToAnElevatedIde()
+    {
+        // An elevated Visual Studio creates the pipe with its elevated token. The default ACL then refuses the same user's
+        // non-elevated MCP server, because the Administrators group is deny-only in that token. The user's own SID must be granted.
+        var security = BridgeServer.CreatePipeSecurity();
+        var user = System.Security.Principal.WindowsIdentity.GetCurrent().User!;
+
+        var rules = security.GetAccessRules(true, false, typeof(System.Security.Principal.SecurityIdentifier));
+        Assert.Contains(
+            rules.Cast<System.IO.Pipes.PipeAccessRule>(),
+            rule => rule.IdentityReference == user
+                && rule.AccessControlType == System.Security.AccessControl.AccessControlType.Allow
+                && rule.PipeAccessRights.HasFlag(PipeAccessRights.ReadWrite));
+    }
+
+    [Fact]
+    public void CreatePipeSecurity_DoesNotGrantEveryone()
+    {
+        var security = BridgeServer.CreatePipeSecurity();
+        var everyone = new System.Security.Principal.SecurityIdentifier(System.Security.Principal.WellKnownSidType.WorldSid, null);
+
+        var rules = security.GetAccessRules(true, false, typeof(System.Security.Principal.SecurityIdentifier));
+        Assert.DoesNotContain(rules.Cast<System.IO.Pipes.PipeAccessRule>(), rule => rule.IdentityReference == everyone);
     }
 }
