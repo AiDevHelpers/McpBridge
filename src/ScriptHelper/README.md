@@ -90,6 +90,10 @@ These run locally, need no broker and no elevation, and ask from the console, ne
 - `elev terminals scan` and `elev terminals setup [--all]` list the terminal types on the machine and, per type, register it for the helper and add a Windows Terminal profile (text insert, `.bak` backup) after a yes.
 - `scripthelper-setup.exe tools` (elevated) writes `install-tool.ps1` and its allowlist into the install folder, registers it and asks to approve it; `elev --install-tool <name>` then runs it through the broker for `pwsh`, `gitbash`, `python` or `node` (winget). The MCP `tool_install` tool uses it after the user's yes.
 
+## Running a script in a visible window
+
+`elev.exe --interactive C:\path\to\repo scripts/debug/attach.ps1` asks the broker for the same approved script, but in a normal pwsh window on your desktop. The broker runs it through a fixed wrapper under a transcript, with the arguments read from a JSON file, and keeps the window open after a failure so the error can be read; press Enter to close. The transcript comes back as the output. All the usual checks (owner, allowlist, fingerprint, approval) run first, and the run stops after 9 minutes. The MCP `script_run` tool uses it for `interactive: true, elevated: true`.
+
 ## Running the broker
 
 The broker must run from `%ProgramData%\AiDevHelpers\script-helper\bin`, the admin-only folder

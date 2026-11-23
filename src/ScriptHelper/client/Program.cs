@@ -11,6 +11,13 @@ if (ElevLocalCommands.TryRun(args, Console.Out, new ConsoleConfirmer(), out var 
     return localExit;
 }
 
+// elev --interactive <projectRoot> <script> [args...]: the same approved script, in a visible window; the transcript is printed.
+var visibleRun = args.Length > 0 && args[0] == "--interactive";
+if (visibleRun)
+{
+    args = args[1..];
+}
+
 if (args.Length < 2)
 {
     Console.Error.WriteLine("usage: elev <projectRoot> <script> [args...]");
@@ -64,7 +71,9 @@ if (!ensured.Ok)
     return 1;
 }
 
-var result = await client.RunAsync(args[0], args[1], args[2..], TimeSpan.FromMinutes(10));
+var result = visibleRun
+    ? await client.InteractiveAsync(args[0], args[1], args[2..], TimeSpan.FromMinutes(10))
+    : await client.RunAsync(args[0], args[1], args[2..], TimeSpan.FromMinutes(10));
 
 if (!string.IsNullOrEmpty(result.Stdout))
 {

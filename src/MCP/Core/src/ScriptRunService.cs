@@ -1,6 +1,7 @@
 using AiDevHelpers.Common;
 using AiDevHelpers.Common.Processes;
 using AiDevHelpers.Common.Terminals;
+using AiDevHelpers.MCP.Core.Tools;
 
 namespace AiDevHelpers.MCP.Core.Services;
 
@@ -39,7 +40,8 @@ public sealed class ScriptRunService(
     ITerminalProbe probe,
     Func<TerminalChoices> choices,
     Func<CommandRequest, CancellationToken, Task<CommandResult>> run,
-    Func<InteractiveRequest, CancellationToken, Task<InteractiveResult>>? interactiveRun = null)
+    Func<InteractiveRequest, CancellationToken, Task<InteractiveResult>>? interactiveRun = null,
+    Func<string, string, IReadOnlyList<string>, CancellationToken, Task<ElevRunResult>>? elevatedVisibleRun = null)
 {
     private const int TailChars = 4000;
 
@@ -49,7 +51,8 @@ public sealed class ScriptRunService(
         IReadOnlyList<string> args,
         ScriptWatchOptions serverOptions,
         CancellationToken ct,
-        bool interactive = false)
+        bool interactive = false,
+        bool elevated = false)
     {
         var root = Directory.Exists(repoPath) ? RepoSettingsFile.FindRepoRootFromFolder(repoPath) : null;
         if (root is null)
@@ -77,6 +80,9 @@ public sealed class ScriptRunService(
         }
 
         var options = serverOptions.WithUserOverride(root);
+        if (interactive && elevated)
+            return await RunElevatedInWindowAsync(interpreter, info, relative, root, args, options, ct);
+
         if (interactive)
             return await RunInTabAsync(interpreter, info, full, relative, root, args, options, ct);
 
@@ -111,6 +117,43 @@ public sealed class ScriptRunService(
             assessment.Flag,
             assessment.Flag == ScriptFlag.None ? null : Strings.Format("ScriptRunAdvice", assessment.Reason),
             TerminalNote(interpreter));
+    }
+
+    // Runs an approved script elevated in a visible window, through the broker. The broker checks the allowlist, fingerprint and approval; this
+    // only asks. A script that is not approved comes back as a refusal, never as a run. PowerShell scripts only: the broker runs pwsh.
+    private async Task<ScriptRunReport> RunElevatedInWindowAsync(
+        ResolvedInterpreter interpreter,
+        InterpreterInfo info,
+        string relative,
+        string root,
+        IReadOnlyList<string> args,
+        ScriptWatchOptions options,
+        CancellationToken ct)
+    {
+        if (elevatedVisibleRun is null)
+            return Failed(Strings.Get("ScriptRunInteractiveUnavailable")) with { Interpreter = info };
+
+        if (interpreter.Name != "pwsh" && interpreter.Name != "powershell")
+            return Failed(Strings.Get("ScriptRunElevatedPowerShellOnly")) with { Interpreter = info };
+
+        var result = await elevatedVisibleRun(root, relative.Replace('\\', '/'), args, ct);
+        var key = ScriptRunTracker.Key(root, relative, args);
+        tracker.Record(key, new ScriptRunOutcome(result.ExitCode, TimedOut: false, Silent: false));
+        var assessment = tracker.Assess(key, options);
+        return new ScriptRunReport(
+            result.ExitCode == 0,
+            result.ExitCode == 0 ? null : Strings.Format("InstallFailed", result.ExitCode, Tail(result.Output)),
+            result.ExitCode,
+            false,
+            false,
+            Tail(result.Output),
+            string.Empty,
+            info,
+            null,
+            assessment.Flag,
+            assessment.Flag == ScriptFlag.None ? null : Strings.Format("ScriptRunAdvice", assessment.Reason),
+            TerminalNote(interpreter),
+            Interactive: true);
     }
 
     // Runs the script in a visible terminal tab. It is recorded like any other run, so a script that still fails is still counted.

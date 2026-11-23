@@ -36,7 +36,8 @@ public static class McpServiceCollectionExtensions
             new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
             () => AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser().Read(),
             AiDevHelpers.Common.Processes.CommandRunner.RunAsync,
-            new InteractiveScriptRunner(sp.GetRequiredService<ITerminalSessionManager>()).RunAsync));
+            new InteractiveScriptRunner(sp.GetRequiredService<ITerminalSessionManager>()).RunAsync,
+            (root, script, args, ct) => sp.GetRequiredService<IElevVisibleRunner>().RunVisibleAsync(root, script, args, ct)));
         if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
         {
             Console.Error.WriteLine(globalAllowAll);
@@ -52,6 +53,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevScanner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevInstaller>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevVisibleRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton(sp => new ToolInstallService(
             sp.GetRequiredService<IElevInstaller>(),
             new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),

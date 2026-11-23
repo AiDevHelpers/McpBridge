@@ -111,6 +111,7 @@
   <data name="InstallFailed" xml:space="preserve"><value>The install did not finish (exit {0}): {1}</value></data>
   <data name="InstallHelperMissing" xml:space="preserve"><value>The elevated installer is not set up. Ask the user to run, in an elevated console: setup tools</value></data>
   <data name="InstallDone" xml:space="preserve"><value>{0} was installed. Run the script again; the interpreter is found from the usual install folders, not from this server's PATH.</value></data>
+  <data name="ScriptRunElevatedPowerShellOnly" xml:space="preserve"><value>Error: an elevated visible run is only available for PowerShell scripts, because the broker runs pwsh.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>

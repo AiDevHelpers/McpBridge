@@ -17,6 +17,17 @@ internal sealed class FakeRunner : IScriptRunner
     }
 }
 
+internal sealed class FakeVisible : IVisibleScriptRunner
+{
+    public List<(string Path, IReadOnlyList<string> Args, string ContentAtRun)> Runs { get; } = new();
+
+    public ScriptRunResult RunVisible(string scriptPath, IReadOnlyList<string> args, TimeSpan timeout)
+    {
+        Runs.Add((scriptPath, args, File.ReadAllText(scriptPath)));
+        return new ScriptRunResult(0, "transcript", "", false);
+    }
+}
+
 public sealed class RequestHandlerTests : IDisposable
 {
     private const string Script = "scripts/debug/reset.ps1";
@@ -67,8 +78,11 @@ public sealed class RequestHandlerTests : IDisposable
         File.WriteAllText(path, text);
     }
 
-    private RequestHandler Handler() => new(
-        _registry, _signer, _versions, _config, _inspector, _interpreter, _runner, _staging, _audit.Add);
+    private RequestHandler Handler(IVisibleScriptRunner? visible = null) => new(
+        _registry, _signer, _versions, _config, _inspector, _interpreter, _runner, _staging, _audit.Add, visible);
+
+    private BrokerRequest VisibleRequest(string script = Script, params string[] args) =>
+        new(_root, script, args, Owner, BrokerRequest.InteractiveKind);
 
     /// <summary>Registers the project and approves the script, as the setup steps would.</summary>
     private void RegisterAndApprove(string script = Script)
@@ -365,4 +379,71 @@ public sealed class RequestHandlerTests : IDisposable
         Assert.False(r.Ok);
         Assert.Empty(_runner.Runs);
     }
-}
+
+    [Fact]
+    public void Interactive_RunsTheApprovedStagedScriptInTheVisibleRunner_NotTheCapturedOne()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(VisibleRequest(Script));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal("transcript", r.Stdout);
+        var run = Assert.Single(visible.Runs);
+        Assert.Equal(Approved, run.ContentAtRun);
+        Assert.Empty(run.Args);
+        Assert.Empty(_runner.Runs);
+        Assert.Contains("visible", _audit.Last(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Interactive_AnUnapprovedOrUnlistedScript_IsDenied_AndNothingOpens()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var unlisted = Handler(visible).Handle(VisibleRequest("scripts/other/x.ps1"));
+        var unapproved = Handler(visible).Handle(VisibleRequest("scripts/debug/other.ps1"));
+
+        Assert.False(unlisted.Ok);
+        Assert.False(unapproved.Ok);
+        Assert.Empty(visible.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ARequesterThatIsNotTheOwner_IsDenied()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(new BrokerRequest(_root, Script, [], "S-1-5-21-9-9-9-9", BrokerRequest.InteractiveKind));
+
+        Assert.False(r.Ok);
+        Assert.Empty(visible.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ABrokerWithoutAVisibleRunner_Refuses()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VisibleRequest());
+
+        Assert.False(r.Ok);
+        Assert.Contains("not available", r.Reason);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ScriptChangedAfterApproval_IsDenied()
+    {
+        RegisterAndApprove();
+        WriteFile(Script, "Write-Output 'tampered'");
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(VisibleRequest());
+
+        Assert.False(r.Ok);
+        Assert.Empty(visible.Runs);
+    }}

@@ -2,6 +2,7 @@ using System.Text;
 using AiDevHelpers.Common.Processes;
 using AiDevHelpers.Common.Terminals;
 using AiDevHelpers.MCP.Core.Services;
+using AiDevHelpers.MCP.Core.Tools;
 using Xunit;
 
 namespace AiDevHelpers.MCP.Core.Tests.Services;
@@ -240,4 +241,61 @@ public sealed class ScriptRunServiceTests : IDisposable
         Assert.False(report.Ok);
         Assert.Contains("no such file", report.Error);
     }
-}
+
+    [Fact]
+    public async Task InteractiveAndElevated_AsksTheBrokerForAVisibleRun_WithTheRepoRelativePath()
+    {
+        (string Root, string Script, IReadOnlyList<string> Args)? seen = null;
+        var service = new ScriptRunService(
+            _tracker,
+            new Probe(Pwsh),
+            () => _choices,
+            (_, _) => throw new InvalidOperationException("the captured runner must not be used"),
+            null,
+            (root, script, args, _) =>
+            {
+                seen = (root, script, args);
+                return Task.FromResult(new ElevRunResult(0, "transcript text"));
+            });
+
+        var report = await service.RunAsync(_root, @"scripts\a.ps1", ["x"], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+
+        Assert.True(report.Ok);
+        Assert.True(report.Interactive);
+        Assert.Equal("transcript text", report.StdOut);
+        Assert.Equal((_root, "scripts/a.ps1"), (seen!.Value.Root, seen.Value.Script));
+        Assert.Equal(["x"], seen.Value.Args);
+    }
+
+    [Fact]
+    public async Task InteractiveAndElevated_ABrokerRefusalOrFailure_IsAFailedRun_AndCountsInTheTracker()
+    {
+        var service = new ScriptRunService(
+            _tracker,
+            new Probe(Pwsh),
+            () => _choices,
+            (_, _) => throw new InvalidOperationException("unused"),
+            null,
+            (_, _, _, _) => Task.FromResult(new ElevRunResult(1, "refused: script is not in the allowlist")));
+
+        var first = await service.RunAsync(_root, @"scripts\a.ps1", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+        await service.RunAsync(_root, @"scripts\a.ps1", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+        var third = await service.RunAsync(_root, @"scripts\a.ps1", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+
+        Assert.False(first.Ok);
+        Assert.Contains("allowlist", first.Error);
+        Assert.Equal(ScriptFlag.Repeating, third.Flag);
+    }
+
+    [Fact]
+    public async Task InteractiveAndElevated_IsPowerShellOnly_AndNeedsABroker()
+    {
+        var withBroker = new ScriptRunService(_tracker, new Probe(Pwsh, @"C:\Program Files\Git\bin\bash.exe"), () => _choices, (_, _) => throw new InvalidOperationException("unused"), null,
+            (_, _, _, _) => throw new InvalidOperationException("must not be asked for a shell script"));
+
+        var shell = await withBroker.RunAsync(_root, @"scripts\a.sh", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+        var none = await Service().RunAsync(_root, @"scripts\a.ps1", [], new ScriptWatchOptions(), CancellationToken.None, interactive: true, elevated: true);
+
+        Assert.Contains("PowerShell", shell.Error);
+        Assert.Contains("not available", none.Error);
+    }}

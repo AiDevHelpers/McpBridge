@@ -34,6 +34,15 @@ public interface IElevScanner
 }
 
 /// <summary>
+/// Runs an approved script elevated in a visible console window through the broker, so the person sees its prompts and errors. The same
+/// allowlist, fingerprint and approval checks as <see cref="IElevRunner"/> apply; the transcript comes back as the output.
+/// </summary>
+public interface IElevVisibleRunner
+{
+    Task<ElevRunResult> RunVisibleAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct);
+}
+
+/// <summary>
 /// Runs the installer script the admin approved with "setup tools", through the broker, for one tool name from the built-in table.
 /// The name is checked again by elev.exe and by the script itself; nothing the caller supplies reaches winget except that name.
 /// </summary>
@@ -43,8 +52,11 @@ public interface IElevInstaller
 }
 
 /// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
-internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner, IElevInstaller
+internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner, IElevInstaller, IElevVisibleRunner
 {
+    public Task<ElevRunResult> RunVisibleAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
+        RunElevAsync(["--interactive", projectRoot, script, .. args], ct);
+
     public Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct) =>
         RunElevAsync(["--install-tool", toolName], ct);
 

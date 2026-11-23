@@ -54,7 +54,8 @@ var handler = new RequestHandler(
     new PwshInterpreterInfo(),
     new ProcessScriptRunner(),
     config.StagingDirectory,
-    Audit);
+    Audit,
+    new ProcessVisibleRunner());
 var loop = new BrokerLoop(queue, handler.Handle, ex => Audit($"request failed inside the broker: {ex}"));
 
 Audit($"broker started (pid {Environment.ProcessId}, mode {mode.Value})");

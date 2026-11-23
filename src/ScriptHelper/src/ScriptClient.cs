@@ -38,6 +38,10 @@ public sealed class ScriptClient
     public Task<ClientResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
         SubmitAsync(new BrokerRequestFile(projectRoot, script, args), timeout);
 
+    /// <summary>Asks the broker to run the approved script in a visible console window; the transcript comes back as the output.</summary>
+    public Task<ClientResult> InteractiveAsync(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, script, args, BrokerRequest.InteractiveKind), timeout);
+
     /// <summary>
     /// Asks the broker for the approval status of every allowlisted file in the project. Read only, and it never starts a broker:
     /// a silent broker is reported, so opening a repo does not raise a UAC prompt.

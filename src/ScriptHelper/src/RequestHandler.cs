@@ -10,6 +10,9 @@ public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyL
 {
     public const string RunKind = "run";
     public const string VerifyKind = "verify";
+
+    /// <summary>Runs the script in a visible console window. The same checks as a run apply first.</summary>
+    public const string InteractiveKind = "interactive";
 }
 
 public sealed record BrokerResponse(bool Ok, string Reason, int? ExitCode, string Stdout, string Stderr);
@@ -23,6 +26,9 @@ public sealed class RequestHandler
 {
     private static readonly TimeSpan RunTimeout = TimeSpan.FromMinutes(5);
 
+    // Shorter than the 10 minutes elev waits for an answer, so the broker always answers first.
+    private static readonly TimeSpan VisibleTimeout = TimeSpan.FromMinutes(9);
+
     private readonly ProjectRegistry _registry;
     private readonly IApprovalSigner _signer;
     private readonly VersionCounter _versions;
@@ -32,6 +38,7 @@ public sealed class RequestHandler
     private readonly IScriptRunner _runner;
     private readonly string _stagingRoot;
     private readonly Action<string> _audit;
+    private readonly IVisibleScriptRunner? _visible;
 
     public RequestHandler(
         ProjectRegistry registry,
@@ -42,8 +49,10 @@ public sealed class RequestHandler
         IInterpreterInfo interpreter,
         IScriptRunner runner,
         string stagingRoot,
-        Action<string> audit)
+        Action<string> audit,
+        IVisibleScriptRunner? visible = null)
     {
+        _visible = visible;
         _registry = registry;
         _signer = signer;
         _versions = versions;
@@ -60,10 +69,14 @@ public sealed class RequestHandler
         if (request.Kind == BrokerRequest.VerifyKind)
             return Verify(request);
 
-        if (request.Kind != BrokerRequest.RunKind)
+        if (request.Kind != BrokerRequest.RunKind && request.Kind != BrokerRequest.InteractiveKind)
             return Deny(request, "unknown request kind");
 
-        var response = Decide(request, out var stageDir);
+        var visible = request.Kind == BrokerRequest.InteractiveKind;
+        if (visible && _visible is null)
+            return Deny(request, "visible runs are not available in this broker");
+
+        var response = Decide(request, visible, out var stageDir);
         if (stageDir is not null && Directory.Exists(stageDir))
         {
             Directory.Delete(stageDir, recursive: true);
@@ -99,7 +112,7 @@ public sealed class RequestHandler
         return new BrokerResponse(true, "verified", report.FullyApproved ? 0 : 1, body, string.Empty);
     }
 
-    private BrokerResponse Decide(BrokerRequest request, out string? stageDir)
+    private BrokerResponse Decide(BrokerRequest request, bool visible, out string? stageDir)
     {
         stageDir = null;
 
@@ -186,8 +199,10 @@ public sealed class RequestHandler
         }
 
         var stagedScript = Path.Combine(stage, rel.Replace('/', '\\'));
-        var run = _runner.Run(stagedScript, request.Args, RunTimeout);
-        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(allowAll ? " allow-all" : "")}");
+        var run = visible
+            ? _visible!.RunVisible(stagedScript, request.Args, VisibleTimeout)
+            : _runner.Run(stagedScript, request.Args, RunTimeout);
+        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(visible ? " visible" : "")}{(allowAll ? " allow-all" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
     }
 
