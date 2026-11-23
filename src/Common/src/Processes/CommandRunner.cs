@@ -70,7 +70,8 @@ public static class CommandRunner
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = false,
+            // The server's own stdin is the MCP stdio pipe. A child must not inherit it, so give it an input that ends at once.
+            RedirectStandardInput = true,
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
@@ -120,6 +121,15 @@ public static class CommandRunner
         catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
         {
             // Tracking is best effort: a process that already exited cannot be recorded.
+        }
+
+        try
+        {
+            process.StandardInput.Close();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            // The child already exited.
         }
 
         Capture stdout = new(request.MaxOutputChars);
