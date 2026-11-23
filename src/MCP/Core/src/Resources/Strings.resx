@@ -12,7 +12,7 @@
   <data name="ClosingNotice" xml:space="preserve"><value>aidevtools is closing for an update{0}. Reconnect after the resume signal.</value></data>
   <data name="BookmarkNotFound" xml:space="preserve"><value>Bookmark '{0}' was not found.</value></data>
   <data name="BookmarkRefused" xml:space="preserve"><value>The IDE refused '{0}'.</value></data>
-  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind '{0}'.</value></data>
+  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind '{0}'. Use RemoteDebugger, LaunchSettings, AppSettings, UserSettings or SolutionSettings.</value></data>
   <data name="DebuggingStarted" xml:space="preserve"><value>Debugging started in {0}</value></data>
   <data name="DebugNotStarted" xml:space="preserve"><value>The IDE did not start debugging.</value></data>
   <data name="ConditionsNotSupported" xml:space="preserve"><value>Conditions and hit counts are not supported by the IDE bridge; no breakpoint was set.</value></data>
