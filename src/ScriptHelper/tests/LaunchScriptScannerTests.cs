@@ -114,6 +114,89 @@ public sealed class LaunchScriptScannerTests : IDisposable
     }
 
     [Fact]
+    public void LaunchSettings_ReportsTheProfileAndTheOwningProject()
+    {
+        Write("src/App/App.csproj", "<Project />");
+        Write("src/App/Properties/launchSettings.json", """
+            { "profiles": { "dbg": { "commandName": "Executable", "executablePath": "pwsh", "commandLineArgs": "-File ../../scripts/reset.ps1" } } }
+            """);
+        Write("scripts/reset.ps1", "x");
+
+        var owner = Assert.Single(Assert.Single(Scan()).Owners!);
+
+        Assert.Equal("dbg", owner.Name);
+        Assert.Equal("src/App", owner.Project);
+    }
+
+    [Fact]
+    public void VsCodeConfigurationsAndTasks_ReportTheirNameAndNoProject()
+    {
+        Write(".vscode/launch.json", """{ "configurations": [ { "name": "go", "program": "tools/a.cmd" } ] }""");
+        Write(".vscode/tasks.json", """{ "tasks": [ { "label": "build it", "command": "tools/b.cmd" } ] }""");
+        Write("tools/a.cmd", "x");
+        Write("tools/b.cmd", "x");
+
+        var owners = Scan().ToDictionary(f => f.Path, f => Assert.Single(f.Owners!));
+
+        Assert.Equal("go", owners["tools/a.cmd"].Name);
+        Assert.Equal("build it", owners["tools/b.cmd"].Name);
+        Assert.All(owners.Values, o => Assert.Null(o.Project));
+    }
+
+    [Fact]
+    public void AScriptUsedByTwoProfiles_ListsBothOwners()
+    {
+        Write("src/App/Properties/launchSettings.json", """
+            { "profiles": { "a": { "commandLineArgs": "../../s.ps1" }, "b": { "commandLineArgs": "../../s.ps1" } } }
+            """);
+        Write("s.ps1", "x");
+
+        var found = Assert.Single(Scan());
+
+        Assert.Equal(["a", "b"], found.Owners!.Select(o => o.Name).Order().ToList());
+    }
+
+    [Fact]
+    public void PackagesAndDistFolders_AreNotScanned()
+    {
+        Write("packages/x/.vscode/launch.json", """{ "configurations": [ { "program": "r.ps1" } ] }""");
+        Write("dist/y/.vscode/launch.json", """{ "configurations": [ { "program": "r.ps1" } ] }""");
+        Write("r.ps1", "x");
+
+        Assert.Empty(Scan());
+    }
+
+    [Fact]
+    public void ConfigFilesBeyondTheDepthCap_AreNotScanned()
+    {
+        var deep = string.Join('/', Enumerable.Range(0, LaunchScriptScanner.MaxDepth + 2).Select(i => "d" + i));
+        Write(deep + "/.vscode/launch.json", """{ "configurations": [ { "program": "x.ps1" } ] }""");
+        Write("x.ps1", "x");
+
+        Assert.Empty(Scan());
+    }
+
+    [Fact]
+    public void ADirectoryLink_IsNotFollowed()
+    {
+        Write("real/.vscode/launch.json", """{ "configurations": [ { "name": "n", "program": "x.ps1" } ] }""");
+        Write("x.ps1", "x");
+        try
+        {
+            Directory.CreateSymbolicLink(Path.Combine(_root, "link"), Path.Combine(_root, "real"));
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            return; // Creating a link needs developer mode or rights; the depth-cap test still covers a runaway walk.
+        }
+
+        // A followed link would report the same configuration a second time, as a second owner.
+        var found = Assert.Single(Scan());
+
+        Assert.Single(found.Owners!);
+    }
+
+    [Fact]
     public void AddScript_AppendsAnEntryAndKeepsTheRest()
     {
         var updated = ManifestEditor.AddScript("""{ "scripts": [ { "path": "scripts/a.ps1", "args": ["x"] } ] }""", "tools/b.cmd");

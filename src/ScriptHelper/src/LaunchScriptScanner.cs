@@ -4,8 +4,14 @@ using System.Text.RegularExpressions;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
+/// <summary>
+/// The launch profile, configuration or task that runs a script. Project is the repo-relative folder of the project that owns a
+/// launchSettings profile, or null for a VS Code configuration or task.
+/// </summary>
+public sealed record ScriptOwner(string Name, string? Project);
+
 /// <summary>A script a launch or debug configuration runs. Listed means it already matches the repo allowlist.</summary>
-public sealed record FoundScript(string Path, string Source, bool Listed);
+public sealed record FoundScript(string Path, string Source, bool Listed, IReadOnlyList<ScriptOwner>? Owners = null);
 
 /// <summary>
 /// Looks through a repo's launch and debug configuration (<c>Properties/launchSettings.json</c>, <c>.vscode/launch.json</c>,
@@ -15,7 +21,10 @@ public sealed record FoundScript(string Path, string Source, bool Listed);
 public static class LaunchScriptScanner
 {
     private static readonly string[] ScriptExtensions = [".ps1", ".cmd", ".bat", ".sh"];
-    private static readonly string[] SkippedFolders = [".git", ".vs", "bin", "obj", "node_modules"];
+
+    /// <summary>The deepest folder level (the repo root is 0) that is searched for configuration files.</summary>
+    public const int MaxDepth = RepoWalk.MaxDepth;
+
     private static readonly JsonDocumentOptions Lenient = new() { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true };
     private static readonly Regex Token = new("\"([^\"]*)\"|'([^']*)'|(\\S+)", RegexOptions.CultureInvariant);
 
@@ -30,15 +39,28 @@ public static class LaunchScriptScanner
                 ? new[] { Path.GetDirectoryName(Path.GetDirectoryName(file))!, fullRoot }
                 : [fullRoot];
 
-            foreach (var value in Values(file, kind))
+            var project = kind == Kind.LaunchSettings
+                ? Path.GetRelativePath(fullRoot, baseDirs[0]).Replace('\\', '/')
+                : null;
+
+            foreach (var (value, name) in Values(file, kind))
             {
                 foreach (var candidate in ScriptTokens(value))
                 {
                     var rel = Resolve(fullRoot, baseDirs, candidate);
-                    if (rel is null || found.ContainsKey(rel))
+                    if (rel is null)
                         continue;
 
-                    found[rel] = new FoundScript(rel, Path.GetRelativePath(fullRoot, file).Replace('\\', '/'), Allowlist.IsPathListed(listed, rel));
+                    var owner = new ScriptOwner(name, project);
+                    if (found.TryGetValue(rel, out var existing))
+                    {
+                        if (!existing.Owners!.Contains(owner))
+                            found[rel] = existing with { Owners = [.. existing.Owners, owner] };
+
+                        continue;
+                    }
+
+                    found[rel] = new FoundScript(rel, Path.GetRelativePath(fullRoot, file).Replace('\\', '/'), Allowlist.IsPathListed(listed, rel), [owner]);
                 }
             }
         }
@@ -55,33 +77,21 @@ public static class LaunchScriptScanner
 
     private static IEnumerable<(string File, Kind Kind)> ConfigFiles(string root)
     {
-        var pending = new Stack<string>();
-        pending.Push(root);
-        while (pending.Count > 0)
+        foreach (var (dir, file) in RepoWalk.Files(root))
         {
-            var dir = pending.Pop();
-            foreach (var sub in Directory.EnumerateDirectories(dir))
-            {
-                if (!SkippedFolders.Contains(Path.GetFileName(sub), StringComparer.OrdinalIgnoreCase))
-                    pending.Push(sub);
-            }
-
             var name = Path.GetFileName(dir);
-            foreach (var file in Directory.EnumerateFiles(dir))
-            {
-                var fileName = Path.GetFileName(file);
-                if (string.Equals(name, "Properties", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "launchSettings.json", StringComparison.OrdinalIgnoreCase))
-                    yield return (file, Kind.LaunchSettings);
-                else if (string.Equals(name, ".vscode", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "launch.json", StringComparison.OrdinalIgnoreCase))
-                    yield return (file, Kind.VsCodeLaunch);
-                else if (string.Equals(name, ".vscode", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "tasks.json", StringComparison.OrdinalIgnoreCase))
-                    yield return (file, Kind.VsCodeTasks);
-            }
+            var fileName = Path.GetFileName(file);
+            if (string.Equals(name, "Properties", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "launchSettings.json", StringComparison.OrdinalIgnoreCase))
+                yield return (file, Kind.LaunchSettings);
+            else if (string.Equals(name, ".vscode", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "launch.json", StringComparison.OrdinalIgnoreCase))
+                yield return (file, Kind.VsCodeLaunch);
+            else if (string.Equals(name, ".vscode", StringComparison.OrdinalIgnoreCase) && string.Equals(fileName, "tasks.json", StringComparison.OrdinalIgnoreCase))
+                yield return (file, Kind.VsCodeTasks);
         }
     }
 
     // The strings in a config file that can name a program or a script argument.
-    private static IEnumerable<string> Values(string file, Kind kind)
+    private static IEnumerable<(string Value, string Name)> Values(string file, Kind kind)
     {
         JsonDocument doc;
         try
@@ -103,16 +113,16 @@ public static class LaunchScriptScanner
             if (root.ValueKind != JsonValueKind.Object)
                 yield break;
 
-            IEnumerable<JsonElement> items = kind switch
+            IEnumerable<(string Name, JsonElement Item)> items = kind switch
             {
                 Kind.LaunchSettings => root.TryGetProperty("profiles", out var profiles) && profiles.ValueKind == JsonValueKind.Object
-                    ? profiles.EnumerateObject().Select(p => p.Value)
+                    ? profiles.EnumerateObject().Select(p => (p.Name, p.Value))
                     : [],
-                Kind.VsCodeLaunch => Array(root, "configurations"),
-                _ => Array(root, "tasks"),
+                Kind.VsCodeLaunch => Array(root, "configurations").Select(c => (TextOf(c, "name"), c)),
+                _ => Array(root, "tasks").Select(t => (TextOf(t, "label"), t)),
             };
 
-            foreach (var item in items.Where(i => i.ValueKind == JsonValueKind.Object))
+            foreach (var (owner, item) in items.Where(i => i.Item.ValueKind == JsonValueKind.Object))
             {
                 foreach (var name in new[] { "executablePath", "commandLineArgs", "program", "command", "args", "runtimeArgs" })
                 {
@@ -121,17 +131,23 @@ public static class LaunchScriptScanner
 
                     if (value.ValueKind == JsonValueKind.String)
                     {
-                        yield return value.GetString() ?? string.Empty;
+                        yield return (value.GetString() ?? string.Empty, owner);
                     }
                     else if (value.ValueKind == JsonValueKind.Array)
                     {
                         foreach (var element in value.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.String))
-                            yield return element.GetString() ?? string.Empty;
+                            yield return (element.GetString() ?? string.Empty, owner);
                     }
                 }
             }
         }
     }
+
+    // A configuration or task name, or an empty string when it has none (the owner is still reported).
+    private static string TextOf(JsonElement item, string name) =>
+        item.ValueKind == JsonValueKind.Object && item.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
 
     private static IEnumerable<JsonElement> Array(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Array ? value.EnumerateArray().ToList() : [];

@@ -1,9 +1,15 @@
 using System.Security.Principal;
 using AiDevHelpers.ScriptHelper.Core;
 
-// elev <projectRoot> <script> [args...]   |   elev --verify <projectRoot>
+// elev <projectRoot> <script> [args...]   |   elev --verify <projectRoot>   |   elev --repo-scan <root>   |   elev repo-setup <root>
 // Runs an approved script through the broker, unelevated. Prints the script's output and exits
 // with its exit code. Exit 1 means the request was refused or could not be answered.
+
+// Local verbs need no broker and no ScriptHelper configuration, so they run before either is touched.
+if (ElevLocalCommands.TryRun(args, Console.Out, new ConsoleConfirmer(), out var localExit))
+{
+    return localExit;
+}
 
 if (args.Length < 2)
 {

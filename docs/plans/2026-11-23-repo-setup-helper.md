@@ -145,3 +145,8 @@ Build in number order. Parts A and B come first (no elevated rights involved). W
 - Prose instructions cannot be parsed reliably; setup surfaces them but never turns them into enforced rules on its own.
 - Marker scanning is heuristic. Findings are suggestions, always confirmed by the user.
 - Elevated VS talking to a non-elevated MCP server relies on the pipe ACL fix in 596501b; unit 14's real-IDE check covers it.
+
+## Progress
+
+- Units 1 to 4 done. `LaunchScriptScanner` reports owners, skips links and `packages`/`dist`, and stops at 12 levels (shared `RepoWalk`); `ElevationScanner` finds manifest, debug-script and script-marker findings; `ElevationFiles` (Common) reads and writes `elevation.json` and the `elevation` block of `user.json`, and `RepoSettingsFile.UpdateUserFile` keeps other keys (the allow-all pointer writer now uses it); `RepoSettings.Resolve` returns the elevation view; `elev --repo-scan <root>` and `elev repo-setup <root>` run locally before the broker config is touched. Tests: ScriptHelper 367 passed, Common 14, MCP.Core 191 (Release, `dotnet test`).
+- Dogfood gap: while Test Explorer runs the whole solution the IDE bridge stops answering (`ide_get_build_diagnostics` timed out) and its testhosts lock the Debug output, so `dotnet build` of the same projects fails; used `dotnet test -c Release` instead. Logged in `docs/dogfood.md`.

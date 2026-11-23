@@ -31,6 +31,41 @@ public static class RepoSettingsFile
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 
+    /// <summary>
+    /// Edits this user's <c>user.json</c> in place: reads it (an empty object when missing), lets <paramref name="edit"/> change
+    /// the keys it owns, and writes it back, so every other key survives. A file that is not valid JSON is not overwritten.
+    /// Adds the file to .gitignore.
+    /// </summary>
+    public static void UpdateUserFile(string repoRoot, Action<System.Text.Json.Nodes.JsonObject> edit)
+    {
+        var path = UserFilePath(repoRoot);
+        System.Text.Json.Nodes.JsonObject root;
+        if (File.Exists(path))
+        {
+            try
+            {
+                root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path)) as System.Text.Json.Nodes.JsonObject
+                    ?? throw new IOException($"{path} is not a JSON object; fix or remove it first.");
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                throw new IOException($"{path} is not valid JSON; fix or remove it first.", ex);
+            }
+        }
+        else
+        {
+            root = new System.Text.Json.Nodes.JsonObject();
+        }
+
+        edit(root);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        var temp = path + ".tmp";
+        File.WriteAllText(temp, root.ToJsonString(new System.Text.Json.JsonSerializerOptions { WriteIndented = true }) + "\n");
+        File.Move(temp, path, overwrite: true);
+        EnsureUserFileGitIgnored(repoRoot);
+    }
+
     /// <summary>Adds <c>.aidevtools/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
     public static void EnsureUserFileGitIgnored(string repoRoot)
     {

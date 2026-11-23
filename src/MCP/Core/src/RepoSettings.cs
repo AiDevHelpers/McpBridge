@@ -4,7 +4,11 @@ using Microsoft.Extensions.Configuration;
 namespace AiDevHelpers.MCP.Core.Services;
 
 /// <summary>The settings in effect for one repo, and anything in the repo file that was ignored or unreadable.</summary>
-internal sealed record RepoSettingsResult(IdeToolsOptions Options, IReadOnlyList<string> Warnings, bool AllowAllRequested = false);
+internal sealed record RepoSettingsResult(
+    IdeToolsOptions Options,
+    IReadOnlyList<string> Warnings,
+    bool AllowAllRequested = false,
+    AiDevHelpers.Common.RepoElevation? Elevation = null);
 
 /// <summary>
 /// Layers <c>&lt;repo&gt;/.aidevtools/settings.json</c> over the global settings: each key the repo sets wins, the rest fall
@@ -27,10 +31,15 @@ internal static class RepoSettings
         var allowAll = false;
 
         var root = FindRepoRoot(solutionPath);
+
+        // The elevation files are separate from settings.json (an allowAll approval binds that file's hash), and each is optional.
+        var elevation = root is null ? null : AiDevHelpers.Common.ElevationFiles.Read(root);
+        warnings.AddRange(elevation?.Warnings ?? []);
+
         var file = root is null ? null : Path.Combine(root, FolderName, FileName);
         if (file is null || !File.Exists(file))
         {
-            return new RepoSettingsResult(effective, warnings);
+            return new RepoSettingsResult(effective, warnings, false, elevation);
         }
 
         try
@@ -71,7 +80,7 @@ internal static class RepoSettings
             allowAll = false;
         }
 
-        return new RepoSettingsResult(effective, warnings, allowAll);
+        return new RepoSettingsResult(effective, warnings, allowAll, elevation);
     }
 
     /// <summary>A global allowAll is never honored. Returns a warning when the global configuration sets one, else null.</summary>

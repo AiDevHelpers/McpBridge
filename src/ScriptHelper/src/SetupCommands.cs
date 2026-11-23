@@ -147,12 +147,12 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands
     // The gitignored per-user file only points at the approval; the approval itself lives in the admin store.
     private static void WriteUserPointer(ProjectEntry project, string hash)
     {
-        var path = RepoSettingsFile.UserFilePath(project.Root);
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(
-            new { allowAll = new { projectId = project.Id, settingsHash = hash } },
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
-        RepoSettingsFile.EnsureUserFileGitIgnored(project.Root);
+        // Only the allowAll key is replaced; other keys in the file (this user's elevation choices, for one) are kept.
+        RepoSettingsFile.UpdateUserFile(project.Root, root => root["allowAll"] = new System.Text.Json.Nodes.JsonObject
+        {
+            ["projectId"] = project.Id,
+            ["settingsHash"] = hash,
+        });
     }
 
     /// <summary>

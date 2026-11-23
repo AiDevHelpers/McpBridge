@@ -36,6 +36,25 @@ public sealed class RepoUserSettingsTests : IDisposable
     }
 
     [Fact]
+    public void ElevationFilesAreResolvedWithoutASettingsFile()
+    {
+        File.WriteAllText(Path.Combine(_root, ".aidevtools", "elevation.json"), """{ "projects": [ { "path": "src/Drv/Drv.csproj" } ] }""");
+        File.WriteAllText(Path.Combine(_root, ".aidevtools", "user.json"), """{ "elevation": { "mode": "never" } }""");
+
+        var result = RepoSettings.Resolve(new IdeToolsOptions(), Solution());
+
+        Assert.Equal(AiDevHelpers.Common.ElevationMode.Never, result.Elevation!.Mode);
+        Assert.Equal("src/Drv/Drv.csproj", Assert.Single(result.Elevation.Projects).Path);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void NoRepoMeansNoElevationInfo()
+    {
+        Assert.Null(RepoSettings.Resolve(new IdeToolsOptions(), null).Elevation);
+    }
+
+    [Fact]
     public void AllowAllIsNotRequestedWhenTheRepoFileLacksIt()
     {
         WriteSettings("""{"IdeTools":{}}""");
