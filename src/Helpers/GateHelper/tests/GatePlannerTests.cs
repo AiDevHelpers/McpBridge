@@ -40,6 +40,14 @@ public sealed class GatePlannerTests : IDisposable
     }
 
     [Fact]
+    public void QuotedArgumentsStayOneArgumentWithoutTheQuotes()
+    {
+        var steps = GatePlanner.FromReference("```gate\npwsh -NoProfile -Command \"exit 1\"\n```\n");
+
+        Assert.Equal(["-NoProfile", "-Command", "exit 1"], steps[0].Arguments);
+    }
+
+    [Fact]
     public void ReferenceFileWithoutGateBlockIsAnError()
     {
         Write(".claude/reference/full-gate.md", "# Gate\nNo commands here.\n");

@@ -140,31 +140,78 @@ internal sealed class TestingTools
 
         lock (LiveRuns)
         {
-            if (LiveRuns.TryGetValue(full, out var running) && !running.HasExited)
+            if (LiveRuns.TryGetValue(full, out var running) && running.Any(p => !p.HasExited))
             {
-                return Json(new { ok = true, alreadyRunning = true, pid = running.Id, trx = Path.Combine(results, "live.trx") });
+                return Json(new { ok = true, alreadyRunning = true, pids = running.Select(p => p.Id), trx = results });
             }
 
-            var psi = new System.Diagnostics.ProcessStartInfo("dotnet")
+            // dotnet watch needs a project, not a solution, so one watch runs per test project.
+            var projects = AffectedTests.AllTestProjects(dir);
+            if (projects.Count == 0)
             {
-                WorkingDirectory = dir,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            };
-            foreach (var arg in new[] { "watch", "test", "--logger", "trx;LogFileName=live.trx", "--results-directory", results })
-            {
-                psi.ArgumentList.Add(arg);
+                return Json(new { ok = false, error = Strings.Format("NoTestProjects", dir) });
             }
 
-            var process = System.Diagnostics.Process.Start(psi);
-            if (process is null)
+            var started = new List<System.Diagnostics.Process>();
+            foreach (var project in projects)
             {
-                return Json(new { ok = false, error = Strings.Get("WatchNotStarted") });
+                var name = Path.GetFileNameWithoutExtension(project);
+                var psi = new System.Diagnostics.ProcessStartInfo("dotnet")
+                {
+                    WorkingDirectory = dir,
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+
+                    // The server's own stdin and stdout are the MCP pipe, so the watch gets pipes of its own.
+                    RedirectStandardInput = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                foreach (var arg in new[] { "watch", "--project", project, "test", "--logger", $"trx;LogFileName=live.{name}.trx", "--results-directory", results })
+                {
+                    psi.ArgumentList.Add(arg);
+                }
+
+                var process = System.Diagnostics.Process.Start(psi);
+                if (process is null)
+                {
+                    StopAll(started);
+                    return Json(new { ok = false, error = Strings.Get("WatchNotStarted") });
+                }
+
+                process.OutputDataReceived += (_, _) => { };
+                process.ErrorDataReceived += (_, _) => { };
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                started.Add(process);
             }
 
-            LiveRuns[full] = process;
+            // A watch that cannot start (no SDK, bad project) exits within moments; report it instead of claiming success.
+            Thread.Sleep(LiveStartCheck);
+            var exited = started.FirstOrDefault(p => p.HasExited);
+            if (exited is not null)
+            {
+                var code = exited.ExitCode;
+                StopAll(started);
+                return Json(new { ok = false, error = Strings.Format("WatchExitedEarly", code) });
+            }
+
+            LiveRuns[full] = started;
             TestingState.Watches[full] = new TestWatch(full, IdeHotReload: true, DotnetWatchRunning: true);
-            return Json(new { ok = true, pid = process.Id, trx = Path.Combine(results, "live.trx") });
+            return Json(new { ok = true, pids = started.Select(p => p.Id), trx = results });
+        }
+    }
+
+    private static readonly TimeSpan LiveStartCheck = TimeSpan.FromSeconds(4);
+
+    private static void StopAll(IEnumerable<System.Diagnostics.Process> processes)
+    {
+        foreach (var process in processes)
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
         }
     }
 
@@ -176,22 +223,19 @@ internal sealed class TestingTools
         TestingState.Watches.TryRemove(full, out _);
         lock (LiveRuns)
         {
-            if (!LiveRuns.TryGetValue(full, out var process))
+            if (!LiveRuns.TryGetValue(full, out var processes))
             {
                 return Json(new { ok = false, error = Strings.Get("NoLiveTesting") });
             }
 
             LiveRuns.Remove(full);
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-            }
+            StopAll(processes);
         }
 
         return Json(new { ok = true, stopped = full });
     }
 
-    private static readonly Dictionary<string, System.Diagnostics.Process> LiveRuns = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, List<System.Diagnostics.Process>> LiveRuns = new(StringComparer.OrdinalIgnoreCase);
 
     private static object HotReloadState(bool? ide, bool dotnetWatch)
     {

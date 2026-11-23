@@ -60,7 +60,7 @@ public static class GatePlanner
                 continue;
             }
 
-            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var parts = SplitArguments(line);
             var allowFailure = parts[0] == "!";
             if (allowFailure)
             {
@@ -76,6 +76,44 @@ public static class GatePlanner
         }
 
         return steps;
+    }
+
+    /// <summary>Splits a gate line on spaces. Text inside double quotes stays one argument and the quotes are dropped.</summary>
+    private static string[] SplitArguments(string line)
+    {
+        var parts = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+        var started = false;
+        foreach (var c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+                started = true;
+            }
+            else if (c == ' ' && !inQuotes)
+            {
+                if (started)
+                {
+                    parts.Add(current.ToString());
+                    current.Clear();
+                    started = false;
+                }
+            }
+            else
+            {
+                current.Append(c);
+                started = true;
+            }
+        }
+
+        if (started)
+        {
+            parts.Add(current.ToString());
+        }
+
+        return [.. parts];
     }
 
     /// <summary>Stack detection from root files. Solutions, package.json, Python, Go and Cargo.</summary>

@@ -78,5 +78,7 @@
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
+  <data name="NoTestProjects" xml:space="preserve"><value>No test project found under {0}.</value></data>
+  <data name="WatchExitedEarly" xml:space="preserve"><value>dotnet watch test exited at once with code {0}.</value></data>
   <data name="NoSolutionIn" xml:space="preserve"><value>No .slnx or .sln file in {0}.</value></data>
 </root>
