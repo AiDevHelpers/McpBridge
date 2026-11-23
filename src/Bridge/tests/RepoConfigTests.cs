@@ -100,10 +100,17 @@ public sealed class PreferredIdeRoutingTests : IDisposable
 
     public void Dispose()
     {
-        try { _sleeper.Kill(); } catch (InvalidOperationException) { }
+        if (!_sleeper.HasExited)
+        {
+            _sleeper.Kill();
+        }
+
         _sleeper.Dispose();
         Environment.SetEnvironmentVariable("ProgramData", _previousProgramData);
-        try { Directory.Delete(_root, recursive: true); } catch (IOException) { }
+        if (Directory.Exists(_root))
+        {
+            Directory.Delete(_root, recursive: true);
+        }
     }
 
     private void WriteManifest(int pid, string ide)

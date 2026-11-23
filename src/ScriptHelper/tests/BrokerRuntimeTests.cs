@@ -130,7 +130,7 @@ public sealed class BrokerRuntimeTests : IDisposable
     }
 
     [Fact]
-    public void Host_writes_a_heartbeat_and_stops_when_the_stop_file_appears()
+    public async Task Host_writes_a_heartbeat_and_stops_when_the_stop_file_appears()
     {
         var heartbeat = Path_("heartbeat.json");
         var stop = Path_("broker.stop");
@@ -138,7 +138,7 @@ public sealed class BrokerRuntimeTests : IDisposable
         File.WriteAllText(stop, "");
         var host = new BrokerHost(loop, heartbeat, stop, TimeSpan.FromMinutes(5), () => Now, _ => { }, 4242, ProtectionMode.Tpm);
 
-        var reason = host.Run();
+        var reason = await host.RunAsync();
 
         Assert.Equal("stopped", reason);
         Assert.False(File.Exists(stop), "the stop file is consumed");
@@ -146,7 +146,7 @@ public sealed class BrokerRuntimeTests : IDisposable
     }
 
     [Fact]
-    public void Host_stops_after_the_idle_timeout_when_nothing_arrives()
+    public async Task Host_stops_after_the_idle_timeout_when_nothing_arrives()
     {
         var loop = new BrokerLoop(new RequestQueue(Path_("queue"), Path_("results")), _ => throw new InvalidOperationException());
         // Each clock read advances six minutes, so a 10-minute idle limit is passed within a few passes.
@@ -154,7 +154,7 @@ public sealed class BrokerRuntimeTests : IDisposable
         var host = new BrokerHost(loop, Path_("heartbeat.json"), Path_("broker.stop"), TimeSpan.FromMinutes(10),
             () => Now.AddMinutes(6 * tick++), _ => { }, 4242, ProtectionMode.Tpm);
 
-        var reason = host.Run();
+        var reason = await host.RunAsync();
 
         Assert.Equal("idle timeout", reason);
     }
@@ -181,7 +181,7 @@ public sealed class BrokerRuntimeTests : IDisposable
             File.WriteAllText(stop, "");
         });
 
-        var reason = host.Run();
+        var reason = await host.RunAsync();
         await Task.WhenAny(stopper, Task.Delay(TimeSpan.FromSeconds(15)));
 
         Assert.True(queue.TryReadResult(sid, id) is not null, "the request was never answered");

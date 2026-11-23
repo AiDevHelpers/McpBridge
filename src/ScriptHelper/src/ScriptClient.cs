@@ -35,17 +35,17 @@ public sealed class ScriptClient
         _requesterSid = requesterSid;
     }
 
-    public ClientResult Run(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
-        Submit(new BrokerRequestFile(projectRoot, script, args), timeout);
+    public Task<ClientResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, script, args), timeout);
 
     /// <summary>
     /// Asks the broker for the approval status of every allowlisted file in the project. Read only, and it never starts a broker:
     /// a silent broker is reported, so opening a repo does not raise a UAC prompt.
     /// </summary>
-    public ClientResult Verify(string projectRoot, TimeSpan timeout) =>
-        Submit(new BrokerRequestFile(projectRoot, string.Empty, Array.Empty<string>(), BrokerRequest.VerifyKind), timeout);
+    public Task<ClientResult> VerifyAsync(string projectRoot, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, string.Empty, Array.Empty<string>(), BrokerRequest.VerifyKind), timeout);
 
-    private ClientResult Submit(BrokerRequestFile request, TimeSpan timeout)
+    private async Task<ClientResult> SubmitAsync(BrokerRequestFile request, TimeSpan timeout)
     {
         switch (_ping.Check(PingTimeout))
         {
@@ -68,7 +68,7 @@ public sealed class ScriptClient
                     : new ClientResult(false, answer.Reason, null, string.Empty, string.Empty);
             }
 
-            Thread.Sleep(PollInterval);
+            await Task.Delay(PollInterval);
         }
 
         return new ClientResult(false, "timed out waiting for the broker's answer", null, string.Empty, string.Empty);

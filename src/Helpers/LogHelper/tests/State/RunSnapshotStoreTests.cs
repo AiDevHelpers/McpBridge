@@ -25,8 +25,9 @@ public sealed class RunSnapshotStoreTests : IDisposable
         {
             Directory.Delete(_dir, recursive: true);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            System.Diagnostics.Trace.WriteLine($"test cleanup skipped: {ex.Message}");
         }
     }
 

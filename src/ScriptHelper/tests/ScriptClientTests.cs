@@ -52,7 +52,7 @@ public sealed class ScriptClientTests : IDisposable
         var q = Queue();
         var client = new ScriptClient(q, new FakePing(), Sid);
         var answered = false;
-        var broker = Task.Run(() =>
+        var broker = Task.Run(async () =>
         {
             while (!answered)
             {
@@ -64,11 +64,11 @@ public sealed class ScriptClientTests : IDisposable
                     answered = true;
                 }
 
-                Thread.Sleep(20);
+                await Task.Delay(20);
             }
         });
 
-        var r = client.Verify(@"C:\repo", TimeSpan.FromSeconds(5));
+        var r = await client.VerifyAsync(@"C:\repo", TimeSpan.FromSeconds(5));
         await broker;
 
         Assert.True(r.Ok);
@@ -77,23 +77,23 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void Verify_WithASilentBroker_DoesNotQueueAndReportsIt()
+    public async Task Verify_WithASilentBroker_DoesNotQueueAndReportsIt()
     {
         var q = Queue();
 
-        var r = new ScriptClient(q, new FakePing { State = BrokerState.Silent }, Sid).Verify(@"C:\repo", Short);
+        var r = await new ScriptClient(q, new FakePing { State = BrokerState.Silent }, Sid).VerifyAsync(@"C:\repo", Short);
 
         Assert.False(r.Ok);
         Assert.Empty(q.Pending());
     }
 
     [Fact]
-    public void A_silent_broker_is_reported_before_anything_is_queued()
+    public async Task A_silent_broker_is_reported_before_anything_is_queued()
     {
         var q = Queue();
         var ping = new FakePing { State = BrokerState.Silent };
 
-        var r = new ScriptClient(q, ping, Sid).Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+        var r = await new ScriptClient(q, ping, Sid).RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
 
         Assert.False(r.Ok);
         Assert.Contains("not responding", r.Reason, StringComparison.OrdinalIgnoreCase);
@@ -101,12 +101,12 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void A_broker_outside_the_admin_only_install_folder_is_refused_and_nothing_is_queued()
+    public async Task A_broker_outside_the_admin_only_install_folder_is_refused_and_nothing_is_queued()
     {
         var q = Queue();
         var ping = new FakePing { State = BrokerState.UntrustedInstall };
 
-        var r = new ScriptClient(q, ping, Sid).Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+        var r = await new ScriptClient(q, ping, Sid).RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
 
         Assert.False(r.Ok);
         Assert.Contains("admin-only", r.Reason, StringComparison.OrdinalIgnoreCase);
@@ -127,7 +127,7 @@ public sealed class ScriptClientTests : IDisposable
             BrokerAnswers(q, new BrokerResponse(true, "ran", 0, "hello", ""));
         });
 
-        var r = client.Run(@"C:\repo", "scripts/a.ps1", new[] { "-Port", "5000" }, TimeSpan.FromSeconds(20));
+        var r = await client.RunAsync(@"C:\repo", "scripts/a.ps1", new[] { "-Port", "5000" }, TimeSpan.FromSeconds(20));
         await broker;
 
         Assert.True(r.Ok, r.Reason);
@@ -147,7 +147,7 @@ public sealed class ScriptClientTests : IDisposable
             BrokerAnswers(q, new BrokerResponse(true, "ran", 7, "", ""));
         });
 
-        var r = client.Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
+        var r = await client.RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
         await broker;
 
         Assert.Equal(7, r.ExitCode);
@@ -164,7 +164,7 @@ public sealed class ScriptClientTests : IDisposable
             BrokerAnswers(q, new BrokerResponse(false, "script is not in the allowlist", null, "", ""));
         });
 
-        var r = client.Run(@"C:\repo", "scripts/evil.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
+        var r = await client.RunAsync(@"C:\repo", "scripts/evil.ps1", Array.Empty<string>(), TimeSpan.FromSeconds(20));
         await broker;
 
         Assert.False(r.Ok);
@@ -173,13 +173,13 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void No_answer_in_time_is_reported_as_a_timeout_and_does_not_hang()
+    public async Task No_answer_in_time_is_reported_as_a_timeout_and_does_not_hang()
     {
         var q = Queue();
         var client = new ScriptClient(q, new FakePing(), Sid);
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        var r = client.Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+        var r = await client.RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
 
         Assert.False(r.Ok);
         Assert.Contains("timed out", r.Reason, StringComparison.OrdinalIgnoreCase);
@@ -187,13 +187,13 @@ public sealed class ScriptClientTests : IDisposable
     }
 
     [Fact]
-    public void Each_run_submits_its_own_request()
+    public async Task Each_run_submits_its_own_request()
     {
         var q = Queue();
         var client = new ScriptClient(q, new FakePing(), Sid);
 
-        client.Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
-        client.Run(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+        await client.RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
+        await client.RunAsync(@"C:\repo", "scripts/a.ps1", Array.Empty<string>(), Short);
 
         Assert.Equal(2, Directory.GetFiles(Path.Combine(_queueRoot, Sid), "*.request.json").Length);
     }

@@ -194,7 +194,7 @@ public sealed class BrokerHost
         _mode = mode;
     }
 
-    public string Run()
+    public async Task<string> RunAsync()
     {
         var lastActivity = _utcNow();
         while (true)
@@ -214,7 +214,7 @@ public sealed class BrokerHost
             if (now - lastActivity > _idleTimeout)
                 return Stopped("idle timeout");
 
-            Thread.Sleep(Pause);
+            await Task.Delay(Pause);
         }
     }
 

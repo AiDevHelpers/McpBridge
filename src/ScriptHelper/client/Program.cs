@@ -24,7 +24,7 @@ var client = new ScriptClient(queue, ping, sid);
 // 1 some are not, 2 the broker did not answer (it is never started for this).
 if (args.Length == 2 && args[0] == "--verify")
 {
-    var verified = client.Verify(args[1], TimeSpan.FromSeconds(15));
+    var verified = await client.VerifyAsync(args[1], TimeSpan.FromSeconds(15));
     if (!verified.Ok)
     {
         Console.Error.WriteLine($"unverified: {verified.Reason}");
@@ -45,7 +45,7 @@ if (!ensured.Ok)
     return 1;
 }
 
-var result = client.Run(args[0], args[1], args[2..], TimeSpan.FromMinutes(10));
+var result = await client.RunAsync(args[0], args[1], args[2..], TimeSpan.FromMinutes(10));
 
 if (!string.IsNullOrEmpty(result.Stdout))
 {

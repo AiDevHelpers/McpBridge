@@ -69,6 +69,7 @@
   <data name="IdeAlreadyRunning" xml:space="preserve"><value>{0} is already running</value></data>
   <data name="ElevNotFound" xml:space="preserve"><value>elev.exe not found next to the MCP server ({0}).</value></data>
   <data name="ElevDidNotStart" xml:space="preserve"><value>elev.exe did not start.</value></data>
+  <data name="ElevTimedOut" xml:space="preserve"><value>elev.exe did not finish within the time limit.</value></data>
   <data name="ScriptHelperNeedsArgs" xml:space="preserve"><value>Error: runElevatedScript needs projectRoot and script.</value></data>
   <data name="ScriptHelperError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="SolutionFileMissing" xml:space="preserve"><value>Solution file not found.</value></data>

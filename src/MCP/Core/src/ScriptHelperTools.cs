@@ -1,6 +1,6 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
+using AiDevHelpers.Common.Processes;
 using ModelContextProtocol.Server;
 
 namespace AiDevHelpers.MCP.Core.Tools;
@@ -42,38 +42,18 @@ internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier
             throw new InvalidOperationException(Strings.Format("ElevNotFound", exe));
         }
 
-        var info = new ProcessStartInfo(exe)
+        var result = await CommandRunner.RunAsync(new CommandRequest { FileName = exe, Arguments = arguments, Timeout = Limit }, ct);
+        if (!result.Launched)
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        foreach (var arg in arguments)
-        {
-            info.ArgumentList.Add(arg);
+            throw new InvalidOperationException(Strings.Get("ElevDidNotStart"));
         }
 
-        using var process = Process.Start(info)
-            ?? throw new InvalidOperationException(Strings.Get("ElevDidNotStart"));
-
-        var stdout = process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = process.StandardError.ReadToEndAsync(ct);
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(Limit);
-        try
+        if (result.TimedOut)
         {
-            await process.WaitForExitAsync(timeout.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            process.Kill(entireProcessTree: true);
-            throw;
+            throw new OperationCanceledException(Strings.Get("ElevTimedOut"));
         }
 
-        var output = await stdout + await stderr;
-        return new ElevRunResult(process.ExitCode, output);
+        return new ElevRunResult(result.ExitCode, result.StdOut + result.StdErr);
     }
 }
 

@@ -68,5 +68,5 @@ var host = new BrokerHost(
     Environment.ProcessId,
     mode.Value);
 
-host.Run();
+await host.RunAsync();
 return 0;
