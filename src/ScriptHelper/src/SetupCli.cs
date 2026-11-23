@@ -19,8 +19,13 @@ public static class SetupCli
         "  setup approve <projectRoot> <relativeScript> --confirm <fingerprint> <allowlistHash>\n" +
         "Run from an elevated shell. Add --allow-no-tpm only on a machine without a TPM 2.0.";
 
-    public static int Run(string[] args, ISetupCommands commands, TextWriter output)
+    public static int Run(string[] args, ISetupCommands commands, TextWriter output, IVerifyCommands? verify = null, IConfirmer? confirmer = null)
     {
+        if (args.Length == 2 && args[0] == "verify" && verify is not null && confirmer is not null)
+        {
+            return Verify(args[1], verify, confirmer, output);
+        }
+
         if (args.Length == 2 && args[0] == "register")
         {
             return Report(commands.Register(args[1]), output);
@@ -38,6 +43,44 @@ public static class SetupCli
 
         output.WriteLine(Usage);
         return 2;
+    }
+
+    // Lists each allowlisted file's approval status, then asks per file whether to approve the ones that are not approved.
+    private static int Verify(string root, IVerifyCommands verify, IConfirmer confirmer, TextWriter output)
+    {
+        var report = verify.Verify(root);
+        if (!report.Ok)
+        {
+            output.WriteLine($"refused: {report.Reason}");
+            return 1;
+        }
+
+        if (report.AllowAllActive)
+        {
+            output.WriteLine("allow-all is active for this repo: any script in it may run elevated.");
+        }
+
+        foreach (var script in report.Scripts)
+        {
+            output.WriteLine($"  {script.Status,-16} {script.Path}");
+        }
+
+        if (report.FullyApproved)
+        {
+            output.WriteLine($"All {report.Scripts.Count} allowlisted scripts are approved.");
+            return 0;
+        }
+
+        output.WriteLine("Some allowlisted scripts are not approved for you. Approve them one by one:");
+        var results = verify.ApproveUnsigned(
+            root,
+            path => confirmer.Confirm($"Approve '{path}' to run elevated for you? It is in this repo's allowlist, which your team may have changed."));
+        foreach (var result in results)
+        {
+            output.WriteLine(result.Ok ? result.Reason : $"refused: {result.Reason}");
+        }
+
+        return verify.Verify(root).FullyApproved ? 0 : 1;
     }
 
     private static int Approve(string[] args, ISetupCommands commands, TextWriter output)

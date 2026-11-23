@@ -52,12 +52,10 @@ public sealed class SetupCliTests
     [Fact]
     public void AllowAll_CallsTheSetupAndExitsZero()
     {
-        var (code, output, setup) = Run(null, "allow-all", @"C:
-epo");
+        var (code, output, setup) = Run(null, "allow-all", @"C:\repo");
 
         Assert.Equal(0, code);
-        Assert.Equal([@"allow-all C:
-epo"], setup.Calls);
+        Assert.Equal([@"allow-all C:\repo"], setup.Calls);
         Assert.Contains("allow-all approved", output);
     }
 
@@ -66,11 +64,91 @@ epo"], setup.Calls);
     {
         var setup = new RecordingSetup { AllowAllResult = new(false, "allow-all declined") };
 
-        var (code, output, _) = Run(setup, "allow-all", @"C:
-epo");
+        var (code, output, _) = Run(setup, "allow-all", @"C:\repo");
 
         Assert.Equal(1, code);
         Assert.Contains("refused: allow-all declined", output);
+    }
+
+    private sealed class FakeVerify(VerifyReport report) : IVerifyCommands
+    {
+        public List<string> Approved { get; } = [];
+
+        public VerifyReport Verify(string root) => report;
+
+        public IReadOnlyList<SetupResult> ApproveUnsigned(string root, Func<string, bool> confirm)
+        {
+            foreach (var s in report.Scripts.Where(s => s.Status != ApprovalStatus.Approved && confirm(s.Path)))
+            {
+                Approved.Add(s.Path);
+            }
+
+            return Approved.Select(p => new SetupResult(true, "approved " + p)).ToList();
+        }
+    }
+
+    private sealed class YesNo(bool answer) : AiDevHelpers.Common.Contracts.IConfirmer
+    {
+        public List<string> Prompts { get; } = [];
+
+        public bool Confirm(string prompt)
+        {
+            Prompts.Add(prompt);
+            return answer;
+        }
+    }
+
+    private static VerifyReport Report(params (string Path, ApprovalStatus Status)[] scripts) =>
+        new(true, "verified", false, scripts.Select(s => new ScriptStatus(s.Path, s.Status, "")).ToList());
+
+    [Fact]
+    public void Verify_AllApproved_ExitsZeroAndAsksNothing()
+    {
+        var output = new StringWriter();
+        var confirmer = new YesNo(true);
+
+        var code = SetupCli.Run(["verify", @"C:\repo"], new RecordingSetup(), output, new FakeVerify(Report(("a.ps1", ApprovalStatus.Approved))), confirmer);
+
+        Assert.Equal(0, code);
+        Assert.Empty(confirmer.Prompts);
+    }
+
+    [Fact]
+    public void Verify_Unsigned_AsksPerScriptAndApprovesTheConfirmedOnes()
+    {
+        var output = new StringWriter();
+        var verify = new FakeVerify(Report(("a.ps1", ApprovalStatus.Unsigned), ("b.ps1", ApprovalStatus.Changed)));
+        var confirmer = new YesNo(true);
+
+        SetupCli.Run(["verify", @"C:\repo"], new RecordingSetup(), output, verify, confirmer);
+
+        Assert.Equal(["a.ps1", "b.ps1"], verify.Approved);
+        Assert.Equal(2, confirmer.Prompts.Count);
+        Assert.Contains("a.ps1", output.ToString());
+        Assert.Contains("Unsigned", output.ToString());
+    }
+
+    [Fact]
+    public void Verify_Declined_ApprovesNothingAndExitsOne()
+    {
+        var output = new StringWriter();
+        var verify = new FakeVerify(Report(("a.ps1", ApprovalStatus.Unsigned)));
+
+        var code = SetupCli.Run(["verify", @"C:\repo"], new RecordingSetup(), output, verify, new YesNo(false));
+
+        Assert.Equal(1, code);
+        Assert.Empty(verify.Approved);
+    }
+
+    [Fact]
+    public void Verify_Refused_ExitsOne()
+    {
+        var output = new StringWriter();
+
+        var code = SetupCli.Run(["verify", @"C:\repo"], new RecordingSetup(), output, new FakeVerify(VerifyReport.Failed("project is not registered")), new YesNo(true));
+
+        Assert.Equal(1, code);
+        Assert.Contains("refused: project is not registered", output.ToString());
     }
 
     private static (int Code, string Output, RecordingSetup Setup) Run(RecordingSetup? setup, params string[] args)

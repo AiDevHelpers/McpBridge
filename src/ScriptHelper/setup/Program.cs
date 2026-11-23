@@ -53,4 +53,4 @@ var commands = new SetupCommands(
     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
     AdminOnlyDirectory.Ensure);
 
-return SetupCli.Run(commandArgs, commands, Console.Out);
+return SetupCli.Run(commandArgs, commands, Console.Out, commands, new ConsoleConfirmer());

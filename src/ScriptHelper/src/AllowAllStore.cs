@@ -76,6 +76,40 @@ public static class AllowAllStore
         return new Decision(true, "allow-all approved and unchanged");
     }
 
+    /// <summary>
+    /// True only when the repo settings file requests allowAll and the signed approval in the admin store matches that exact
+    /// file. A missing, unreadable or malformed settings file is never active.
+    /// </summary>
+    public static bool IsActive(ScriptHelperConfig config, IApprovalSigner signer, string projectId, string projectRoot, long lastSeenVersion)
+    {
+        var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(projectRoot);
+        if (!File.Exists(settings))
+            return false;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(settings));
+            var requested = doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("allowAll", out var value)
+                && value.ValueKind == JsonValueKind.True;
+            return requested && Check(
+                config.AllowAllPath(projectId),
+                signer,
+                projectId,
+                projectRoot,
+                lastSeenVersion,
+                AiDevHelpers.Common.RepoSettingsFile.Hash(settings)).Allowed;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
     private static string NormalizeRoot(string root) => Path.GetFullPath(root).TrimEnd('\\');
 
     private static byte[] Payload(AllowAllApproval a)

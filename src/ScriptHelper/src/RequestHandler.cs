@@ -85,7 +85,7 @@ public sealed class RequestHandler
 
         // Allow-all (requested by the repo's settings file, approved by this machine's admin store) replaces the manifest
         // allowlist and the per-script approval. The owner and inside-the-repo checks above still apply.
-        var allowAll = AllowAllApproved(project);
+        var allowAll = AllowAllStore.IsActive(_config, _signer, project.Id, project.Root, _versions.Get(project.Id));
 
         byte[] manifestBytes = [];
         if (!allowAll)
@@ -148,40 +148,6 @@ public sealed class RequestHandler
         var run = _runner.Run(stagedScript, request.Args, RunTimeout);
         _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(allowAll ? " allow-all" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
-    }
-
-    // True only when the repo's settings file requests allowAll and the signed approval in the admin store matches that exact file.
-    private bool AllowAllApproved(ProjectEntry project)
-    {
-        var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(project.Root);
-        if (!File.Exists(settings))
-            return false;
-
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(settings));
-            var requested = doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
-                && doc.RootElement.TryGetProperty("allowAll", out var value)
-                && value.ValueKind == System.Text.Json.JsonValueKind.True;
-            if (!requested)
-                return false;
-
-            return AllowAllStore.Check(
-                _config.AllowAllPath(project.Id),
-                _signer,
-                project.Id,
-                project.Root,
-                _versions.Get(project.Id),
-                AiDevHelpers.Common.RepoSettingsFile.Hash(settings)).Allowed;
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return false;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
     }
 
     private BrokerResponse Deny(BrokerRequest request, string reason)
