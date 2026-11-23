@@ -32,15 +32,29 @@ if ($instances.Count -eq 0) {
     return
 }
 
-# Every Visual Studio 18 instance gets the extension, stable and preview alike, all installers running at once.
-$running = foreach ($instance in $instances) {
-    $installer = Join-Path $instance.installationPath "Common7\IDE\VsixInstaller.exe"
-    if (-not (Test-Path -LiteralPath $installer)) {
-        Write-Warning "VsixInstaller.exe not found for $($instance.displayName); skipping that instance."
-        continue
-    }
-
-    Write-Host "Installing the AiDevHelpers IDE Bridge into $($instance.displayName) $($instance.catalog.productDisplayVersion)..." -ForegroundColor Cyan
-    Start-Process -FilePath $installer -ArgumentList @("/instanceIds:$($instance.instanceId)", "`"$Vsix`"") -PassThru
+# One VsixInstaller run with no /instanceIds: its dialog lists every compatible Visual Studio product with a checkbox
+# each, so all VS 18 instances (stable and preview) are offered together. Separate runs per instance hand off to the
+# first one and list a single product.
+$installer = $instances |
+    ForEach-Object { Join-Path $_.installationPath "Common7\IDE\VsixInstaller.exe" } |
+    Where-Object { Test-Path -LiteralPath $_ } |
+    Select-Object -First 1
+if (-not $installer) {
+    throw "VsixInstaller.exe was not found in any Visual Studio 18 instance."
 }
-$running | Wait-Process
+
+# The installer refuses a VSIX whose version is already installed (exit 1001), so remove the old copy from each instance
+# first. An instance without the extension returns a non-zero code here, which is fine.
+$extensionId = "AiDevHelpers.Installers.Vs2026.Installer.A2CE85F0-DEB4-4524-93AE-7854F1FC31FB"
+foreach ($instance in $instances) {
+    $remover = Join-Path $instance.installationPath "Common7\IDE\VsixInstaller.exe"
+    if (Test-Path -LiteralPath $remover) {
+        Start-Process -FilePath $remover -ArgumentList @("/quiet", "/instanceIds:$($instance.instanceId)", "/uninstall:$extensionId") -Wait | Out-Null
+    }
+}
+
+Write-Host "Installing the AiDevHelpers IDE Bridge; tick every Visual Studio instance in the dialog..." -ForegroundColor Cyan
+$process = Start-Process -FilePath $installer -ArgumentList @("`"$Vsix`"") -Wait -PassThru
+if ($process.ExitCode -ne 0) {
+    throw "VsixInstaller exited with code $($process.ExitCode)."
+}
