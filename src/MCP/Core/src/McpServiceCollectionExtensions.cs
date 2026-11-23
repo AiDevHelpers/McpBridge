@@ -29,6 +29,8 @@ public static class McpServiceCollectionExtensions
     public static IMcpServerBuilder AddAiDevHelpersMcp(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
+        services.Configure<ScriptWatchOptions>(configuration.GetSection("ScriptWatch"));
+        services.AddSingleton<ScriptRunTracker>(_ => new ScriptRunTracker());
         if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
         {
             Console.Error.WriteLine(globalAllowAll);

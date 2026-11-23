@@ -85,6 +85,9 @@
   <data name="RepoSetupUnknownAction" xml:space="preserve"><value>Error: action must be scan or status.</value></data>
   <data name="RepoSetupNextStep" xml:space="preserve"><value>Nothing was changed. Ask the user which projects should launch elevated, then have them run: elev repo-setup {0}</value></data>
   <data name="RepoSetupScanFailed" xml:space="preserve"><value>Error: the repo scan failed: {0}</value></data>
+  <data name="ScriptHungSilent" xml:space="preserve"><value>it printed nothing for {0} seconds and was stopped</value></data>
+  <data name="ScriptHungTimeout" xml:space="preserve"><value>it ran for the whole {0} second limit and was stopped</value></data>
+  <data name="ScriptRepeating" xml:space="preserve"><value>it has run {0} times in {1} minutes without finishing cleanly</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
