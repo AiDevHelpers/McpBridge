@@ -13,61 +13,12 @@ public sealed class TerminalTypesTests : IDisposable
 
     public void Dispose() => Directory.Delete(_dir, recursive: true);
 
-    private sealed class FakeProbe : ITerminalProbe
-    {
-        public HashSet<string> Files { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        public Dictionary<string, string> OnPath { get; } = new(StringComparer.OrdinalIgnoreCase);
-
-        public string? WslOutput { get; set; }
-
-        public string? VsInstall { get; set; }
-
-        public List<string> Settings { get; } = [];
-
-        public string? FindOnPath(string fileName) => OnPath.GetValueOrDefault(fileName);
-
-        public bool FileExists(string path) => Files.Contains(path);
-
-        public string? FileVersion(string path) => "1.2.3";
-
-        public string? Folder(Environment.SpecialFolder folder) => folder switch
-        {
-            Environment.SpecialFolder.System => @"C:\Windows\System32",
-            Environment.SpecialFolder.ProgramFiles => @"C:\Program Files",
-            Environment.SpecialFolder.ProgramFilesX86 => @"C:\Program Files (x86)",
-            Environment.SpecialFolder.LocalApplicationData => @"C:\Users\u\AppData\Local",
-            _ => null,
-        };
-
-        public string? Run(string fileName, IReadOnlyList<string> arguments, Encoding encoding) =>
-            fileName.EndsWith("wsl.exe", StringComparison.OrdinalIgnoreCase) ? WslOutput : VsInstall;
-
-        public IReadOnlyList<string> WindowsTerminalSettingsFiles() => Settings.Select((_, i) => "settings" + i).ToList();
-
-        public string? ReadText(string path) => Settings[int.Parse(path[8..])];
-    }
-
     private TerminalRegistry Registry() => new(Path.Combine(_dir, "terminals.json"));
-
-    private static FakeProbe Machine()
-    {
-        var probe = new FakeProbe();
-        probe.Files.UnionWith([
-            @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
-            @"C:\Windows\System32\cmd.exe",
-            @"C:\Windows\System32\wsl.exe",
-            @"C:\Program Files\Git\bin\bash.exe",
-        ]);
-        probe.OnPath["git.exe"] = @"C:\Program Files\Git\cmd\git.exe";
-        probe.WslOutput = "Ubuntu\0\r\0\n\0docker-desktop\0\r\0\n\0";
-        return probe;
-    }
 
     [Fact]
     public void TheScan_FindsInstalledTypes_AndSkipsWhatIsNotThere()
     {
-        var scan = new TerminalTypeScanner(Machine(), Registry()).Scan();
+        var scan = new TerminalTypeScanner(FakeTerminalProbe.Machine(), Registry()).Scan();
 
         var ids = scan.Types.Where(t => t.Installed).Select(t => t.Id).ToList();
         Assert.Equal(["powershell", "cmd", "gitbash", "wsl:Ubuntu"], ids);
@@ -80,7 +31,7 @@ public sealed class TerminalTypesTests : IDisposable
     [Fact]
     public void WslOutputInUtf16WithNulsAndABom_IsParsed_AndNoDistroIsAHint()
     {
-        var probe = Machine();
+        var probe = FakeTerminalProbe.Machine();
         probe.WslOutput = "\uFEFFDebian\0\r\n";
         Assert.Contains(new TerminalTypeScanner(probe, Registry()).Scan().Types, t => t.Id == "wsl:Debian" && t.Installed);
 
@@ -93,7 +44,7 @@ public sealed class TerminalTypesTests : IDisposable
     [Fact]
     public void GitBash_IsFoundFromGit_NotFromTheWslLauncher()
     {
-        var probe = Machine();
+        var probe = FakeTerminalProbe.Machine();
         probe.Files.Add(@"C:\Windows\System32\bash.exe");
 
         var bash = new TerminalTypeScanner(probe, Registry()).Scan().Types.Single(t => t.Id == "gitbash");
@@ -105,7 +56,7 @@ public sealed class TerminalTypesTests : IDisposable
     public void AnInstalledTypeThatIsNotRegistered_IsMissing_UntilRegisteredOrDeclined()
     {
         var registry = Registry();
-        var scanner = new TerminalTypeScanner(Machine(), registry);
+        var scanner = new TerminalTypeScanner(FakeTerminalProbe.Machine(), registry);
 
         Assert.Equal(["powershell", "cmd", "gitbash", "wsl:Ubuntu"], scanner.Scan().Types.Where(t => t.Missing).Select(t => t.Id).ToList());
 
@@ -119,7 +70,7 @@ public sealed class TerminalTypesTests : IDisposable
     [Fact]
     public void WindowsTerminalCoverage_CountsGeneratorsUnlessTheyAreDisabled()
     {
-        var probe = Machine();
+        var probe = FakeTerminalProbe.Machine();
         probe.Settings.Add("""{ "profiles": { "list": [] }, "disabledProfileSources": ["Git"] }""");
 
         var types = new TerminalTypeScanner(probe, Registry()).Scan();
@@ -133,7 +84,7 @@ public sealed class TerminalTypesTests : IDisposable
     [Fact]
     public void AProfileThatRunsTheTool_CountsEvenWhenTheGeneratorIsDisabled()
     {
-        var probe = Machine();
+        var probe = FakeTerminalProbe.Machine();
         probe.Settings.Add("""{ "profiles": { "list": [ { "name": "My bash", "commandline": "C:\\Program Files\\Git\\bin\\bash.exe -i" } ] }, "disabledProfileSources": ["Git"] }""");
 
         Assert.True(new TerminalTypeScanner(probe, Registry()).Scan().Types.Single(t => t.Id == "gitbash").InWindowsTerminal);

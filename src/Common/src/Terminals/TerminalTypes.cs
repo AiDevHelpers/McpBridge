@@ -163,10 +163,8 @@ public sealed class TerminalTypeScanner(ITerminalProbe probe, TerminalRegistry r
         }
 
         var system = probe.Folder(Environment.SpecialFolder.System);
-        var programFiles = probe.Folder(Environment.SpecialFolder.ProgramFiles);
-        var localApps = probe.Folder(Environment.SpecialFolder.LocalApplicationData);
 
-        var pwsh = probe.FindOnPath("pwsh.exe") ?? (programFiles is null ? null : Path.Combine(programFiles, "PowerShell", "7", "pwsh.exe"));
+        var pwsh = ToolLocator.Pwsh(probe);
         Add("pwsh", "PowerShell 7", pwsh, Quote(pwsh) + " -NoLogo", "Windows.Terminal.PowershellCore");
         if (pwsh is null || !probe.FileExists(pwsh))
             hints.Add("PowerShell 7 is not installed: winget install Microsoft.PowerShell");
@@ -174,7 +172,7 @@ public sealed class TerminalTypeScanner(ITerminalProbe probe, TerminalRegistry r
         Add("powershell", "Windows PowerShell 5.1", system is null ? null : Path.Combine(system, "WindowsPowerShell", "v1.0", "powershell.exe"), "powershell.exe -NoLogo", string.Empty);
         Add("cmd", "Command Prompt", system is null ? null : Path.Combine(system, "cmd.exe"), "cmd.exe", string.Empty);
 
-        var bash = GitBash(programFiles, localApps);
+        var bash = ToolLocator.GitBash(probe);
         Add("gitbash", "Git Bash", bash, Quote(bash) + " -i -l", "Git");
         if (bash is null || !probe.FileExists(bash))
             hints.Add("Git Bash is not installed: winget install Git.Git");
@@ -191,21 +189,6 @@ public sealed class TerminalTypeScanner(ITerminalProbe probe, TerminalRegistry r
         Add("vsdevshell", "Visual Studio Developer PowerShell", devShell, "powershell.exe -NoExit -Command \"& '" + devShell + "'\"", "Windows.Terminal.VisualStudio");
 
         return new TerminalScan(types, hints, settings.Count > 0);
-    }
-
-    private string? GitBash(string? programFiles, string? localApps)
-    {
-        var git = probe.FindOnPath("git.exe");
-        var fromGit = git is null ? null : Path.GetFullPath(Path.Combine(Path.GetDirectoryName(git)!, "..", "bin", "bash.exe"));
-        string?[] candidates =
-        [
-            fromGit,
-            programFiles is null ? null : Path.Combine(programFiles, "Git", "bin", "bash.exe"),
-            localApps is null ? null : Path.Combine(localApps, "Programs", "Git", "bin", "bash.exe"),
-        ];
-
-        // Never the WSL launcher in System32, which is also called bash.exe.
-        return candidates.FirstOrDefault(c => c is not null && probe.FileExists(c)) ?? candidates.FirstOrDefault(c => c is not null);
     }
 
     private List<string> WslDistros(string wsl)
