@@ -80,6 +80,16 @@ scripthelper-setup.exe allow-all C:\path\to\repo
 starts a broker. The MCP server runs it when a repo with an `.elevated.json` is opened in an IDE and pushes a warning naming the unapproved
 files.
 
+## Repo setup, rules, terminals and tools (unelevated `elev` verbs)
+
+These run locally, need no broker and no elevation, and ask from the console, never from arguments.
+
+- `elev --repo-scan <repo>` prints, as JSON, projects and launch scripts that need administrator rights, the repo's CI branches and checks, instruction files, hooks and what is already recorded. It writes nothing.
+- `elev repo-setup <repo>` asks per project whether to list it in `.aidevtools/elevation.json` (committed), once whether this repo should always launch elevated (`user.json`, per user), and whether to record the CI branches and checks as protected branches and required checks in `.aidevtools/repo-rules.json`. A no is remembered per user.
+- `elev rules override <repo> <id>` allows one git write that a rule refused, for 10 minutes.
+- `elev terminals scan` and `elev terminals setup [--all]` list the terminal types on the machine and, per type, register it for the helper and add a Windows Terminal profile (text insert, `.bak` backup) after a yes.
+- `scripthelper-setup.exe tools` (elevated) writes `install-tool.ps1` and its allowlist into the install folder, registers it and asks to approve it; `elev --install-tool <name>` then runs it through the broker for `pwsh`, `gitbash`, `python` or `node` (winget). The MCP `tool_install` tool uses it after the user's yes.
+
 ## Running the broker
 
 The broker must run from `%ProgramData%\AiDevHelpers\script-helper\bin`, the admin-only folder
