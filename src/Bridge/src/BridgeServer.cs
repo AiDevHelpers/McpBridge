@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -70,9 +72,7 @@ public sealed class BridgeServer : IDisposable
         {
             try
             {
-                using var server = new NamedPipeServerStream(
-                    _pipeName, PipeDirection.InOut, maxNumberOfServerInstances: 1,
-                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                using var server = CreateServerStream(_pipeName);
 
                 await server.WaitForConnectionAsync(ct).ConfigureAwait(false);
                 backoff = TimeSpan.FromMilliseconds(250);
@@ -99,6 +99,38 @@ public sealed class BridgeServer : IDisposable
         }
     }
 
+    /// <summary>
+    /// The pipe's access list: the current user, LocalSystem and Administrators. An elevated Visual Studio creates the pipe with its
+    /// elevated token, and the default list then refuses the same user's non-elevated MCP server (Administrators is deny-only in that
+    /// token), so the user's own SID is granted explicitly. No one else is, so other local users still cannot connect.
+    /// </summary>
+    public static PipeSecurity CreatePipeSecurity()
+    {
+        var security = new PipeSecurity();
+        var user = WindowsIdentity.GetCurrent().User;
+        if (user is not null)
+        {
+            security.AddAccessRule(new PipeAccessRule(user, PipeAccessRights.ReadWrite, AccessControlType.Allow));
+        }
+
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        return security;
+    }
+
+    private static NamedPipeServerStream CreateServerStream(string pipeName)
+    {
+        var security = CreatePipeSecurity();
+#if NETFRAMEWORK
+        return new NamedPipeServerStream(
+            pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, security);
+#else
+        return NamedPipeServerStreamAcl.Create(
+            pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, security);
+#endif
+    }
     private async Task HandleAsync(Stream stream, CancellationToken ct)
     {
         using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
