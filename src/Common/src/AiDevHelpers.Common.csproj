@@ -7,6 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>AiDevHelpers.Common</RootNamespace>
     <AssemblyName>AiDevHelpers.Common</AssemblyName>
+    <PackageId>AiDevHelpers.Common</PackageId>
+    <IsPackable>true</IsPackable>
+    <Authors>AiDevHelpers</Authors>
+    <RepositoryUrl>https://github.com/AiDevHelpers/McpBridge</RepositoryUrl>
+    <Description>AiDevHelpers Common: shared process runner and contracts used by the helper packages.</Description>
   </PropertyGroup>
 
   <ItemGroup>
