@@ -94,7 +94,11 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
             return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = true, instance_pid = existing.Pid });
         }
 
-        var error = DevenvLauncher.Open(solutionPath);
+        var error = DevenvLauncher.Open(solutionPath, out var startedPid);
+        if (error is null && startedPid is { } launched)
+        {
+            StartingInstances.Write(launched, solutionPath);
+        }
         if (error is not null)
         {
             return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
@@ -109,6 +113,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
                 && string.Equals(Path.GetFullPath(i.SolutionPath), Path.GetFullPath(solutionPath), StringComparison.OrdinalIgnoreCase));
             if (started is not null && BridgeAnswers(started))
             {
+                StartingInstances.Clear(started.Pid);
                 return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = false, instance_pid = started.Pid, bridge_ready = true });
             }
 

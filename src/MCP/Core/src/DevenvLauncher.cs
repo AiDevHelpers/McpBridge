@@ -42,8 +42,12 @@ internal static class DevenvLauncher
     }
 
     /// <summary>Starts devenv with the solution. Returns an error message, or null when the launch started.</summary>
-    public static string? Open(string solutionPath)
+    public static string? Open(string solutionPath) => Open(solutionPath, out _);
+
+    /// <summary>Like <see cref="Open(string)"/>, and also returns the pid of the devenv it started, when it knows it (an elevated launch does not).</summary>
+    public static string? Open(string solutionPath, out int? pid)
     {
+        pid = null;
         var devenv = Find();
         if (devenv is null)
         {
@@ -64,7 +68,8 @@ internal static class DevenvLauncher
             }
         }
 
-        Process.Start(new ProcessStartInfo(devenv) { UseShellExecute = false, ArgumentList = { solutionPath } });
+        using var started = Process.Start(new ProcessStartInfo(devenv) { UseShellExecute = false, ArgumentList = { solutionPath } });
+        pid = started?.Id;
         return null;
     }
 }

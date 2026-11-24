@@ -92,6 +92,8 @@ public static class IdeInstanceRouter
         {
             count = instances.Count,
             instances = instances.Select(Describe),
+            // Launched but the bridge has not answered yet: listed so a caller can see it is still starting.
+            starting = StartingInstances.List(),
         });
     }
 
