@@ -68,18 +68,33 @@ internal sealed class SourceControlTools
 
     [McpServerTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
-                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply.")]
+                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. " +
+                 "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
+                 "and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them.")]
     public static async Task<string> GitPlan(
         [Description("Repo folder")] string repoPath,
-        [Description("One of the write actions above")] string action,
+        [Description("One of the write actions above (leave out when sequence is given)")] string? action,
         [Description("Paths, for stage")] string[]? paths = null,
         [Description("Commit message, for commit")] string? message = null,
         [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null,
+        [Description("Write actions to run in order under one token, e.g. stage, commit, push")] string[]? sequence = null,
         CancellationToken ct = default)
     {
+        var hasSequence = sequence is { Length: > 0 };
+        if (hasSequence == (action is not null))
+        {
+            return Json(new { ok = false, error = "Give either action or sequence, not both and not neither." });
+        }
+
         try
         {
-            var pending = await Service.PlanAsync(repoPath, action, paths, message, branch, ct);
+            if (hasSequence)
+            {
+                var planned = await Service.PlanSequenceAsync(repoPath, sequence!, paths, message, branch, ct);
+                return Json(new { ok = true, token = planned.Token, sequence = sequence, command = planned.Description });
+            }
+
+            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct);
             return Json(new { ok = true, token = pending.Token, action = pending.Action, command = pending.Description });
         }
         catch (ArgumentException ex)

@@ -24,6 +24,9 @@ public sealed record PendingWrite(
     string? Branch = null,
     bool Overridden = false);
 
+/// <summary>Several writes planned under one token. They run in order at confirm and the first failure stops the rest.</summary>
+public sealed record PendingSequence(string Token, IReadOnlyList<PendingWrite> Steps, string Description);
+
 /// <summary>
 /// Git status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step:
 /// Plan returns the exact git command and a token, and Confirm runs it once (D7, as in the extension Add flow).
@@ -32,6 +35,7 @@ public sealed record PendingWrite(
 public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules = null)
 {
     private readonly ConcurrentDictionary<string, PendingWrite> _pending = new();
+    private readonly ConcurrentDictionary<string, PendingSequence> _sequences = new();
 
     public static readonly IReadOnlyList<string> WriteActions =
         ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply"];
@@ -78,7 +82,49 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         string? branch = null,
         CancellationToken ct = default)
     {
-        var overridden = false;
+        var overridden = await CheckRulesAsync(repoPath, action, branch, ct);
+        return Register(BuildPending(repoPath, action, paths, message, branch, overridden));
+    }
+
+    /// <summary>
+    /// Plans several writes under one token. Each action is checked against the rules at plan time. paths, message and branch
+    /// go to every step that needs them. Nothing runs until <see cref="ConfirmAsync"/>, which runs the steps in order and stops at the first failure.
+    /// </summary>
+    public async Task<PendingSequence> PlanSequenceAsync(
+        string repoPath,
+        IReadOnlyList<string> actions,
+        IReadOnlyList<string>? paths = null,
+        string? message = null,
+        string? branch = null,
+        CancellationToken ct = default)
+    {
+        if (actions.Count == 0)
+        {
+            throw new ArgumentException(Strings.Get("SequenceNeedsSteps"), nameof(actions));
+        }
+
+        var steps = new List<PendingWrite>();
+        foreach (var action in actions)
+        {
+            var overridden = await CheckRulesAsync(repoPath, action, branch, ct);
+            steps.Add(BuildPending(repoPath, action, paths, message, branch, overridden));
+        }
+
+        var sequence = new PendingSequence(
+            Token: Guid.NewGuid().ToString("N"),
+            Steps: steps,
+            Description: string.Join(" && ", steps.Select(s => s.Description)));
+        _sequences[sequence.Token] = sequence;
+        return sequence;
+    }
+
+    /// <summary>Plans a write without checking the rules. Returns the exact command and a token; runs nothing. The tools use <see cref="PlanAsync"/>.</summary>
+    public PendingWrite Plan(string repoPath, string action, IReadOnlyList<string>? paths = null, string? message = null, string? branch = null) =>
+        Register(BuildPending(repoPath, action, paths, message, branch, overridden: false));
+
+    // Returns true when a rule refused the write and a waiver was used for it. Throws when a rule refuses and no waiver is left.
+    private async Task<bool> CheckRulesAsync(string repoPath, string action, string? branch, CancellationToken ct)
+    {
         if (rules?.For(repoPath) is { } source && !source.Rules.IsEmpty && WriteActions.Contains(action))
         {
             var current = RuleGuard.NeedsCurrentBranch(action, branch) ? await CurrentBranchAsync(repoPath, ct) : null;
@@ -90,18 +136,20 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
                     throw new RuleRefusedException(refusal.Message + " " + Strings.Format("RuleOverrideHint", source.Root, id));
                 }
 
-                overridden = true;
+                return true;
             }
         }
 
-        return PlanCore(repoPath, action, paths, message, branch, overridden);
+        return false;
     }
 
-    /// <summary>Plans a write without checking the rules. Returns the exact command and a token; runs nothing. The tools use <see cref="PlanAsync"/>.</summary>
-    public PendingWrite Plan(string repoPath, string action, IReadOnlyList<string>? paths = null, string? message = null, string? branch = null) =>
-        PlanCore(repoPath, action, paths, message, branch, overridden: false);
+    private PendingWrite Register(PendingWrite pending)
+    {
+        _pending[pending.Token] = pending;
+        return pending;
+    }
 
-    private PendingWrite PlanCore(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden)
+    private static PendingWrite BuildPending(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden)
     {
         if (!WriteActions.Contains(action))
         {
@@ -109,7 +157,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         }
 
         var args = BuildArguments(action, paths, message, branch);
-        var pending = new PendingWrite(
+        return new PendingWrite(
             Token: Guid.NewGuid().ToString("N"),
             Action: action,
             Description: "git " + string.Join(" ", args.Select(Quote)),
@@ -117,31 +165,71 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             RepoPath: repoPath,
             Branch: branch,
             Overridden: overridden);
-        _pending[pending.Token] = pending;
-        return pending;
     }
 
     /// <summary>
-    /// Runs a planned write once. An unknown or reused token is refused. The rules are checked again here, so a rule added between
-    /// plan and confirm is seen; a write that was waived at plan time is not checked again.
+    /// Runs a planned write, or a planned sequence, once. An unknown or reused token is refused. The rules are checked again here,
+    /// so a rule added between plan and confirm is seen; a write that was waived at plan time is not checked again.
     /// </summary>
     public async Task<GitResult> ConfirmAsync(string token, CancellationToken ct = default)
     {
+        if (_sequences.TryRemove(token, out var sequence))
+        {
+            return await RunSequenceAsync(sequence, ct);
+        }
+
         if (!_pending.TryRemove(token, out var pending))
         {
             return new GitResult(false, -1, Strings.Get("UnknownToken"));
         }
 
-        if (!pending.Overridden && rules?.For(pending.RepoPath) is { } source && !source.Rules.IsEmpty)
+        if (await RefusalAsync(pending, ct) is { } refusal)
         {
-            var current = RuleGuard.NeedsCurrentBranch(pending.Action, pending.Branch) ? await CurrentBranchAsync(pending.RepoPath, ct) : null;
-            if (RuleGuard.Check(source.Rules, pending.Action, pending.Branch, current) is { } refusal)
-            {
-                return new GitResult(false, -1, Strings.Format("RulesChangedBeforeConfirm", refusal.Message));
-            }
+            return new GitResult(false, -1, Strings.Format("RulesChangedBeforeConfirm", refusal));
         }
 
         return await git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+    }
+
+    // Runs each step in order, logging each command. The first refused or failed step stops the sequence.
+    private async Task<GitResult> RunSequenceAsync(PendingSequence sequence, CancellationToken ct)
+    {
+        var log = new StringBuilder();
+        foreach (var step in sequence.Steps)
+        {
+            log.Append("$ ").Append(step.Description).Append('\n');
+            if (await RefusalAsync(step, ct) is { } refusal)
+            {
+                log.Append(Strings.Format("RulesChangedBeforeConfirm", refusal)).Append('\n');
+                return new GitResult(false, -1, log.ToString());
+            }
+
+            var result = await git.RunAsync(step.RepoPath, step.Arguments, ct);
+            log.Append(result.Output);
+            if (!result.Ok)
+            {
+                return new GitResult(false, result.ExitCode, log.ToString());
+            }
+
+            if (!result.Output.EndsWith('\n'))
+            {
+                log.Append('\n');
+            }
+        }
+
+        return new GitResult(true, 0, log.ToString());
+    }
+
+    // The refusal message when the rules now refuse a planned write, or null. A write waived at plan time is not checked again.
+    private async Task<string?> RefusalAsync(PendingWrite pending, CancellationToken ct)
+    {
+        if (pending.Overridden || rules?.For(pending.RepoPath) is not { } source || source.Rules.IsEmpty)
+        {
+            return null;
+        }
+
+        var current = RuleGuard.NeedsCurrentBranch(pending.Action, pending.Branch) ? await CurrentBranchAsync(pending.RepoPath, ct) : null;
+        return RuleGuard.Check(source.Rules, pending.Action, pending.Branch, current)?.Message;
     }
 
     // The checked-out branch, or null when git cannot say (a detached HEAD reports "HEAD", which no rule names).

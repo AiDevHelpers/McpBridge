@@ -179,6 +179,55 @@ public sealed class SourceControlServiceTests : IAsyncLifetime, IDisposable
     }
 
     [Fact]
+    public async Task SequenceRunsEveryStepUnderOneToken()
+    {
+        File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
+
+        var sequence = await _service.PlanSequenceAsync(_repo, ["stage", "commit"], paths: ["a.txt"], message: "second");
+
+        Assert.Equal(2, sequence.Steps.Count);
+        Assert.Equal('M', Assert.Single((await _service.StatusAsync(_repo)).Changes).WorkTree);
+        var result = await _service.ConfirmAsync(sequence.Token);
+        Assert.True(result.Ok, result.Output);
+        Assert.Contains("$ git add -- a.txt", result.Output);
+        Assert.Contains("$ git commit -m second", result.Output);
+        Assert.Empty((await _service.StatusAsync(_repo)).Changes);
+    }
+
+    [Fact]
+    public async Task SequenceStopsAtTheFirstFailure()
+    {
+        File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
+
+        var sequence = await _service.PlanSequenceAsync(_repo, ["stage", "commit"], paths: ["missing.txt"], message: "second");
+        var result = await _service.ConfirmAsync(sequence.Token);
+
+        Assert.False(result.Ok);
+        Assert.Contains("$ git add -- missing.txt", result.Output);
+        Assert.DoesNotContain("$ git commit", result.Output);
+        Assert.Equal('M', Assert.Single((await _service.StatusAsync(_repo)).Changes).WorkTree);
+    }
+
+    [Fact]
+    public async Task SequenceTokenCannotBeUsedTwice()
+    {
+        File.WriteAllText(Path.Combine(_repo, "a.txt"), "two\n");
+        var sequence = await _service.PlanSequenceAsync(_repo, ["stage"], paths: ["a.txt"]);
+        await _service.ConfirmAsync(sequence.Token);
+
+        var again = await _service.ConfirmAsync(sequence.Token);
+
+        Assert.False(again.Ok);
+        Assert.Contains("Unknown or already used token", again.Output);
+    }
+
+    [Fact]
+    public async Task EmptySequenceIsRefused()
+    {
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.PlanSequenceAsync(_repo, []));
+    }
+
+    [Fact]
     public void UnknownActionIsRefused()
     {
         Assert.Throws<ArgumentException>(() => _service.Plan(_repo, "rebase_hard"));

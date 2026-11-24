@@ -13,6 +13,7 @@
   <data name="RuleOverrideHint" xml:space="preserve"><value>To allow this one write, the user can run in a console: elev rules override "{0}" {1}. Then plan it again.</value></data>
   <data name="RulesChangedBeforeConfirm" xml:space="preserve"><value>The repo's rules changed since this write was planned and it is now refused. {0}</value></data>
   <data name="UnknownToken" xml:space="preserve"><value>Unknown or already used token. Plan the write again.</value></data>
+  <data name="SequenceNeedsSteps" xml:space="preserve"><value>A sequence needs at least one action.</value></data>
   <data name="StageNeedsPath" xml:space="preserve"><value>stage needs at least one path.</value></data>
   <data name="CommitNeedsMessage" xml:space="preserve"><value>commit needs a message.</value></data>
   <data name="CreateBranchNeedsName" xml:space="preserve"><value>create_branch needs a branch name.</value></data>
