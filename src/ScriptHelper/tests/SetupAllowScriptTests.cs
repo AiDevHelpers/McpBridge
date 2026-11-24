@@ -68,6 +68,47 @@ public sealed class SetupAllowScriptTests : IDisposable
     }
 
     [Fact]
+    public void TheCliVerb_PassesTheScriptAndItsArgumentsThrough()
+    {
+        var allow = new RecordingAllow();
+
+        var exit = SetupCli.Run(["allow-script", @"C:\repo", "scripts/a.ps1", "-Fast", "x y"], new NoSetup(), new StringWriter(), allow: allow);
+
+        Assert.Equal(0, exit);
+        Assert.Equal((@"C:\repo", "scripts/a.ps1"), (allow.Root, allow.Script));
+        Assert.Equal(["-Fast", "x y"], allow.Args);
+        Assert.Equal(2, SetupCli.Run(["allow-script", @"C:\repo"], new NoSetup(), new StringWriter(), allow: allow));
+    }
+
+    private sealed class RecordingAllow : IAllowCommands
+    {
+        public string? Root { get; private set; }
+
+        public string? Script { get; private set; }
+
+        public IReadOnlyList<string> Args { get; private set; } = [];
+
+        public AiDevHelpers.Common.Contracts.SetupResult AllowScript(string root, string relativeScript, IReadOnlyList<string> args)
+        {
+            (Root, Script, Args) = (root, relativeScript, args);
+            return new AiDevHelpers.Common.Contracts.SetupResult(true, "allowed");
+        }
+    }
+
+    private sealed class NoSetup : AiDevHelpers.Common.Contracts.ISetupCommands
+    {
+        public AiDevHelpers.Common.Contracts.SetupResult Register(string root) => throw new NotSupportedException();
+
+        public AiDevHelpers.Common.Contracts.SetupResult Approve(string root, string relativeScript) => throw new NotSupportedException();
+
+        public AiDevHelpers.Common.Contracts.ApprovalPreview PrepareApproval(string root, string relativeScript) => throw new NotSupportedException();
+
+        public AiDevHelpers.Common.Contracts.SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash) => throw new NotSupportedException();
+
+        public AiDevHelpers.Common.Contracts.SetupResult AllowAll(string root) => throw new NotSupportedException();
+    }
+
+    [Fact]
     public void ANo_WritesNothing()
     {
         var c = Commands(new Answer(false));
