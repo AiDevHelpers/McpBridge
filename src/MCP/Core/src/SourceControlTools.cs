@@ -73,7 +73,7 @@ internal sealed class SourceControlTools
                  "and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them.")]
     public static async Task<string> GitPlan(
         [Description("Repo folder")] string repoPath,
-        [Description("One of the write actions above (leave out when sequence is given)")] string? action,
+        [Description("One of the write actions above (leave out when sequence is given)")] string? action = null,
         [Description("Paths, for stage")] string[]? paths = null,
         [Description("Commit message, for commit")] string? message = null,
         [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null,
@@ -81,7 +81,8 @@ internal sealed class SourceControlTools
         CancellationToken ct = default)
     {
         var hasSequence = sequence is { Length: > 0 };
-        if (hasSequence == (action is not null))
+        var hasAction = !string.IsNullOrWhiteSpace(action);
+        if (hasSequence == hasAction)
         {
             return Json(new { ok = false, error = Strings.Get("SequenceChoice") });
         }

@@ -63,7 +63,20 @@ public sealed class GatePlannerTests : IDisposable
 
         var names = GatePlanner.DetectStack(_root).Select(s => s.Name).ToList();
 
-        Assert.Equal(["dotnet outdated", "dotnet clean", "dotnet build", "dotnet test"], names.Take(4));
+        Assert.Equal(
+            ["dotnet outdated", "dotnet clean", "dotnet build", "dotnet lint", "dotnet format", "dotnet rebuild", "dotnet test"],
+            names.Take(7));
+    }
+
+    [Fact]
+    public void DotnetDefaultBuildsWithWarningsAsErrors()
+    {
+        Write("App.sln", string.Empty);
+
+        var steps = GatePlanner.DetectStack(_root);
+
+        Assert.Contains(steps, s => s.Name == "dotnet build" && s.Arguments.Contains("-warnaserror"));
+        Assert.Contains(steps, s => s.Name == "dotnet rebuild" && s.Arguments.Contains("-warnaserror"));
     }
 
     [Fact]

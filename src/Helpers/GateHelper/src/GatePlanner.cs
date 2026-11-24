@@ -125,9 +125,15 @@ public static class GatePlanner
         if (solution is not null)
         {
             var sln = Path.GetFileName(solution);
+            // Clean, then build with warnings as errors so every notice, warning and error shows up and fails the gate.
+            // Then analyzers (lint), format all code, rebuild because format may have changed files, and run all tests.
+            // Visual Studio's Code Cleanup profile is IDE-only; it runs through the IDE tools, not this list.
             steps.Add(new GateStep("dotnet outdated", "dotnet", ["list", sln, "package", "--outdated"], AllowFailure: true));
-            steps.Add(new GateStep("dotnet clean", "dotnet", ["clean", sln]));
-            steps.Add(new GateStep("dotnet build", "dotnet", ["build", sln, "-c", "Release"]));
+            steps.Add(new GateStep("dotnet clean", "dotnet", ["clean", sln, "-c", "Release"]));
+            steps.Add(new GateStep("dotnet build", "dotnet", ["build", sln, "-c", "Release", "--no-incremental", "-warnaserror"]));
+            steps.Add(new GateStep("dotnet lint", "dotnet", ["format", "analyzers", sln, "--verify-no-changes"]));
+            steps.Add(new GateStep("dotnet format", "dotnet", ["format", sln]));
+            steps.Add(new GateStep("dotnet rebuild", "dotnet", ["build", sln, "-c", "Release", "--no-incremental", "-warnaserror"]));
             steps.Add(new GateStep("dotnet test", "dotnet", ["test", sln, "-c", "Release"]));
         }
 

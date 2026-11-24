@@ -101,3 +101,6 @@ SourceControlHelper|not protected
 
 # The command line shown to the user in an install plan. It is the command that runs, not prose.
 MCP.Core|winget install --id {entry.PackageId} --exact --source winget
+GateHelper|dotnet lint
+GateHelper|dotnet format
+GateHelper|dotnet rebuild
