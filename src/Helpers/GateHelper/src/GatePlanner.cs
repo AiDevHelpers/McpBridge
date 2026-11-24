@@ -225,8 +225,11 @@ internal static class BuildSummary
 
     public static string Of(string output)
     {
+        // MSBuild repeats each diagnostic (inline, then in the summary), so count each file, line, code and project once.
         var groups = Diagnostic.Matches(output)
-            .Select(m => (Project: m.Groups["project"].Value, Kind: m.Groups["kind"].Value))
+            .Select(m => (Project: m.Groups["project"].Value, Kind: m.Groups["kind"].Value, Key: m.Value))
+            .DistinctBy(d => d.Key)
+            .Select(d => (d.Project, d.Kind))
             .GroupBy(d => d.Project)
             .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
             .Select(g => "  " + Strings.Format("BuildCountLine", Path.GetFileName(g.Key), g.Count(d => d.Kind == "error"), g.Count(d => d.Kind == "warning")))
