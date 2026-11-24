@@ -14,7 +14,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 ///     (<c>ide</c>, <c>instance_pid</c>, <c>solution_path</c>), so the caller always knows what it acted on.
 /// </summary>
 [McpServerToolType]
-internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
+internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? elevRunner = null)
 {
     private static readonly TimeSpan BridgeReadyTimeout = TimeSpan.FromSeconds(60);
 
@@ -77,7 +77,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
     [McpServerTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
-    public static string IdeOpenSolution(
+    public async Task<string> IdeOpenSolution(
         [Description("Full path of the .sln")] string solutionPath)
     {
         if (!File.Exists(solutionPath))
@@ -94,14 +94,26 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
             return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = true, instance_pid = existing.Pid });
         }
 
-        var error = DevenvLauncher.Open(solutionPath, out var startedPid);
-        if (error is null && startedPid is { } launched)
+        // With an approved allow-all for the repo and an elevation policy, the launch goes through the broker's run channel,
+        // so no UAC prompt. Otherwise the normal launch (with its own UAC prompt when elevation is needed) is used.
+        var brokered = await TryBrokerLaunchAsync(solutionPath);
+        if (brokered.Error is not null)
         {
-            StartingInstances.Write(launched, solutionPath);
+            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = brokered.Error });
         }
-        if (error is not null)
+
+        if (!brokered.Used)
         {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
+            var error = DevenvLauncher.Open(solutionPath, out var startedPid);
+            if (error is null && startedPid is { } launched)
+            {
+                StartingInstances.Write(launched, solutionPath);
+            }
+
+            if (error is not null)
+            {
+                return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
+            }
         }
 
         // Return only once the new instance has registered and its bridge answers, so a follow-up call does not race it.
@@ -127,6 +139,57 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
             bridge_ready = false,
             error = Strings.Get("OpenBridgeNotReady"),
         });
+    }
+
+    // Repo-relative script that starts devenv. It runs through the broker, so it is covered by the repo's allow-all approval.
+    private const string OpenScript = ".aidevtools/open-solution.ps1";
+
+    private async Task<(bool Used, string? Error)> TryBrokerLaunchAsync(string solutionPath)
+    {
+        if (elevRunner is null)
+        {
+            return (false, null);
+        }
+
+        var full = Path.GetFullPath(solutionPath);
+        var repo = AiDevHelpers.Common.RepoSettingsFile.FindRepoRootFromFolder(Path.GetDirectoryName(full));
+        if (repo is null || !AiDevHelpers.Common.ElevationPolicy.Decide(full).Elevated || !AllowAllApproved(repo))
+        {
+            return (false, null);
+        }
+
+        var result = await elevRunner.RunAsync(repo, OpenScript, [full], CancellationToken.None);
+        return result.ExitCode == 0
+            ? (true, null)
+            : (true, Strings.Format("ElevatedOpenFailed", result.ExitCode, result.Output));
+    }
+
+    // True when this repo's settings file still has the hash the person approved allow-all for.
+    private static bool AllowAllApproved(string repo)
+    {
+        var user = AiDevHelpers.Common.RepoSettingsFile.UserFilePath(repo);
+        if (!File.Exists(user))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(user));
+            if (!doc.RootElement.TryGetProperty("allowAll", out var entry))
+            {
+                return false;
+            }
+
+            var recorded = entry.GetProperty("settingsHash").GetString();
+            var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(repo);
+            return File.Exists(settings)
+                && string.Equals(recorded, AiDevHelpers.Common.RepoSettingsFile.Hash(settings), StringComparison.OrdinalIgnoreCase);
+        }
+        catch (Exception ex) when (ex is JsonException or IOException or KeyNotFoundException or InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     [McpServerTool]

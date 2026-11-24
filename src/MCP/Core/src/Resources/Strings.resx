@@ -122,6 +122,7 @@
   <data name="NoTestProjects" xml:space="preserve"><value>No test project found under {0}.</value></data>
   <data name="WatchExitedEarly" xml:space="preserve"><value>dotnet watch test exited at once with code {0}.</value></data>
   <data name="NoSolutionIn" xml:space="preserve"><value>No .slnx or .sln file in {0}.</value></data>
+  <data name="ElevatedOpenFailed" xml:space="preserve"><value>The elevated open failed (exit {0}): {1}</value></data>
   <data name="OpenBridgeNotReady" xml:space="preserve"><value>devenv started, but the bridge did not answer in time. Check ide_list_instances and ide_bridge_health before retrying; do not open the solution again.</value></data>
   <data name="TestHostTokenUnknown" xml:space="preserve"><value>Unknown or already used token. List the test hosts again.</value></data>
   <data name="TestHostGone" xml:space="preserve"><value>Already exited, or its process id was reused by another process.</value></data>
