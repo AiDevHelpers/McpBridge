@@ -38,7 +38,7 @@ public static class AllowlistVerifier
         var allowAll = AllowAllStore.IsActive(config, signer, project.Id, project.Root, lastSeen);
         var allowlistHash = Fingerprint.Sha256Hex(manifestBytes);
         var approvalsPath = config.ApprovalsPath(project.Id);
-        var folderGlobs = FolderAllowStore.ActiveGlobs(config.FolderAllowDirectory, signer);
+        var folderGlobs = FolderAllowStore.ActiveGlobs(config.FolderAllowDirectory, signer, versions);
         var scripts = new List<ScriptStatus>();
 
         foreach (var rel in RepoFiles(project.Root).Where(r => Allowlist.IsPathListed(manifest.Entries, r)).Order(StringComparer.Ordinal))

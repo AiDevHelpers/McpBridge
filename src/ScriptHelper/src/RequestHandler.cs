@@ -143,7 +143,7 @@ public sealed class RequestHandler
 
         // A folder grant (allow-folder) covers any script whose full path matches its glob, and skips the same checks as allow-all.
         var folderAllowed = !allowAll && FolderAllowStore.Allows(
-            _config.FolderAllowDirectory, _signer, Path.GetFullPath(resolved.FullPath));
+            _config.FolderAllowDirectory, _signer, _versions, Path.GetFullPath(resolved.FullPath));
         var skipApproval = allowAll || folderAllowed;
 
         byte[] manifestBytes = [];

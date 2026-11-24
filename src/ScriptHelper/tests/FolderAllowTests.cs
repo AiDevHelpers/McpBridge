@@ -36,6 +36,8 @@ public sealed class FolderAllowTests : IDisposable
         if (Directory.Exists(_base)) Directory.Delete(_base, recursive: true);
     }
 
+    private VersionCounter Versions => new(_config.VersionsDirectory);
+
     private SetupCommands Commands(IConfirmer confirmer, IElevationCheck? elevation = null) => new(
         _config, elevation ?? _elevation, new FakeVolumes(), new FakeInspector(), new FakeInterpreter(), _signer, confirmer, @"C:\Users\tester",
         p => Directory.CreateDirectory(p));
@@ -94,8 +96,21 @@ public sealed class FolderAllowTests : IDisposable
         var r = Commands(new CountingConfirmer(2)).AllowFolder(Glob);
 
         Assert.True(r.Ok, r.Reason);
-        Assert.True(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, @"F:\src\tools\deep\run.ps1"));
-        Assert.False(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, @"G:\x.ps1"));
+        Assert.True(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, Versions, @"F:\src\tools\deep\run.ps1"));
+        Assert.False(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, Versions, @"G:\x.ps1"));
+    }
+
+    [Fact]
+    public void OlderGrantFileCopiedBack_IsRefusedAsReplay()
+    {
+        Commands(new CountingConfirmer(2)).AllowFolder(Glob);
+        var file = FolderAllowStore.PathFor(_config.FolderAllowDirectory, Glob);
+        var first = File.ReadAllBytes(file);
+
+        Commands(new CountingConfirmer(2)).AllowFolder(Glob);
+        File.WriteAllBytes(file, first);
+
+        Assert.False(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, Versions, @"F:\src\tools\deep\run.ps1"));
     }
 
     [Fact]
@@ -105,7 +120,7 @@ public sealed class FolderAllowTests : IDisposable
         var file = FolderAllowStore.PathFor(_config.FolderAllowDirectory, Glob);
         File.WriteAllText(file, File.ReadAllText(file).Replace("**", "*"));
 
-        Assert.False(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, @"F:\src\tools\deep\run.ps1"));
+        Assert.False(FolderAllowStore.Allows(_config.FolderAllowDirectory, _signer, Versions, @"F:\src\tools\deep\run.ps1"));
     }
 
     [Fact]

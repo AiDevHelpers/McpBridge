@@ -229,7 +229,7 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
             return Fail("folder allow declined at the second confirmation");
         }
 
-        FolderAllowStore.Save(_config.FolderAllowDirectory, normalized, _signer);
+        FolderAllowStore.Save(_config.FolderAllowDirectory, normalized, _signer, Versions);
         return new SetupResult(true, $"folder allow approved for '{normalized}'");
     }
 
