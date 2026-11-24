@@ -25,6 +25,15 @@ public sealed class ToolInstallService(IElevInstaller installer, ITerminalProbe 
     private readonly Func<DateTime> _now = clock ?? (() => DateTime.UtcNow);
     private readonly ConcurrentDictionary<string, InstallPlan> _pending = new();
 
+    // The program each installable tool provides, used to see whether it is already on PATH.
+    private static readonly Dictionary<string, string> ExecutableOf = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["pwsh"] = "pwsh.exe",
+        ["gitbash"] = "git.exe",
+        ["python"] = "python.exe",
+        ["node"] = "node.exe",
+    };
+
     public InstallOutcome Plan(string tool)
     {
         if (string.Equals(tool, "wsl", StringComparison.OrdinalIgnoreCase))
@@ -34,6 +43,10 @@ public sealed class ToolInstallService(IElevInstaller installer, ITerminalProbe 
         {
             return new InstallOutcome(false, null, Strings.Format("InstallUnknownTool", tool, string.Join(", ", InstallableTools.All.Select(t => t.Name))));
         }
+
+        // Already on PATH: nothing to install, so no plan and no token. Checked before winget, which is not needed then.
+        if (ExecutableOf.TryGetValue(entry.Name, out var exe) && probe.FindOnPath(exe) is { } existing)
+            return new InstallOutcome(true, Strings.Format("InstallAlreadyPresent", entry.Display, existing), null);
 
         if (probe.FindOnPath("winget.exe") is null)
             return new InstallOutcome(false, null, Strings.Get("InstallNoWinget"));

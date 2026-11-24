@@ -24,6 +24,7 @@ internal static class TestSummaryParser
     public static string ParseLatest(string searchOutputJson)
     {
         string? line = null;
+        var running = false;
         var failures = new List<string>();
         var details = new List<object>();
         try
@@ -40,6 +41,7 @@ internal static class TestSummaryParser
             {
                 var all = lines.EnumerateArray().Select(l => l.GetString() ?? string.Empty).ToList();
                 var last = all.FindLastIndex(l => SummaryLine.IsMatch(l));
+                running = last < 0 && all.Any(l => l.Contains("Starting:", StringComparison.Ordinal) || l.Contains("VSTest Adapter", StringComparison.Ordinal));
                 if (last >= 0)
                 {
                     line = all[last];
@@ -65,7 +67,10 @@ internal static class TestSummaryParser
 
         if (line is null)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("NoFinishedTestRunInPane") });
+            // A run that has started (adapter or "Starting:" lines) but has no summary yet is still running, not missing.
+            return running
+                ? JsonSerializer.Serialize(new { ok = false, running = true, error = Strings.Get("TestRunStillRunning") })
+                : JsonSerializer.Serialize(new { ok = false, running = false, error = Strings.Get("NoFinishedTestRunInPane") });
         }
 
         var m = SummaryLine.Match(line);

@@ -102,6 +102,7 @@
   <data name="InstallUnknownTool" xml:space="preserve"><value>Error: '{0}' is not a tool this helper installs. It installs only: {1}.</value></data>
   <data name="InstallNoWinget" xml:space="preserve"><value>Error: winget is not installed, so nothing can be installed. Get App Installer from the Microsoft Store (aka.ms/getwinget).</value></data>
   <data name="InstallWslInstructions" xml:space="preserve"><value>WSL is not installed by this helper because it needs a restart. In an elevated terminal run: wsl --install</value></data>
+  <data name="InstallAlreadyPresent" xml:space="preserve"><value>{0} is already installed at {1}. No install is needed; do not offer one.</value></data>
   <data name="InstallPlanned" xml:space="preserve"><value>Ask the user whether to install {0}. Show them the command. Only if they say yes, call tool_install with action confirm and this token (it works once, for 15 minutes). If they say no, call tool_install with action decline.</value></data>
   <data name="InstallNeedsAdmin" xml:space="preserve"><value>It installs machine-wide, so Windows may ask for administrator rights (one prompt when the elevated helper starts).</value></data>
   <data name="InstallUnknownToken" xml:space="preserve"><value>Error: unknown, used or expired token. Plan the install again.</value></data>
@@ -115,6 +116,7 @@
   <data name="RepoSetupNeedsDecisions" xml:space="preserve"><value>Error: action apply needs decisions, a JSON object with projects, declineProjects, protectedBranches, requiredChecks, declineRules and mode.</value></data>
   <data name="RepoSetupNothingChanged" xml:space="preserve"><value>Nothing was changed.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
+  <data name="TestRunStillRunning" xml:space="preserve"><value>The test run has started but has not finished yet. Wait, then call ide_get_test_summary again.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
   <data name="NoTestProjects" xml:space="preserve"><value>No test project found under {0}.</value></data>

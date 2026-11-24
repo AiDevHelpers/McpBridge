@@ -104,3 +104,7 @@ MCP.Core|winget install --id {entry.PackageId} --exact --source winget
 GateHelper|dotnet lint
 GateHelper|dotnet format
 GateHelper|dotnet rebuild
+
+# Text the test runner prints to the Tests pane. The parser matches it; it is not shown to the user.
+MCP.Core|VSTest Adapter
+MCP.Core|Starting:
