@@ -12,3 +12,7 @@ This repo builds the aidevtools MCP server and the VS/VS Code bridge. Use them f
 - Required: install a changed extension with `scripts/update-vs-extension.ps1` and exactly one installer run (close every VS first). Never start `VsixInstaller` per instance; the one dialog lists each VS 18 instance, tick all. The extension is loaded by Community and Insiders, so check both when it changes. Pin the bridge's `System.Text.Json` to the version VS ships: a newer one stops `BridgePackage` loading (see the csproj comment).
 - When a tool is missing, broken, or worse than the raw command, add a row to the table in `docs/dogfood.md` (manual step, today, candidate tool), then use the fallback. Do not fall back silently.
 - Close running `AiDevHelpers.MCP` processes by specific PID before a build; they lock the output files.
+
+## Elevated scripts
+
+Any script that runs elevated (UAC) must check its own SHA-256 against a committed pin before it does anything. `scripts/gate-tpm.ps1` is the model: `scripts/gate-tpm.sha256` holds the pin, and `-WritePin` accepts a reviewed change. Do not add an elevated script without a pin.
