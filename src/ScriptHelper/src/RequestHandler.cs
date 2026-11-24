@@ -142,25 +142,19 @@ public sealed class RequestHandler
         var allowAll = AllowAllStore.IsActive(_config, _signer, project.Id, project.Root, _versions.Get(project.Id));
 
         byte[] manifestBytes = [];
+        UserAllowDocument? userAllows = null;
+        var allowedByManifest = false;
         if (!allowAll)
         {
-            var manifestPath = Path.Combine(project.Root, ".elevated.json");
-            try
+            // What the team allows (the repo manifest), then what this user allowed on this machine. Either one is enough to get as far
+            // as the fingerprint check; neither is needed when allow-all is active.
+            var manifestDenial = ReadManifest(project.Root, rel, request.Args, out manifestBytes, out allowedByManifest);
+            if (!allowedByManifest)
             {
-                manifestBytes = File.ReadAllBytes(manifestPath);
+                userAllows = UserAllowStore.Usable(_config.UserAllowPath(project.Id), _signer, project.Id, project.Root, _versions.Get(UserAllowStore.VersionKey(project.Id)), out _);
+                if (!UserAllowStore.HasEntry(userAllows, rel, request.Args))
+                    return Deny(request, manifestDenial ?? "script is not allowed by the repo or by this user");
             }
-            catch (IOException)
-            {
-                return Deny(request, ".elevated.json cannot be read");
-            }
-
-            var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(manifestBytes));
-            if (!manifest.Ok)
-                return Deny(request, manifest.Reason);
-
-            var allow = Allowlist.Evaluate(manifest.Entries, rel, request.Args);
-            if (!allow.Allowed)
-                return Deny(request, allow.Reason);
         }
 
         // Stage the whole approved file set, then check the approval against the staged bytes.
@@ -182,7 +176,13 @@ public sealed class RequestHandler
         if (!staged.Ok)
             return Deny(request, staged.Reason);
 
-        if (!allowAll)
+        if (!allowAll && !allowedByManifest)
+        {
+            var userDecision = UserAllowStore.Authorize(userAllows, rel, request.Args, staged.Fingerprint);
+            if (!userDecision.Allowed)
+                return Deny(request, userDecision.Reason);
+        }
+        else if (!allowAll)
         {
             var allowHash = Fingerprint.Sha256Hex(manifestBytes);
             var decision = ApprovalStore.Authorize(
@@ -204,6 +204,30 @@ public sealed class RequestHandler
             : _runner.Run(stagedScript, request.Args, RunTimeout);
         _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(visible ? " visible" : "")}{(allowAll ? " allow-all" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
+    }
+
+    // Reads the repo manifest and says whether it allows the script. Returns the reason it does not, or null when it does. A missing or
+    // unreadable manifest is a denial here, not an error, because a user allow can still cover the script.
+    private static string? ReadManifest(string root, string rel, IReadOnlyList<string> args, out byte[] bytes, out bool allowed)
+    {
+        bytes = [];
+        allowed = false;
+        try
+        {
+            bytes = File.ReadAllBytes(Path.Combine(root, ".elevated.json"));
+        }
+        catch (IOException)
+        {
+            return ".elevated.json cannot be read";
+        }
+
+        var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+        if (!manifest.Ok)
+            return manifest.Reason;
+
+        var decision = Allowlist.Evaluate(manifest.Entries, rel, args);
+        allowed = decision.Allowed;
+        return decision.Allowed ? null : decision.Reason;
     }
 
     private BrokerResponse Deny(BrokerRequest request, string reason)

@@ -5,6 +5,15 @@ using AiDevHelpers.Common;
 namespace AiDevHelpers.ScriptHelper.Core;
 
 /// <summary>The elevated setup step that puts the installer script in place.</summary>
+public interface IAllowCommands
+{
+    /// <summary>
+    /// Adds a script to this user's allows for a registered project, after the person confirms in the console. The entry pins the script's
+    /// fingerprint and the exact arguments; it is the approval, so nothing in the repo changes.
+    /// </summary>
+    SetupResult AllowScript(string root, string relativeScript, IReadOnlyList<string> args);
+}
+
 public interface IToolCommands
 {
     /// <summary>Writes the installer script and allowlist, registers the tools folder, and approves the script after the person confirms.</summary>

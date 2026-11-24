@@ -446,4 +446,111 @@ public sealed class RequestHandlerTests : IDisposable
 
         Assert.False(r.Ok);
         Assert.Empty(visible.Runs);
+    }
+    private const string Mine = "scripts/user/mine.ps1";
+
+    // Registers the project and records a user allow for a script that the repo manifest does not list.
+    private void AllowForUser(string script = Mine, string[]? args = null, string? content = null, long? version = null)
+    {
+        WriteFile(script, content ?? "Write-Output 'mine'");
+        if (_registry.Find(_root) is null)
+        {
+            var reg = _registry.Register(_root);
+            Assert.True(reg.Ok, reg.Reason);
+            _projectId = reg.ProjectId!;
+        }
+        else
+        {
+            _projectId = _registry.Find(_root)!.Id;
+        }
+
+        var fp = FingerprintBuilder.Build(_root, script, _interpreter, _inspector);
+        var v = version ?? _versions.Get(UserAllowStore.VersionKey(_projectId)) + 1;
+        var doc = new UserAllowDocument(_projectId, _root, v, [new UserAllowEntry(script, args ?? [], fp.Fingerprint)], "");
+        UserAllowStore.Save(_config.UserAllowPath(_projectId), doc, _signer);
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), v);
+    }
+
+    [Fact]
+    public void UserAllow_RunsAScriptTheRepoManifestDoesNotList()
+    {
+        AllowForUser();
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Single(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_WorksWithoutAnyElevatedJsonInTheRepo()
+    {
+        File.Delete(Path.Combine(_root, ".elevated.json"));
+        AllowForUser();
+
+        Assert.True(Handler().Handle(Request(Mine)).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AScriptChangedAfterTheAllow_IsDenied()
+    {
+        AllowForUser();
+        WriteFile(Mine, "Write-Output 'tampered'");
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.False(r.Ok);
+        Assert.Contains("changed since", r.Reason);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_OtherArgumentsOrOtherScripts_AreDenied()
+    {
+        AllowForUser(args: ["-Fast"]);
+        WriteFile("scripts/user/other.ps1", "Write-Output 'other'");
+
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+        Assert.False(Handler().Handle(Request(Mine, "-Slow")).Ok);
+        Assert.False(Handler().Handle(Request("scripts/user/other.ps1", "-Fast")).Ok);
+        Assert.True(Handler().Handle(Request(Mine, "-Fast")).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AReplayedOrCopiedFile_IsDenied()
+    {
+        AllowForUser(version: 1);
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), 5);
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+
+        var path = _config.UserAllowPath(_projectId);
+        var doc = UserAllowStore.Load(path, _signer).Document;
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(doc! with { ProjectRoot = @"C:\somewhere\else" }));
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), 5);
+
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AFileWithABadSignature_IsIgnored()
+    {
+        AllowForUser();
+        var path = _config.UserAllowPath(_projectId);
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Write", "Write").Replace("\"Signature\": \"", "\"Signature\": \"x"));
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_NeverWidensTheManifest_AManifestScriptStillNeedsItsApproval()
+    {
+        AllowForUser();
+
+        var r = Handler().Handle(Request(Script));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
     }}

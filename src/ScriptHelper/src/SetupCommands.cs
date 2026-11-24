@@ -8,7 +8,7 @@ namespace AiDevHelpers.ScriptHelper.Core;
 /// Everything here needs an elevated shell. Approve shows the script, its fingerprint and the
 /// allowlist hash, and writes nothing until a person confirms.
 /// </summary>
-public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolCommands
+public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolCommands, IAllowCommands
 {
     private const string ManifestName = ".elevated.json";
 
@@ -87,6 +87,59 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
 
         var registered = Register(root);
         return registered.Ok ? Approve(root, InstallToolFiles.ScriptName) : registered;
+    }
+
+    public SetupResult AllowScript(string root, string relativeScript, IReadOnlyList<string> args)
+    {
+        if (!_elevation.IsElevated())
+            return Fail("setup needs an elevated shell");
+
+        var project = _registry.Find(root);
+        if (project is null)
+            return Fail("project is not registered; run register first");
+
+        var resolved = PathRules.ResolveInsideRoot(project.Root, relativeScript);
+        if (!resolved.Ok)
+            return Fail($"'{relativeScript}': {resolved.Reason}");
+
+        var rel = Path.GetRelativePath(project.Root, resolved.FullPath).Replace('\\', '/');
+        if (ApprovalStore.NormalizeScriptPath(rel) is null)
+            return Fail($"'{relativeScript}' is not a valid relative path");
+
+        var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
+        if (!fingerprint.Ok)
+            return Fail(fingerprint.Reason);
+
+        var path = _config.UserAllowPath(project.Id);
+        var loaded = UserAllowStore.Load(path, _signer);
+        if (!loaded.Ok)
+            return Fail($"existing user allows are not trusted ({loaded.Reason}); refusing to overwrite them");
+
+        if (loaded.Document is not null && !string.Equals(loaded.Document.ProjectId, project.Id, StringComparison.Ordinal))
+            return Fail("existing user allows belong to another project; refusing to overwrite them");
+
+        var sb = new StringBuilder();
+        sb.AppendLine();
+        sb.AppendLine("Allow this script to run elevated for you?");
+        sb.AppendLine();
+        Section(sb, "Project", project.Root);
+        Section(sb, "Script", rel);
+        Section(sb, "Arguments", args.Count == 0 ? new[] { "(none)" } : args.ToArray());
+        Section(sb, $"Files pinned ({fingerprint.Files.Count})", fingerprint.Files.OrderBy(f => f, StringComparer.Ordinal).ToArray());
+        Section(sb, "Fingerprint", fingerprint.Fingerprint);
+        sb.AppendLine("The repo is not changed. It is recorded only on this machine, for you, and stops working if the script or its files change.");
+        if (!_confirmer.Confirm(sb.ToString()))
+            return Fail("allow declined");
+
+        var version = Math.Max(Versions.Get(UserAllowStore.VersionKey(project.Id)), loaded.Document?.Version ?? 0) + 1;
+        _ensureDirectory(_config.UserAllowDirectory);
+        UserAllowStore.Save(
+            path,
+            UserAllowStore.With(loaded.Document, project.Id, project.Root, version, new UserAllowEntry(rel, args.ToList(), fingerprint.Fingerprint)),
+            _signer);
+        Versions.Bump(UserAllowStore.VersionKey(project.Id), version);
+
+        return new SetupResult(true, $"allowed '{rel}' for you (user allows version {version})", project.Id);
     }
 
     public SetupResult Approve(string root, string relativeScript)
