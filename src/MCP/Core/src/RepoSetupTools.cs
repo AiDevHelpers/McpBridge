@@ -26,7 +26,7 @@ internal sealed class RepoSetupTools(IElevScanner scanner, GitHubService gitHub)
         "could not answer, not that nothing is protected). action 'status': the elevated list, this user's mode (listed, always, never), " +
         "the recorded rules and what is still pending. repoPath is any folder inside the repo. Nothing is changed: ask the user, then have " +
         "them run 'elev repo-setup <repo>'.")]
-    public async Task<string> RepoSetup(string repoPath, string action = "status", CancellationToken ct = default)
+    public async Task<string> RepoSetup(string repoPath, string action = "status", string decisions = "", CancellationToken ct = default)
     {
         var root = ResolveRepo(repoPath);
         if (root is null)
@@ -34,9 +34,22 @@ internal sealed class RepoSetupTools(IElevScanner scanner, GitHubService gitHub)
             return Strings.Get("RepoSetupNeedsRepo");
         }
 
-        if (action is not ("scan" or "status"))
+        if (action is not ("scan" or "status" or "apply"))
         {
             return Strings.Get("RepoSetupUnknownAction");
+        }
+
+        // Only the person can choose; this action records a choice the AI has been told by them, after a yes in chat. elev validates every
+        // name against the scan and writes nothing if one is not pending.
+        if (action == "apply")
+        {
+            if (string.IsNullOrWhiteSpace(decisions))
+            {
+                return Strings.Get("RepoSetupNeedsDecisions");
+            }
+
+            var applied = await scanner.ApplyAsync(root, decisions, ct);
+            return applied.Output.Trim() + (applied.ExitCode == 0 ? string.Empty : "\n" + Strings.Get("RepoSetupNothingChanged"));
         }
 
         try

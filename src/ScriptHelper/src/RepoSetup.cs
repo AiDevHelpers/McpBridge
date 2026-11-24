@@ -19,6 +19,18 @@ public sealed record RepoScanReport(
     IReadOnlyList<string> PendingRequiredChecks);
 
 /// <summary>
+/// What a person decided about a repo, relayed by a caller that asked them (the AI after the user's yes in chat). Every name must be one
+/// the scan reports as pending, so a caller cannot invent a project, a branch or a check. Mode is "listed", "always" or "never".
+/// </summary>
+public sealed record RepoDecisions(
+    IReadOnlyList<string>? Projects = null,
+    IReadOnlyList<string>? DeclineProjects = null,
+    IReadOnlyList<string>? ProtectedBranches = null,
+    IReadOnlyList<string>? RequiredChecks = null,
+    bool DeclineRules = false,
+    string? Mode = null);
+
+/// <summary>
 /// The repo setup helper for the unelevated <c>elev</c> client. <see cref="Scan"/> only reads. <see cref="Setup"/> creates the
 /// <c>.aidevtools</c> files and asks the person, from the console, about each project; nothing is listed or changed without a yes,
 /// and the questions never come from arguments, so a caller cannot answer for the person.
@@ -196,6 +208,107 @@ public static class RepoSetup
         return 0;
     }
 
+    /// <summary>
+    /// Applies decisions that a caller got from the person, all or nothing: any name the scan does not report as pending, or an unknown
+    /// mode, refuses the whole call and writes nothing. Creates the same files the interactive setup does. Exit codes: 0 done, 1 refused.
+    /// </summary>
+    public static int Apply(string root, RepoDecisions decisions, TextWriter output)
+    {
+        if (!Directory.Exists(root))
+        {
+            output.WriteLine($"refused: '{root}' is not a folder");
+            return 1;
+        }
+
+        var report = Scan(root);
+        var problems = new List<string>();
+        Check("project", decisions.Projects, report.PendingProjects, problems);
+        Check("project to decline", decisions.DeclineProjects, report.PendingProjects, problems);
+        Check("protected branch", decisions.ProtectedBranches, report.PendingProtectedBranches, problems);
+        Check("required check", decisions.RequiredChecks, report.PendingRequiredChecks, problems);
+
+        ElevationMode? mode = null;
+        if (decisions.Mode is not null)
+        {
+            if (Enum.TryParse<ElevationMode>(decisions.Mode, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed))
+                mode = parsed;
+            else
+                problems.Add($"unknown mode '{decisions.Mode}'");
+        }
+
+        if (decisions.Projects?.Intersect(decisions.DeclineProjects ?? [], StringComparer.OrdinalIgnoreCase).Any() == true)
+            problems.Add("a project cannot be both listed and declined");
+
+        if (problems.Count > 0)
+        {
+            foreach (var problem in problems)
+                output.WriteLine($"refused: {problem}");
+
+            return 1;
+        }
+
+        Directory.CreateDirectory(Path.Combine(report.Root, RepoSettingsFile.FolderName));
+        RepoSettingsFile.EnsureUserFileGitIgnored(report.Root);
+        if (!File.Exists(ElevationFiles.FilePath(report.Root)))
+            File.WriteAllText(ElevationFiles.FilePath(report.Root), "{\n  \"projects\": []\n}\n");
+
+        foreach (var project in decisions.Projects ?? [])
+        {
+            ElevationFiles.AddProject(report.Root, project, Reason(report.Findings, project));
+            output.WriteLine($"added {project}");
+        }
+
+        foreach (var project in decisions.DeclineProjects ?? [])
+        {
+            ElevationFiles.Decline(report.Root, project);
+            output.WriteLine($"declined {project}");
+        }
+
+        var recorded = report.RecordedRules;
+        var branches = decisions.ProtectedBranches ?? [];
+        var checks = decisions.RequiredChecks ?? [];
+        if (branches.Count > 0 || checks.Count > 0)
+        {
+            recorded = recorded with
+            {
+                ProtectedBranches = [.. recorded.ProtectedBranches, .. branches],
+                RequiredChecks = [.. recorded.RequiredChecks, .. checks],
+                DefaultBranch = recorded.DefaultBranch ?? report.Rules.DefaultBranch,
+            };
+            RepoRulesFile.Write(report.Root, recorded);
+            output.WriteLine($"wrote {RepoRulesFile.FileName}");
+        }
+
+        if (decisions.DeclineRules)
+        {
+            var leftover = report.PendingProtectedBranches.Except(branches, StringComparer.OrdinalIgnoreCase).Select(b => "branch:" + b)
+                .Concat(report.PendingRequiredChecks.Except(checks, StringComparer.OrdinalIgnoreCase).Select(c => "check:" + c))
+                .ToList();
+            if (leftover.Count > 0)
+            {
+                DeclineRules(report.Root, leftover);
+                output.WriteLine($"declined {leftover.Count} rule candidate(s); they will not be asked again");
+            }
+        }
+
+        if (mode is { } chosen)
+        {
+            ElevationFiles.SetMode(report.Root, chosen);
+            output.WriteLine($"mode: {chosen.ToString().ToLowerInvariant()}");
+        }
+
+        return 0;
+    }
+
+    private static void Check(string kind, IReadOnlyList<string>? names, IReadOnlyList<string> pending, List<string> problems)
+    {
+        foreach (var name in names ?? [])
+        {
+            if (!pending.Contains(name, StringComparer.OrdinalIgnoreCase))
+                problems.Add($"'{name}' is not a pending {kind}");
+        }
+    }
+
     private static string Reason(IReadOnlyList<ElevationFinding> findings, string project)
     {
         var why = string.Join("; ", findings
@@ -214,13 +327,13 @@ public static class ElevLocalCommands
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true, Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter(JsonNamingPolicy.CamelCase) } };
 
-    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>\n  elev rules override <repoRoot> <requestId>\n  elev terminals scan\n  elev terminals setup [--all]";
+    public const string Usage = "usage:\n  elev --repo-scan <repoRoot>\n  elev repo-setup <repoRoot>\n  elev repo-apply <repoRoot> <decisionsJson>\n  elev rules override <repoRoot> <requestId>\n  elev terminals scan\n  elev terminals setup [--all]";
 
     /// <summary>True when the first argument is a local verb; <paramref name="exit"/> then holds the exit code.</summary>
     public static bool TryRun(string[] args, TextWriter output, IConfirmer confirmer, out int exit, TerminalServices? terminals = null)
     {
         exit = 0;
-        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "rules" && args[0] != "terminals"))
+        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "repo-apply" && args[0] != "rules" && args[0] != "terminals"))
             return false;
 
         if (args[0] == "terminals")
@@ -239,6 +352,12 @@ public static class ElevLocalCommands
         if (args[0] == "rules")
         {
             exit = args.Length == 4 && args[1] == "override" ? OverrideRule(args[2], args[3], output, confirmer) : Usage2(output);
+            return true;
+        }
+
+        if (args[0] == "repo-apply")
+        {
+            exit = args.Length == 3 ? ApplyDecisions(args[1], args[2], output) : Usage2(output);
             return true;
         }
 
@@ -264,6 +383,23 @@ public static class ElevLocalCommands
 
         exit = RepoSetup.Setup(args[1], output, confirmer);
         return true;
+    }
+
+    // The decisions arrive as JSON from a caller that asked the person; Apply checks every name against the scan.
+    private static int ApplyDecisions(string root, string json, TextWriter output)
+    {
+        RepoDecisions? decisions;
+        try
+        {
+            decisions = JsonSerializer.Deserialize<RepoDecisions>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        }
+        catch (JsonException ex)
+        {
+            output.WriteLine($"refused: the decisions are not valid JSON: {ex.Message}");
+            return 2;
+        }
+
+        return decisions is null ? 2 : RepoSetup.Apply(root, decisions, output);
     }
 
     private static int Usage2(TextWriter output)

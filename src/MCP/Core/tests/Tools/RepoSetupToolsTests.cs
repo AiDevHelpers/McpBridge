@@ -30,6 +30,8 @@ public sealed class RepoSetupToolsTests : IDisposable
     {
         public List<string> Roots { get; } = [];
 
+        public Task<ElevRunResult> ApplyAsync(string repoRoot, string decisionsJson, CancellationToken ct) => Task.FromResult(new ElevRunResult(0, "applied"));
+
         public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct)
         {
             Roots.Add(repoRoot);

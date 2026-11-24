@@ -31,6 +31,9 @@ public interface IElevVerifier
 public interface IElevScanner
 {
     Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct);
+
+    /// <summary>Applies the person's decisions (JSON) through elev repo-apply. The JSON must hold only names the scan reported.</summary>
+    Task<ElevRunResult> ApplyAsync(string repoRoot, string decisionsJson, CancellationToken ct);
 }
 
 /// <summary>
@@ -62,6 +65,9 @@ internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScann
 
     public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
         RunElevAsync(["repo-scan", repoRoot], ct);
+
+    public Task<ElevRunResult> ApplyAsync(string repoRoot, string decisionsJson, CancellationToken ct) =>
+        RunElevAsync(["repo-apply", repoRoot, decisionsJson], ct);
 
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
 
