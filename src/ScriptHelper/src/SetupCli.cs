@@ -59,6 +59,11 @@ public static class SetupCli
             return Report(commands.AllowAll(args[1]), output);
         }
 
+        if (args.Length == 2 && args[0] == "prune-stale")
+        {
+            return Report(commands.PruneStale(args[1]), output);
+        }
+
         if (args.Length == 3 && args[0] == "allow-all-approved")
         {
             return Report(commands.AllowAllApproved(args[1], args[2]), output);

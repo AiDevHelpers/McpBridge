@@ -168,6 +168,9 @@ root.Add(repoApply);
 
 // allow-all in chat: preview is read only; apply runs one direct UAC copy, and only the approved settings hash is written.
 var allowAllPreview = Verb("allow-all-preview", "Show what allow-all would approve for a repo, read only. Local; needs no broker.", Sync(pr => Local(["allow-all-preview", pr.GetRequiredValue(repo)])));
+var pruneStale = SetupVerb("prune-stale", "Remove a registered project whose folder is gone: its registry entry, approvals and allows (administrator).", pr => ["prune-stale", pr.GetRequiredValue(repo)]);
+pruneStale.Add(repo);
+root.Add(pruneStale);
 allowAllPreview.Add(repo);
 var allowAllApply = Verb("allow-all-apply", "Approve allow-all for a repo with the hash you showed in chat (one UAC prompt, no console questions).", Sync(pr => ElevatedSetup.Run(["allow-all-approved", pr.GetRequiredValue(repo), pr.GetRequiredValue(settingsHash)], pr.GetValue(allowNoTpm))));
 allowAllApply.Add(repo);

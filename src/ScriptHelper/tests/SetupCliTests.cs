@@ -36,6 +36,8 @@ public sealed class SetupCliTests
             return AllowAllResult;
         }
 
+        public SetupResult PruneStale(string root) => throw new NotSupportedException();
+
         public SetupResult AllowAllApproved(string root, string approvedHash)
         {
             Calls.Add($"allow-all-approved {root} {approvedHash}");

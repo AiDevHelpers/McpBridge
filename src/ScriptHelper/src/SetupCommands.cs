@@ -169,6 +169,8 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
     /// </summary>
     public SetupResult AllowAllApproved(string root, string approvedHash) => AllowAllCore(root, approvedHash);
 
+    public SetupResult PruneStale(string root) => _registry.Prune(root);
+
     private SetupResult AllowAllCore(string root, string? approvedHash)
     {
         if (!_elevation.IsElevated())

@@ -105,6 +105,63 @@ public sealed class ProjectRegistry
         return projects.FirstOrDefault(p => string.Equals(p.Root, full, StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Removes the registry entry, approvals, allows and version files for a project whose folder no longer exists. Other entries
+    /// and folders that still exist are left alone. Needs an elevated shell, like Register.
+    /// </summary>
+    public SetupResult Prune(string root)
+    {
+        if (!_elevation.IsElevated())
+            return Fail("setup needs an elevated shell");
+
+        if (!TryLoad(out var projects, out var loadReason))
+            return Fail(loadReason);
+
+        string full;
+        try
+        {
+            full = Normalize(root);
+        }
+        catch (ArgumentException)
+        {
+            return Fail("project root is not a valid path");
+        }
+
+        var entry = projects.FirstOrDefault(p => string.Equals(p.Root, full, StringComparison.OrdinalIgnoreCase));
+        if (entry is null)
+            return Fail("project is not registered");
+
+        if (Directory.Exists(full))
+            return Fail("project folder still exists; nothing pruned");
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(entry.Id, "^[A-Za-z0-9_-]+$"))
+            return Fail("registry entry has an unexpected id");
+
+        var data = Path.GetDirectoryName(Path.GetFullPath(_path))!;
+        foreach (var file in new[]
+                 {
+                     Path.Combine(data, "approvals", $"{entry.Id}.json"),
+                     Path.Combine(data, "allowall", $"{entry.Id}.json"),
+                     Path.Combine(data, "userallow", $"{entry.Id}.json"),
+                     Path.Combine(data, "versions", $"{entry.Id}.ver"),
+                     Path.Combine(data, "versions", $"{entry.Id}-ua.ver"),
+                 })
+        {
+            try
+            {
+                File.Delete(file);
+            }
+            catch (IOException)
+            {
+                // Missing or locked: the registry entry still goes, and the file is harmless without it.
+            }
+        }
+
+        projects.Remove(entry);
+        Save(projects);
+        return new SetupResult(true, $"removed {full} ({entry.Id}); the registry now lists {projects.Count} project(s)", entry.Id);
+    }
+
     private static string Normalize(string root) => Path.GetFullPath(root).TrimEnd('\\');
 
     private bool TryLoad(out List<ProjectEntry> projects, out string reason)

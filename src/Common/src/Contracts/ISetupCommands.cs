@@ -35,4 +35,7 @@ public interface ISetupCommands
 
     /// <summary>Allow-all after the person answered both questions in chat. Writes only if the settings hash still equals approvedHash.</summary>
     SetupResult AllowAllApproved(string root, string approvedHash);
+
+    /// <summary>Removes the registry entry and approvals for a project whose folder is gone. Needs an elevated shell.</summary>
+    SetupResult PruneStale(string root);
 }

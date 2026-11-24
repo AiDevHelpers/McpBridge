@@ -109,6 +109,7 @@ public sealed class SetupAllowScriptTests : IDisposable
 
         public AiDevHelpers.Common.Contracts.SetupResult AllowAll(string root) => throw new NotSupportedException();
         public AiDevHelpers.Common.Contracts.SetupResult AllowAllApproved(string root, string approvedHash) => throw new NotSupportedException();
+        public AiDevHelpers.Common.Contracts.SetupResult PruneStale(string root) => throw new NotSupportedException();
     }
 
     [Fact]
