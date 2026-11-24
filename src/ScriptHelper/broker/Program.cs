@@ -20,7 +20,7 @@ var config = ConfigRepository.FromEnvironment().ScriptHelper;
 var mode = ModeFile.Read(config.ModePath);
 if (mode is null)
 {
-    Console.Error.WriteLine("refused: no protection mode recorded; run scripthelper-setup first");
+    Console.Error.WriteLine("refused: no protection mode recorded; run elev register first");
     return 1;
 }
 

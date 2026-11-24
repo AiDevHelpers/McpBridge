@@ -55,21 +55,21 @@ public interface IElevInstaller
 internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner, IElevInstaller, IElevVisibleRunner
 {
     public Task<ElevRunResult> RunVisibleAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
-        RunElevAsync(["--interactive", projectRoot, script, .. args], ct);
+        RunElevAsync(["run", "--visible", projectRoot, script, .. args], ct);
 
     public Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct) =>
-        RunElevAsync(["--install-tool", toolName], ct);
+        RunElevAsync(["install-tool", toolName], ct);
 
     public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
-        RunElevAsync(["--repo-scan", repoRoot], ct);
+        RunElevAsync(["repo-scan", repoRoot], ct);
 
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
 
     public Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
-        RunElevAsync([projectRoot, script, .. args], ct);
+        RunElevAsync(["run", projectRoot, script, .. args], ct);
 
     public Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct) =>
-        RunElevAsync(["--verify", projectRoot], ct);
+        RunElevAsync(["verify", projectRoot], ct);
 
     private static async Task<ElevRunResult> RunElevAsync(IReadOnlyList<string> arguments, CancellationToken ct)
     {
