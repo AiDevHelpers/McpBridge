@@ -152,13 +152,19 @@ public static class IdeInstanceRouter
             var reason = ex is UnauthorizedAccessException
                 ? "the instance's pipe refused this client (often a process running at a different elevation)"
                 : ex.Message;
+            // A timeout means the process is still there but not answering (busy or hung), not that it is gone.
+            var busy = ex is TimeoutException;
             return JsonSerializer.Serialize(new
             {
                 ide = target.Ide,
                 instance_pid = target.Pid,
                 solution_path = target.SolutionPath,
                 ok = false,
+                busy,
                 error = $"Could not reach Visual Studio instance {target.Pid}: {reason}",
+                hint = busy
+                    ? "The instance is running but not answering. Check ide_bridge_health; if it stays silent, relaunch it with ide_launch_instance (relaunchElevated when the solution needs it) after the user agrees."
+                    : null,
             });
         }
     }
