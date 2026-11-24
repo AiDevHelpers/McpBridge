@@ -13,6 +13,15 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Core\src\AiDevHelpers.MCP.Core.csproj" />
+    <!-- Built first so its output can be copied beside the server: the tools run the Script Helper client as elev.exe from this folder. -->
+    <ProjectReference Include="..\..\..\ScriptHelper\client\AiDevHelpers.ScriptHelper.Client.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+
+  <Target Name="CopyElevBesideServer" AfterTargets="Build">
+    <ItemGroup>
+      <ElevFile Include="..\..\..\ScriptHelper\client\bin\$(Configuration)\$(TargetFramework)\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ElevFile)" DestinationFolder="$(OutDir)%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
