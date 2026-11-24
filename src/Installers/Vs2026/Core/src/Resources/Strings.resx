@@ -32,5 +32,6 @@ It uses a per-process named pipe and registers this instance for MCP routing.
 
 There are no user-configurable bridge settings at this time.</value></data>
   <data name="TestExplorerRefusedTwice" xml:space="preserve"><value>Test Explorer refused the run twice (HRESULT 0x{0:X8}). It is probably still discovering or running tests; wait, then call ide_get_test_summary before retrying.</value></data>
+  <data name="NoSolutionOpenToFormat" xml:space="preserve"><value>No solution is open to format.</value></data>
 </root>
 

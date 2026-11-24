@@ -121,40 +121,38 @@ public sealed class IdeActions(DTE2 dte)
         }
     }
 
-    // Formats every C# file of the solution through the IDE, saving each one. Visual Studio formats only open windows, so each file is opened.
+    // Formats every C# file under the solution folder through the IDE, saving each one. SDK-style projects do not list
+    // their .cs files as project items, so the files are found on disk. Each file is opened, formatted and saved.
     private object FormatSolution()
     {
+        var solutionDir = Path.GetDirectoryName(dte.Solution.FullName);
+        if (string.IsNullOrEmpty(solutionDir))
+        {
+            throw new InvalidOperationException(Strings.Get("NoSolutionOpenToFormat"));
+        }
+
         var formatted = new List<string>();
-        foreach (Project project in dte.Solution.Projects)
+        foreach (var path in Directory.EnumerateFiles(solutionDir, "*.cs", SearchOption.AllDirectories))
         {
-            FormatItems(project.ProjectItems, formatted);
-        }
-
-        return new { formatted = formatted.Count, files = formatted };
-    }
-
-    private void FormatItems(ProjectItems items, List<string> formatted)
-    {
-        if (items is null)
-        {
-            return;
-        }
-
-        foreach (ProjectItem item in items)
-        {
-            FormatItems(item.ProjectItems, formatted);
-            var path = item.FileCount > 0 ? item.FileNames[1] : null;
-            if (path is null || !path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+            var relative = path.Substring(solutionDir.TrimEnd(Path.DirectorySeparatorChar).Length + 1);
+            if (relative.Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj" or ".git" or "TestResults" or "node_modules"))
             {
                 continue;
             }
 
-            var window = item.Open(Constants.vsViewKindCode);
-            window?.Activate();
+            dte.ItemOperations.OpenFile(path);
+            var window = dte.ActiveDocument;
+            if (window is null || !string.Equals(window.FullName, path, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             dte.ExecuteCommand("Edit.FormatDocument");
-            item.Document?.Save();
+            window.Save();
             formatted.Add(path);
         }
+
+        return new { formatted = formatted.Count, files = formatted };
     }
 
     private object FormatDocument()
