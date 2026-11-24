@@ -120,4 +120,6 @@
   <data name="NoTestProjects" xml:space="preserve"><value>No test project found under {0}.</value></data>
   <data name="WatchExitedEarly" xml:space="preserve"><value>dotnet watch test exited at once with code {0}.</value></data>
   <data name="NoSolutionIn" xml:space="preserve"><value>No .slnx or .sln file in {0}.</value></data>
+  <data name="OpenBridgeNotReady" xml:space="preserve"><value>devenv started, but the bridge did not answer in time. Check ide_list_instances and ide_bridge_health before retrying; do not open the solution again.</value></data>
+  <data name="SequenceChoice" xml:space="preserve"><value>Give either action or sequence, not both and not neither.</value></data>
 </root>

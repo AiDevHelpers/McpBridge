@@ -83,7 +83,7 @@ internal sealed class SourceControlTools
         var hasSequence = sequence is { Length: > 0 };
         if (hasSequence == (action is not null))
         {
-            return Json(new { ok = false, error = "Give either action or sequence, not both and not neither." });
+            return Json(new { ok = false, error = Strings.Get("SequenceChoice") });
         }
 
         try

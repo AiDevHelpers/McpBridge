@@ -16,6 +16,23 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 {
+    private static readonly TimeSpan BridgeReadyTimeout = TimeSpan.FromSeconds(60);
+
+    // True when the instance's pipe accepts a connection, which is how the bridge says it is ready.
+    private static bool BridgeAnswers(VsInstance instance)
+    {
+        try
+        {
+            using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", instance.PipeName, System.IO.Pipes.PipeDirection.InOut);
+            pipe.Connect(1000);
+            return true;
+        }
+        catch (Exception ex) when (ex is TimeoutException or System.IO.IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
     // Resolves the solution a test-result call refers to: the given path, or the only open instance's solution.
     private static string? ResolveSolution(string? solutionPath)
     {
@@ -68,13 +85,43 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
             return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = Strings.Get("SolutionFileMissing") });
         }
 
+        // Reuse an instance that already has this solution open, so a second devenv is not started for it.
+        var existing = VsInstanceRegistry.ListRunning().FirstOrDefault(i =>
+            !string.IsNullOrEmpty(i.SolutionPath)
+            && string.Equals(Path.GetFullPath(i.SolutionPath), Path.GetFullPath(solutionPath), StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = true, instance_pid = existing.Pid });
+        }
+
         var error = DevenvLauncher.Open(solutionPath);
         if (error is not null)
         {
             return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
         }
 
-        return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath });
+        // Return only once the new instance has registered and its bridge answers, so a follow-up call does not race it.
+        var deadline = DateTime.UtcNow + BridgeReadyTimeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var started = VsInstanceRegistry.ListRunning().FirstOrDefault(i =>
+                !string.IsNullOrEmpty(i.SolutionPath)
+                && string.Equals(Path.GetFullPath(i.SolutionPath), Path.GetFullPath(solutionPath), StringComparison.OrdinalIgnoreCase));
+            if (started is not null && BridgeAnswers(started))
+            {
+                return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = false, instance_pid = started.Pid, bridge_ready = true });
+            }
+
+            Thread.Sleep(500);
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            ok = false,
+            opened = solutionPath,
+            bridge_ready = false,
+            error = Strings.Get("OpenBridgeNotReady"),
+        });
     }
 
     [McpServerTool]
