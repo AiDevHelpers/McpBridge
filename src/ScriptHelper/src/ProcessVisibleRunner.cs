@@ -18,8 +18,10 @@ public sealed class ProcessVisibleRunner : IVisibleScriptRunner
         param([string]$Script, [string]$ArgsFile, [string]$Log)
         Start-Transcript -Path $Log -Force | Out-Null
         $scriptArgs = @(Get-Content -Raw -LiteralPath $ArgsFile | ConvertFrom-Json)
-        & $Script @scriptArgs
-        $code = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } elseif ($?) { 0 } else { 1 }
+        # A child pwsh with -File, like the captured runner, so named parameters (-Port 5000) bind the same way; splatting an array would not. Out-Host puts its output through the host, which is what the transcript records.
+        $pwsh = (Get-Process -Id $PID).Path
+        & $pwsh -NoProfile -ExecutionPolicy Bypass -File $Script @scriptArgs | Out-Host
+        $code = if ($null -ne $LASTEXITCODE) { $LASTEXITCODE } else { 1 }
         Stop-Transcript | Out-Null
         if ($code -ne 0) { Write-Host "The script exited with code $code. Press Enter to close this window."; [void](Read-Host) }
         exit $code
