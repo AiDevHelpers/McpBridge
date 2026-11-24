@@ -93,6 +93,8 @@ public sealed class SetupAllowScriptTests : IDisposable
             (Root, Script, Args) = (root, relativeScript, args);
             return new AiDevHelpers.Common.Contracts.SetupResult(true, "allowed");
         }
+
+        public AiDevHelpers.Common.Contracts.SetupResult AllowFolder(string glob) => throw new NotSupportedException();
     }
 
     private sealed class NoSetup : AiDevHelpers.Common.Contracts.ISetupCommands

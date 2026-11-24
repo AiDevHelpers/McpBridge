@@ -38,10 +38,17 @@ public static class AllowlistVerifier
         var allowAll = AllowAllStore.IsActive(config, signer, project.Id, project.Root, lastSeen);
         var allowlistHash = Fingerprint.Sha256Hex(manifestBytes);
         var approvalsPath = config.ApprovalsPath(project.Id);
+        var folderGlobs = FolderAllowStore.ActiveGlobs(config.FolderAllowDirectory, signer);
         var scripts = new List<ScriptStatus>();
 
         foreach (var rel in RepoFiles(project.Root).Where(r => Allowlist.IsPathListed(manifest.Entries, r)).Order(StringComparer.Ordinal))
         {
+            if (FolderAllowStore.Covers(folderGlobs, Path.GetFullPath(Path.Combine(project.Root, rel))))
+            {
+                scripts.Add(new ScriptStatus(rel, ApprovalStatus.Approved, "covered by a folder allow"));
+                continue;
+            }
+
             var fingerprint = FingerprintBuilder.Build(project.Root, rel, interpreter, inspector);
             if (!fingerprint.Ok)
             {

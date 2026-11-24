@@ -141,10 +141,15 @@ public sealed class RequestHandler
         // allowlist and the per-script approval. The owner and inside-the-repo checks above still apply.
         var allowAll = AllowAllStore.IsActive(_config, _signer, project.Id, project.Root, _versions.Get(project.Id));
 
+        // A folder grant (allow-folder) covers any script whose full path matches its glob, and skips the same checks as allow-all.
+        var folderAllowed = !allowAll && FolderAllowStore.Allows(
+            _config.FolderAllowDirectory, _signer, Path.GetFullPath(resolved.FullPath));
+        var skipApproval = allowAll || folderAllowed;
+
         byte[] manifestBytes = [];
         UserAllowDocument? userAllows = null;
         var allowedByManifest = false;
-        if (!allowAll)
+        if (!skipApproval)
         {
             // What the team allows (the repo manifest), then what this user allowed on this machine. Either one is enough to get as far
             // as the fingerprint check; neither is needed when allow-all is active.
@@ -176,13 +181,13 @@ public sealed class RequestHandler
         if (!staged.Ok)
             return Deny(request, staged.Reason);
 
-        if (!allowAll && !allowedByManifest)
+        if (!skipApproval && !allowedByManifest)
         {
             var userDecision = UserAllowStore.Authorize(userAllows, rel, request.Args, staged.Fingerprint);
             if (!userDecision.Allowed)
                 return Deny(request, userDecision.Reason);
         }
-        else if (!allowAll)
+        else if (!skipApproval)
         {
             var allowHash = Fingerprint.Sha256Hex(manifestBytes);
             var decision = ApprovalStore.Authorize(
@@ -202,7 +207,7 @@ public sealed class RequestHandler
         var run = visible
             ? _visible!.RunVisible(stagedScript, request.Args, VisibleTimeout)
             : _runner.Run(stagedScript, request.Args, RunTimeout);
-        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(visible ? " visible" : "")}{(allowAll ? " allow-all" : "")}");
+        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(visible ? " visible" : "")}{(allowAll ? " allow-all" : "")}{(folderAllowed ? " folder-allow" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
     }
 

@@ -202,6 +202,37 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         return new SetupResult(true, $"allow-all approved for '{repo}' (version {version})", project.Id);
     }
 
+    /// <summary>
+    /// Grants a folder glob (allow-folder). Any script whose full path matches runs elevated without per-script approval, so the two
+    /// confirmations name the glob and the risk. The signed grant goes to the admin-only data root; deleting or editing that file revokes it.
+    /// </summary>
+    public SetupResult AllowFolder(string glob)
+    {
+        if (!_elevation.IsElevated())
+            return Fail("setup needs an elevated shell");
+
+        var normalized = FolderGlob.Normalize(glob);
+        if (!FolderGlob.IsAbsolute(normalized))
+            return Fail("the folder glob must start with a drive, such as F:\\**\\**");
+
+        if (!_confirmer.Confirm(
+                $"Allow ALL scripts whose full path matches {normalized} to run elevated, without per-script approval?\n" +
+                "Anyone who can write under this folder, now or later, can then run code as administrator on this machine."))
+        {
+            return Fail("folder allow declined");
+        }
+
+        if (!_confirmer.Confirm(
+                $"Second confirmation. Really allow every script matching {normalized} to run elevated, as administrator, on this machine? " +
+                "Deleting the grant file under the Script Helper data folder revokes it."))
+        {
+            return Fail("folder allow declined at the second confirmation");
+        }
+
+        FolderAllowStore.Save(_config.FolderAllowDirectory, normalized, _signer);
+        return new SetupResult(true, $"folder allow approved for '{normalized}'");
+    }
+
     private static bool SettingsRequestAllowAll(string settingsPath)
     {
         try

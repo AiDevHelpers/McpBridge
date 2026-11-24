@@ -17,6 +17,7 @@ var prepare = new Option<bool>("--prepare");
 var confirm = new Option<string[]>("--confirm");
 var all = new Option<bool>("--all");
 var ruleId = new Argument<string>("id");
+var folderGlob = new Argument<string>("glob");
 
 var root = new RootCommand("Script Helper client: runs approved scripts and does the elevated setup steps.");
 root.Add(allowNoTpm);
@@ -116,6 +117,9 @@ approve.Add(confirm);
 var allowAll = SetupVerb("allow-all", "Let a registered repo's scripts run without per-script approval (administrator).", pr => ["allow-all", pr.GetRequiredValue(repo)]);
 allowAll.Add(repo);
 
+var allowFolder = SetupVerb("allow-folder", "Let every script whose full path matches a glob, such as F:\\**\\**, run without per-script approval (administrator).", pr => ["allow-folder", pr.GetRequiredValue(folderGlob)]);
+allowFolder.Add(folderGlob);
+
 var allowScript = Verb("allow-script", "Add a script to this user's allows for a repo (administrator). Extra tokens are the script's arguments.", Sync(pr =>
     ElevatedSetup.Run(["allow-script", pr.GetRequiredValue(verbRepo), pr.GetRequiredValue(verbScript), .. pr.UnmatchedTokens], pr.GetValue(allowNoTpm))), passUnmatched: true);
 allowScript.Add(verbRepo);
@@ -159,6 +163,7 @@ root.Add(terminals);
 root.Add(register);
 root.Add(approve);
 root.Add(allowAll);
+root.Add(allowFolder);
 root.Add(allowScript);
 root.Add(review);
 root.Add(scanLaunch);

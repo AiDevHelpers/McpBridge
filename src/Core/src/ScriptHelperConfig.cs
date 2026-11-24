@@ -40,6 +40,9 @@ public sealed class ScriptHelperConfig
         return Path.Combine(AllowAllDirectory, projectId + ".json");
     }
 
+    /// <summary>One signed file per allow-folder glob, kept here and never in the repo.</summary>
+    public string FolderAllowDirectory => Path.Combine(DataRoot, "folderallow");
+
     /// <summary>One signed file per project with the scripts this user allowed, kept here and never in the repo.</summary>
     public string UserAllowDirectory => Path.Combine(DataRoot, "userallow");
 

@@ -12,6 +12,12 @@ public interface IAllowCommands
     /// fingerprint and the exact arguments; it is the approval, so nothing in the repo changes.
     /// </summary>
     SetupResult AllowScript(string root, string relativeScript, IReadOnlyList<string> args);
+
+    /// <summary>
+    /// Grants every script whose full path matches the glob (such as <c>F:\**\**</c>) a run elevated without per-script approval.
+    /// Two console confirmations, both naming the glob; nothing is written unless both are yes.
+    /// </summary>
+    SetupResult AllowFolder(string glob);
 }
 
 public interface IToolCommands
