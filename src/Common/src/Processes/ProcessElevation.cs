@@ -19,8 +19,9 @@ public enum ElevationState
 /// Reads the elevation of another process from its pid, without being elevated itself. Spike result (Windows 11, this repo): a
 /// non-elevated caller can read the token of a same-user process that is not elevated, and cannot open processes of another account
 /// (SYSTEM) at all. For a same-user process that is elevated, a live check on Windows 11 (an elevated Visual Studio read from a
-/// non-elevated shell) showed the token query succeeds and reports an elevated token. A refused token query on an openable process
-/// is still read as <see cref="ElevationState.Elevated"/>, in case another Windows build refuses it.
+/// non-elevated shell) showed the token query succeeds and reports TokenElevation = 1, so the normal path returns
+/// <see cref="ElevationState.Elevated"/>. The access-denied branch in <see cref="Of"/> is not exercised by that check; it is a
+/// fallback for a Windows build that refuses the token query on an openable process.
 /// </summary>
 public static class ProcessElevation
 {
