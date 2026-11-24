@@ -19,6 +19,11 @@ public static class PathRules
         if (Path.IsPathRooted(normalized))
             return Fail("absolute paths are not allowed");
 
+        // Characters Windows file names cannot hold, and ":" (drive letters and alternate data streams). Without this a name such as
+        // "scripts/<x>" would reach the file system and fail with an exception instead of a refusal.
+        if (normalized.Any(c => char.IsControl(c) || c is '<' or '>' or '"' or '|' or '?' or '*' or ':'))
+            return Fail("path contains characters that are not allowed");
+
         var rootFull = Path.GetFullPath(root).TrimEnd('\\') + '\\';
         var full = Path.GetFullPath(Path.Combine(rootFull, normalized));
 
