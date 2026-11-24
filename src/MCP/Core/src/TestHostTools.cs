@@ -11,7 +11,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 /// the list returns a token, and the stop runs only with that token, once, after the user agreed in chat.
 /// </summary>
 [McpServerToolType]
-internal static class TestHostTools
+internal sealed class TestHostTools
 {
     private static readonly string[] HostNames = ["testhost", "testhost.x86"];
     private static readonly ConcurrentDictionary<string, IReadOnlyList<HostRef>> Plans = new();
