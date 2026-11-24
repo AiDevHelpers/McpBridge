@@ -32,4 +32,7 @@ public interface ISetupCommands
     /// elevated console. Any script inside the repo may then run elevated without per-script approval.
     /// </summary>
     SetupResult AllowAll(string root);
+
+    /// <summary>Allow-all after the person answered both questions in chat. Writes only if the settings hash still equals approvedHash.</summary>
+    SetupResult AllowAllApproved(string root, string approvedHash);
 }

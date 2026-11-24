@@ -129,6 +129,7 @@ public sealed class InstallToolFilesTests : IDisposable
         public AiDevHelpers.Common.Contracts.SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash) => throw new NotSupportedException();
 
         public AiDevHelpers.Common.Contracts.SetupResult AllowAll(string root) => throw new NotSupportedException();
+        public AiDevHelpers.Common.Contracts.SetupResult AllowAllApproved(string root, string approvedHash) => throw new NotSupportedException();
     }
 
     private sealed class FakeTools : IToolCommands

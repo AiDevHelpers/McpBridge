@@ -161,7 +161,15 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
     /// the repo path; nothing is written unless both are yes. The signed approval goes to the admin-only data root, bound to the
     /// project, the checkout and the hash of the settings file, and this user's gitignored .aidevtools/user.json gets a pointer to it.
     /// </summary>
-    public SetupResult AllowAll(string root)
+    public SetupResult AllowAll(string root) => AllowAllCore(root, approvedHash: null);
+
+    /// <summary>
+    /// Allow-all with the two confirmations already given in chat. It writes only if the settings hash still equals the one the
+    /// person approved, and asks nothing from the console.
+    /// </summary>
+    public SetupResult AllowAllApproved(string root, string approvedHash) => AllowAllCore(root, approvedHash);
+
+    private SetupResult AllowAllCore(string root, string? approvedHash)
     {
         if (!_elevation.IsElevated())
             return Fail("setup needs an elevated shell");
@@ -187,19 +195,28 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         var hash = RepoSettingsFile.Hash(settingsPath);
         var repo = Path.GetFullPath(project.Root);
 
-        if (!_confirmer.Confirm(
-                $"Allow ALL scripts in {repo} to run elevated, without per-script approval?\n" +
-                "Anyone who can change files in this repo, including a teammate's later commit, can then run code as administrator on this machine.\n" +
-                $"Settings hash: {hash}"))
+        if (approvedHash is not null)
         {
-            return Fail("allow-all declined");
+            // The person already answered both questions in chat. Refuse if the settings changed since then.
+            if (!string.Equals(hash, approvedHash, StringComparison.OrdinalIgnoreCase))
+                return Fail("the repo settings changed since you approved; preview allow-all again");
         }
-
-        if (!_confirmer.Confirm(
-                $"Second confirmation. Really allow all scripts in {repo} to run elevated on this machine? " +
-                "Editing the repo's settings file will revoke this until you approve again."))
+        else
         {
-            return Fail("allow-all declined at the second confirmation");
+            if (!_confirmer.Confirm(
+                    $"Allow ALL scripts in {repo} to run elevated, without per-script approval?\n" +
+                    "Anyone who can change files in this repo, including a teammate's later commit, can then run code as administrator on this machine.\n" +
+                    $"Settings hash: {hash}"))
+            {
+                return Fail("allow-all declined");
+            }
+
+            if (!_confirmer.Confirm(
+                    $"Second confirmation. Really allow all scripts in {repo} to run elevated on this machine? " +
+                    "Editing the repo's settings file will revoke this until you approve again."))
+            {
+                return Fail("allow-all declined at the second confirmation");
+            }
         }
 
         _ensureDirectory(_config.AllowAllDirectory);

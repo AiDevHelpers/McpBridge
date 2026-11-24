@@ -36,6 +36,12 @@ public sealed class SetupCliTests
             return AllowAllResult;
         }
 
+        public SetupResult AllowAllApproved(string root, string approvedHash)
+        {
+            Calls.Add($"allow-all-approved {root} {approvedHash}");
+            return AllowAllResult;
+        }
+
         public ApprovalPreview PrepareApproval(string root, string relativeScript)
         {
             Calls.Add($"prepare {root} {relativeScript}");

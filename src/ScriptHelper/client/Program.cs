@@ -74,6 +74,7 @@ var repoSetup = Verb("repo-setup", "Interactive setup for a repo. Local; needs n
 repoSetup.Add(repo);
 
 var repoDecisions = new Argument<string>("decisions");
+var settingsHash = new Argument<string>("hash");
 var repoApply = Verb("repo-apply", "Apply decisions JSON to a repo, e.g. {\"mode\":\"always\"}. Local; needs no broker.", Sync(pr => Local(["repo-apply", pr.GetRequiredValue(repo), pr.GetRequiredValue(repoDecisions)])));
 repoApply.Add(repo);
 repoApply.Add(repoDecisions);
@@ -164,6 +165,15 @@ root.Add(installTool);
 root.Add(repoScan);
 root.Add(repoSetup);
 root.Add(repoApply);
+
+// allow-all in chat: preview is read only; apply runs one direct UAC copy, and only the approved settings hash is written.
+var allowAllPreview = Verb("allow-all-preview", "Show what allow-all would approve for a repo, read only. Local; needs no broker.", Sync(pr => Local(["allow-all-preview", pr.GetRequiredValue(repo)])));
+allowAllPreview.Add(repo);
+var allowAllApply = Verb("allow-all-apply", "Approve allow-all for a repo with the hash you showed in chat (one UAC prompt, no console questions).", Sync(pr => ElevatedSetup.Run(["allow-all-approved", pr.GetRequiredValue(repo), pr.GetRequiredValue(settingsHash)], pr.GetValue(allowNoTpm))));
+allowAllApply.Add(repo);
+allowAllApply.Add(settingsHash);
+root.Add(allowAllPreview);
+root.Add(allowAllApply);
 root.Add(rules);
 root.Add(terminals);
 root.Add(register);

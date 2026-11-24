@@ -333,7 +333,7 @@ public static class ElevLocalCommands
     public static bool TryRun(string[] args, TextWriter output, IConfirmer confirmer, out int exit, TerminalServices? terminals = null)
     {
         exit = 0;
-        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "repo-apply" && args[0] != "rules" && args[0] != "terminals"))
+        if (args.Length == 0 || (args[0] != "--repo-scan" && args[0] != "repo-setup" && args[0] != "repo-apply" && args[0] != "rules" && args[0] != "terminals" && args[0] != "allow-all-preview"))
             return false;
 
         if (args[0] == "terminals")
@@ -352,6 +352,12 @@ public static class ElevLocalCommands
         if (args[0] == "rules")
         {
             exit = args.Length == 4 && args[1] == "override" ? OverrideRule(args[2], args[3], output, confirmer) : Usage2(output);
+            return true;
+        }
+
+        if (args[0] == "allow-all-preview")
+        {
+            exit = args.Length == 2 ? AllowAllPreview(args[1], output) : Usage2(output);
             return true;
         }
 
@@ -400,6 +406,38 @@ public static class ElevLocalCommands
         }
 
         return decisions is null ? 2 : RepoSetup.Apply(root, decisions, output);
+    }
+
+    // Read only: shows what allow-all would approve, so the person can answer in chat. Writes nothing and needs no elevation.
+    private static int AllowAllPreview(string root, TextWriter output)
+    {
+        if (!Directory.Exists(root))
+        {
+            output.WriteLine($"refused: '{root}' is not a folder");
+            return 1;
+        }
+
+        var full = Path.GetFullPath(root);
+        var settings = RepoSettingsFile.SettingsPath(full);
+        var requested = false;
+        if (File.Exists(settings))
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(File.ReadAllText(settings));
+                requested = doc.RootElement.TryGetProperty("allowAll", out var flag) && flag.ValueKind == JsonValueKind.True;
+            }
+            catch (JsonException)
+            {
+                requested = false;
+            }
+        }
+
+        output.WriteLine($"repo: {full}");
+        output.WriteLine($"settings: {settings}");
+        output.WriteLine(File.Exists(settings) ? $"settings hash: {RepoSettingsFile.Hash(settings)}" : "settings hash: (no settings file)");
+        output.WriteLine($"requests allowAll: {(requested ? "yes" : "no")}");
+        return requested ? 0 : 1;
     }
 
     private static int Usage2(TextWriter output)
