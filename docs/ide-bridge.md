@@ -41,6 +41,7 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeBuild`, `IdeClean`, `IdePublish` | `build`, `clean`, `publish` | VS: the IDE build. VS Code: `build` runs the build task; `clean` and `publish` run `dotnet` in the workspace folder. |
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
+| `IdeFormatSolution` | `formatSolution` | Formats every C# file of the solution with the IDE's Format Document command and saves each one. Opens each file. |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
 | `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |

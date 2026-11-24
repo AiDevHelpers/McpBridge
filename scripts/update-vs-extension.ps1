@@ -24,6 +24,13 @@ if (-not (Test-Path -LiteralPath $vswhere)) {
     throw "vswhere.exe not found at $vswhere."
 }
 
+# Visual Studio must be closed first (its extension files are locked). Refuse rather than stop it; close it from its window or
+# with ide_kill_instance, which saves first.
+$running = @(Get-Process -Name devenv -ErrorAction SilentlyContinue)
+if ($running.Count -gt 0) {
+    throw "Visual Studio is running (pid $($running.Id -join ', ')). Close it first: from its window, or ide_kill_instance (saves first). Do not use taskkill."
+}
+
 $instances = @(& $vswhere -all -prerelease -format json | ConvertFrom-Json | Where-Object {
     [version]($_.installationVersion -replace '-.*$') -ge [version]"18.0"
 })

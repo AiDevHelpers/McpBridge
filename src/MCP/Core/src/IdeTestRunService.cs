@@ -69,16 +69,18 @@ internal static class IdeTestRunService
     }
 
     /// <summary>Runs <c>dotnet test</c> on the solution, writing one TRX per test project into a new run folder under TestResults.</summary>
-    public static async Task<string> RunDotnetTestAsync(string solutionPath, CancellationToken ct)
+    public static async Task<string> RunDotnetTestAsync(string solutionPath, CancellationToken ct, string? project = null)
     {
         var solutionDir = SolutionDirectory(solutionPath);
         var runDir = Path.Combine(solutionDir, ResultsFolder, $"tokensaver-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}");
+        // A project file runs only that project; otherwise the whole solution runs.
+        var target = project is null ? solutionPath : Path.GetFullPath(Path.Combine(solutionDir, project));
 
         CommandResult run = await CommandRunner.RunAsync(
             new CommandRequest
             {
                 FileName = "dotnet",
-                Arguments = [.. TestArguments(solutionPath, solutionDir, runDir)],
+                Arguments = [.. TestArguments(target, solutionDir, runDir)],
                 WorkingDirectory = solutionDir,
                 Timeout = TimeSpan.FromMinutes(30),
                 OnStarted = process => ManagedProcessRegistry.Track(process, "test run"),

@@ -187,6 +187,8 @@ public static class GatePlanner
 /// <summary>Runs the steps in order and stops at the first failure. Later steps are reported as skipped.</summary>
 public static class GateRunner
 {
+    private static bool IsBuild(GateStep step) => step.Arguments.Contains("build", StringComparer.OrdinalIgnoreCase);
+
     public static async Task<IReadOnlyList<GateStepResult>> RunAsync(IReadOnlyList<GateStep> steps, string root, IGateRunner runner, CancellationToken ct = default)
     {
         var results = new List<GateStepResult>();
@@ -200,7 +202,8 @@ public static class GateRunner
                 continue;
             }
 
-            var (code, output) = await runner.RunAsync(step, root, ct);
+            var (code, rawOutput) = await runner.RunAsync(step, root, ct);
+            var output = IsBuild(step) ? BuildSummary.Of(rawOutput) + rawOutput : rawOutput;
             var passed = code == 0 || step.AllowFailure;
             results.Add(new GateStepResult(step.Name, command.Trim(), passed, Skipped: false, code, output));
             if (!passed)
@@ -210,5 +213,29 @@ public static class GateRunner
         }
 
         return results;
+    }
+}
+
+/// <summary>Counts the errors and warnings a build printed, per project, so the gate shows them grouped by project.</summary>
+internal static class BuildSummary
+{
+    private static readonly System.Text.RegularExpressions.Regex Diagnostic = new(
+        @"^(?<file>.*?)\(\d+(?:,\d+)?\): (?<kind>error|warning) (?<code>[A-Z]+\d+):.*\[(?<project>[^\]]+)\]\s*$",
+        System.Text.RegularExpressions.RegexOptions.Multiline);
+
+    public static string Of(string output)
+    {
+        var groups = Diagnostic.Matches(output)
+            .Select(m => (Project: m.Groups["project"].Value, Kind: m.Groups["kind"].Value))
+            .GroupBy(d => d.Project)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => "  " + Strings.Format("BuildCountLine", Path.GetFileName(g.Key), g.Count(d => d.Kind == "error"), g.Count(d => d.Kind == "warning")))
+            .ToList();
+        if (groups.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(Environment.NewLine, [Strings.Get("BuildDiagnosticsHeader"), .. groups]) + Environment.NewLine;
     }
 }

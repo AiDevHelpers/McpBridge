@@ -37,6 +37,7 @@ public sealed class IdeActions(DTE2 dte)
         "stopDebugging" => StopDebugging(),
         "runTests" => RunTests(),
         "formatDocument" => FormatDocument(),
+        "formatSolution" => FormatSolution(),
         "build" => Build(),
         "getBuildDiagnostics" => GetBuildDiagnostics(OptionalString(args, "severity") ?? "all"),
         "codeCleanup" => CodeCleanup(),
@@ -117,6 +118,42 @@ public sealed class IdeActions(DTE2 dte)
             {
                 throw new InvalidOperationException(Strings.Format("TestExplorerRefusedTwice", ex.HResult), ex);
             }
+        }
+    }
+
+    // Formats every C# file of the solution through the IDE, saving each one. Visual Studio formats only open windows, so each file is opened.
+    private object FormatSolution()
+    {
+        var formatted = new List<string>();
+        foreach (Project project in dte.Solution.Projects)
+        {
+            FormatItems(project.ProjectItems, formatted);
+        }
+
+        return new { formatted = formatted.Count, files = formatted };
+    }
+
+    private void FormatItems(ProjectItems items, List<string> formatted)
+    {
+        if (items is null)
+        {
+            return;
+        }
+
+        foreach (ProjectItem item in items)
+        {
+            FormatItems(item.ProjectItems, formatted);
+            var path = item.FileCount > 0 ? item.FileNames[1] : null;
+            if (path is null || !path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || !File.Exists(path))
+            {
+                continue;
+            }
+
+            var window = item.Open(Constants.vsViewKindCode);
+            window?.Activate();
+            dte.ExecuteCommand("Edit.FormatDocument");
+            item.Document?.Save();
+            formatted.Add(path);
         }
     }
 

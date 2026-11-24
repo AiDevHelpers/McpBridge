@@ -152,13 +152,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     [McpServerTool]
     [Description("Run all tests in the solution. The server setting IdeTestRunMode picks the method: 'TestExplorer' " +
                  "(default) triggers Test Explorer in the IDE; 'DotnetTest' runs dotnet test with a TRX file. " +
-                 "Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome.")]
+                 "Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome. " +
+                 "Pass project (a .csproj path, relative to the solution or absolute) to run only that project; it always uses dotnet test, " +
+                 "so it can run while a whole-solution Test Explorer run is going.")]
     public Task<string> IdeRunTests(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        [Description("Optional: one test project (.csproj) to run instead of the whole solution. Uses dotnet test.")] string? project = null,
         CancellationToken ct = default)
     {
+        if (project is not null)
+        {
+            var solution = ResolveSolution(solutionPath);
+            return solution is null
+                ? Task.FromResult(JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") }))
+                : IdeTestRunService.RunDotnetTestAsync(solution, ct, project);
+        }
+
         if (EffectiveTestRunMode(solutionPath) == IdeTestRunService.DotnetTestMode)
         {
             var solution = ResolveSolution(solutionPath);
@@ -169,6 +180,15 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
         return IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
     }
+
+    [McpServerTool]
+    [Description("Format every C# file of the solution with the IDE's Format Document command, saving each one. Opens each file.")]
+    public Task<string> IdeFormatSolution(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("formatSolution", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
