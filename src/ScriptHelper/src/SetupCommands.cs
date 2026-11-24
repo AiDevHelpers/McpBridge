@@ -166,9 +166,19 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         if (!_elevation.IsElevated())
             return Fail("setup needs an elevated shell");
 
+        // One command for the whole setup: a repo that is not registered yet is registered here first, in this elevated call.
+        // The two allow-all confirmations below still gate the change itself.
         var project = _registry.Find(root);
         if (project is null)
-            return Fail("project is not registered; run register first");
+        {
+            var registered = Register(root);
+            if (!registered.Ok)
+                return registered;
+
+            project = _registry.Find(root);
+            if (project is null)
+                return Fail("project was registered but could not be read back");
+        }
 
         var settingsPath = RepoSettingsFile.SettingsPath(project.Root);
         if (!SettingsRequestAllowAll(settingsPath))

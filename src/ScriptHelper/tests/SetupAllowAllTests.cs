@@ -69,14 +69,16 @@ public sealed class SetupAllowAllTests : IDisposable
     }
 
     [Fact]
-    public void UnregisteredProject_IsRefused()
+    public void UnregisteredProject_IsRegisteredThenNeedsBothConfirmations()
     {
         WriteSettings("""{"allowAll":true}""");
 
-        var r = Commands(new CountingConfirmer(2)).AllowAll(_root);
+        var confirmer = new CountingConfirmer(0);
+        var r = Commands(confirmer).AllowAll(_root);
 
         Assert.False(r.Ok);
-        Assert.Contains("not registered", r.Reason);
+        Assert.Single(confirmer.Prompts);
+        Assert.Contains("declined", r.Reason);
     }
 
     [Fact]
