@@ -73,6 +73,11 @@ repoScan.Add(repo);
 var repoSetup = Verb("repo-setup", "Interactive setup for a repo. Local; needs no broker.", Sync(pr => Local(["repo-setup", pr.GetRequiredValue(repo)])));
 repoSetup.Add(repo);
 
+var repoDecisions = new Argument<string>("decisions");
+var repoApply = Verb("repo-apply", "Apply decisions JSON to a repo, e.g. {\"mode\":\"always\"}. Local; needs no broker.", Sync(pr => Local(["repo-apply", pr.GetRequiredValue(repo), pr.GetRequiredValue(repoDecisions)])));
+repoApply.Add(repo);
+repoApply.Add(repoDecisions);
+
 var rules = new Command("rules", "Rule overrides for a repo.");
 var rulesOverride = Verb("override", "Override one rule for a repo.", Sync(pr => Local(["rules", "override", pr.GetRequiredValue(repo), pr.GetRequiredValue(ruleId)])));
 rulesOverride.Add(repo);
@@ -158,6 +163,7 @@ root.Add(verify);
 root.Add(installTool);
 root.Add(repoScan);
 root.Add(repoSetup);
+root.Add(repoApply);
 root.Add(rules);
 root.Add(terminals);
 root.Add(register);
