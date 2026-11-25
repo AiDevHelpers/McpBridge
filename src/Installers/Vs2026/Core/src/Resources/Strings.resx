@@ -27,6 +27,7 @@
   <data name="InfoBarHostUnavailable" xml:space="preserve"><value>The main window has no info bar host.</value></data>
   <data name="InfoBarUnavailable" xml:space="preserve"><value>The info bar UI factory is not available.</value></data>
   <data name="CodeModelUnavailable" xml:space="preserve"><value>The IDE's code model is unavailable for '{0}': {1}</value></data>
+  <data name="SettingKeyNeedsCollection" xml:space="preserve"><value>Setting key '{0}' needs a collection path and a property name, separated by a backslash.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>

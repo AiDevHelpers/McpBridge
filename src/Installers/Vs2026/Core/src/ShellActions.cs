@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Settings;
 using Microsoft.VisualStudio.Shell.Interop;
+using Microsoft.VisualStudio.Shell.Settings;
 
 namespace AiDevHelpers.Installers.Vs2026.Core;
 
@@ -74,13 +76,25 @@ internal static class ShellActions
         return new { planned = false, applied = change };
     }
 
-    // Reads one VS setting by its path. found is false when the setting does not exist.
+    // Reads one user setting. The key is "<collection path>\<property>", for example "Text Editor\All Languages\Tabs\TabSize".
+    // found is false when the collection or property does not exist. Read-only.
     public static object GetSetting(string key)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        var reader = ServiceProvider.GetGlobalService<SVsSettingsReader, IVsSettingsReader>()
-            ?? throw new InvalidOperationException(Strings.Get("SettingsReaderUnavailable"));
-        var hr = reader.ReadSettingString(key, out var value);
-        return hr == VSConstants.S_OK ? new { key, value, found = true } : new { key, value = (string?)null, found = false };
+        var split = key.LastIndexOf('\\');
+        if (split <= 0 || split == key.Length - 1)
+        {
+            throw new ArgumentException(Strings.Format("SettingKeyNeedsCollection", key));
+        }
+
+        var collection = key.Substring(0, split);
+        var property = key.Substring(split + 1);
+        var store = new ShellSettingsManager(ServiceProvider.GlobalProvider).GetReadOnlySettingsStore(SettingsScope.UserSettings);
+        if (!store.CollectionExists(collection) || !store.PropertyExists(collection, property))
+        {
+            return new { key, value = (string?)null, found = false };
+        }
+
+        return new { key, value = store.GetString(collection, property), found = true };
     }
 }
