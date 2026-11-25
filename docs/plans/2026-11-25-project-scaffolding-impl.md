@@ -5,7 +5,7 @@ Status: draft, not approved. Source: `2026-11-25-project-scaffolding-tools.md` (
 (`IElevInstaller`), `InstallToolFiles.cs`, `ExtensionTools.cs`, `PackageUpdates.cs`, `AffectedTests.cs`, `GatePlanner.cs`,
 `SelfTestCoverageTests.cs`, `DocsMatchCodeTests.cs`, `scripts/gate-tpm.ps1`.
 
-Two PRs, each from `main` on its own branch. Every unit: tests first, then code, then `dotnet build -warnaserror` on the touched
+Two PRs, each on its own branch cut from `wip` (PR2 from `wip` after PR1 lands there). PR base follows the repo's `pr-promotion` rules. Every unit: tests first, then code, then `dotnet build -warnaserror` on the touched
 projects via the aidevtools tools, then the lite gate, then commit. Strings go to `Strings.resx`; no hard-coded user text
 (`HardCodedStringTests`).
 
@@ -117,6 +117,23 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 - Done when: green; guard never writes a file (assert the config file bytes unchanged).
 - Commit: `ProjectHelper: framework guard and project_audit`
 
+## U7b. project_fix plan and confirm
+
+- Goal: correct an existing project to the standards, from the audit's findings.
+- Create: `src/Helpers/ProjectHelper/src/ProjectFixer.cs` (`Plan`, `ConfirmAsync`, same token map as U8), tools `ProjectFixPlan`
+  and `ProjectFixConfirm`.
+- Fixes (each listed in the plan as an item the caller can drop with `skip`): set `LangVersion`, `Nullable`, `ImplicitUsings`,
+  `AnalysisLevel`, `TreatWarningsAsErrors` to the standards; add missing analyzer packages at the U5 version; align a differing
+  package version to the chosen one; add the test SDK to a test project that lacks it; retarget the framework to the standard.
+- Framework rule: a retarget is planned only when no exception covers the project. A project with an exception keeps its
+  framework and the plan says why. The fixer never writes an exception and never changes the standards file.
+- Confirm recomputes the audit and the project file hash (refuses on drift), edits through `XDocument` preserving newline style,
+  runs `dotnet build -warnaserror` on the project and its dependents, and restores the original bytes on failure.
+- Tests first: each fix on a temp-dir fixture; excepted project not retargeted; skip list honored; drift refusal; rollback leaves
+  the tree byte-identical; a second fix after a clean fix plans nothing (idempotent); standards file bytes unchanged.
+- Done when: green; one live fix on a scratch repo; audit clean afterwards.
+- Commit: `ProjectHelper: project_fix_plan and project_fix_confirm`
+
 ## U8. project_add plan and confirm
 
 - Goal: add a project of any type, anywhere in the solution.
@@ -157,10 +174,10 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 - Edit: `src/Common/src/Resources/mcp-tools.md`, `docs/dogfood.md` (one tool-use row per new tool), `CHANGELOG.md`,
   `docs/features.md`, helper `SelfTest.md` (every tool name).
 - Run: full gate (`.claude/reference/full-gate.md`); self-test list shows ProjectHelper.
-- Done when: gate green; open PR to `main`.
+- Done when: gate green; open the PR per `pr-promotion`.
 - Commit: `Docs: project scaffolding tools, changelog and dogfood`
 
-# PR2 (branch from `main` after PR1 merges)
+# PR2 (branch from `wip` after PR1 lands)
 
 ## U11. Phase 0 verification (no code)
 
@@ -205,7 +222,7 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 ## U14. PR2 docs and gate
 
 - Edit: `mcp-tools.md`, `docs/dogfood.md`, `CHANGELOG.md`, helper `SelfTest.md`, `docs/prereqs.md` (VS Installer, elevation).
-- Run: full gate including the new pin check; open PR to `main`.
+- Run: full gate including the new pin check; open the PR per `pr-promotion`.
 - Commit: `Docs: workload tools, changelog and dogfood`
 
 ## After merge (outside this repo)

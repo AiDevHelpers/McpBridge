@@ -73,6 +73,12 @@ warning, so the guard fails closed (adds are refused with the reason). Hand-pars
 - Tests first (`tdd`). Docs: `docs/dogfood.md` tool-use rows, `CHANGELOG.md`, `docs/features.md`, `docs/prereqs.md` if needed.
 - Full gate before each PR.
 
+## Fix tool
+
+`project_fix_plan` / `project_fix_confirm` correct an existing project to the standards (properties, analyzers, package versions,
+test SDK, framework retarget). Excepted projects keep their framework. The tools never write exceptions or the standards file,
+and roll back on a failed build. See impl plan U7b.
+
 ## Out of scope
 
 Writing exception entries, removing projects, upgrading the solution framework, the VS Code bridge, the `tdd` skill edit.
