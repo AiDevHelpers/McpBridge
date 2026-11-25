@@ -145,6 +145,15 @@ public sealed class IdeActions(DTE2 dte)
         "closeDocument" => CloseDocument(RequireString(args, "file"), OptionalBool(args, "discardChanges") == true, OptionalBool(args, "confirm") == true),
         "undoGroup" => UndoGroup(RequireString(args, "name"), args, OptionalBool(args, "confirm") == true),
         "listCodeElements" => ListCodeElements(RequireString(args, "file")),
+        "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
+        "addProjectItem" => AddProjectItem(
+            RequireString(args, "project"),
+            RequireString(args, "file"),
+            RequireString(args, "mode"),
+            OptionalString(args, "template"),
+            OptionalBool(args, "confirm") == true),
+        "removeProjectItem" => RemoveProjectItem(RequireString(args, "project"), RequireString(args, "file"), OptionalBool(args, "confirm") == true),
+        "closeSolution" => CloseSolution(OptionalBool(args, "saveFirst") == true, OptionalBool(args, "confirm") == true),
         "setBreakpointCondition" => SetBreakpointCondition(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -1396,6 +1405,142 @@ public sealed class IdeActions(DTE2 dte)
         selection.MoveToLineAndOffset(edit.EndLine, edit.EndColumn, true);
         selection.Delete();
         selection.Insert(edit.NewText);
+    }
+
+    // ---- Phase 3: solution and projects ----
+
+    // Reads named project properties. An unknown name gives null, not an error.
+    private object ProjectProperties(string projectName, IReadOnlyList<string> names)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        var values = new Dictionary<string, string?>();
+        foreach (var name in names)
+        {
+            try
+            {
+                values[name] = project.Properties.Item(name).Value?.ToString();
+            }
+            catch (COMException)
+            {
+                values[name] = null;
+            }
+        }
+
+        return new { project = projectName, values };
+    }
+
+    // mode "fromFile" adds an existing file. mode "fromNew" creates a file from a template path (template is required).
+    private object AddProjectItem(string projectName, string file, string mode, string? template, bool confirm)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        if (mode == "fromNew" && string.IsNullOrEmpty(template))
+        {
+            throw new ArgumentException(Strings.Get("TemplateRequiredForNew"));
+        }
+
+        if (mode is not ("fromFile" or "fromNew"))
+        {
+            throw new ArgumentException(Strings.Format("UnknownItemMode", mode));
+        }
+
+        var change = new { project = projectName, file, mode, template };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        if (mode == "fromFile")
+        {
+            project.ProjectItems.AddFromFile(file);
+        }
+        else
+        {
+            project.ProjectItems.AddFromTemplate(template!, file);
+        }
+
+        return new { planned = false, applied = change };
+    }
+
+    // Removes the item from the project. The file stays on disk; the result says so.
+    private object RemoveProjectItem(string projectName, string file, bool confirm)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        var item = FindProjectItemIn(project.ProjectItems, file) ?? throw new ArgumentException(Strings.Format("NoProjectItemFor", file));
+        var change = new { project = projectName, file, stays_on_disk = true };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        item.Remove();
+        return new { planned = false, applied = change };
+    }
+
+    // Closes the solution. Dirty documents are refused unless saveFirst is set, because SuppressUI would discard them silently.
+    private object CloseSolution(bool saveFirst, bool confirm)
+    {
+        var dirty = new List<string>();
+        foreach (Document document in dte.Documents)
+        {
+            if (!document.Saved)
+            {
+                dirty.Add(document.FullName);
+            }
+        }
+
+        var change = new { solution = NullIfEmpty(dte.Solution.FullName), save_first = saveFirst, dirty_documents = dirty };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        if (!saveFirst && dirty.Count > 0)
+        {
+            throw new ArgumentException(Strings.Format("SolutionHasDirtyDocuments", string.Join(", ", dirty)));
+        }
+
+        dte.Solution.Close(saveFirst);
+        return new { planned = false, applied = change };
+    }
+
+    private static ProjectItem? FindProjectItemIn(ProjectItems? items, string file)
+    {
+        if (items is null)
+        {
+            return null;
+        }
+
+        foreach (ProjectItem item in items)
+        {
+            if (item.FileCount > 0 && item.FileNames[1] is string path && SameFile(path, file))
+            {
+                return item;
+            }
+
+            var nested = item.SubProject is { } sub ? FindProjectItemIn(sub.ProjectItems, file) : FindProjectItemIn(item.ProjectItems, file);
+            if (nested is not null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    private static IReadOnlyList<string> RequireStringArray(JsonElement args, string name)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            throw new ArgumentException(Strings.Format("MissingStringArgument", name));
+        }
+
+        var values = new List<string>();
+        foreach (var element in array.EnumerateArray())
+        {
+            values.Add(element.GetString() ?? throw new ArgumentException(Strings.Format("MissingStringArgument", name)));
+        }
+
+        return values;
     }
 
     private object ListDebuggedProcesses()

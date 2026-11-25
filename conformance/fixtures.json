@@ -79,6 +79,26 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "project_properties_refused_by_generic_bridge": {
+    "request": { "action": "projectProperties", "args": { "project": "p", "names": ["TargetFramework"] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_project_item_refused_by_generic_bridge": {
+    "request": { "action": "addProjectItem", "args": { "project": "p", "file": "C:\\__no_such__\\a.cs", "mode": "fromFile" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "remove_project_item_refused_by_generic_bridge": {
+    "request": { "action": "removeProjectItem", "args": { "project": "p", "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "close_solution_refused_by_generic_bridge": {
+    "request": { "action": "closeSolution" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "list_code_elements_refused_by_generic_bridge": {
     "request": { "action": "listCodeElements", "args": { "file": "C:\\__no_such__\\a.cs" } },
     "ok": false,

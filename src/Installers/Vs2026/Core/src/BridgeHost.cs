@@ -60,9 +60,21 @@ public sealed class BridgeHost : IDisposable
 
         _disposed = true;
         _watchdog?.Dispose();
+        if (_solutionEvents is not null)
+        {
+            _solutionEvents.Opened -= OnSolutionOpened;
+            _solutionEvents.AfterClosing -= OnSolutionAfterClosing;
+            _solutionEvents = null;
+        }
+
         InstanceRegistry.Remove(_pid);
         _server?.Dispose();
     }
+
+    // Named so Dispose can unhook them. Lambdas could not be removed.
+    private void OnSolutionOpened() => UpdateSolutionPath(_dte.Solution?.FullName);
+
+    private void OnSolutionAfterClosing() => UpdateSolutionPath(null);
 
     private void Initialize()
     {
@@ -85,8 +97,8 @@ public sealed class BridgeHost : IDisposable
 
         _solutionEvents = _dte.Events.SolutionEvents;
 #pragma warning disable VSTHRD010 // DTE solution events are raised on the UI thread.
-        _solutionEvents.Opened += () => UpdateSolutionPath(_dte.Solution?.FullName);
-        _solutionEvents.AfterClosing += () => UpdateSolutionPath(null);
+        _solutionEvents.Opened += OnSolutionOpened;
+        _solutionEvents.AfterClosing += OnSolutionAfterClosing;
 #pragma warning restore VSTHRD010
 
         var pid = _pid;

@@ -659,6 +659,54 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listCodeElements", new { file }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("Read named properties of a project (for example TargetFramework, OutputType). Unknown names return null. Read-only.")]
+    public Task<string> IdeProjectProperties(
+        [Description("Project name, as shown in Solution Explorer")] string project,
+        [Description("Property names to read")] string[] names,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("projectProperties", new { project, names }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeAddProjectItem(
+        [Description("Project name")] string project,
+        [Description("Full path of the file to add or create")] string file,
+        [Description("fromFile or fromNew")] string mode,
+        [Description("Template path, required for fromNew")] string? template = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("addProjectItem", new { project, file, mode, template, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Remove a file from a project. The file stays on disk. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeRemoveProjectItem(
+        [Description("Project name")] string project,
+        [Description("Full path of the file to remove from the project")] string file,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("removeProjectItem", new { project, file, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Close the solution. Refused while documents have unsaved changes unless saveFirst is true. Without confirm it lists the dirty documents and the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeCloseSolution(
+        [Description("Save dirty documents before closing. Default false.")] bool saveFirst = false,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("closeSolution", new { saveFirst, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,
