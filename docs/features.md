@@ -9,8 +9,8 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - List, launch, save-and-kill and reset IDE instances; health checks and a watchdog on each bridge.
 - Launch is elevated only for solutions that need administrator rights.
 - Build, clean, publish, tests, build diagnostics, format and code cleanup.
-- Debugging: start and stop, breakpoints, stepping, locals, evaluate, watches, exception breaks.
-- Navigation: open documents, go to definition, find references, find and replace in files.
+- Debugging: start and stop, breakpoints, stepping, locals, evaluate, watches.
+- Navigation: open documents, go to definition, find references.
 - Output panes and named output channels; bookmarks (Visual Studio).
 
 ## Terminal sessions
