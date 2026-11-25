@@ -4,7 +4,8 @@ Source: the Sonnet review of the non-test C# changed this session (19 files), th
 Findings are numbered as in the code review. Scope: the seven high-priority items. Medium and low items are not scheduled.
 
 ## Status
-- Unit 1: done in code (store first, pointer second, store removed if the pointer write fails). ScriptHelper 478/478. No test for the failure path yet: the pointer write is hard to fail in a test.
+- Units 1, 2, 4, 5, 6, 7: done in code; unit 3 left as is by decision. Live checks pending: units 1 and 5 (extension), 2, 4 and 6 (server restart).
+- Unit 1: store-first order with rollback; no test for the pointer-write failure path yet.
 
 ## Units
 

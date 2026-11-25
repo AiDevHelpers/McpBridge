@@ -22,9 +22,13 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - Protocol: one JSON line per request, `{"action":"...","args":{...}}`. The reply is one JSON line,
   `{"ok":true,"pid":N,"result":...}` or `{"ok":false,"pid":N,"error":"..."}`. The VS Code bridge adds
   `"unsupported":true` for actions it can't do. The VS bridge never sends that field.
-- Watchdog: VS Code's bridge checks every 10 seconds and restarts its pipe and manifest if either is
-  missing. The VS bridge uses the same pattern in `BridgePackage`.
-- `health` is answered by each bridge directly. It reports the listener state, request count, and pipe name.
+- Watchdog (Visual Studio): `BridgeHost` checks every 10 seconds and restarts its pipe and manifest if either is missing.
+  It also pings the UI thread with a no-op. An answer within 5 seconds keeps `ui_responsive` true. No answer for 30 seconds
+  sets it false and logs a warning. A ping that never returns stays in flight, so a hung UI does not queue more pings.
+- Watchdog (VS Code): the VS Code bridge checks every 10 seconds and restarts its pipe and manifest if either is missing.
+- `health` is answered by each bridge directly. It reports the listener state, request count, pipe name, and `ui_responsive`
+  (Visual Studio only). A hung UI thread shows as `ui_responsive: false`. If the whole process is frozen, nothing answers.
+  `ide_reset_instance` uses that: it refuses a responsive instance, and kills an unresponsive one only with `confirm` true.
 
 ## Tools
 
