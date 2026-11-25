@@ -345,7 +345,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
 
         var (settings, warnings) = LoadEventFilter(solutionPath);
         var summary = ReplySizeGuard.Fit(System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(BuildSummary.Build(result, errors, maxMessageChars: settings.MaxSummaryMessageChars)))!, settings.MaxReplyChars);
-        return WithWarnings(JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary }), warnings);
+        return WithWarnings(JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("instance_pid").GetInt32(), summary }), warnings);
     }
 
     [McpServerTool]
@@ -1160,7 +1160,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             return health.RootElement.GetRawText();
         }
 
-        var pid = health.RootElement.GetProperty("pid").GetInt32();
+        var pid = health.RootElement.GetProperty("instance_pid").GetInt32();
         var created = await EventSubscriptions.EnsureSubscribedAsync(pid, ct).ConfigureAwait(false);
         return JsonSerializer.Serialize(new { ok = true, pid, created });
     }
