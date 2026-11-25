@@ -4,7 +4,7 @@
 
 This repo builds the aidevtools MCP server and the VS/VS Code bridge. Use them for your own work here.
 
-- Required: use `mcp__aidevtools__*` tools for anything they cover (build, clean, test, publish, lint, format, debugging, reading build or test output). Use `dotnet`, `pwsh`, or the shell only where no tool covers the step.
+- Required: use `mcp__aidevhelpers__*` tools for anything they cover (build, clean, test, publish, lint, format, debugging, reading build or test output). Use `dotnet`, `pwsh`, or the shell only where no tool covers the step.
 - Before each commit run the lite gate in `.claude/reference/lite-gate.md` (it uses the aidevtools tools). Before a PR to `dev` or `main` run the full gate in `.claude/reference/full-gate.md`.
 - To check a change in the real IDEs, launch or drive the Visual Studio and VS Code instances through the bridge (`ide_launch_instance`, `ide_list_instances`, `terminal_session`), not only unit tests.
 - The `Category=Tpm` tests need administrator rights and a TPM. Run them in an elevated `terminal_session` (`action: open`, `elevated: true`): `dotnet test src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj -c Release --filter "Category=Tpm" -p:RunSettingsFilePath=`. `dotnet test` excludes them through `.runsettings`, and Test Explorer (which ignores that filter) shows the key-creation test as skipped when not elevated; the full gate runs them elevated through `scripts/gate-tpm.ps1`, so only the tests that need it are elevated.

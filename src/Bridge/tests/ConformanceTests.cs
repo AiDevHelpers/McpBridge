@@ -32,8 +32,27 @@ public sealed class ConformanceTests
         using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "fixtures.json")));
         foreach (var fixture in doc.RootElement.EnumerateObject())
         {
+            // A fixture may name the bridges it applies to ("visualstudio", "vscode"). Without the field it applies to all.
+            if (fixture.Value.TryGetProperty("bridges", out var bridges) && !IsForBridge(bridges, "visualstudio"))
+            {
+                continue;
+            }
+
             yield return new object[] { fixture.Name };
         }
+    }
+
+    private static bool IsForBridge(JsonElement bridges, string bridge)
+    {
+        foreach (var name in bridges.EnumerateArray())
+        {
+            if (name.GetString() == bridge)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     [Theory]

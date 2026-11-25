@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 using EnvDTE;
 using EnvDTE80;
@@ -119,6 +121,166 @@ public sealed class IdeActions(DTE2 dte)
         "publish" => Publish(),
         "prepareKill" => PrepareKill(),
         "killProcess" => KillProcess(RequireInt(args, "pid")),
+        "listProcesses" => ListProcesses(),
+        "listDebuggedProcesses" => ListDebuggedProcesses(),
+        "listThreads" => ListThreads(),
+        "listExceptions" => ListExceptions(OptionalString(args, "group")),
+        "listStackFrames" => ListStackFrames(),
+        "findInFiles" => FindInFiles(
+            RequireString(args, "pattern"),
+            OptionalBool(args, "matchCase") == true,
+            OptionalBool(args, "useRegex") == true,
+            OptionalString(args, "scope") ?? "solution",
+            OptionalString(args, "project")),
+        "replaceInFiles" => ReplaceInFiles(
+            RequireString(args, "pattern"),
+            RequireString(args, "replacement"),
+            OptionalBool(args, "matchCase") == true,
+            OptionalBool(args, "useRegex") == true,
+            OptionalString(args, "scope") ?? "solution",
+            OptionalString(args, "project"),
+            OptionalBool(args, "confirm") == true),
+        "listDocuments" => ListDocuments(),
+        "saveDocument" => SaveDocument(RequireString(args, "file"), OptionalBool(args, "confirm") == true),
+        "closeDocument" => CloseDocument(RequireString(args, "file"), OptionalBool(args, "discardChanges") == true, OptionalBool(args, "confirm") == true),
+        "undoGroup" => UndoGroup(RequireString(args, "name"), args, OptionalBool(args, "confirm") == true),
+        "listCodeElements" => CodeModelActions.ListCodeElements(RequireString(args, "file")),
+        "semanticReferences" => CodeModelActions.SemanticReferences(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
+        "semanticDefinition" => CodeModelActions.SemanticDefinition(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
+        "renameSymbol" => CodeModelActions.RenameSymbol(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "newName"),
+            OptionalBool(args, "confirm") == true),
+        "editMethod" => CodeModelActions.EditMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "newMethodText"),
+            ParseCallerEdits(args),
+            ParseDocUpdates(args),
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addMethod" => CodeModelActions.AddMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newMethodText"),
+            OptionalInt(args, "afterLine"),
+            ParseDocUpdates(args),
+            false,
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "addOverload" => CodeModelActions.AddMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newMethodText"),
+            null,
+            ParseDocUpdates(args),
+            true,
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "deleteMember" => CodeModelActions.DeleteMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseCallerEdits(args),
+            StringList(args, "deleteTests").ToList(),
+            OptionalBool(args, "confirm") == true,
+            OptionalString(args, "planHash")),
+        "deleteType" => CodeModelActions.DeleteType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseCallerEdits(args),
+            StringList(args, "deleteTests").ToList(),
+            OptionalBool(args, "deleteFile") == true,
+            OptionalBool(args, "confirm") == true,
+            OptionalString(args, "planHash")),
+        "listUnused" => CodeModelActions.ListUnused(OptionalString(args, "project"), OptionalBool(args, "includePublic") == true),
+        "renameNamespace" => CodeModelActions.RenameNamespace(
+            RequireString(args, "oldNamespace"),
+            RequireString(args, "newNamespace"),
+            OptionalBool(args, "moveFiles") == true,
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
+        "moveType" => CodeModelActions.MoveType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newNamespace"),
+            OptionalBool(args, "moveFiles") == true,
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
+        "addMember" => CodeModelActions.AddMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "editMember" => CodeModelActions.EditMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            ParseMemberEdit(args),
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
+        "tddAddTest" => CodeModelActions.TddAddTest(
+            RequireString(args, "testFile"),
+            RequireInt(args, "testLine"),
+            RequireString(args, "testMethodText"),
+            RequireString(args, "methodFile"),
+            RequireInt(args, "methodLine"),
+            RequireString(args, "methodText"),
+            ParseDocUpdates(args),
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "tddUpdateTest" => CodeModelActions.TddUpdateTest(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newBody"),
+            OptionalString(args, "targetFile"),
+            OptionalInt(args, "targetLine"),
+            OptionalBool(args, "confirm") == true),
+        "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
+        "addProjectItem" => AddProjectItem(
+            RequireString(args, "project"),
+            RequireString(args, "file"),
+            RequireString(args, "mode"),
+            OptionalString(args, "template"),
+            OptionalBool(args, "confirm") == true),
+        "removeProjectItem" => RemoveProjectItem(RequireString(args, "project"), RequireString(args, "file"), OptionalBool(args, "confirm") == true),
+        "closeSolution" => CloseSolution(OptionalBool(args, "saveFirst") == true, OptionalBool(args, "confirm") == true),
+        "listTasks" => ListTasks(),
+        "addTask" => TaskListActions.AddTask(
+            RequireString(args, "text"),
+            OptionalString(args, "file"),
+            OptionalInt(args, "line"),
+            OptionalString(args, "category") ?? "Message",
+            OptionalBool(args, "confirm") == true),
+        "clearTasks" => TaskListActions.ClearTasks(OptionalBool(args, "confirm") == true),
+        "setStatus" => ShellActions.SetStatus(OptionalString(args, "text") ?? string.Empty, OptionalBool(args, "confirm") == true),
+        "writeActivityLog" => ShellActions.WriteActivityLog(
+            RequireString(args, "level"),
+            RequireString(args, "source"),
+            RequireString(args, "message"),
+            OptionalBool(args, "confirm") == true),
+        "getSetting" => ShellActions.GetSetting(RequireString(args, "key")),
+        "showInfoBar" => ShellActions.ShowInfoBar(RequireString(args, "text"), InfoBarLabels(args), OptionalBool(args, "confirm") == true),
+        "setBreakpointCondition" => SetBreakpointCondition(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "condition"),
+            OptionalString(args, "hitCountType"),
+            OptionalInt(args, "hitCount"),
+            OptionalBool(args, "confirm") == true),
+        "enableBreakpoint" => SetBreakpointEnabled(RequireString(args, "file"), RequireInt(args, "line"), true, OptionalBool(args, "confirm") == true),
+        "disableBreakpoint" => SetBreakpointEnabled(RequireString(args, "file"), RequireInt(args, "line"), false, OptionalBool(args, "confirm") == true),
+        "attachProcess" => AttachProcess(RequireInt(args, "pid"), OptionalBool(args, "confirm") == true),
+        "detachAll" => DetachAll(OptionalBool(args, "confirm") == true),
+        "setExceptionBreak" => SetExceptionBreak(
+            RequireString(args, "group"),
+            RequireString(args, "name"),
+            OptionalBool(args, "breakWhenThrown"),
+            OptionalBool(args, "breakWhenUserUnhandled"),
+            OptionalBool(args, "confirm") == true),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
@@ -266,8 +428,7 @@ public sealed class IdeActions(DTE2 dte)
                 continue;
             }
 
-            var doc = pane.TextDocument;
-            var text = doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+            var text = PaneText(pane);
             if (fromOffset is int offset)
             {
                 var slice = OutputPaneSlice.Slice(text, offset, maxChars, anchor);
@@ -296,8 +457,7 @@ public sealed class IdeActions(DTE2 dte)
     private object SearchOutput(string paneName, string pattern)
     {
         var pane = FindOutputPane(paneName);
-        var doc = pane.TextDocument;
-        var text = doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+        var text = PaneText(pane);
         var regex = new System.Text.RegularExpressions.Regex(pattern);
         var matches = text.Split('\n')
             .Select(l => l.TrimEnd('\r'))
@@ -310,6 +470,20 @@ public sealed class IdeActions(DTE2 dte)
     {
         FindOutputPane(paneName).Clear();
         return new { pane = paneName, cleared = true };
+    }
+
+    // A pane that has never been written has no text document yet. That is an empty pane, not an error.
+    private static string PaneText(OutputWindowPane pane)
+    {
+        try
+        {
+            var doc = pane.TextDocument;
+            return doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+        }
+        catch (COMException)
+        {
+            return string.Empty;
+        }
     }
 
     private OutputWindowPane FindOutputPane(string paneName)
@@ -699,7 +873,18 @@ public sealed class IdeActions(DTE2 dte)
     {
         foreach (Project project in dte.Solution.Projects)
         {
-            var found = FindInProject(project, name);
+            // Some solution folders and unloaded projects refuse the walk (E_INVALIDARG). Skip them; a name that is
+            // really missing then returns null, and the caller reports "no project named".
+            Project? found;
+            try
+            {
+                found = FindInProject(project, name);
+            }
+            catch (COMException)
+            {
+                continue;
+            }
+
             if (found is not null)
             {
                 return found;
@@ -745,6 +930,860 @@ public sealed class IdeActions(DTE2 dte)
         args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    // Reads an optional boolean argument. Returns null when absent or not a boolean, so callers choose the default.
+    internal static bool? OptionalBool(JsonElement args, string name) =>
+        args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False)
+            ? value.GetBoolean()
+            : null;
+
+    // Process lists for the debugger. Read-only: nothing is attached or detached here.
+    private object ListProcesses()
+    {
+        var processes = dte.Debugger.LocalProcesses;
+        var list = new List<object>();
+        foreach (EnvDTE.Process process in processes)
+        {
+            list.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        return new { processes = list };
+    }
+
+    // Threads of the current process. Only meaningful in break mode; outside it the list is empty.
+    private object ListThreads()
+    {
+        var mode = dte.Debugger.CurrentMode;
+        if (mode != dbgDebugMode.dbgBreakMode)
+        {
+            return new { debugger_mode = mode.ToString(), current_thread_id = (int?)null, threads = Array.Empty<object>() };
+        }
+
+        var list = new List<object>();
+        foreach (EnvDTE.Thread thread in ((EnvDTE90.Process3)dte.Debugger.CurrentProcess).Threads)
+        {
+            list.Add(new { id = thread.ID, name = thread.Name });
+        }
+
+        return new { debugger_mode = mode.ToString(), current_thread_id = dte.Debugger.CurrentThread?.ID, threads = list };
+    }
+
+    // Break-on-throw settings, grouped as the debugger groups them. Read-only: nothing is changed here.
+    // Optional group filter: the full list is large (over 100 KB), so callers usually name one group.
+    private object ListExceptions(string? groupFilter)
+    {
+        var list = new List<object>();
+        foreach (EnvDTE90.ExceptionSettings group in ((EnvDTE100.Debugger5)dte.Debugger).ExceptionGroups)
+        {
+            if (groupFilter is not null && group.Name != groupFilter)
+            {
+                continue;
+            }
+
+            foreach (EnvDTE90.ExceptionSetting setting in group)
+            {
+                // Code throws for exception types that have no exception code; report null for those.
+                uint? code = null;
+                if (group.SupportsExceptionCodes)
+                {
+                    try
+                    {
+                        code = setting.Code;
+                    }
+                    catch (COMException)
+                    {
+                        code = null;
+                    }
+                }
+
+                list.Add(new
+                {
+                    group = group.Name,
+                    name = setting.Name,
+                    code,
+                    break_when_thrown = setting.BreakWhenThrown,
+                    break_when_user_unhandled = setting.BreakWhenUserUnhandled,
+                    user_defined = setting.UserDefined,
+                });
+            }
+        }
+
+        return new { exceptions = list };
+    }
+
+    // Changes break-on-throw settings for one exception. Without confirm it only reports the change.
+    private object SetExceptionBreak(string group, string name, bool? breakWhenThrown, bool? breakWhenUserUnhandled, bool confirm)
+    {
+        if (breakWhenThrown is null && breakWhenUserUnhandled is null)
+        {
+            throw new ArgumentException(Strings.Get("ExceptionFlagRequired"));
+        }
+
+        foreach (EnvDTE90.ExceptionSettings groupSettings in ((EnvDTE100.Debugger5)dte.Debugger).ExceptionGroups)
+        {
+            if (groupSettings.Name != group)
+            {
+                continue;
+            }
+
+            foreach (EnvDTE90.ExceptionSetting setting in groupSettings)
+            {
+                if (setting.Name != name)
+                {
+                    continue;
+                }
+
+                var change = new
+                {
+                    group,
+                    name,
+                    break_when_thrown = new { current = setting.BreakWhenThrown, proposed = breakWhenThrown ?? setting.BreakWhenThrown },
+                    break_when_user_unhandled = new { current = setting.BreakWhenUserUnhandled, proposed = breakWhenUserUnhandled ?? setting.BreakWhenUserUnhandled },
+                };
+                if (!confirm)
+                {
+                    return new { planned = true, would = change };
+                }
+
+                if (breakWhenThrown is bool thrown)
+                {
+                    groupSettings.SetBreakWhenThrown(thrown, setting);
+                }
+
+                if (breakWhenUserUnhandled is bool unhandled)
+                {
+                    groupSettings.SetBreakWhenUserUnhandled(unhandled, setting);
+                }
+
+                return new { planned = false, applied = change };
+            }
+        }
+
+        throw new ArgumentException(Strings.Format("NoExceptionNamed", group, name));
+    }
+
+    // Stack frames of the current thread. Only meaningful in break mode; outside it the list is empty.
+    private object ListStackFrames()
+    {
+        var mode = dte.Debugger.CurrentMode;
+        var frames = new List<object>();
+        var thread = mode == dbgDebugMode.dbgBreakMode ? dte.Debugger.CurrentThread : null;
+        if (thread is not null)
+        {
+            var index = 0;
+            foreach (EnvDTE.StackFrame frame in thread.StackFrames)
+            {
+                frames.Add(new { index, function = frame.FunctionName, return_type = frame.ReturnType });
+                index++;
+            }
+        }
+
+        return new { debugger_mode = mode.ToString(), frames };
+    }
+
+    // Changes the condition, hit-count rule, or both, on the breakpoint(s) at file:line. Without confirm it only reports the change.
+    private object SetBreakpointCondition(string file, int line, string? condition, string? hitCountType, int? hitCount, bool confirm)
+    {
+        if (condition is null && hitCountType is null && hitCount is null)
+        {
+            throw new ArgumentException(Strings.Get("ConditionFlagRequired"));
+        }
+
+        var hitType = hitCountType switch
+        {
+            null => (dbgHitCountType?)null,
+            "always" => dbgHitCountType.dbgHitCountTypeNone,
+            "equal" => dbgHitCountType.dbgHitCountTypeEqual,
+            "multiple" => dbgHitCountType.dbgHitCountTypeMultiple,
+            "greaterOrEqual" => dbgHitCountType.dbgHitCountTypeGreaterOrEqual,
+            _ => throw new ArgumentException(Strings.Format("UnknownHitCountType", hitCountType)),
+        };
+
+        var matches = new List<Breakpoint>();
+        var breakpoints = dte.Debugger.Breakpoints;
+        for (var i = 1; i <= breakpoints.Count; i++)
+        {
+            var bp = breakpoints.Item(i);
+            if (SameFile(bp.File, file) && bp.FileLine == line)
+            {
+                matches.Add(bp);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new ArgumentException(Strings.Format("NoBreakpointAt", file, line));
+        }
+
+        var changes = matches.Select(bp => new
+        {
+            file = bp.File,
+            line = bp.FileLine,
+            condition = new { current = bp.Condition, proposed = condition ?? bp.Condition },
+            hit_count_type = new { current = bp.HitCountType.ToString(), proposed = hitType?.ToString() ?? bp.HitCountType.ToString() },
+            hit_count = new { current = bp.HitCountTarget, proposed = hitCount ?? bp.HitCountTarget },
+        }).ToList();
+
+        if (!confirm)
+        {
+            return new { planned = true, would = changes };
+        }
+
+        // Breakpoint.Condition and the hit-count properties are read-only. The supported path is to re-add the breakpoint at the
+        // same location with the new values (Breakpoints.Add overload with Condition and HitCount). Hit counts reset on re-add.
+        foreach (var bp in matches)
+        {
+            var bpFile = bp.File;
+            var bpLine = bp.FileLine;
+            var wasEnabled = bp.Enabled;
+            var newCondition = condition ?? bp.Condition;
+            var newConditionType = condition is not null ? dbgBreakpointConditionType.dbgBreakpointConditionTypeWhenTrue : bp.ConditionType;
+            var newHitType = hitType ?? bp.HitCountType;
+            var newHitCount = hitCount ?? bp.HitCountTarget;
+
+            bp.Delete();
+            var added = dte.Debugger.Breakpoints.Add(
+                File: bpFile,
+                Line: bpLine,
+                Condition: newCondition,
+                ConditionType: newConditionType,
+                HitCount: newHitCount,
+                HitCountType: newHitType);
+            added.Item(1).Enabled = wasEnabled;
+        }
+
+        return new { planned = false, applied = changes };
+    }
+
+    // Enables or disables every breakpoint at file:line. Without confirm it only reports the change.
+    private object SetBreakpointEnabled(string file, int line, bool enabled, bool confirm)
+    {
+        var matches = new List<Breakpoint>();
+        var breakpoints = dte.Debugger.Breakpoints;
+        for (var i = 1; i <= breakpoints.Count; i++)
+        {
+            var bp = breakpoints.Item(i);
+            if (SameFile(bp.File, file) && bp.FileLine == line)
+            {
+                matches.Add(bp);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new ArgumentException(Strings.Format("NoBreakpointAt", file, line));
+        }
+
+        var changes = matches.Select(bp => new { file = bp.File, line = bp.FileLine, enabled = new { current = bp.Enabled, proposed = enabled } }).ToList();
+        if (!confirm)
+        {
+            return new { planned = true, would = changes };
+        }
+
+        foreach (var bp in matches)
+        {
+            bp.Enabled = enabled;
+        }
+
+        return new { planned = false, applied = changes };
+    }
+
+    // Attaches the debugger to one local process. Without confirm it only reports the target.
+    private object AttachProcess(int pid, bool confirm)
+    {
+        EnvDTE.Process? target = null;
+        foreach (EnvDTE.Process process in dte.Debugger.LocalProcesses)
+        {
+            if (process.ProcessID == pid)
+            {
+                target = process;
+                break;
+            }
+        }
+
+        if (target is null)
+        {
+            throw new ArgumentException(Strings.Format("NoLocalProcess", pid));
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { pid, name = target.Name } };
+        }
+
+        target.Attach();
+        return new { planned = false, applied = new { pid, name = target.Name } };
+    }
+
+    // Detaches from every attached process. Without confirm it lists what would be detached.
+    private object DetachAll(bool confirm)
+    {
+        var attached = new List<object>();
+        foreach (EnvDTE.Process process in ((EnvDTE90a.Debugger4)dte.Debugger).DebuggedProcesses)
+        {
+            attached.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { detached = attached } };
+        }
+
+        dte.Debugger.DetachAll();
+        return new { planned = false, applied = new { detached = attached } };
+    }
+
+    // ---- Phase 2: search, documents, undo groups, code elements ----
+    //
+    // Search is done in managed code over the files on disk, not through Find2. Find2 exposes no results collection, and
+    // driving it changes the global find state the user sees. The managed search is read-only and bounded.
+
+    private const int MaxSearchMatches = 500;
+
+    private object FindInFiles(string pattern, bool matchCase, bool useRegex, string scope, string? projectName)
+    {
+        var regex = BuildSearchPattern(pattern, matchCase, useRegex);
+        var matches = new List<object>();
+        var truncated = false;
+        foreach (var file in SearchScopeFiles(scope, projectName))
+        {
+            foreach (var (line, text) in SearchFile(file, regex))
+            {
+                if (matches.Count >= MaxSearchMatches)
+                {
+                    truncated = true;
+                    break;
+                }
+
+                matches.Add(new { file, line, text });
+            }
+
+            if (truncated)
+            {
+                break;
+            }
+        }
+
+        return new { matches, truncated };
+    }
+
+    // Counts matches per file without writing. Applied: writes the replacement to each file that has matches, except files open
+    // with unsaved changes, which are reported as skipped. Per-file write errors are reported in failed, not thrown.
+    private object ReplaceInFiles(string pattern, string replacement, bool matchCase, bool useRegex, string scope, string? projectName, bool confirm)
+    {
+        var regex = BuildSearchPattern(pattern, matchCase, useRegex);
+        var replaceWith = useRegex ? replacement : replacement.Replace("$", "$$");
+        var planned = new List<object>();
+        var skipped = new List<object>();
+        var targets = new List<(string File, int Count)>();
+        foreach (var file in SearchScopeFiles(scope, projectName).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var count = SearchFile(file, regex).Count;
+            if (count == 0)
+            {
+                continue;
+            }
+
+            var openDirty = OpenDocumentFor(file) is { Saved: false };
+            if (openDirty)
+            {
+                skipped.Add(new { file, reason = Strings.Get("OpenWithUnsavedChanges") });
+                continue;
+            }
+
+            targets.Add((file, count));
+            planned.Add(new { file, matches = count });
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { files = planned, skipped } };
+        }
+
+        var applied = new List<object>();
+        var failed = new List<object>();
+        foreach (var (file, count) in targets)
+        {
+            try
+            {
+                var original = File.ReadAllText(file);
+                var updated = regex.Replace(original, replaceWith);
+                File.WriteAllText(file, updated);
+                applied.Add(new { file, matches = count });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failed.Add(new { file, error = ex.Message });
+            }
+        }
+
+        return new { planned = false, applied = new { files = applied, skipped }, failed };
+    }
+
+    private object ListDocuments()
+    {
+        var list = new List<object>();
+        foreach (Document document in dte.Documents)
+        {
+            list.Add(new { fullName = document.FullName, saved = document.Saved, readOnly = document.ReadOnly });
+        }
+
+        return new { documents = list };
+    }
+
+    private object SaveDocument(string file, bool confirm)
+    {
+        var document = OpenDocumentFor(file) ?? throw new ArgumentException(Strings.Format("NoOpenDocument", file));
+        var change = new { file = document.FullName, saved = document.Saved };
+        if (!confirm)
+        {
+            return new { planned = true, would = new { save = change } };
+        }
+
+        document.Save();
+        return new { planned = false, applied = new { file = document.FullName, saved = document.Saved } };
+    }
+
+    // Closes an open document. A document with unsaved changes is refused unless discardChanges is also set.
+    private object CloseDocument(string file, bool discardChanges, bool confirm)
+    {
+        var document = OpenDocumentFor(file) ?? throw new ArgumentException(Strings.Format("NoOpenDocument", file));
+        if (!document.Saved && !discardChanges)
+        {
+            throw new ArgumentException(Strings.Format("DocumentDirty", file));
+        }
+
+        var change = new { file = document.FullName, saved = document.Saved, discard_changes = discardChanges };
+        if (!confirm)
+        {
+            return new { planned = true, would = new { close = change } };
+        }
+
+        document.Close(discardChanges ? vsSaveChanges.vsSaveChangesNo : vsSaveChanges.vsSaveChangesYes);
+        return new { planned = false, applied = change };
+    }
+
+    // Applies a list of range edits inside one undo group, so the IDE undoes them as one step. Each edit's result is reported;
+    // a failed edit does not stop the others, and the group always closes.
+    private object UndoGroup(string name, JsonElement args, bool confirm)
+    {
+        var edits = ParseEdits(args);
+        if (!confirm)
+        {
+            return new { planned = true, would = new { name, edits = edits.Select(e => new { e.File, e.StartLine, e.StartColumn, e.EndLine, e.EndColumn, e.NewText }).ToList() } };
+        }
+
+        var results = new List<object>();
+        dte.UndoContext.Open(name, false);
+        try
+        {
+            foreach (var edit in edits)
+            {
+                try
+                {
+                    ApplyEdit(edit);
+                    results.Add(new { edit.File, ok = true });
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or COMException)
+                {
+                    results.Add(new { edit.File, ok = false, error = ex.Message });
+                }
+            }
+        }
+        finally
+        {
+            dte.UndoContext.Close();
+        }
+
+        return new { planned = false, applied = new { name, edits = results } };
+    }
+
+    private static Regex BuildSearchPattern(string pattern, bool matchCase, bool useRegex)
+    {
+        var text = useRegex ? pattern : Regex.Escape(pattern);
+        return new Regex(text, matchCase ? RegexOptions.None : RegexOptions.IgnoreCase);
+    }
+
+    private static List<(int Line, string Text)> SearchFile(string path, Regex regex)
+    {
+        var hits = new List<(int Line, string Text)>();
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return hits;
+        }
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (regex.IsMatch(lines[i]))
+            {
+                hits.Add((i + 1, lines[i]));
+            }
+        }
+
+        return hits;
+    }
+
+    private IEnumerable<string> SearchScopeFiles(string scope, string? projectName)
+    {
+        switch (scope)
+        {
+            case "solution":
+                var all = new List<string>();
+                foreach (Project project in dte.Solution.Projects)
+                {
+                    all.AddRange(ProjectFiles(project.ProjectItems));
+                }
+
+                return all;
+            case "project":
+                var named = FindProject(projectName ?? throw new ArgumentException(Strings.Get("ProjectScopeNeedsName")))
+                    ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+                return ProjectFiles(named.ProjectItems);
+            case "openDocuments":
+                var open = new List<string>();
+                foreach (Document document in dte.Documents)
+                {
+                    if (!string.IsNullOrEmpty(document.FullName) && File.Exists(document.FullName))
+                    {
+                        open.Add(document.FullName);
+                    }
+                }
+
+                return open;
+            default:
+                throw new ArgumentException(Strings.Format("UnknownScope", scope));
+        }
+    }
+
+    private static List<string> ProjectFiles(ProjectItems? items)
+    {
+        var files = new List<string>();
+        if (items is null)
+        {
+            return files;
+        }
+
+        foreach (ProjectItem item in items)
+        {
+            if (item.FileCount > 0 && item.FileNames[1] is string path && File.Exists(path))
+            {
+                files.Add(path);
+            }
+
+            if (item.SubProject is { } sub)
+            {
+                files.AddRange(ProjectFiles(sub.ProjectItems));
+            }
+            else
+            {
+                files.AddRange(ProjectFiles(item.ProjectItems));
+            }
+        }
+
+        return files;
+    }
+
+    private Document? OpenDocumentFor(string file)
+    {
+        foreach (Document document in dte.Documents)
+        {
+            if (SameFile(document.FullName, file))
+            {
+                return document;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<(string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText)> ParseEdits(JsonElement args)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("edits", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            throw new ArgumentException(Strings.Format("MissingStringArgument", "edits"));
+        }
+
+        var edits = new List<(string, int, int, int, int, string)>();
+        foreach (var e in array.EnumerateArray())
+        {
+            edits.Add((RequireString(e, "file"), RequireInt(e, "startLine"), RequireInt(e, "startColumn"), RequireInt(e, "endLine"), RequireInt(e, "endColumn"), RequireString(e, "newText")));
+        }
+
+        return edits;
+    }
+
+    // The optional callerEdits array of editMethod: each item names a reference (file, line, column) and its replacement text.
+    private static List<CallerEdit> ParseCallerEdits(JsonElement args)
+    {
+        var edits = new List<CallerEdit>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("callerEdits", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                edits.Add(new CallerEdit(RequireString(e, "file"), RequireInt(e, "line"), RequireInt(e, "column"), RequireString(e, "newText")));
+            }
+        }
+
+        return edits;
+    }
+
+    // The members array: each item names a field or property, its type, privacy and backing.
+    private static List<MemberSpec> ParseMemberSpecs(JsonElement args)
+    {
+        var specs = new List<MemberSpec>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("members", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                var spec = new MemberSpec
+                {
+                    Name = RequireString(e, "name"),
+                    Type = RequireString(e, "type"),
+                    Accessibility = OptionalString(e, "accessibility") ?? "",
+                    Backing = OptionalString(e, "backing") ?? "auto",
+                    Setter = OptionalString(e, "setter") ?? "set",
+                    Required = OptionalBool(e, "required") == true,
+                    Initializer = OptionalString(e, "initializer"),
+                    Summary = OptionalString(e, "summary"),
+                };
+                spec.Attributes.AddRange(StringList(e, "attributes"));
+                specs.Add(spec);
+            }
+        }
+
+        return specs;
+    }
+
+    // The editMember arguments: only the fields that are present change.
+    private static MemberEdit ParseMemberEdit(JsonElement args)
+    {
+        var edit = new MemberEdit
+        {
+            NewName = OptionalString(args, "newName"),
+            NewType = OptionalString(args, "newType"),
+            Accessibility = OptionalString(args, "accessibility"),
+            Backing = OptionalString(args, "backing"),
+            Setter = OptionalString(args, "setter"),
+            Required = OptionalBool(args, "required"),
+            NewSummary = OptionalString(args, "newSummary"),
+        };
+        edit.AddAttributes.AddRange(StringList(args, "addAttributes"));
+        edit.RemoveAttributes.AddRange(StringList(args, "removeAttributes"));
+        return edit;
+    }
+
+    private static IEnumerable<string> StringList(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
+            ? array.EnumerateArray().Select(v => v.GetString() ?? "").Where(s => s.Length > 0).ToList()
+            : new List<string>();
+
+    // The optional newSummary and docs of editMethod: docs is an array of {tag, name, text} for param, typeparam and returns tags.
+    private static DocUpdates ParseDocUpdates(JsonElement args)
+    {
+        var updates = new DocUpdates { NewSummary = OptionalString(args, "newSummary") };
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("docs", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                updates.Items.Add(new DocItem(RequireString(e, "tag"), OptionalString(e, "name"), RequireString(e, "text")));
+            }
+        }
+
+        return updates;
+    }
+
+    // Replaces one range through the editor's selection, so the change goes through the IDE's undo stack.
+    private void ApplyEdit((string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText) edit)
+    {
+        var document = OpenDocumentFor(edit.File) ?? dte.Documents.Open(edit.File);
+        var selection = (TextSelection)document.Selection;
+        selection.MoveToLineAndOffset(edit.StartLine, edit.StartColumn);
+        selection.MoveToLineAndOffset(edit.EndLine, edit.EndColumn, true);
+        selection.Delete();
+        selection.Insert(edit.NewText);
+    }
+
+    // ---- Phase 3: solution and projects ----
+
+    // Reads named project properties. An unknown name gives null, not an error.
+    private object ProjectProperties(string projectName, IReadOnlyList<string> names)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        var values = new Dictionary<string, string?>();
+        foreach (var name in names)
+        {
+            try
+            {
+                values[name] = project.Properties.Item(name).Value?.ToString();
+            }
+            catch (COMException)
+            {
+                values[name] = null;
+            }
+        }
+
+        return new { project = projectName, values };
+    }
+
+    // mode "fromFile" adds an existing file. mode "fromNew" creates a file from a template path (template is required).
+    private object AddProjectItem(string projectName, string file, string mode, string? template, bool confirm)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        if (mode == "fromNew" && string.IsNullOrEmpty(template))
+        {
+            throw new ArgumentException(Strings.Get("TemplateRequiredForNew"));
+        }
+
+        if (mode is not ("fromFile" or "fromNew"))
+        {
+            throw new ArgumentException(Strings.Format("UnknownItemMode", mode));
+        }
+
+        var change = new { project = projectName, file, mode, template };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        if (mode == "fromFile")
+        {
+            project.ProjectItems.AddFromFile(file);
+        }
+        else
+        {
+            project.ProjectItems.AddFromTemplate(template!, file);
+        }
+
+        return new { planned = false, applied = change };
+    }
+
+    // Removes the item from the project. The file stays on disk; the result says so.
+    private object RemoveProjectItem(string projectName, string file, bool confirm)
+    {
+        var project = FindProject(projectName) ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+        var item = FindProjectItemIn(project.ProjectItems, file) ?? throw new ArgumentException(Strings.Format("NoProjectItemFor", file));
+        var change = new { project = projectName, file, stays_on_disk = true };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        item.Remove();
+        return new { planned = false, applied = change };
+    }
+
+    // Closes the solution. Dirty documents are refused unless saveFirst is set, because SuppressUI would discard them silently.
+    private object CloseSolution(bool saveFirst, bool confirm)
+    {
+        var dirty = new List<string>();
+        foreach (Document document in dte.Documents)
+        {
+            if (!document.Saved)
+            {
+                dirty.Add(document.FullName);
+            }
+        }
+
+        var change = new { solution = NullIfEmpty(dte.Solution.FullName), save_first = saveFirst, dirty_documents = dirty };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        if (!saveFirst && dirty.Count > 0)
+        {
+            throw new ArgumentException(Strings.Format("SolutionHasDirtyDocuments", string.Join(", ", dirty)));
+        }
+
+        dte.Solution.Close(saveFirst);
+        return new { planned = false, applied = change };
+    }
+
+    private static ProjectItem? FindProjectItemIn(ProjectItems? items, string file)
+    {
+        if (items is null)
+        {
+            return null;
+        }
+
+        foreach (ProjectItem item in items)
+        {
+            if (item.FileCount > 0 && item.FileNames[1] is string path && SameFile(path, file))
+            {
+                return item;
+            }
+
+            var nested = item.SubProject is { } sub ? FindProjectItemIn(sub.ProjectItems, file) : FindProjectItemIn(item.ProjectItems, file);
+            if (nested is not null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
+    }
+
+    // Labels of the info bar buttons: the actions argument is an array of { "label": "..." } objects.
+    private static IReadOnlyList<string> InfoBarLabels(JsonElement args)
+    {
+        var labels = new List<string>();
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("actions", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            return labels;
+        }
+
+        foreach (var action in array.EnumerateArray())
+        {
+            labels.Add(RequireString(action, "label"));
+        }
+
+        return labels;
+    }
+
+    private static IReadOnlyList<string> RequireStringArray(JsonElement args, string name)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            throw new ArgumentException(Strings.Format("MissingStringArgument", name));
+        }
+
+        var values = new List<string>();
+        foreach (var element in array.EnumerateArray())
+        {
+            values.Add(element.GetString() ?? throw new ArgumentException(Strings.Format("MissingStringArgument", name)));
+        }
+
+        return values;
+    }
+
+    // Read-only view of the Task List window. Adding or clearing tasks needs a registered task provider (unit 4.2, not here).
+    private object ListTasks()
+    {
+        var list = new List<object>();
+        foreach (TaskItem task in dte.ToolWindows.TaskList.TaskItems)
+        {
+            list.Add(new { category = task.Category.ToString(), text = task.Description, file = task.FileName, line = task.Line });
+        }
+
+        return new { tasks = list };
+    }
+
+    private object ListDebuggedProcesses()
+    {
+        var debugger = (EnvDTE90a.Debugger4)dte.Debugger;
+        var list = new List<object>();
+        foreach (EnvDTE.Process process in debugger.DebuggedProcesses)
+        {
+            list.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        return new { processes = list };
+    }
 
     private static int? OptionalInt(JsonElement args, string name) =>
         args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number

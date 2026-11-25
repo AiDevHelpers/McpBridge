@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <!-- Dependencies of the Visual Studio Roslyn build that are not in its folder. -->
+    <PackageReference Include="System.Threading.Channels" Version="10.0.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
@@ -20,6 +22,20 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\AiDevHelpers.Installers.Vs2026.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The method-edit tests run Roslyn in an AdhocWorkspace. They use the same Roslyn build the extension compiles against
+       (the Visual Studio install), copied next to the tests with the System.* assemblies it needs, so the versions match. -->
+  <PropertyGroup>
+    <VsInstallDir Condition="'$(VsInstallDir)' == ''">C:\Program Files\Microsoft Visual Studio\18\Community\</VsInstallDir>
+    <RoslynDir>$(VsInstallDir)Common7\IDE\CommonExtensions\Microsoft\VBCSharp\LanguageServices\</RoslynDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CodeAnalysis"><HintPath>$(RoslynDir)Microsoft.CodeAnalysis.dll</HintPath></Reference>
+    <Reference Include="Microsoft.CodeAnalysis.Workspaces"><HintPath>$(RoslynDir)Microsoft.CodeAnalysis.Workspaces.dll</HintPath></Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp"><HintPath>$(RoslynDir)Microsoft.CodeAnalysis.CSharp.dll</HintPath></Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp.Workspaces"><HintPath>$(RoslynDir)Microsoft.CodeAnalysis.CSharp.Workspaces.dll</HintPath></Reference>
+    <None Include="$(RoslynDir)System.*.dll" Exclude="$(RoslynDir)System.Threading.Tasks.Extensions.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

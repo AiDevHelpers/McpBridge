@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { replyToBridgeRequest } from "./bridgeProtocol.js";
 
-type Fixture = { request?: { action: string }; raw?: string; ok: boolean; reply_keys: string[] };
+type Fixture = { request?: { action: string }; raw?: string; ok: boolean; reply_keys: string[]; bridges?: string[] };
 const fixtures = JSON.parse(readFileSync(new URL("../../../../../../conformance/fixtures.json", import.meta.url), "utf8")) as Record<string, Fixture>;
 
 const health = {
@@ -16,6 +16,10 @@ const health = {
 
 describe("shared IDE bridge conformance fixtures", () => {
     for (const [name, fixture] of Object.entries(fixtures)) {
+        // A fixture may name the bridges it applies to. Without the field it applies to all.
+        if (fixture.bridges && !fixture.bridges.includes("vscode")) {
+            continue;
+        }
         test(name, async () => {
             const line = fixture.raw ?? JSON.stringify(fixture.request);
             const reply = JSON.parse(await replyToBridgeRequest(line, {
