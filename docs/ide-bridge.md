@@ -74,6 +74,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `status` | routing and health checks | Returns `solution_path`. |
 | `listOutputPanes` | the Visual Studio output log source | Lists the Output window pane names. |
 | `listDebugSessions`, `getDebugOutput` | the VS Code debug log source | VS Code only. Lists debug sessions and reads a session's output. |
+| `hotReloadState`, `continuousTestingStart`, `continuousTestingStop`, `continuousTestingState` | the VS Code settings and testing commands | VS Code only. Reads hot reload and runs or stops continuous testing. VS Code has no API to read continuous mode, so `continuousTestingState` reports the bridge's own record. |
 | `prepareKill` | `IdeKillInstance` | Asks the instance to save every document, and reports any that stay unsaved. |
 
 ### Helper tools (MCP only, no bridge action)
