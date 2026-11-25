@@ -63,10 +63,11 @@ Out of scope: existing behaviour of current actions, the aidevtools server, pack
 
 ### 3.6 Conformance and parity
 
-- `conformance/fixtures.json` gets an optional `"bridges"` field: `["visualstudio"]`, `["vscode"]`, or both (default both).
-  Unit 0.2 adds it and changes the VS Code test (`bridgeProtocol.test.ts`) to read it. Before this change the VS Code test compares
-  reply keys exactly, so a VS-only fixture would fail there.
-- VS-only actions get one fixture: `<action>_refused_by_generic_bridge` with `bridges: ["visualstudio"]`, asserting `ok:false`.
+- `conformance/fixtures.json` takes an optional `"bridges"` field: `["visualstudio"]`, `["vscode"]`, or both. Without the field a
+  fixture applies to every bridge. Unit 0.2 adds the filter to both harnesses (`ConformanceTests.cs` checks `visualstudio`;
+  `bridgeProtocol.test.ts` checks `vscode`).
+- Refusal fixtures (`<action>_refused_by_generic_bridge`) need no `bridges` field: both bridges refuse an unknown action with
+  `ok:false`, so they run on both. The field is for fixtures where the two bridges differ (for example `unsupported` replies).
   A VS-only fixture asserts the generic refusal, not the VS contract; the VS contract is tested in the VS Core unit tests and live.
 - Actions with a VS Code equivalent get a fixture for each bridge with its own reply keys.
 - Every tool in section 6 lists its VS Code status.
@@ -114,10 +115,8 @@ Units run in order. A blocked unit does not stop a later unit unless the later u
 ### Phase 0: wiring
 
 - [x] MCP tool locations (`IdeTools.cs`, `DebuggerControlService.cs`). SDK 18.12.1606 in both VS csproj.
-- [ ] **0.1** `npm ci` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core` and `src/Installers/VsCode/Installer/AiDevTools.VsCode`.
-      Done when both test/lint/build commands run.
-- [ ] **0.2** Fixture `bridges` field (section 3.6), plus the VS Code test change. Done when the bridge tests and VS Code tests pass
-      with the new field.
+- [x] **0.1** `npm ci` in both VS Code projects. Core: 31 tests pass, lint clean. Installer: build ok, 16 tests pass.
+- [x] **0.2** Fixture `bridges` filter in `ConformanceTests.cs` and `bridgeProtocol.test.ts`. Bridge: 40 pass. VS Code core: 31 pass.
 - [ ] **0.3** Confirm the coexist decision for `findAllReferences`/`goToDefinition` (recommended: coexist, Roslyn tools
       `ide_semantic_references`, `ide_semantic_definition`). Needs user yes.
 
