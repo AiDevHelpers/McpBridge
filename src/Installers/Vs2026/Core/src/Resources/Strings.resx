@@ -60,6 +60,29 @@
   <data name="TddSameFile" xml:space="preserve"><value>The test and the method must be in different files. Add them with ide_add_method, one at a time, when they share a file.</value></data>
   <data name="TddNotATest" xml:space="preserve"><value>That method has no test attribute (Fact, Theory, Test, TestCase, TestMethod or DataTestMethod).</value></data>
   <data name="TddBodyNotABlock" xml:space="preserve"><value>newBody must be a block, or statements, with no syntax errors.</value></data>
+  <data name="MemberBadName" xml:space="preserve"><value>'{0}' is not a valid member name.</value></data>
+  <data name="MemberBadAccessibility" xml:space="preserve"><value>Accessibility '{0}' is not valid. Use public, internal, protected, private, "protected internal" or "private protected". It must always be given.</value></data>
+  <data name="MemberBadBacking" xml:space="preserve"><value>Backing '{0}' is not valid. Use one of: {1}.</value></data>
+  <data name="MemberBadType" xml:space="preserve"><value>'{0}' is not a valid type.</value></data>
+  <data name="MemberExpressionNeedsInitializer" xml:space="preserve"><value>An expression-bodied member needs its expression in initializer.</value></data>
+  <data name="MemberRenderedInvalid" xml:space="preserve"><value>The member does not render to valid C#: {0}</value></data>
+  <data name="MemberNoneGiven" xml:space="preserve"><value>No members were given.</value></data>
+  <data name="MemberExists" xml:space="preserve"><value>The type already has a member named '{0}'.</value></data>
+  <data name="MemberDocsNotGiven" xml:space="preserve"><value>Neighbouring members have doc comments but '{0}' got none; pass a summary for it.</value></data>
+  <data name="MemberRenameAlone" xml:space="preserve"><value>Rename a member in its own call. Changes to its type, privacy, setter or required need every reference covered, and a rename moves them.</value></data>
+  <data name="MemberRenameBackingField" xml:space="preserve"><value>A rename does not rename a private backing field the property wraps. Rename it in its own call.</value></data>
+  <data name="MemberNoDocComment" xml:space="preserve"><value>The member has no /// doc comment, so newSummary was not used.</value></data>
+  <data name="MemberNotFoundAfterEdit" xml:space="preserve"><value>The edited member could not be found after the edit.</value></data>
+  <data name="MemberUncovered" xml:space="preserve"><value>The change affects what other code sees and {0} reference(s) have no caller edit. Pass an edit for each one in callerEdits.</value></data>
+  <data name="MemberMultiDeclarator" xml:space="preserve"><value>That field declares several variables at once. Split it before editing.</value></data>
+  <data name="MemberNotAMember" xml:space="preserve"><value>No field or property declaration at that position.</value></data>
+  <data name="MemberRelatedMembers" xml:space="preserve"><value>The change affects what other code sees, but the property overrides or implements: {0}. This tool does not edit those; change them first.</value></data>
+  <data name="MemberSetterOnProperty" xml:space="preserve"><value>A setter can only be changed on a property.</value></data>
+  <data name="MemberSetterOnAccessors" xml:space="preserve"><value>This property has no accessor list I can add a setter to (it may be expression-bodied).</value></data>
+  <data name="MemberBadSetter" xml:space="preserve"><value>Setter '{0}' is not valid. Use set, init, none, or an accessibility and set or init such as "private set".</value></data>
+  <data name="MemberBackingUnsupported" xml:space="preserve"><value>Only an auto property and a property over one private field can swap backing (auto and field).</value></data>
+  <data name="MemberBackingFieldShared" xml:space="preserve"><value>The field '{0}' is used elsewhere in the type, so it cannot be folded into an auto property.</value></data>
+  <data name="MemberBackingNoChange" xml:space="preserve"><value>The member already has that backing.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

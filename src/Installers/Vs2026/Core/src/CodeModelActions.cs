@@ -167,60 +167,79 @@ internal static class CodeModelActions
 
     // Replaces the method at a position with new text, after the checks in MethodEditEngine. Plan-only returns the checks; a
     // refused plan is a reply with refused true, never an applied change. Applied writes through the VS workspace as one change set.
-    public static object EditMethod(string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, bool confirm)
+    public static object EditMethod(
+        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members, bool confirm)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        return RunPlan(
+            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
+                MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
+            confirm);
+    }
+
+    // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
+    // the inserted lines. The method plan checks diagnostics against the original solution, so members' own warnings are reported too.
+    internal static async Task<MethodEditPlan> WithMembersAsync(
+        Solution solution, string file, int line, IReadOnlyList<MemberSpec> members,
+        Func<Solution, Func<int, int>, Solution, Task<MethodEditPlan>> plan)
+    {
+        if (members.Count == 0)
         {
-            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
-                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
-            var workspace = model.GetService<VisualStudioWorkspace>();
-            var plan = await MethodEditEngine.PlanAsync(workspace.CurrentSolution, file, line, column, newMethodText, callerEdits, docs).ConfigureAwait(true);
-            if (plan.Refused || !confirm)
-            {
-                return new { planned = !plan.Refused, applied = false, check = plan.ToReply() };
-            }
+            return await plan(solution, l => l, solution).ConfigureAwait(false);
+        }
 
-            if (!workspace.TryApplyChanges(plan.Result!))
-            {
-                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
-            }
+        var added = await MemberAddEngine.PlanAsync(solution, file, line, members, finalize: false).ConfigureAwait(false);
+        if (added.Refused)
+        {
+            return added;
+        }
 
-            return new { planned = false, applied = true, check = plan.ToReply() };
-        });
+        var result = await plan(added.Result!, l => l > added.InsertedAfterLine ? l + added.InsertedLines : l, solution).ConfigureAwait(false);
+        result.MembersAdded.AddRange(members.Select(m => m.Name));
+        result.Warnings.AddRange(added.Warnings);
+        foreach (var f in added.Files.Where(f => !result.Files.Contains(f)))
+        {
+            result.Files.Add(f);
+        }
+
+        return result;
+    }
+
+    // Adds fields and properties to the type at a line, or changes an existing one, with the checks of the method tools.
+    public static object AddMember(string file, int line, IReadOnlyList<MemberSpec> members, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => MemberAddEngine.PlanAsync(solution, file, line, members, finalize: true), confirm);
+    }
+
+    public static object EditMember(string file, int line, MemberEdit edit, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => MemberEditEngine.PlanAsync(solution, file, line, edit, callerEdits), confirm);
     }
 
     // Adds a method to the type at a line, or an overload of the method at that line, after the checks in MethodAddEngine. Same
     // plan, refuse and apply behaviour as EditMethod.
-    public static object AddMethod(string file, int line, string newMethodText, int? afterLine, DocUpdates docs, bool overload, bool confirm)
+    public static object AddMethod(
+        string file, int line, string newMethodText, int? afterLine, DocUpdates docs, bool overload, IReadOnlyList<MemberSpec> members, bool confirm)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return ThreadHelper.JoinableTaskFactory.Run(async () =>
-        {
-            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
-                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
-            var workspace = model.GetService<VisualStudioWorkspace>();
-            var plan = await MethodAddEngine.PlanAsync(workspace.CurrentSolution, file, line, newMethodText, afterLine, overload, docs).ConfigureAwait(true);
-            if (plan.Refused || !confirm)
-            {
-                return new { planned = !plan.Refused, applied = false, check = plan.ToReply() };
-            }
-
-            if (!workspace.TryApplyChanges(plan.Result!))
-            {
-                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
-            }
-
-            return new { planned = false, applied = true, check = plan.ToReply() };
-        });
+        return RunPlan(
+            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
+                MethodAddEngine.PlanAsync(s, file, shift(line), newMethodText, afterLine is { } a ? shift(a) : (int?)null, overload, docs, baseline)),
+            confirm);
     }
 
     // The TDD steps: add a test with its method, or replace a test's body. Same plan, refuse and apply behaviour as EditMethod.
     public static object TddAddTest(
-        string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs, bool confirm)
+        string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs,
+        IReadOnlyList<MemberSpec> members, bool confirm)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => TddEngine.StartAsync(solution, testFile, testLine, testMethodText, methodFile, methodLine, methodText, docs), confirm);
+        return RunPlan(
+            solution => WithMembersAsync(solution, methodFile, methodLine, members, (s, shift, baseline) =>
+                TddEngine.StartAsync(s, testFile, testLine, testMethodText, methodFile, shift(methodLine), methodText, docs, baseline)),
+            confirm);
     }
 
     public static object TddUpdateTest(string file, int line, string newBody, string? targetFile, int? targetLine, bool confirm)

@@ -51,6 +51,11 @@ internal sealed class MethodEditPlan
 
     public int InsertedAtLine { get; set; }
 
+    /// <summary>How many lines an insertion added, and the 1-based line it was inserted after: later lines of the file shift by it.</summary>
+    public int InsertedLines { get; set; }
+
+    public int InsertedAfterLine { get; set; }
+
     public List<string> Files { get; } = new();
 
     public bool SignatureChanged { get; set; }
@@ -74,6 +79,9 @@ internal sealed class MethodEditPlan
 
     public bool AddedIsTest { get; set; }
 
+    /// <summary>Names of the fields and properties added alongside the method.</summary>
+    public List<string> MembersAdded { get; } = new();
+
     public Solution? Result { get; set; }
 
     public bool Refused => Reasons.Count > 0;
@@ -96,6 +104,7 @@ internal sealed class MethodEditPlan
         rebound_references = Rebinds,
         formatted = Formatted,
         inserted_at_line = InsertedAtLine,
+        members_added = MembersAdded,
         files = Files,
         warnings = Warnings,
     };
@@ -114,7 +123,7 @@ internal static class MethodEditEngine
         .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates? docs = null)
+        Solution solution, string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates? docs = null, Solution? baseline = null)
     {
         var plan = new MethodEditPlan();
 
@@ -216,7 +225,7 @@ internal static class MethodEditEngine
 
         // Format the method's file, then report what the edit introduced (errors refuse; warnings and notices are reported).
         edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
-        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan)
+        await EditChecks.CheckNewDiagnosticsAsync(baseline ?? solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan)
             .ConfigureAwait(false);
         plan.Method = await TestDiscovery.LocateAsync(edited, documentId!, TestDiscovery.MetadataName(newSymbol.ContainingType), SignatureKey(newSymbol))
             .ConfigureAwait(false);
@@ -249,7 +258,7 @@ internal static class MethodEditEngine
         return token.Parent!;
     }
 
-    private static async Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes)
+    internal static async Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes)
     {
         var edited = solution;
         foreach (var pair in changes)
@@ -308,7 +317,7 @@ internal static class MethodEditEngine
 
     // Each caller edit must sit on a known reference and replace the invocation that holds it (or the bare identifier for a method
     // group or nameof). Edits that overlap each other or the method are refused.
-    private static async Task<bool> AddCallerEditsAsync(
+    internal static async Task<bool> AddCallerEditsAsync(
         Solution solution, List<Reference> references, IReadOnlyList<CallerEdit> callerEdits,
         Dictionary<DocumentId, List<TextChange>> changes, MethodEditPlan plan)
     {

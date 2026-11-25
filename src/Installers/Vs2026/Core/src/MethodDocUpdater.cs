@@ -113,6 +113,34 @@ internal static class MethodDocUpdater
     }
 
     /// <summary>
+    /// Replaces the summary of a member's existing <c>///</c> doc comment, keeping its layout and every other tag. Null when the
+    /// member has no such comment.
+    /// </summary>
+    public static TextChange? ReplaceSummary(SyntaxNode member, string summary, string eol)
+    {
+        var leading = member.GetLeadingTrivia();
+        var trivia = leading.FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia));
+        if (trivia == default)
+        {
+            return null;
+        }
+
+        var first = trivia.ToFullString();
+        var prefix = first.Length > 3 && first[3] == ' ' ? "/// " : "///";
+        var index = leading.IndexOf(trivia);
+        var indent = index > 0 && leading[index - 1].IsKind(SyntaxKind.WhitespaceTrivia) ? leading[index - 1].ToString() : "";
+        var blocks = ParseBlocks((DocumentationCommentTriviaSyntax)trivia.GetStructure()!);
+        var lines = new List<string>();
+        foreach (var block in blocks)
+        {
+            Render(block.Kind == "summary" ? WithText(block, summary, null, block.Multiline || summary.Contains('\n')) : block, prefix, lines);
+        }
+
+        var text = string.Join(eol, lines.Select((l, i) => i == 0 ? l : indent + l)) + eol;
+        return text == trivia.ToFullString() ? null : new TextChange(trivia.FullSpan, text);
+    }
+
+    /// <summary>
     /// Doc lines for a method that has none yet, in the layout of a documented neighbour (<paramref name="donor"/>, may be null).
     /// Summary, every parameter, every type parameter and a non-void return need text from the caller; nothing is invented.
     /// </summary>

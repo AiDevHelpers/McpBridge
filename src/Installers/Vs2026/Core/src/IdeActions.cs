@@ -160,6 +160,7 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "newMethodText"),
             ParseCallerEdits(args),
             ParseDocUpdates(args),
+            ParseMemberSpecs(args),
             OptionalBool(args, "confirm") == true),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
@@ -168,6 +169,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalInt(args, "afterLine"),
             ParseDocUpdates(args),
             false,
+            ParseMemberSpecs(args),
             OptionalBool(args, "confirm") == true),
         "addOverload" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
@@ -176,6 +178,18 @@ public sealed class IdeActions(DTE2 dte)
             null,
             ParseDocUpdates(args),
             true,
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "addMember" => CodeModelActions.AddMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            ParseMemberSpecs(args),
+            OptionalBool(args, "confirm") == true),
+        "editMember" => CodeModelActions.EditMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            ParseMemberEdit(args),
+            ParseCallerEdits(args),
             OptionalBool(args, "confirm") == true),
         "tddAddTest" => CodeModelActions.TddAddTest(
             RequireString(args, "testFile"),
@@ -185,6 +199,7 @@ public sealed class IdeActions(DTE2 dte)
             RequireInt(args, "methodLine"),
             RequireString(args, "methodText"),
             ParseDocUpdates(args),
+            ParseMemberSpecs(args),
             OptionalBool(args, "confirm") == true),
         "tddUpdateTest" => CodeModelActions.TddUpdateTest(
             RequireString(args, "file"),
@@ -1485,6 +1500,56 @@ public sealed class IdeActions(DTE2 dte)
 
         return edits;
     }
+
+    // The members array: each item names a field or property, its type, privacy and backing.
+    private static List<MemberSpec> ParseMemberSpecs(JsonElement args)
+    {
+        var specs = new List<MemberSpec>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("members", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                var spec = new MemberSpec
+                {
+                    Name = RequireString(e, "name"),
+                    Type = RequireString(e, "type"),
+                    Accessibility = OptionalString(e, "accessibility") ?? "",
+                    Backing = OptionalString(e, "backing") ?? "auto",
+                    Setter = OptionalString(e, "setter") ?? "set",
+                    Required = OptionalBool(e, "required") == true,
+                    Initializer = OptionalString(e, "initializer"),
+                    Summary = OptionalString(e, "summary"),
+                };
+                spec.Attributes.AddRange(StringList(e, "attributes"));
+                specs.Add(spec);
+            }
+        }
+
+        return specs;
+    }
+
+    // The editMember arguments: only the fields that are present change.
+    private static MemberEdit ParseMemberEdit(JsonElement args)
+    {
+        var edit = new MemberEdit
+        {
+            NewName = OptionalString(args, "newName"),
+            NewType = OptionalString(args, "newType"),
+            Accessibility = OptionalString(args, "accessibility"),
+            Backing = OptionalString(args, "backing"),
+            Setter = OptionalString(args, "setter"),
+            Required = OptionalBool(args, "required"),
+            NewSummary = OptionalString(args, "newSummary"),
+        };
+        edit.AddAttributes.AddRange(StringList(args, "addAttributes"));
+        edit.RemoveAttributes.AddRange(StringList(args, "removeAttributes"));
+        return edit;
+    }
+
+    private static IEnumerable<string> StringList(JsonElement element, string name) =>
+        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
+            ? array.EnumerateArray().Select(v => v.GetString() ?? "").Where(s => s.Length > 0).ToList()
+            : new List<string>();
 
     // The optional newSummary and docs of editMethod: docs is an array of {tag, name, text} for param, typeparam and returns tags.
     private static DocUpdates ParseDocUpdates(JsonElement args)

@@ -14,7 +14,7 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 internal static class TddEngine
 {
     public static async Task<MethodEditPlan> StartAsync(
-        Solution solution, string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs)
+        Solution solution, string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs, Solution? baseline = null)
     {
         if (string.Equals(System.IO.Path.GetFullPath(testFile), System.IO.Path.GetFullPath(methodFile), StringComparison.OrdinalIgnoreCase))
         {
@@ -23,7 +23,7 @@ internal static class TddEngine
             return refused;
         }
 
-        var method = await MethodAddEngine.PlanAsync(solution, methodFile, methodLine, WithStubBody(methodText), null, false, docs).ConfigureAwait(false);
+        var method = await MethodAddEngine.PlanAsync(solution, methodFile, methodLine, WithStubBody(methodText), null, false, docs, baseline).ConfigureAwait(false);
         if (method.Refused)
         {
             return method;

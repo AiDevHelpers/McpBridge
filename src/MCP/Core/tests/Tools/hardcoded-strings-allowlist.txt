@@ -117,3 +117,5 @@ Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSecon
 TestingHelper|XPlat Code Coverage
 MCP.Core|method test run
 Vs2026.Core|throw new System.NotImplementedException();
+Vs2026.Core|protected internal
+Vs2026.Core|private protected

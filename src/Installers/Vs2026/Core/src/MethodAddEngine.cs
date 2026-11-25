@@ -18,7 +18,7 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 internal static class MethodAddEngine
 {
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, string newMethodText, int? afterLine, bool overload, DocUpdates docs)
+        Solution solution, string file, int line, string newMethodText, int? afterLine, bool overload, DocUpdates docs, Solution? baseline = null)
     {
         var plan = new MethodEditPlan();
         var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
@@ -137,7 +137,7 @@ internal static class MethodAddEngine
         }
 
         edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
-        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId! }, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(baseline ?? solution, edited, new[] { documentId! }, plan).ConfigureAwait(false);
         plan.Method = await TestDiscovery.LocateAsync(edited, documentId!, TestDiscovery.MetadataName(newSymbol.ContainingType), MethodEditEngine.SignatureKey(newSymbol))
             .ConfigureAwait(false);
         plan.Added = TestDiscovery.TargetFor(newSymbol, document, plan.InsertedAtLine);
@@ -150,7 +150,7 @@ internal static class MethodAddEngine
         return plan;
     }
 
-    private static int CountLines(string text) => text.Count(c => c == '\n');
+    internal static int CountLines(string text) => text.Count(c => c == '\n');
 
     private static bool HasDocs(MethodDeclarationSyntax method) =>
         method.GetLeadingTrivia().Any(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia));
@@ -203,7 +203,7 @@ internal static class MethodAddEngine
         return string.Join(eol, lines.Select(l => l.Length == 0 ? "" : indent + l));
     }
 
-    private static string LeadingWhitespace(string line) => new string(line.TakeWhile(c => c == ' ' || c == '\t').ToArray());
+    internal static string LeadingWhitespace(string line) => new string(line.TakeWhile(c => c == ' ' || c == '\t').ToArray());
 
     private static async Task<IMethodSymbol?> FindNewMethodAsync(Solution edited, DocumentId id, int insertAt, MethodDeclarationSyntax parsed)
     {
