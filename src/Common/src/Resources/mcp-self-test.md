@@ -21,19 +21,21 @@ $msbuild = Join-Path $installation "MSBuild\Current\Bin\MSBuild.exe"
 if ($LASTEXITCODE -ne 0) { throw "Solution build failed: $LASTEXITCODE" }
 
 pwsh -NoProfile -File scripts/build-vs-extension-vsix.ps1 -Configuration Release
-dotnet test tests/AiDevHelpers.Helpers.LogHelper.Tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj
-dotnet test tests/AiDevHelpers.Bridge.Tests/AiDevHelpers.Bridge.Tests.csproj
-dotnet test tests/AiDevHelpers.Helpers.TerminalControl.Tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj
+dotnet test src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj -c Release
+dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release
+dotnet test src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj -c Release
+dotnet test src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj -c Release
+dotnet test src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj -c Release
 ```
 
-Record exit status and reported test counts for each. The bridge MCP test project includes tool validation and integration coverage; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing.
+Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue; the MCP test project covers tool validation and routing; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
 
 ## 3. MCP protocol and inventory
 
-Start `src/AiDevHelpers.MCP` using its normal stdio transport and an MCP client. Confirm:
+Start the built server `src/MCP/Server/src/bin/Release/net10.0-windows/AiDevHelpers.MCP.exe` (build `src/MCP/Server/src/AiDevHelpers.MCP.csproj` first) using its normal stdio transport and an MCP client. Confirm:
 
 1. The stdio initialize handshake completes and the server responds to `tools/list`.
-2. The list includes all currently registered IDE and terminal tools. Compare the names with `docs://ide-bridge/mcp-tools` and use the live schemas as authority.
+2. The list includes all currently registered tools: about 124 at the time of writing (75 `ide_*`, plus git, gate, lint, test, bookmark, error, extension, config, server, self-test, terminal and the rest). Compare the names with `docs://ide-bridge/mcp-tools` and use the live schemas as authority. A count that differs from the documented one is a finding, not an automatic failure.
 3. `resources/list` includes `docs://ide-bridge/mcp-tools` and `docs://ide-bridge/mcp-self-test`.
 4. Read both resources and confirm they return non-empty Markdown with `text/markdown` content.
 5. Call `ide_list_instances`; confirm a valid result, even if its list is empty.
@@ -55,6 +57,20 @@ Do not run `ide_run_tests`, `ide_build`, or other state-changing tools during th
 ## 5. Optional authorized action checks
 
 Only perform a check when the operator explicitly requests it and a scratch solution/session is selected. Agree on the expected change and cleanup first. Possible checks include build/diagnostics, tests/TRX, formatting/cleanup, configuration/startup project, debugger operations, IDE launch/close, or terminal open/tab/exec/close. Capture before/after state and clean up only resources created by this check. Avoid publish, process termination, and closing an existing IDE unless specifically authorized.
+
+### Confirm-gated writes
+
+Every write takes `confirm` (default false). Without it the reply must be `planned: true` and nothing may change. Check each in a scratch solution, with before and after state:
+
+- Breakpoints: `ide_set_breakpoint_condition`, `ide_enable_breakpoint`, `ide_disable_breakpoint` (set on a scratch line, then remove it).
+- Exceptions: `ide_set_exception_break` on one exception, then restore it.
+- Documents and edits: `ide_save_document`, `ide_close_document` (`discardChanges` only on scratch files), `ide_undo_group` with one edit, then undo.
+- Find and replace: `ide_replace_in_files` on a scratch token; `ide_find_in_files` first.
+- Rename: `ide_rename_symbol` on a scratch symbol. Without `confirm` the file list is the plan. Check `ide_semantic_references` before and after.
+- Tasks and shell services: `ide_add_task`, `ide_clear_tasks` (only bridge-added tasks), `ide_set_status`, `ide_show_info_bar`, `ide_write_activity_log`.
+- Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
+- Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.
+- Events, with a build or a breakpoint: `ide_read_events` shows `buildBegin`, `buildDone`, `enterBreakMode`, `documentSaved` in order.
 
 ### VSIX actions and launching a solution argument
 
