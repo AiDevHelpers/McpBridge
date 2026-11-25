@@ -16,6 +16,12 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? elevRunner = null)
 {
+    /// <summary>Events read by default (plan 4.3): run results, status and errors. Build and break errors come through here.</summary>
+    private static readonly string[] DefaultEventNames =
+    {
+        "buildDone", "enterBreakMode", "enterRunMode", "solutionOpened", "solutionClosing", "dropped",
+    };
+
     private readonly IdeSolutionOpener _opener = new(
         new DevenvSolutionLauncher(elevRunner),
         VsInstanceRegistry.FindBySolution,
@@ -257,12 +263,34 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     [McpServerTool]
     [Description("Build the solution in an IDE instance and report whether it succeeded. " +
                  "Pass solutionPath when several instances are open. Use IdeGetBuildDiagnostics for the errors.")]
-    public Task<string> IdeBuild(
+    public async Task<string> IdeBuild(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide, instancePid);
+        CancellationToken ct = default)
+    {
+        // The bridge build blocks until the build finishes. The reply is a summary: status, and on failure the errors (capped).
+        var raw = await IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        using var reply = JsonDocument.Parse(raw);
+        if (!reply.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+        {
+            return raw;
+        }
+
+        var result = reply.RootElement.GetProperty("result").Clone();
+        var succeeded = result.TryGetProperty("succeeded", out var s) && s.ValueKind == JsonValueKind.True;
+        JsonElement? errors = null;
+        using var diagnostics = succeeded
+            ? null
+            : JsonDocument.Parse(await IdeInstanceRouter.CallAsync("getBuildDiagnostics", new { severity = "error" }, solutionPath, ct, ide, instancePid).ConfigureAwait(false));
+        if (diagnostics is not null && diagnostics.RootElement.TryGetProperty("ok", out var dok) && dok.GetBoolean())
+        {
+            errors = diagnostics.RootElement.GetProperty("result").GetProperty("diagnostics").Clone();
+        }
+
+        var summary = BuildSummary.Build(result, errors);
+        return JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary });
+    }
 
     [McpServerTool]
     [Description("Read build errors and warnings from an IDE instance's Error List (the last build's results).")]
@@ -1097,12 +1125,14 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         }
 
         var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();
+        // Default scope (plan 4.3): run results, status and errors. Pass events to ask for others by name.
+        var names = events is { Length: > 0 } ? events : DefaultEventNames;
         var options = new EventFilterOptions(
             Names: null,
             MinSeverity: severity,
             Limit: limit ?? 20,
             MaxTextChars: maxTextChars ?? 300);
-        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, events, options));
+        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, names, options));
     }
 
     [McpServerTool]
