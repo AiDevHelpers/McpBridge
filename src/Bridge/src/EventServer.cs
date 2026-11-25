@@ -58,13 +58,16 @@ public sealed class EventServer : IDisposable
 
     private async Task AcceptLoopAsync(CancellationToken ct)
     {
+        // Same shape as the request pipe (BridgeServer.RunAsync): create one instance, wait for its client, serve that client
+        // to the end, dispose, then create the next. A new instance is never created while a client is being served, so a
+        // single-instance pipe cannot be refused with access denied.
         while (!ct.IsCancellationRequested)
         {
-            NamedPipeServerStream stream;
             try
             {
-                stream = CreateStream();
+                using var stream = CreateStream();
                 await stream.WaitForConnectionAsync(ct).ConfigureAwait(false);
+                await ServeAsync(stream, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -72,13 +75,10 @@ public sealed class EventServer : IDisposable
             }
             catch (Exception ex)
             {
-                // The pipe could not be created or accepted (for example, all instances busy). Log it and try again shortly.
+                // The pipe could not be created or served. Log it and try again shortly.
                 _logger.LogException(ex);
                 await Task.Delay(TimeSpan.FromMilliseconds(500), ct).ConfigureAwait(false);
-                continue;
             }
-
-            _ = Task.Run(() => ServeAsync(stream, ct));
         }
     }
 
