@@ -15,8 +15,11 @@ namespace AiDevHelpers.Bridge;
 /// </summary>
 public sealed class EventServer : IDisposable
 {
-    /// <summary>Concurrent subscribers allowed on the events pipe.</summary>
-    public const int MaxSubscribers = 8;
+    /// <summary>
+    /// Pipe instances on the events pipe. One, as for the request pipe: with several instances the VS process could not
+    /// create the pipe (access denied), so the events pipe serves one subscriber at a time. Later subscribers wait their turn.
+    /// </summary>
+    public const int MaxSubscribers = 1;
 
     /// <summary>Silence after which the writer sends a heartbeat line.</summary>
     public static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(15);
@@ -29,14 +32,16 @@ public sealed class EventServer : IDisposable
     private readonly string _pipeName;
     private readonly int _pid;
     private readonly EventHub _hub;
+    private readonly IBridgeLogger _logger;
     private readonly CancellationTokenSource _cts = new();
     private Task? _accept;
 
-    public EventServer(string pipeName, int pid, EventHub hub)
+    public EventServer(string pipeName, int pid, EventHub hub, IBridgeLogger logger)
     {
         _pipeName = pipeName;
         _pid = pid;
         _hub = hub;
+        _logger = logger;
     }
 
     public void Start()
@@ -65,9 +70,10 @@ public sealed class EventServer : IDisposable
             {
                 return;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // The pipe could not be created or accepted (for example, all instances busy). Try again shortly.
+                // The pipe could not be created or accepted (for example, all instances busy). Log it and try again shortly.
+                _logger.LogException(ex);
                 await Task.Delay(TimeSpan.FromMilliseconds(500), ct).ConfigureAwait(false);
                 continue;
             }
@@ -95,9 +101,10 @@ public sealed class EventServer : IDisposable
                     _hub.Unsubscribe(subscriber, subscriber.CloseReason ?? "unsubscribed");
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // A bad subscribe line or a dropped client only ends this connection.
+                // A bad subscribe line or a dropped client only ends this connection. Log it so it can be seen.
+                _logger.LogException(ex);
             }
         }
     }

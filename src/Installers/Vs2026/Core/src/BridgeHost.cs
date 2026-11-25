@@ -160,7 +160,7 @@ public sealed class BridgeHost : IDisposable
 #pragma warning restore VSTHRD010
 
         // Events pipe (phase 5): build, debugger and document events are pushed to subscribed clients.
-        _eventServer = new EventServer(InstanceRegistry.EventPipeNameFor(_pid), _pid, _events);
+        _eventServer = new EventServer(InstanceRegistry.EventPipeNameFor(_pid), _pid, _events, new DebugBridgeLogger());
         _eventServer.Start();
         _buildEvents = _dte.Events.BuildEvents;
         _debuggerEvents = _dte.Events.DebuggerEvents;
