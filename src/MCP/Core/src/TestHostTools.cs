@@ -14,9 +14,9 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class TestHostTools
 {
     private static readonly string[] HostNames = ["testhost", "testhost.x86"];
-    private static readonly ConcurrentDictionary<string, IReadOnlyList<HostRef>> Plans = new();
+    internal static readonly ConcurrentDictionary<string, IReadOnlyList<HostRef>> Plans = new();
 
-    private sealed record HostRef(int Pid, DateTime StartUtc, string Name);
+    internal sealed record HostRef(int Pid, DateTime StartUtc, string Name);
 
     [McpServerTool]
     [Description("List test host processes (testhost.exe) that are still running, such as ones a run left holding the test outputs. " +

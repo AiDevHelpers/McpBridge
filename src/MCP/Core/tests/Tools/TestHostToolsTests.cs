@@ -35,14 +35,14 @@ public sealed class TestHostToolsTests
     [Fact]
     public void StopTokenIsSingleUse()
     {
-        var list = JsonDocument.Parse(TestHostTools.TestHostsList()).RootElement;
-        if (!list.TryGetProperty("token", out var token))
-        {
-            return; // No test host is running on this machine; nothing to stop.
-        }
+        // Stop with a plan that lists no processes. A real list would stop every testhost on the machine,
+        // including the ones other test projects run in parallel (that killed the Bridge tests in CI).
+        var token = "single-use-" + Guid.NewGuid().ToString("N");
+        TestHostTools.Plans[token] = Array.Empty<TestHostTools.HostRef>();
 
-        TestHostTools.TestHostsStop(token.GetString()!);
-        using var again = JsonDocument.Parse(TestHostTools.TestHostsStop(token.GetString()!));
+        using var first = JsonDocument.Parse(TestHostTools.TestHostsStop(token));
+        Assert.True(first.RootElement.GetProperty("ok").GetBoolean());
+        using var again = JsonDocument.Parse(TestHostTools.TestHostsStop(token));
         Assert.False(again.RootElement.GetProperty("ok").GetBoolean());
     }
 }
