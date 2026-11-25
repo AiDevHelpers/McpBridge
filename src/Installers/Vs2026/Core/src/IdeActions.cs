@@ -197,6 +197,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalBool(args, "deleteFile") == true,
             OptionalBool(args, "confirm") == true,
             OptionalString(args, "planHash")),
+        "listUnused" => CodeModelActions.ListUnused(OptionalString(args, "project"), OptionalBool(args, "includePublic") == true),
         "renameNamespace" => CodeModelActions.RenameNamespace(
             RequireString(args, "oldNamespace"),
             RequireString(args, "newNamespace"),

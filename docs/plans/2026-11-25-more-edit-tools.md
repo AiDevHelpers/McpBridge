@@ -121,7 +121,9 @@ Visual Studio only and says so in its description.
 - [x] **1.2** (done as `ide_delete_type`: `DeleteEngine.DeleteTypeAsync`; deleteFile removes the file only when the type is its only
       declaration, via `FileOperations.Delete`, after the text change. 118 VS Core tests pass.) `ide_delete` with `target: type`: top-level or nested. Refused while referenced from outside itself. `deleteFile`
       true deletes a file left with only usings (0.8).
-- [ ] **1.3** `ide_list_unused`: read only. Private, internal and (when asked) public members and types with no references, from
+- [x] **1.3** (done: `UnusedFinder.cs` lists private and internal members and types with no references, read only, public with
+      `includePublic`; members with attributes, interfaces or constructors are marked low confidence. Reference search is over the
+      whole solution, not yet scoped by accessibility as planned; that is a speed follow-up. 121 VS Core tests pass.) `ide_list_unused`: read only. Private, internal and (when asked) public members and types with no references, from
       reference search plus IDE0051 and IDE0052. The search is scoped by accessibility (a private member searches only its type,
       an internal one its project and friends) so it stays fast. Notes reflection, serialization and DI as low confidence.
 

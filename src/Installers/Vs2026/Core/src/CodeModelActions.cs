@@ -344,6 +344,20 @@ internal static class CodeModelActions
         return RunPlan(solution => DeleteEngine.DeleteTypeAsync(solution, file, line, column, callerEdits, deleteTests, deleteFile), confirm, planHash);
     }
 
+    // Lists private and internal members and types with no references (read only). Public ones only when includePublic is set.
+    public static object ListUnused(string? project, bool includePublic)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            var unused = await UnusedFinder.FindAsync(workspace.CurrentSolution, project, includePublic).ConfigureAwait(true);
+            return (object)new { count = unused.Count, unused };
+        });
+    }
+
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel

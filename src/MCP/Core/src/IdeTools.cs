@@ -931,6 +931,17 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("List C# members and types with no references, for review before deleting them: private and internal ones by default, public ones when includePublic is true (other assemblies may use public ones). Read only. Each entry gives its kind, name, file and line, and a confidence: members with attributes, interfaces or constructors may be used by reflection, serialization or dependency injection, and are marked low. Feeds ide_delete_member and ide_delete_type. Visual Studio only.")]
+    public async Task<string> IdeListUnused(
+        [Description("Optional: one project's name. Default: every project in the solution.")] string? project = null,
+        [Description("Include public members and types. Default false.")] bool includePublic = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        await IdeInstanceRouter.CallAsync("listUnused", new { project, includePublic }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+
+    [McpServerTool]
     [Description("Delete one C# member (method, property, field, event, constructor, operator, indexer, enum member or interface member) using Roslyn, with checks. Refused while any reference remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the call, use an empty value only where that leaves valid code). Refused when the member overrides or implements another member, when an interface member has implementers, and when tests call it unless their names are given in deleteTests (those tests are not deleted). Removes the member and its doc comment. A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeDeleteMember(
         [Description("Full path of the source file")] string file,
@@ -1075,10 +1086,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     public string IdeReadEvents(
         [Description("Optional: process id of the instance. Needed when more than one instance is subscribed.")] int? instancePid = null,
         [Description("Return events with a sequence number greater than this. Default 0.")] long sinceSeq = 0,
-        [Description("Optional: only these event names. Omit for all.")] string[]? events = null)
+        [Description("Optional: only these event names. Omit for all.")] string[]? events = null,
+        [Description("Optional: info, warning or error. Events below this are left out. Default info.")] string? minSeverity = null,
+        [Description("Optional: most events to return (1 to 200). Default 20. The reply counts the rest in omitted; pass next_seq as sinceSeq to continue.")] int? limit = null,
+        [Description("Optional: longest text kept in one event (characters). Longer text is cut and marked truncated. Default 300.")] int? maxTextChars = null)
     {
+        if (!EventSeverityMap.TryParse(minSeverity, out var severity))
+        {
+            throw new ArgumentException($"Unknown minSeverity '{minSeverity}'. Use info, warning or error.");
+        }
+
         var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();
-        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, events));
+        var options = new EventFilterOptions(
+            Names: null,
+            MinSeverity: severity,
+            Limit: limit ?? 20,
+            MaxTextChars: maxTextChars ?? 300);
+        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, events, options));
     }
 
     [McpServerTool]
