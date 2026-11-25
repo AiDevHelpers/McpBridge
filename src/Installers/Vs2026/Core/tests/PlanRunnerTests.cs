@@ -1,3 +1,4 @@
+using System.Threading;
 using Xunit;
 
 namespace AiDevHelpers.Installers.Vs2026.Core.Tests;
@@ -45,12 +46,13 @@ public sealed class PlanRunnerTests
     [Fact]
     public async Task ThePlanRunsOffTheCallingThread()
     {
-        var caller = Environment.CurrentManagedThreadId;
+        var callerContext = SynchronizationContext.Current;
         var solution = TestSolutions.Single([(@"C:\a.cs", "class A { }")]);
-        var planThread = -1;
+        SynchronizationContext? planContext = null;
 
-        await PlanRunner.RunAsync(solution, _ => { planThread = Environment.CurrentManagedThreadId; return Task.FromResult(new MethodEditPlan()); }, TimeSpan.FromSeconds(10));
+        await PlanRunner.RunAsync(solution, _ => { planContext = SynchronizationContext.Current; return Task.FromResult(new MethodEditPlan()); }, TimeSpan.FromSeconds(10));
 
-        Assert.NotEqual(caller, planThread);
+        Assert.NotSame(callerContext, planContext);
+        Assert.Null(planContext);
     }
 }

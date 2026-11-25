@@ -91,7 +91,9 @@ Visual Studio only and says so in its description.
       background and its result is dropped; a token through the engines is follow-up work. 87 VS Core tests pass.) Planning off the UI thread: `RunPlan` plans on a workspace snapshot with a timeout (default 60 s,
       `timeoutSeconds`) and a cancellation token, then applies on the UI thread. A search that does not finish refuses with
       `incomplete: true` (`SymbolFinder` gives no partial result). A test shows the UI thread stays free during a plan.
-- [ ] **0.5** Plan hash (see section 3), in `RunPlan` and every tool; `planHash` argument on every tool.
+- [~] **0.5** Partly done: `PlanHash.cs` fingerprints a plan by its changed paths and full new text (4 tests, 91 VS Core tests pass).
+      Not yet: `plan_hash` in the reply, and the `planHash` argument that confirm checks against. Those need the reply and each
+      tool's arguments wired, which is the next step of this unit.
 - [ ] **0.6** One logical document: multi-target and linked files resolve a path to all its `DocumentId`s, de-duplicate references
       by path and position, edit once, and report the `#if` branches Roslyn did not see in each target. Generated and read-only
       documents are refused.
