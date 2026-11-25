@@ -4,7 +4,7 @@ Source: the Sonnet review of the non-test C# changed this session (19 files), th
 Findings are numbered as in the code review. Scope: the seven high-priority items. Medium and low items are not scheduled.
 
 ## Status
-- Units 1-7: done in code. Unit 3: a timed-out launch clears its starting marker (decided in chat). Live checks pending: units 1 and 5 (extension), 2, 4 and 6 (server restart).
+- Units 1-7: done in code. Unit 3: a timed-out launch clears its starting marker (decided in chat). Live checks (2026-11-25): unit 4 passed (`ide_launch_instance` on the open solution, by path with other casing and slashes, returned the same instance). Unit 5: `ide_run_tests` accepted, but no finished run was reported, so it is not verified. Units 1, 2 and 6: not checked. Extension installed (exit 0).
 - Unit 7: committed as the full split (9335f02), not only the helpers.
 - Unit 1: store-first order with rollback; no test for the pointer-write failure path yet.
 
