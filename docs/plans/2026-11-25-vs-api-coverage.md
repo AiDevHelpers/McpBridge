@@ -260,7 +260,13 @@ Phase 5 is a new transport. Its check is the bridge test suite plus the live run
       Existing `findAllReferences` and `goToDefinition` are unchanged.
 - [ ] **6.3** `ide_rename_symbol` (confirm). Args `file`, `line`, `column`, `newName`. Plan-only lists affected files and counts.
       Applied applies changed documents through the workspace; per-file `failed` entries as 3.1. Live only.
-- [ ] **6.4** `ide_code_fixes` (read) and `ide_apply_code_fix` (confirm, arg `id`). Live only.
+- [ ] **6.4 TODO (moved, not in scope now).** `ide_code_fixes` (read) and `ide_apply_code_fix` (confirm, arg `id`).
+      Status: the internal `ICodeFixService` is not usable (internal). The public path (reflection loader over analyzer DLLs) was
+      rejected by the Sonnet review: second assembly copies, locks, and no unload on net48. Planned instead:
+      (a) analyzer diagnostics via the public API, with compiler diagnostics, project analyzer options, and a span check that
+      accepts a caret at the end of a span; (b) fixes via `ISuggestedActionsSource` (public editor API), which needs an open view
+      and lists titles only for plan-only; (c) apply on the UI thread only, rejected if the solution changed since the plan.
+      Live check needed; not started.
 - [ ] **6.5** Unsaved buffers: tool descriptions say results include unsaved edits. Live: edit a buffer without saving, confirm the
       result includes the edit.
 
