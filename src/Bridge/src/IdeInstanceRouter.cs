@@ -45,7 +45,7 @@ public static class IdeInstanceRouter
         VsInstance? target;
         if (!string.IsNullOrWhiteSpace(solutionPath))
         {
-            var matches = instances.Where(i => SamePath(i.SolutionPath, solutionPath)).ToList();
+            var matches = instances.Where(i => PathCompare.Same(i.SolutionPath, solutionPath)).ToList();
             if (matches.Count == 0)
             {
                 return Error($"No open Visual Studio instance has '{solutionPath}' open.", instances);
@@ -187,6 +187,4 @@ public static class IdeInstanceRouter
         updated_utc = i.UpdatedUtc,
     };
 
-    private static bool SamePath(string? a, string b) =>
-        !string.IsNullOrEmpty(a) && string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 }
