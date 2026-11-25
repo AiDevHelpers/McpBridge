@@ -786,6 +786,30 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("clearTasks", new { confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("Find every reference to the symbol at a file position, across the solution, using Roslyn. Sees unsaved editor edits. Read-only.")]
+    public Task<string> IdeSemanticReferences(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("semanticReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Find where the symbol at a file position is declared in source, using Roslyn. Sees unsaved editor edits. Read-only.")]
+    public Task<string> IdeSemanticDefinition(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("semanticDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,

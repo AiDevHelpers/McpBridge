@@ -79,6 +79,16 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "semantic_references_refused_by_generic_bridge": {
+    "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "semantic_definition_refused_by_generic_bridge": {
+    "request": { "action": "semanticDefinition", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "add_task_refused_by_generic_bridge": {
     "request": { "action": "addTask", "args": { "text": "t" } },
     "ok": false,

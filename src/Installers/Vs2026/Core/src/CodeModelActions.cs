@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.LanguageServices;
@@ -58,6 +59,87 @@ internal static class CodeModelActions
         }
 
         return new { elements = list };
+    }
+
+    // Symbol at a position: every reference to it across the solution. Read-only.
+    public static object SemanticReferences(string file, int line, int column)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(() => SemanticReferencesAsync(file, line, column));
+    }
+
+    // Symbol at a position: where it is declared in source. Read-only.
+    public static object SemanticDefinition(string file, int line, int column)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(() => SemanticDefinitionAsync(file, line, column));
+    }
+
+    private static async Task<object> SemanticReferencesAsync(string file, int line, int column)
+    {
+        var (solution, document, position) = await ResolvePositionAsync(file, line, column).ConfigureAwait(true);
+        var symbol = await SymbolFinder.FindSymbolAtPositionAsync(document, position).ConfigureAwait(true)
+            ?? throw new ArgumentException(Strings.Get("NoSymbolAtPosition"));
+
+        var found = new List<object>();
+        foreach (var referenced in await SymbolFinder.FindReferencesAsync(symbol, solution).ConfigureAwait(true))
+        {
+            foreach (var reference in referenced.Locations)
+            {
+                found.Add(ToLocation(reference.Location));
+            }
+        }
+
+        return new { symbol = symbol.ToDisplayString(), locations = found };
+    }
+
+    private static async Task<object> SemanticDefinitionAsync(string file, int line, int column)
+    {
+        var (_, document, position) = await ResolvePositionAsync(file, line, column).ConfigureAwait(true);
+        var symbol = await SymbolFinder.FindSymbolAtPositionAsync(document, position).ConfigureAwait(true)
+            ?? throw new ArgumentException(Strings.Get("NoSymbolAtPosition"));
+
+        var locations = new List<object>();
+        foreach (var location in symbol.Locations)
+        {
+            if (location.IsInSource)
+            {
+                locations.Add(ToLocation(location));
+            }
+        }
+
+        return new { symbol = symbol.ToDisplayString(), locations };
+    }
+
+    private static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
+    {
+        var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+            ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+        var solution = model.GetService<VisualStudioWorkspace>().CurrentSolution;
+        var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault()
+            ?? throw new ArgumentException(Strings.Format("NoRoslynDocumentFor", file));
+        var document = solution.GetDocument(documentId)
+            ?? throw new ArgumentException(Strings.Format("NoRoslynDocumentFor", file));
+
+        var text = await document.GetTextAsync().ConfigureAwait(true);
+        if (line < 1 || line > text.Lines.Count)
+        {
+            throw new ArgumentException(Strings.Format("LineOutOfRange", line, file));
+        }
+
+        var position = text.Lines[line - 1].Start + Math.Max(0, column - 1);
+        return (solution, document, Math.Min(position, text.Length));
+    }
+
+    private static object ToLocation(Location location)
+    {
+        var span = location.GetLineSpan();
+        return new
+        {
+            file = span.Path,
+            line = span.StartLinePosition.Line + 1,
+            column = span.StartLinePosition.Character + 1,
+        };
     }
 
     // Names only the declarations an agent navigates by: namespaces, types, methods, constructors, properties.
