@@ -19,6 +19,10 @@
     <ProjectReference Include="..\..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" SetTargetFramework="TargetFramework=net48" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiDevHelpers.Installers.Vs2026.Core.Tests" />
+  </ItemGroup>
+
   <!-- Roslyn (phase 6). The extension uses the Roslyn assemblies the running Visual Studio already loads, so they are
        referenced from the install (DevEnvDir) and never copied into the VSIX (Private=false). -->
   <PropertyGroup>

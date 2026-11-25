@@ -75,6 +75,7 @@ Every write takes `confirm` (default false). Without it the reply must be `plann
 - Documents and edits: `ide_save_document`, `ide_close_document` (`discardChanges` only on scratch files), `ide_undo_group` with one edit, then undo.
 - Find and replace: `ide_replace_in_files` on a scratch token; `ide_find_in_files` first.
 - Rename: `ide_rename_symbol` on a scratch symbol. Without `confirm` the file list is the plan. Check `ide_semantic_references` before and after.
+- Method edit: `ide_edit_method` on a scratch method. Without `confirm` the checks are the plan. Change a parameter on a method with a caller and expect a refusal that lists the uncovered reference; pass a `callerEdits` entry for it and expect the checks to pass. Check `ide_semantic_references` before and after.
 - Tasks and shell services: `ide_add_task`, `ide_clear_tasks` (only bridge-added tasks), `ide_set_status`, `ide_show_info_bar`, `ide_write_activity_log`.
 - Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
 - Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.

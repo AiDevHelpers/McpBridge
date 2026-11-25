@@ -153,6 +153,13 @@ public sealed class IdeActions(DTE2 dte)
             OptionalInt(args, "column") ?? 1,
             RequireString(args, "newName"),
             OptionalBool(args, "confirm") == true),
+        "editMethod" => CodeModelActions.EditMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "newMethodText"),
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
@@ -1426,6 +1433,21 @@ public sealed class IdeActions(DTE2 dte)
         foreach (var e in array.EnumerateArray())
         {
             edits.Add((RequireString(e, "file"), RequireInt(e, "startLine"), RequireInt(e, "startColumn"), RequireInt(e, "endLine"), RequireInt(e, "endColumn"), RequireString(e, "newText")));
+        }
+
+        return edits;
+    }
+
+    // The optional callerEdits array of editMethod: each item names a reference (file, line, column) and its replacement text.
+    private static List<CallerEdit> ParseCallerEdits(JsonElement args)
+    {
+        var edits = new List<CallerEdit>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("callerEdits", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                edits.Add(new CallerEdit(RequireString(e, "file"), RequireInt(e, "line"), RequireInt(e, "column"), RequireString(e, "newText")));
+            }
         }
 
         return edits;

@@ -165,6 +165,31 @@ internal static class CodeModelActions
         return new { planned = false, applied = change };
     }
 
+    // Replaces the method at a position with new text, after the checks in MethodEditEngine. Plan-only returns the checks; a
+    // refused plan is a reply with refused true, never an applied change. Applied writes through the VS workspace as one change set.
+    public static object EditMethod(string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            var plan = await MethodEditEngine.PlanAsync(workspace.CurrentSolution, file, line, column, newMethodText, callerEdits).ConfigureAwait(true);
+            if (plan.Refused || !confirm)
+            {
+                return new { planned = !plan.Refused, applied = false, check = plan.ToReply() };
+            }
+
+            if (!workspace.TryApplyChanges(plan.Result!))
+            {
+                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
+            }
+
+            return new { planned = false, applied = true, check = plan.ToReply() };
+        });
+    }
+
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel

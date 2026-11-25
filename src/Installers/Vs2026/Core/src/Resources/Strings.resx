@@ -35,6 +35,17 @@
   <data name="NoSymbolAtPosition" xml:space="preserve"><value>No symbol at that position.</value></data>
   <data name="LineOutOfRange" xml:space="preserve"><value>Line {0} is outside '{1}'.</value></data>
   <data name="RenameNotApplied" xml:space="preserve"><value>The workspace refused the rename. Nothing was changed.</value></data>
+  <data name="MethodEditNotAMethod" xml:space="preserve"><value>No method declaration at that position.</value></data>
+  <data name="MethodEditNewTextNotOneMethod" xml:space="preserve"><value>newMethodText must be exactly one method declaration with no syntax errors.</value></data>
+  <data name="MethodEditNewMethodNotFound" xml:space="preserve"><value>The edited method could not be found after the edit.</value></data>
+  <data name="MethodEditNotAReference" xml:space="preserve"><value>Caller edit at {0}:{1}:{2} is not a reference to the method. Use the locations ide_semantic_references returns.</value></data>
+  <data name="MethodEditOverlap" xml:space="preserve"><value>Caller edit at {0}:{1}:{2} overlaps another edit.</value></data>
+  <data name="MethodEditRelatedMembers" xml:space="preserve"><value>The signature changed, but the method overrides, implements or is overridden by: {0}. This tool does not edit those; change them first.</value></data>
+  <data name="MethodEditUncovered" xml:space="preserve"><value>The signature changed and {0} reference(s) have no caller edit. Pass an edit for each one in callerEdits.</value></data>
+  <data name="MethodEditNewErrors" xml:space="preserve"><value>The edit would add {0} compile error(s). Nothing was changed.</value></data>
+  <data name="MethodEditWarnUnseen" xml:space="preserve"><value>Roslyn cannot see reflection, string names, XAML, dependency injection, or projects outside the open solution. Search for the method name with ide_find_in_files.</value></data>
+  <data name="MethodEditWarnCandidates" xml:space="preserve"><value>Some references are implicit or only candidates. Check them in the reply.</value></data>
+  <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>
