@@ -168,13 +168,13 @@ internal static class CodeModelActions
     // Replaces the method at a position with new text, after the checks in MethodEditEngine. Plan-only returns the checks; a
     // refused plan is a reply with refused true, never an applied change. Applied writes through the VS workspace as one change set.
     public static object EditMethod(
-        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members, bool confirm)
+        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(
             solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
                 MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
-            confirm);
+            confirm, planHash);
     }
 
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
@@ -248,7 +248,7 @@ internal static class CodeModelActions
         return RunPlan(solution => TddEngine.UpdateTestAsync(solution, file, line, newBody, targetFile, targetLine), confirm);
     }
 
-    private static object RunPlan(Func<Solution, Task<MethodEditPlan>> plan, bool confirm)
+    private static object RunPlan(Func<Solution, Task<MethodEditPlan>> plan, bool confirm, string? expectedHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return ThreadHelper.JoinableTaskFactory.Run(async () =>
@@ -259,6 +259,12 @@ internal static class CodeModelActions
             // The snapshot is taken on the UI thread; planning runs on a thread-pool thread with a time limit.
             var outcome = await PlanRunner.RunAsync(workspace.CurrentSolution, plan, PlanRunner.DefaultTimeout).ConfigureAwait(true);
             var planned = outcome.Plan ?? PlanRunner.Incomplete(PlanRunner.DefaultTimeout);
+            planned.Hash = await PlanHash.ComputeAsync(workspace.CurrentSolution, planned.Result).ConfigureAwait(true);
+            if (confirm && expectedHash is not null && !PlanHash.Matches(expectedHash, planned.Hash))
+            {
+                planned.Reasons.Add(Strings.Get("PlanHashChanged"));
+            }
+
             if (planned.Refused || !confirm)
             {
                 return (object)new { planned = !planned.Refused, applied = false, check = planned.ToReply() };

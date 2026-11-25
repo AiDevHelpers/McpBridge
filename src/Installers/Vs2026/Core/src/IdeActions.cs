@@ -161,7 +161,7 @@ public sealed class IdeActions(DTE2 dte)
             ParseCallerEdits(args),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
             RequireInt(args, "line"),

@@ -835,6 +835,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: new text for the summary of the method's XML doc comment, when the method's purpose changed.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -842,7 +843,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 

@@ -102,6 +102,7 @@
   <data name="EditTargetMultiDeclarator" xml:space="preserve"><value>That field or event declares several variables at once. Split it before editing.</value></data>
   <data name="EditTargetNoSymbol" xml:space="preserve"><value>The declaration has no symbol Roslyn can resolve.</value></data>
   <data name="PlanIncomplete" xml:space="preserve"><value>The plan did not finish within {0} seconds and nothing was changed. Narrow the request or try again.</value></data>
+  <data name="PlanHashChanged" xml:space="preserve"><value>The change is not the one that was shown: the plan differs from the planHash given. Show the new plan and get a yes before applying it.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

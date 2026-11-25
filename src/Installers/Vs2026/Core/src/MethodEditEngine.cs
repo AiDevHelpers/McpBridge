@@ -85,6 +85,9 @@ internal sealed class MethodEditPlan
 
     public bool DocsUpdated { get; set; }
 
+    /// <summary>The fingerprint of what this plan changes (<see cref="PlanHash"/>). Set by the bridge before the reply is written.</summary>
+    public string? Hash { get; set; }
+
     /// <summary>Test methods that call the edited method, found before the edit. The MCP server runs them after an applied edit.</summary>
     public List<TestTarget> Tests { get; } = new();
 
@@ -119,6 +122,7 @@ internal sealed class MethodEditPlan
         new_signature = NewSignature,
         reference_count = ReferenceCount,
         docs_updated = DocsUpdated,
+        plan_hash = Hash,
         tests = Tests.Select(t => t.ToReply()).ToList(),
         method = Method,
         uncovered_references = Uncovered,
