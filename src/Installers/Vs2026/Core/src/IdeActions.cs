@@ -1,3 +1,4 @@
+using System.Text;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -26,7 +27,54 @@ public sealed class IdeActions(DTE2 dte)
     {
         // Callers switch to the UI thread first (BridgePackage); this asserts it at runtime.
         Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
-        return InvokeOnUiThread(action, args);
+
+        // Modal prompts (line endings, reload, save) would freeze the UI thread and the bridge with it. Suppressing UI for the
+        // duration of one action lets the IDE answer with its defaults instead of waiting. Restored afterwards.
+        var previous = dte.SuppressUI;
+        dte.SuppressUI = true;
+        try
+        {
+            return InvokeOnUiThread(action, args);
+        }
+        finally
+        {
+            dte.SuppressUI = previous;
+        }
+    }
+
+    // Makes one file use a single line-ending style before the IDE opens it, so VS does not ask whether to normalize.
+    // The dominant style wins; a BOM is kept. Only files the caller is about to write to are passed here.
+    private static void NormalizeLineEndings(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var hasBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+        var text = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetString(bytes, hasBom ? 3 : 0, bytes.Length - (hasBom ? 3 : 0));
+        var crlf = 0;
+        var lf = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] != '\n')
+            {
+                continue;
+            }
+
+            if (i > 0 && text[i - 1] == '\r')
+            {
+                crlf++;
+            }
+            else
+            {
+                lf++;
+            }
+        }
+
+        if (crlf == 0 || lf == 0)
+        {
+            return; // already one style (or no line breaks)
+        }
+
+        var normalized = (crlf >= lf ? text.Replace("\r\n", "\n").Replace("\n", "\r\n") : text.Replace("\r\n", "\n"));
+        File.WriteAllText(path, normalized, new UTF8Encoding(encoderShouldEmitUTF8Identifier: hasBom));
     }
 
     private object InvokeOnUiThread(string action, JsonElement args) => action switch
@@ -134,6 +182,7 @@ public sealed class IdeActions(DTE2 dte)
                 continue;
             }
 
+            NormalizeLineEndings(path);
             dte.ItemOperations.OpenFile(path);
             var window = dte.ActiveDocument;
             if (window is null || !string.Equals(window.FullName, path, StringComparison.OrdinalIgnoreCase))
