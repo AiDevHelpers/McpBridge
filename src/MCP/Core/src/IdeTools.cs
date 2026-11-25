@@ -78,7 +78,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     [McpServerTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
     public async Task<string> IdeOpenSolution(
-        [Description("Full path of the .sln")] string solutionPath)
+        [Description("Full path of the .sln")] string solutionPath,
+        CancellationToken ct = default)
     {
         if (!File.Exists(solutionPath))
         {
@@ -96,7 +97,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
 
         // With an approved allow-all for the repo and an elevation policy, the launch goes through the broker's run channel,
         // so no UAC prompt. Otherwise the normal launch (with its own UAC prompt when elevation is needed) is used.
-        var brokered = await TryBrokerLaunchAsync(solutionPath);
+        var brokered = await TryBrokerLaunchAsync(solutionPath, ct);
         if (brokered.Error is not null)
         {
             return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = brokered.Error });
@@ -129,7 +130,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
                 return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = false, instance_pid = started.Pid, bridge_ready = true });
             }
 
-            Thread.Sleep(500);
+            await Task.Delay(500, ct);
         }
 
         return System.Text.Json.JsonSerializer.Serialize(new
@@ -144,7 +145,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     // Repo-relative script that starts devenv. It runs through the broker, so it is covered by the repo's allow-all approval.
     private const string OpenScript = ".aidevtools/open-solution.ps1";
 
-    private async Task<(bool Used, string? Error)> TryBrokerLaunchAsync(string solutionPath)
+    private async Task<(bool Used, string? Error)> TryBrokerLaunchAsync(string solutionPath, CancellationToken ct)
     {
         if (elevRunner is null)
         {
@@ -158,7 +159,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             return (false, null);
         }
 
-        var result = await elevRunner.RunAsync(repo, OpenScript, [full], CancellationToken.None);
+        var result = await elevRunner.RunAsync(repo, OpenScript, [full], ct);
         return result.ExitCode == 0
             ? (true, null)
             : (true, Strings.Format("ElevatedOpenFailed", result.ExitCode, result.Output));
