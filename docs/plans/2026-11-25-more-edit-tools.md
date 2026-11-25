@@ -86,7 +86,9 @@ Visual Studio only and says so in its description.
       did. 83 VS Core tests pass.) `CoverageOfReferences`: the "every reference covered, related members refused" rule for symbols of any member kind
       (methods and overrides, properties, fields, events, interface members). Namespace and type moves keep their qualifier logic;
       they do not use it.
-- [ ] **0.4** Planning off the UI thread: `RunPlan` plans on a workspace snapshot with a timeout (default 60 s,
+- [x] **0.4** (done: `PlanRunner.cs` plans a snapshot on a thread-pool thread with a 60 s limit; `RunPlan` takes the snapshot on the
+      UI thread and applies there. Limitation: the engines take no cancellation token yet, so an overrun plan keeps running in the
+      background and its result is dropped; a token through the engines is follow-up work. 87 VS Core tests pass.) Planning off the UI thread: `RunPlan` plans on a workspace snapshot with a timeout (default 60 s,
       `timeoutSeconds`) and a cancellation token, then applies on the UI thread. A search that does not finish refuses with
       `incomplete: true` (`SymbolFinder` gives no partial result). A test shows the UI thread stays free during a plan.
 - [ ] **0.5** Plan hash (see section 3), in `RunPlan` and every tool; `planHash` argument on every tool.

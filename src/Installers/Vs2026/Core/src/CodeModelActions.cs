@@ -256,7 +256,9 @@ internal static class CodeModelActions
             var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
                 ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
             var workspace = model.GetService<VisualStudioWorkspace>();
-            var planned = await plan(workspace.CurrentSolution).ConfigureAwait(true);
+            // The snapshot is taken on the UI thread; planning runs on a thread-pool thread with a time limit.
+            var outcome = await PlanRunner.RunAsync(workspace.CurrentSolution, plan, PlanRunner.DefaultTimeout).ConfigureAwait(true);
+            var planned = outcome.Plan ?? PlanRunner.Incomplete(PlanRunner.DefaultTimeout);
             if (planned.Refused || !confirm)
             {
                 return (object)new { planned = !planned.Refused, applied = false, check = planned.ToReply() };

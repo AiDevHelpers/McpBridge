@@ -20,27 +20,27 @@ public sealed class CoverageOfReferencesTests
     }
 
     [Fact]
-    public void AnInterfaceImplementationIsRelatedToItsInterfaceMember()
+    public async Task AnInterfaceImplementationIsRelatedToItsInterfaceMember()
     {
         const string code =
             "interface IThing { int Value { get; } }\n" +
             "class Thing : IThing { public int Value { get; } }\n";
         var solution = TestSolutions.Single([(@"C:\t.cs", code)]);
-        var compilation = solution.Projects.Single().GetCompilationAsync().Result!;
+        var compilation = await solution.Projects.Single().GetCompilationAsync() ?? throw new InvalidOperationException();
         var property = compilation.GetTypeByMetadataName("Thing")!.GetMembers("Value").OfType<Microsoft.CodeAnalysis.IPropertySymbol>().Single();
 
-        var related = CoverageOfReferences.RelatedAsync(solution, property).Result;
+        var related = await CoverageOfReferences.RelatedAsync(solution, property);
 
         Assert.Contains(related, r => r.Contains("IThing.Value", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void AMemberWithNoOverridesOrImplementationsHasNoRelatedMembers()
+    public async Task AMemberWithNoOverridesOrImplementationsHasNoRelatedMembers()
     {
         var solution = TestSolutions.Single([(@"C:\t.cs", "class Plain { public int Value { get; } }")]);
-        var compilation = solution.Projects.Single().GetCompilationAsync().Result!;
+        var compilation = await solution.Projects.Single().GetCompilationAsync() ?? throw new InvalidOperationException();
         var property = compilation.GetTypeByMetadataName("Plain")!.GetMembers("Value").OfType<Microsoft.CodeAnalysis.IPropertySymbol>().Single();
 
-        Assert.Empty(CoverageOfReferences.RelatedAsync(solution, property).Result);
+        Assert.Empty(await CoverageOfReferences.RelatedAsync(solution, property));
     }
 }
