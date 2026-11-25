@@ -26,8 +26,8 @@
   <!-- Roslyn (phase 6). Compile-time only (ExcludeAssets runtime): the running Visual Studio loads its own Roslyn, so the
        assemblies are never copied into the VSIX. Versions match the Roslyn in Visual Studio 18 (5.12). -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" ExcludeAssets="runtime" />
-    <PackageReference Include="Microsoft.VisualStudio.LanguageServices" Version="4.14.0" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0-1.26573.119" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.LanguageServices" Version="5.12.0-1.26573.119" ExcludeAssets="runtime" />
   </ItemGroup>
 
 </Project>
