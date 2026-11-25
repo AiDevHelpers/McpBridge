@@ -82,20 +82,19 @@ public static class EventSubscriptions
     /// Events for one instance with a sequence number after <paramref name="sinceSeq"/>, optionally only the named
     /// events. Also reports whether the subscription has ended and why.
     /// </summary>
-    public static object Read(int pid, long sinceSeq, IReadOnlyCollection<string>? names)
+    internal static object Read(int pid, long sinceSeq, IReadOnlyCollection<string>? names, EventFilterOptions? options = null)
     {
         var subscription = Find(pid);
         lock (subscription.Gate)
         {
-            var wanted = names is null || names.Count == 0 ? null : new HashSet<string>(names, StringComparer.Ordinal);
-            var events = subscription.Buffer
-                .Where(e => e.Seq > sinceSeq && (wanted is null || wanted.Contains(e.Name)))
-                .Select(e => JsonSerializer.Deserialize<JsonElement>(e.Json))
-                .ToList();
+            var buffer = subscription.Buffer.Select(e => new BufferedEvent(e.Seq, e.Name, e.Json)).ToList();
+            var filtered = EventFilter.Apply(buffer, sinceSeq, (options ?? new EventFilterOptions()) with { Names = names });
             return new
             {
                 pid,
-                events,
+                events = filtered.Events,
+                omitted = filtered.Omitted,
+                next_seq = filtered.NextSeq,
                 last_seq = subscription.Buffer.Count == 0 ? 0 : subscription.Buffer[^1].Seq,
                 closed = subscription.Closed,
                 close_reason = subscription.CloseReason,
