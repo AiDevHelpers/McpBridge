@@ -13,6 +13,12 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 public sealed class BridgeHost : IDisposable
 {
     private static readonly TimeSpan WatchdogInterval = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan UiPingTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan UiHungAfter = TimeSpan.FromSeconds(30);
+
+    private volatile bool _uiResponsive = true;
+    private DateTime _lastUiAnswerUtc = DateTime.UtcNow;
+    private int _uiPingInFlight;
 
     private readonly DTE2 _dte;
     private readonly int _pid;
@@ -73,6 +79,7 @@ public sealed class BridgeHost : IDisposable
 #pragma warning restore VSTHRD010
             () => _solutionPath,
             new DebugBridgeLogger());
+        _server.UiResponsive = () => _uiResponsive;
         BridgeControl.Attach(_server, _pid, pipeName, () => _solutionPath);
         BridgeControl.Start();
 
@@ -96,6 +103,8 @@ public sealed class BridgeHost : IDisposable
                 return;
             }
 
+            _ = PingUiAsync();
+
             if (_server is { IsRunning: false })
             {
                 _server.Start();
@@ -106,6 +115,46 @@ public sealed class BridgeHost : IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[IdeBridge] Watchdog error: {ex}");
+        }
+    }
+
+    // Posts a no-op to the UI thread. An answer in time keeps the UI marked responsive; no answer for UiHungAfter marks it hung.
+    // The ping stays in flight until the UI thread answers, so a hung UI does not pile up queued pings.
+    private Task PingUiAsync()
+    {
+        if (Interlocked.CompareExchange(ref _uiPingInFlight, 1, 0) != 0)
+        {
+            MarkHungIfOverdue();
+            return Task.CompletedTask;
+        }
+
+        var answer = _runOnMainThread(() => (object)DateTime.UtcNow);
+        answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
+        return Task.WhenAny(answer, Task.Delay(UiPingTimeout)).ContinueWith(done =>
+        {
+            if (ReferenceEquals(done.Result, answer))
+            {
+                if (!_uiResponsive)
+                {
+                    BridgeLog.Write("INFO", $"Visual Studio UI thread answers again (pid {_pid}).");
+                }
+
+                _lastUiAnswerUtc = DateTime.UtcNow;
+                _uiResponsive = true;
+            }
+            else
+            {
+                MarkHungIfOverdue();
+            }
+        }, TaskScheduler.Default);
+    }
+
+    private void MarkHungIfOverdue()
+    {
+        if (_uiResponsive && DateTime.UtcNow - _lastUiAnswerUtc > UiHungAfter)
+        {
+            _uiResponsive = false;
+            BridgeLog.Write("WARN", $"Visual Studio UI thread has not answered for {UiHungAfter.TotalSeconds} s (pid {_pid}).");
         }
     }
 

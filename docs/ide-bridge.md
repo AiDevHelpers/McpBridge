@@ -94,6 +94,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
 | `build_env` | ExtensionsHelper | Lists the Visual Studio installs (stable and prerelease) with their MSBuild path and whether the VSSDK targets a VSIX build needs are present. |
 | `test_hosts_list`, `test_hosts_stop` | MCP Core (TestHostTools) | Lists running `testhost` processes and returns a token. `test_hosts_stop` kills only the listed pids, once, if each still has the start time the list recorded. Call the stop only after the user agrees. |
+| `ide_reset_instance` | `IdeResetTools` | Resets a Visual Studio instance whose UI thread stopped answering (health `ui_responsive` false, or no answer). Without `confirm` it changes nothing; with `confirm` true it kills the devenv process, which closes it without saving. |
 
 ## Limits
 

@@ -170,9 +170,13 @@ public sealed class BridgeServer : IDisposable
     }
 
     // Answered without touching Visual Studio, so it reports even when the UI thread is busy.
+    // True while the UI thread answers the watchdog's ping. Set by the host; defaults to true when no host sets it.
+    public Func<bool>? UiResponsive { get; set; }
+
     private object Health() => new
     {
         listener_running = IsRunning,
+        ui_responsive = UiResponsive?.Invoke() ?? true,
         started_utc = _startedUtc,
         last_request_utc = _lastRequestUtc,
         requests_handled = Interlocked.Read(ref _requestsHandled),

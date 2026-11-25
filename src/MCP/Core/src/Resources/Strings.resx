@@ -127,4 +127,9 @@
   <data name="TestHostTokenUnknown" xml:space="preserve"><value>Unknown or already used token. List the test hosts again.</value></data>
   <data name="TestHostGone" xml:space="preserve"><value>Already exited, or its process id was reused by another process.</value></data>
   <data name="SequenceChoice" xml:space="preserve"><value>Give either action or sequence, not both and not neither.</value></data>
+  <data name="ResetNotFound" xml:space="preserve"><value>No running Visual Studio instance has process id {0}.</value></data>
+  <data name="ResetResponsive" xml:space="preserve"><value>Instance {0} is responsive. Nothing was reset.</value></data>
+  <data name="ResetNeedsConfirmation" xml:space="preserve"><value>Instance {0} is not answering its UI thread. Resetting it closes Visual Studio without saving, so unsaved edits can be lost. Ask the user; only if they agree, call again with confirm true.</value></data>
+  <data name="ResetNotDevenv" xml:space="preserve"><value>Process {0} is {1}, not devenv. Nothing was reset.</value></data>
+  <data name="ResetNext" xml:space="preserve"><value>Relaunch the solution with ide_open_solution.</value></data>
 </root>
