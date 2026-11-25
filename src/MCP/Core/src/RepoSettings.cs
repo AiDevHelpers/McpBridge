@@ -8,7 +8,8 @@ internal sealed record RepoSettingsResult(
     IdeToolsOptions Options,
     IReadOnlyList<string> Warnings,
     bool AllowAllRequested = false,
-    AiDevHelpers.Common.RepoElevation? Elevation = null);
+    AiDevHelpers.Common.RepoElevation? Elevation = null,
+    AiDevHelpers.Common.ProjectStandardsResult? Standards = null);
 
 /// <summary>
 /// Layers <c>&lt;repo&gt;/.aidevhelpers/settings.json</c> over the global settings: each key the repo sets wins, the rest fall
@@ -36,10 +37,14 @@ internal static class RepoSettings
         var elevation = root is null ? null : AiDevHelpers.Common.ElevationFiles.Read(root);
         warnings.AddRange(elevation?.Warnings ?? []);
 
+        // The project standards are read the same way: optional, never throws, and their warnings join this result.
+        var standards = root is null ? null : AiDevHelpers.Common.ProjectStandardsFile.Read(root);
+        warnings.AddRange(standards?.Warnings ?? []);
+
         var file = root is null ? null : Path.Combine(root, FolderName, FileName);
         if (file is null || !File.Exists(file))
         {
-            return new RepoSettingsResult(effective, warnings, false, elevation);
+            return new RepoSettingsResult(effective, warnings, false, elevation, standards);
         }
 
         try
@@ -80,7 +85,7 @@ internal static class RepoSettings
             allowAll = false;
         }
 
-        return new RepoSettingsResult(effective, warnings, allowAll, elevation);
+        return new RepoSettingsResult(effective, warnings, allowAll, elevation, standards);
     }
 
     /// <summary>A global allowAll is never honored. Returns a warning when the global configuration sets one, else null.</summary>
