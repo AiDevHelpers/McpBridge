@@ -107,3 +107,16 @@ Visual Studio only. Separate from the request pipe, which is unchanged (one requ
 - Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
   `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`.
 - A VS Code bridge does not offer this pipe; `ide_subscribe_events` reports it as an error for VS Code.
+
+## Actions added in phases 1 to 6
+
+Visual Studio bridge actions behind the tools in `docs/ide-bridge.md`. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+
+- Debugger: `listProcesses`, `listDebuggedProcesses`, `listThreads`, `listStackFrames`, `listExceptions`, `setExceptionBreak`, `setBreakpointCondition`, `enableBreakpoint`, `disableBreakpoint`, `attachProcess`, `detachAll`.
+- Editor and documents: `findInFiles`, `replaceInFiles`, `listDocuments`, `saveDocument`, `closeDocument`, `undoGroup`, `listCodeElements`.
+- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`.
+- Tasks and shell services: `listTasks`, `addTask`, `clearTasks`, `setStatus`, `showInfoBar`, `writeActivityLog`, `getSetting`.
+- Roslyn: `semanticReferences`, `semanticDefinition`, `renameSymbol`.
+- Events: subscription over `AiDevHelpers.VS.<pid>.events`, not a request action.
+
+`setBreakpointCondition` takes `hitCountType` with the values `always`, `equal`, `multiple` or `greaterOrEqual`.

@@ -86,6 +86,9 @@ Every write takes `confirm` (default false). Without it the reply must be `plann
 - Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
 - Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.
 - Events, with a build or a breakpoint: `ide_read_events` shows `buildBegin`, `buildDone`, `enterBreakMode`, `documentSaved` in order.
+- Build summary: `ide_build` returns `summary` with `status: "finished"`, `succeeded`, `error_count`, and capped `errors` (20, messages 200 characters). A build with a compile error lists it.
+- Test summary: `ide_run_tests` returns `status: "finished"` with the capped summary, or `status: "running"` after `waitSeconds` (120). Confirm a run longer than the wait returns `running`, and that `ide_get_test_summary` then shows it finished.
+- Read options: `ide_read_events` with `minSeverity: "error"` and `limit: 2` returns at most two events, `omitted`, and `next_seq`. Passing `next_seq` as `sinceSeq` returns the rest.
 
 ### VSIX actions and launching a solution argument
 

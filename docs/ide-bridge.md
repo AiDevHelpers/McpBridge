@@ -208,3 +208,79 @@ CI builds both packages on pull requests and `v*` tags. See the README for the r
    `addWatch` plus `listWatches`.
 4. Visual Studio: install the VSIX, reload, and check the manifest, `health`, `runTests`, and
    `killProcess` (refused).
+
+## Tools added in phases 1 to 6
+
+| Tool | Purpose |
+| --- | --- |
+| `ide_add_project_item` | Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_add_task` | Add a task to the Visual Studio Task List under the bridge's own provider. Category is Error, Warning, or Message. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_add_watch` | Add a watch expression to an IDE instance's watch list. Watches are kept by the extension, not the Watch window. |
+| `ide_attach_process` | Attach the debugger to one local process by pid. Without confirm it only returns the target. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_bridge_health` | Check the bridge health of an IDE instance: whether its listener is running, when it started, when it last handled a request, how many requests it has handled, and its solution. Answered even while the IDE is busy. |
+| `ide_build` | Build the solution in an IDE instance and report whether it succeeded. Pass solutionPath when several instances are open. Use IdeGetBuildDiagnostics for the errors. |
+| `ide_clean` | Clean the solution in an IDE instance using the active configuration. |
+| `ide_clear_output` | Clear an output pane in an IDE instance. |
+| `ide_clear_tasks` | Remove every task this bridge added to the Task List. Tasks from other tools are not touched. Without confirm it only reports the count. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_close_document` | Close an open document. A document with unsaved changes is refused unless discardChanges is also true. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_close_solution` | Close the solution. Refused while documents have unsaved changes unless saveFirst is true. Without confirm it lists the dirty documents and the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_code_cleanup` | Run Visual Studio's Code Cleanup on the active document of an IDE instance. |
+| `ide_detach_all` | Detach the debugger from every attached process. Without confirm it only lists what would be detached. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_disable_breakpoint` | Disable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_enable_breakpoint` | Enable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_evaluate` | Evaluate an expression in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint. |
+| `ide_find_all_references` | Find all references to the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. The results open in the IDE's Find All References window, which this tool does not read. |
+| `ide_find_in_files` | Search the text of files: the solution, one project, or the open documents. Managed search over files on disk; read-only. Capped at 500 matches. |
+| `ide_format_document` | Format the active document in an IDE instance. Pass solutionPath when several instances are open. |
+| `ide_format_solution` | Format every C# file of the solution with the IDE's Format Document command, saving each one. Opens each file. |
+| `ide_get_build_diagnostics` | Read build errors and warnings from an IDE instance's Error List (the last build's results). |
+| `ide_get_debug_state` | Get the debugger mode (design, run, or break) and the current function in an IDE instance. |
+| `ide_get_locals` | Read local variables in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint. |
+| `ide_get_output` | Read the last lines of an IDE output pane, e.g. 'Build' or 'Debug'. For a filtered, deduplicated summary, use LogQuery with a vsout: channel. |
+| `ide_get_setting` | Read one Visual Studio setting by its key path. Returns found:false when the setting does not exist. Read-only. |
+| `ide_get_test_results` | Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, which also covers TRX files written by other test runs in the solution's TestResults folder. |
+| `ide_get_test_summary` | Get the counts of the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. failures lists the tests the runner marked [FAIL] in that run; it is empty when the pane has no such lines. |
+| `ide_go_to_definition` | Go to the definition of the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. Moves the IDE's active document and caret. Returns the IDE state, not the target location. Visual Studio only. |
+| `ide_kill_instance` | Save all documents and then kill a Visual Studio instance. Refuses, killing nothing, if any document is still unsaved. |
+| `ide_kill_process` | Kill a process that an IDE instance started for clean or publish. Refuses any other process id. |
+| `ide_launch_instance` | Launch a Visual Studio instance with a solution open. Reuses an instance that already has it open. Waits for the instance's bridge to come up. Launches elevated (UAC prompt) only for a solution with a project the repo lists as needing administrator rights, or when this user's mode for the repo is always; a running non-elevated instance of such a solution is not reused unless relaunchElevated is true. |
+| `ide_list_breakpoints` | List breakpoints set in an IDE instance. |
+| `ide_list_code_elements` | List the code elements (namespaces, types, members) of one file with line ranges. Read-only. |
+| `ide_list_configurations` | List the solution build configurations (e.g. Debug, Release) of an IDE instance and the active one. |
+| `ide_list_debugged_processes` | List the processes the IDE's debugger is currently attached to. Read-only. |
+| `ide_list_documents` | List the open documents with saved state and read-only flag. Read-only. |
+| `ide_list_exceptions` | List the debugger's exception settings, grouped as the debugger groups them, with break-when-thrown and break-when-user-unhandled. Read-only. |
+| `ide_list_instances` | List running IDE instances (currently Visual Studio) with their process id and the solution each has open. |
+| `ide_list_processes` | List the processes the IDE's debugger can attach to (local processes), with pid and name. Read-only. |
+| `ide_list_stack_frames` | List the stack frames of the current thread (index, function, return type). Empty unless the debugger is in break mode. Read-only. |
+| `ide_list_tasks` | List the items in the Visual Studio Task List window (category, text, file, line). Read-only. |
+| `ide_list_threads` | List the threads of the debugged process with their ids, and the current thread. Empty unless the debugger is in break mode. Read-only. |
+| `ide_list_watches` | List an IDE instance's watch expressions with their current values (when stopped at a breakpoint). |
+| `ide_project_properties` | Read named properties of a project (for example TargetFramework, OutputType). Unknown names return null. Read-only. |
+| `ide_publish` | Publish the startup project of an IDE instance with the IDE's publish command, using the active configuration. |
+| `ide_read_events` | Read events from a Visual Studio instance, after a sequence number (0 for everything kept). Events are kept for the last 500 per instance from the time this server started. Events: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Read-only. |
+| `ide_remove_breakpoint` | Remove breakpoints at a file and line in an IDE instance. |
+| `ide_remove_project_item` | Remove a file from a project. The file stays on disk. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_remove_watch` | Remove a watch expression from an IDE instance's watch list. |
+| `ide_rename_symbol` | Rename the symbol at a file position everywhere in the solution, using Roslyn. Without confirm it only lists the files that would change. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_replace_in_files` | Replace text in files (solution, project, or open documents). Without confirm it only counts matches per file and writes nothing. Open documents with unsaved changes are skipped. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_run_tests` | Run all tests in the solution. The server setting IdeTestRunMode picks the method: 'TestExplorer' (default) triggers Test Explorer in the IDE; 'DotnetTest' runs dotnet test with a TRX file. Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome. Pass project (a .csproj path, relative to the solution or absolute) to run only that project; it always uses dotnet test, so it can run while a whole-solution Test Explorer run is going. |
+| `ide_save_document` | Save an open document. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_search_output` | Search the lines of an IDE output pane for a regex pattern. Returns the matching lines. |
+| `ide_semantic_definition` | Find where the symbol at a file position is declared in source, using Roslyn. Sees unsaved editor edits. Read-only. |
+| `ide_set_breakpoint` | Set a breakpoint at a file and line in an IDE instance. |
+| `ide_set_breakpoint_condition` | Set the condition, hit-count type, or hit count of the breakpoint(s) at a file and line. Re-adds the breakpoint, so hit counts reset. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_set_configuration` | Set the active build configuration (e.g. Debug or Release) of an IDE instance's solution. |
+| `ide_set_exception_break` | Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_set_startup_project` | Set the startup project of the solution in an IDE instance. Pass solutionPath to choose the instance when several are open. |
+| `ide_set_status` | Set the status bar text of the IDE (empty clears it). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_show_info_bar` | Show an info bar in the IDE's main window with a message and optional button labels. Buttons do not report clicks. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_start_debugging` | Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open. |
+| `ide_step` | Step the debugger in an IDE instance: 'over', 'into', or 'out'. The debugger must be stopped at a breakpoint. |
+| `ide_stop_debugging` | Stop debugging in an IDE instance. Pass solutionPath when several instances are open. |
+| `ide_subscribe_events` | Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events. |
+| `ide_undo_group` | Apply several range edits in one IDE undo group, so they undo as one step. Each edit gives start and end line and column (1-based) and new text. Without confirm it lists the edits. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_unsubscribe_events` | Stop this server's events subscription to one instance. Automatic subscription resumes on the next check unless the instance is closed. |
+| `ide_write_activity_log` | Write an entry to the Visual Studio activity log (ActivityLog.xml). Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+
+Bridge actions behind these tools are listed in conformance/protocol.md. Hit-count types for `ide_set_breakpoint_condition`: `always`, `equal`, `multiple`, `greaterOrEqual`.
