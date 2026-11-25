@@ -824,9 +824,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Subscribe to push events from a Visual Studio instance: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Returns a subscription id; read events with ide_read_events. Events are kept for the last 500 per subscription. Up to 8 per instance.")]
+    [Description("Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events.")]
     public async Task<string> IdeSubscribeEvents(
-        [Description("Event names to receive. Omit for all events.")] string[]? events = null,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
@@ -840,26 +839,28 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         }
 
         var pid = health.RootElement.GetProperty("pid").GetInt32();
-        var id = await EventSubscriptions.SubscribeAsync(pid, events, ct).ConfigureAwait(false);
-        return JsonSerializer.Serialize(new { ok = true, subscription_id = id, pid });
+        var created = await EventSubscriptions.EnsureSubscribedAsync(pid, ct).ConfigureAwait(false);
+        return JsonSerializer.Serialize(new { ok = true, pid, created });
     }
 
     [McpServerTool]
-    [Description("Read the events of a subscription with a sequence number after sinceSeq (0 for the start). Also reports whether the subscription has closed and why. Read-only.")]
+    [Description("Read events from a Visual Studio instance, after a sequence number (0 for everything kept). Events are kept for the last 500 per instance from the time this server started. Events: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Read-only.")]
     public string IdeReadEvents(
-        [Description("Subscription id from ide_subscribe_events")] string subscriptionId,
-        [Description("Return events with a sequence number greater than this. Default 0.")] long sinceSeq = 0)
+        [Description("Optional: process id of the instance. Needed when more than one instance is subscribed.")] int? instancePid = null,
+        [Description("Return events with a sequence number greater than this. Default 0.")] long sinceSeq = 0,
+        [Description("Optional: only these event names. Omit for all.")] string[]? events = null)
     {
-        return JsonSerializer.Serialize(EventSubscriptions.Read(subscriptionId, sinceSeq));
+        var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();
+        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, events));
     }
 
     [McpServerTool]
-    [Description("End a subscription and close its events connection.")]
+    [Description("Stop this server's events subscription to one instance. Automatic subscription resumes on the next check unless the instance is closed.")]
     public string IdeUnsubscribeEvents(
-        [Description("Subscription id from ide_subscribe_events")] string subscriptionId)
+        [Description("Process id of the instance")] int instancePid)
     {
-        EventSubscriptions.Unsubscribe(subscriptionId);
-        return JsonSerializer.Serialize(new { ok = true, subscription_id = subscriptionId });
+        EventSubscriptions.Unsubscribe(instancePid);
+        return JsonSerializer.Serialize(new { ok = true, pid = instancePid });
     }
 
     [McpServerTool]

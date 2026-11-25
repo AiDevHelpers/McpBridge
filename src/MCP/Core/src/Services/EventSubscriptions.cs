@@ -11,28 +11,26 @@ using System.Threading.Tasks;
 namespace AiDevHelpers.MCP.Core.Services;
 
 /// <summary>
-/// Holds the events-pipe connections this MCP server has open to Visual Studio bridges. Each subscription has a background
-/// reader that keeps the most recent events (bounded) so a caller can read them later by sequence number.
-/// Protocol: conformance/protocol.md, "Events pipe".
+/// One events-pipe subscription per running Visual Studio instance, held by this MCP server. Each has a background reader
+/// that keeps the most recent events (bounded). <see cref="EventAutoSubscribeService"/> keeps them up to date. Callers read
+/// by instance process id and sequence number. Protocol: conformance/protocol.md, "Events pipe".
 /// </summary>
 public static class EventSubscriptions
 {
-    /// <summary>Subscriptions allowed per bridge (the bridge accepts this many concurrent subscribers).</summary>
-    public const int MaxPerBridge = 8;
-
-    /// <summary>Events kept per subscription; older ones are dropped.</summary>
+    /// <summary>Events kept per instance; older ones are dropped.</summary>
     public const int BufferLimit = 500;
 
     private static readonly object Lock = new();
-    private static readonly Dictionary<string, Subscription> Subscriptions = new();
+    private static readonly Dictionary<int, Subscription> ByPid = new();
 
-    public static async Task<string> SubscribeAsync(int pid, IReadOnlyList<string>? names, CancellationToken ct)
+    /// <summary>Connects to the instance's events pipe if this server has no open subscription to it.</summary>
+    public static async Task<bool> EnsureSubscribedAsync(int pid, CancellationToken ct)
     {
         lock (Lock)
         {
-            if (Subscriptions.Values.Count(s => s.Pid == pid && !s.Closed) >= MaxPerBridge)
+            if (ByPid.TryGetValue(pid, out var existing) && !existing.Closed)
             {
-                throw new InvalidOperationException($"This bridge already has {MaxPerBridge} subscriptions. Unsubscribe one first.");
+                return false;
             }
         }
 
@@ -47,42 +45,57 @@ public static class EventSubscriptions
             throw;
         }
 
-        var request = JsonSerializer.Serialize(new { action = "subscribe", args = new { events = names ?? (IReadOnlyList<string>)Array.Empty<string>() } });
         var reader = new StreamReader(client, Encoding.UTF8, false, 4096, leaveOpen: true);
         var writer = new StreamWriter(client, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true };
-        await writer.WriteLineAsync(request).ConfigureAwait(false);
+        await writer.WriteLineAsync("{\"action\":\"subscribe\",\"args\":{}}").ConfigureAwait(false);
         var replyLine = await reader.ReadLineAsync().ConfigureAwait(false) ?? throw new IOException("The bridge closed the events pipe.");
-        using var reply = JsonDocument.Parse(replyLine);
-        if (!reply.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+        using (var reply = JsonDocument.Parse(replyLine))
         {
-            client.Dispose();
-            var message = reply.RootElement.TryGetProperty("error", out var error) ? error.GetString() : "subscribe refused";
-            throw new InvalidOperationException(message);
+            if (!reply.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+            {
+                client.Dispose();
+                var message = reply.RootElement.TryGetProperty("error", out var error) ? error.GetString() : "subscribe refused";
+                throw new InvalidOperationException(message);
+            }
         }
 
-        var subscriptionId = reply.RootElement.GetProperty("subscriptionId").GetString()!;
-        var subscription = new Subscription(subscriptionId, pid, client);
+        var subscription = new Subscription(pid, client);
         lock (Lock)
         {
-            Subscriptions[subscriptionId] = subscription;
+            ByPid[pid] = subscription;
         }
 
         subscription.Reader = Task.Run(() => ReadLoopAsync(subscription, reader));
-        return subscriptionId;
+        return true;
     }
 
-    /// <summary>Events with a sequence number after <paramref name="sinceSeq"/>, plus whether the subscription has ended.</summary>
-    public static object Read(string subscriptionId, long sinceSeq)
+    /// <summary>Instances this server is subscribed to and still connected to.</summary>
+    public static IReadOnlyList<int> ActivePids()
     {
-        var subscription = Find(subscriptionId);
+        lock (Lock)
+        {
+            return ByPid.Values.Where(s => !s.Closed).Select(s => s.Pid).ToList();
+        }
+    }
+
+    /// <summary>
+    /// Events for one instance with a sequence number after <paramref name="sinceSeq"/>, optionally only the named
+    /// events. Also reports whether the subscription has ended and why.
+    /// </summary>
+    public static object Read(int pid, long sinceSeq, IReadOnlyCollection<string>? names)
+    {
+        var subscription = Find(pid);
         lock (subscription.Gate)
         {
-            var events = subscription.Buffer.Where(e => e.Seq > sinceSeq).Select(e => e.Json).ToList();
+            var wanted = names is null || names.Count == 0 ? null : new HashSet<string>(names, StringComparer.Ordinal);
+            var events = subscription.Buffer
+                .Where(e => e.Seq > sinceSeq && (wanted is null || wanted.Contains(e.Name)))
+                .Select(e => JsonSerializer.Deserialize<JsonElement>(e.Json))
+                .ToList();
             return new
             {
-                subscription_id = subscriptionId,
-                pid = subscription.Pid,
-                events = events.Select(json => JsonSerializer.Deserialize<JsonElement>(json)).ToList(),
+                pid,
+                events,
                 last_seq = subscription.Buffer.Count == 0 ? 0 : subscription.Buffer[^1].Seq,
                 closed = subscription.Closed,
                 close_reason = subscription.CloseReason,
@@ -90,27 +103,38 @@ public static class EventSubscriptions
         }
     }
 
-    public static void Unsubscribe(string subscriptionId)
+    public static void Unsubscribe(int pid)
     {
         Subscription? subscription;
         lock (Lock)
         {
-            if (!Subscriptions.Remove(subscriptionId, out subscription))
+            if (!ByPid.Remove(pid, out subscription))
             {
-                throw new KeyNotFoundException($"No subscription '{subscriptionId}'.");
+                throw new KeyNotFoundException($"No events subscription to instance {pid}.");
             }
         }
 
         subscription.Close("unsubscribed");
     }
 
-    private static Subscription Find(string subscriptionId)
+    /// <summary>The one subscribed instance, when exactly one is subscribed. Used when a caller names no instance.</summary>
+    public static int OnlySubscribedPid()
+    {
+        var pids = ActivePids();
+        return pids.Count == 1
+            ? pids[0]
+            : throw new InvalidOperationException(pids.Count == 0
+                ? "No Visual Studio instance is subscribed for events."
+                : "More than one instance is subscribed. Pass instancePid.");
+    }
+
+    private static Subscription Find(int pid)
     {
         lock (Lock)
         {
-            return Subscriptions.TryGetValue(subscriptionId, out var subscription)
+            return ByPid.TryGetValue(pid, out var subscription)
                 ? subscription
-                : throw new KeyNotFoundException($"No subscription '{subscriptionId}'.");
+                : throw new KeyNotFoundException($"No events subscription to instance {pid}. Subscribe first.");
         }
     }
 
@@ -129,13 +153,12 @@ public static class EventSubscriptions
 
                 using var doc = JsonDocument.Parse(line);
                 var root = doc.RootElement;
-                var name = root.TryGetProperty("event", out var evt) ? evt.GetString() : null;
+                var name = root.TryGetProperty("event", out var evt) ? evt.GetString() ?? string.Empty : string.Empty;
                 if (name == "heartbeat")
                 {
                     continue;
                 }
 
-                var seq = root.TryGetProperty("seq", out var seqElement) ? seqElement.GetInt64() : 0;
                 if (name == "closed")
                 {
                     var reason = root.TryGetProperty("reason", out var r) ? r.GetString() : null;
@@ -143,7 +166,8 @@ public static class EventSubscriptions
                     return;
                 }
 
-                subscription.Add(seq, line);
+                var seq = root.TryGetProperty("seq", out var seqElement) ? seqElement.GetInt64() : 0;
+                subscription.Add(seq, name, line);
             }
         }
         catch (Exception)
@@ -154,16 +178,13 @@ public static class EventSubscriptions
 
     private sealed class Subscription
     {
-        public Subscription(string id, int pid, NamedPipeClientStream client)
+        public Subscription(int pid, NamedPipeClientStream client)
         {
-            Id = id;
             Pid = pid;
             Client = client;
         }
 
         public object Gate { get; } = new();
-
-        public string Id { get; }
 
         public int Pid { get; }
 
@@ -171,17 +192,17 @@ public static class EventSubscriptions
 
         public Task? Reader { get; set; }
 
-        public List<(long Seq, string Json)> Buffer { get; } = new();
+        public List<(long Seq, string Name, string Json)> Buffer { get; } = new();
 
         public bool Closed { get; private set; }
 
         public string? CloseReason { get; private set; }
 
-        public void Add(long seq, string json)
+        public void Add(long seq, string name, string json)
         {
             lock (Gate)
             {
-                Buffer.Add((seq, json));
+                Buffer.Add((seq, name, json));
                 if (Buffer.Count > BufferLimit)
                 {
                     Buffer.RemoveAt(0);
