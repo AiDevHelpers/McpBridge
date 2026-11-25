@@ -47,15 +47,18 @@ If no MCP client or runnable bridge process is available, record the protocol se
 When `ide_list_instances` reports an instance, choose one and pass its `solutionPath` when needed. Confirm:
 
 - `ide_bridge_health` responds and returns health/request metadata.
-- `ide_get_output` and `ide_search_output` read an existing output pane, preferably Build or Debug. If those panes are unavailable or return a pane-specific COM/automation error, try `AiDevHelpers IDE Bridge` and report both results. If no pane can be read, mark these checks `SKIPPED`.
+- `ide_get_output` and `ide_search_output` read the Build and Debug panes and the `AiDevHelpers IDE Bridge` pane. A pane that has never been written is empty, not an error. An unknown pane name returns "no output pane named". Report each pane's result separately. Last run: the bridge pane returned its log lines; Build and Debug were empty before the fix in commit `21c3604`, and the live check of that fix is still pending.
 - `ide_get_build_diagnostics` and `ide_list_configurations` return valid results.
 - `ide_get_debug_state`, `ide_list_breakpoints`, and `ide_list_watches` return valid results. Call `ide_get_locals` only if the debugger is already stopped at a breakpoint.
 - `ide_get_test_results` reads the specified solution's latest results; record “no TRX found” as a valid empty-state response if applicable.
 
-- `ide_list_processes`, `ide_list_debugged_processes`, `ide_list_threads`, `ide_list_stack_frames`, and `ide_list_exceptions` return valid results. Thread and stack lists are empty outside break mode; record that as a valid state.
-- `ide_list_documents`, `ide_list_tasks`, `ide_project_properties` (for a known project and `TargetFramework`), and `ide_get_setting` (for a key that exists, plus one that does not, which must return `found: false`) return valid results.
+- `ide_list_processes`, `ide_list_debugged_processes`, `ide_list_threads`, and `ide_list_stack_frames` return valid results. Thread and stack lists are empty outside break mode; record that as a valid state. `ide_list_processes` lists every process on the machine (hundreds of entries), so check only that it is valid.
+- `ide_list_exceptions` lists every exception group, which is over 100 KB. Call it with a `group` (for example `Common Language Runtime Exceptions`) and check that group only. Without `group`, the reply may be too large for the MCP client.
+- `ide_list_documents`, `ide_list_tasks`, and `ide_get_setting` (for a key that exists, plus one that does not, which must return `found: false`) return valid results.
+- `ide_project_properties` takes the project's name as shown in Solution Explorer, for example `AiDevHelpers.Bridge`, not `Bridge`. `TargetFramework` comes back as a number (for example `262152`), not a framework name. A wrong project name must report "no project named", not a COM error; check that too.
 - `ide_list_code_elements` on a known source file and `ide_semantic_definition` on a known symbol return locations; `ide_semantic_references` returns a list.
-- `ide_read_events` returns events and `last_seq` for an instance the MCP server is subscribed to. Subscriptions are automatic; `ide_subscribe_events` only confirms one.
+- `ide_read_events` returns events and `last_seq` for an instance the MCP server is subscribed to. Subscriptions are automatic; `ide_subscribe_events` only confirms one. An empty list right after launch is valid: no events have fired yet.
+- `ide_semantic_definition` can fail once with "No open Visual Studio instance" while the instance is registering. Retry once before recording it as a failure.
 
 Do not run `ide_run_tests`, `ide_build`, or other state-changing tools during this read-only section.
 
