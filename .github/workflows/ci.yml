@@ -35,7 +35,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Test
-        run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm"
+        run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm" --blame-crash --blame-crash-dump-type full
+
+      - name: Upload crash evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-crash-evidence
+          path: |
+            **/TestResults/**
+            **/*.dmp
+          if-no-files-found: ignore
 
       - name: Install VSSDK
         shell: pwsh
