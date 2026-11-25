@@ -103,7 +103,8 @@ Visual Studio only and says so in its description.
       documents are refused.
 - [x] **0.7** (done: `UnifiedDiff.cs` gives one hunk per file, capped at 400 lines and 40 files with a note; `RunPlan` puts a `diff` array
       in every plan reply; 101 VS Core tests pass.) `diff` in every plan reply: a unified diff per changed file, capped at 40 files and 400 lines each.
-- [ ] **0.8** `FileMover` creates and deletes files as well as moving them (SDK-style projects only), with a reply that says what
+- [x] **0.8** (done: `FileOperations.cs` creates, deletes and moves SDK-style files, refuses other projects and existing targets, and
+      reports each result; `FileMover` now uses it; 106 VS Core tests pass.) `FileMover` creates and deletes files as well as moving them (SDK-style projects only), with a reply that says what
       happened to each. Checks that a file-system failure after the apply leaves a reported, recoverable state.
 - [~] **0.9** Deferred to the live check in 9.1: it needs a running Visual Studio, and this session cannot measure undo steps. Until
       then, the plan's "one undo" wording stands as a claim to verify. Undo and atomicity check: record how many undo steps one `TryApplyChanges` over several files makes in Visual Studio
