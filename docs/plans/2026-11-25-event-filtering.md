@@ -501,9 +501,19 @@ Done: `DocsMatchCodeTests`, `SelfTestCoverageTests`, `HardCodedStringTests` pass
 6. Token caps. Per-item caps (20 items, 300 chars, first line) plus a total size guard (`MaxReplyChars` 6000) on summaries, because the cost is dominated by
    error and failure messages, not by event envelopes. A single global character budget was considered for events too; rejected as harder to predict than `limit`.
 
-## 9. Open items and defaults
+## 9. Decisions and open items
 
-- Default `waitSeconds` 120, caps 20 items / 300 characters (events) / 200 characters (summary messages), `MaxReplyChars` 6000: defaults, adjustable in review.
-- Exception breaks as Warning/Error severity (4.2) go beyond the draft's "`enterBreakMode` is info". Default: keep, since the user's default scope includes errors. Change if the user prefers info.
-- `ide_run_tests` baseline compares summary counts; if the Tests pane is cleared by Test Explorer between runs and refills to the same count, a finished run is missed and the call returns `running`/`unrecognised`. Default: accept; fall back to `ide_get_test_results`. Alternative if seen live: clear the pane before the run.
-- `IdeSubscribeEvents` reads `pid` at the top level of the router reply, which the router does not write. Default: verify live in unit 5; if broken, fix with `instance_pid` and note it in the commit.
+Decided by the user:
+- Exception breaks (4.2) keep Warning/Error severity, so they are in the default scope.
+- Test summaries do not clear the Tests pane before a run. A finished run can be missed only if the refill matches the old count; the call then falls back to `ide_get_test_results`.
+- The wait limit and caps are settings, not constants.
+
+Settings (defaults in code, overridable):
+- Location: `.claude/aidevhelpers.json` in the solution's repo, the file `RepoConfig` already reads for `preferredIde`. Add an `eventFilter` object:
+  `{ "waitSeconds": 120, "maxEvents": 20, "maxEventTextChars": 300, "maxSummaryMessageChars": 200, "maxReplyChars": 6000 }`.
+- Each field is optional. A missing or invalid value falls back to its default and the reply notes it in `settings_warnings`.
+- A per-call argument (for example `waitSeconds` on `ide_build`) overrides the setting for that call.
+- Add a unit to step 1 of the plan: read the `eventFilter` object in `RepoConfig` with tests for defaults, overrides and invalid values.
+
+Still open:
+- `IdeSubscribeEvents` reads `pid` at the top level of the router reply, which the router does not write. Verify live in unit 5; if broken, read `instance_pid` and note it in the commit.
