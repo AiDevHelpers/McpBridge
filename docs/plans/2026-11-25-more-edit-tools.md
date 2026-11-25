@@ -63,7 +63,13 @@ Visual Studio only and says so in its description.
 
 ### Phase 0: shared parts
 
-- [ ] **0.0** Spike (one day, first): can the net48 extension reach Roslyn code fixes and refactorings? `ICodeFixService` and
+- [x] **0.0** Spike result (2026-11-25, `Microsoft.CodeAnalysis.CSharp.Features.dll` and `Microsoft.CodeAnalysis.Features.dll` from the
+      VS 18 Community install, read with the metadata reader; nothing loaded or run): every C# fix and refactoring provider there
+      is internal (342 types match `Refactor|CodeFix`, none public). `ICodeFixService` and `ICodeRefactoringService` are internal
+      in `Microsoft.CodeAnalysis.Features.dll`. Only the abstract `CodeFixProvider` and `CodeRefactoringProvider` are public. So the
+      extension cannot reach Visual Studio's own refactorings. Decision per section 2: units 6.1 and 6.2 (list and apply code
+      actions) are dropped; phase 6 is bespoke (6.4 to 6.8); 7.x is bespoke; 8.1 is covered by `ide_code_cleanup`. Original
+      question: (was: spike, one day, first): can the net48 extension reach Roslyn code fixes and refactorings? `ICodeFixService` and
       `ICodeRefactoringService` are probably internal, so try the public `CodeFixProvider` and `CodeRefactoringProvider` MEF
       exports. Record what compiles and runs, whether a code action returns only text changes or other operations, and whether
       action ids are stable between calls. The result decides phase 6 and units 7.x and 8.1.
@@ -159,7 +165,8 @@ Visual Studio only and says so in its description.
 Which of these are bespoke depends on 0.0. Units for refactorings the spike shows Visual Studio already offers are replaced by
 6.1 and 6.2.
 
-- [ ] **6.1** `ide_list_code_actions`: read only. For a file and span (or a diagnostic id), the fixes and refactorings offered, each
+- [x] **6.1** Dropped by the spike (0.0). `ide_list_code_actions` would need internal Visual Studio services.
+- [ ] **6.1-old** `ide_list_code_actions`: read only. For a file and span (or a diagnostic id), the fixes and refactorings offered, each
       with an id and title (ids re-resolved at apply, as 0.0 finds).
 - [ ] **6.2** `ide_apply_code_action`: apply one with the standard plan, checks and diff. Scope: document, project or solution for
       fix-all. Refuses actions whose operations are not plain text changes.
