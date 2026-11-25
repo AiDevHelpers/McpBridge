@@ -468,4 +468,22 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
         IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the processes the IDE's debugger can attach to (local processes), with pid, name and title. Read-only.")]
+    public Task<string> IdeListProcesses(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listProcesses", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the processes the IDE's debugger is currently attached to. Read-only.")]
+    public Task<string> IdeListDebuggedProcesses(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listDebuggedProcesses", new { }, solutionPath, ct, ide, instancePid);
 }

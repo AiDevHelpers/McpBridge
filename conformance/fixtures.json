@@ -28,5 +28,15 @@
     "request": { "action": "outputWrite", "args": { "channel": "SelfTest", "text": "self test" } },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_processes_refused_by_generic_bridge": {
+    "request": { "action": "listProcesses" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_debugged_processes_refused_by_generic_bridge": {
+    "request": { "action": "listDebuggedProcesses" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }

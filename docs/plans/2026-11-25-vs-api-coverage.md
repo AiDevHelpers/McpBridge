@@ -58,9 +58,9 @@ Results (2026-11-25, checked in the clone at `ac3e624`; Learn via search):
 
 ## Phase 1: Debugger
 
-- [ ] `ide_list_processes`: `Debugger.LocalProcesses` (name, PID, title). Read-only.
+- [x] `ide_list_processes`: `Debugger.LocalProcesses` (name, PID; title dropped, `Process.Title` does not exist). Read-only. Built; live check pending.
 - [ ] `ide_attach_process` (confirm): attach to a chosen process from `LocalProcesses`. `ide_detach_all` (confirm): `Debugger.DetachAll()`.
-- [ ] `ide_list_debugged_processes`: `Debugger4.DebuggedProcesses`. Read-only.
+- [x] `ide_list_debugged_processes`: `Debugger4.DebuggedProcesses` (cast to `EnvDTE90a.Debugger4`). Read-only. Built; live check pending.
 - [ ] `ide_list_exceptions` / `ide_set_exception_break` (confirm): `Debugger.ExceptionGroups` and break-on-throw per type.
 - [ ] `ide_list_threads` (`Process.Threads`, plus `Debugger2.CurrentThread`) and `ide_list_stack_frames` for the current thread.
 - [ ] Extend `ide_set_breakpoint` (`IdeActions.cs:513-517` currently calls `Breakpoints.Add(File, Line)` only) with `condition`,

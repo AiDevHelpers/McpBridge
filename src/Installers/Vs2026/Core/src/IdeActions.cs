@@ -119,6 +119,8 @@ public sealed class IdeActions(DTE2 dte)
         "publish" => Publish(),
         "prepareKill" => PrepareKill(),
         "killProcess" => KillProcess(RequireInt(args, "pid")),
+        "listProcesses" => ListProcesses(),
+        "listDebuggedProcesses" => ListDebuggedProcesses(),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
@@ -745,6 +747,37 @@ public sealed class IdeActions(DTE2 dte)
         args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
             ? value.GetString()
             : null;
+
+    // Reads an optional boolean argument. Returns null when absent or not a boolean, so callers choose the default.
+    internal static bool? OptionalBool(JsonElement args, string name) =>
+        args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False)
+            ? value.GetBoolean()
+            : null;
+
+    // Process lists for the debugger. Read-only: nothing is attached or detached here.
+    private object ListProcesses()
+    {
+        var processes = dte.Debugger.LocalProcesses;
+        var list = new List<object>();
+        foreach (EnvDTE.Process process in processes)
+        {
+            list.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        return new { processes = list };
+    }
+
+    private object ListDebuggedProcesses()
+    {
+        var debugger = (EnvDTE90a.Debugger4)dte.Debugger;
+        var list = new List<object>();
+        foreach (EnvDTE.Process process in debugger.DebuggedProcesses)
+        {
+            list.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        return new { processes = list };
+    }
 
     private static int? OptionalInt(JsonElement args, string name) =>
         args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
