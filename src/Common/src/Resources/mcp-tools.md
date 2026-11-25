@@ -61,6 +61,20 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 
 `terminal_session` manages Windows Terminal sessions. `action` is `open`, `tab`, `exec`, `list`, or `close`. Open chooses `InteractiveUser` (visible to the logged-on user, default) or `ServiceAccount` (headless). `tab` creates another tab; `exec` runs a command in a session and tab; `list` reports active sessions; `close` ends a session. Load its schema for the required IDs and optional timeout fields. Opening can create a visible terminal window; executing runs the supplied command.
 
+## Projects
+
+Standards come from `.aidevhelpers/project-standards.json` (base framework, allowed suffixes, properties, analyzers, exceptions).
+
+| Tool | Purpose |
+| --- | --- |
+| `project_types_list` | List `dotnet new` project templates, with optional language and tag filters. Read only. |
+| `project_audit` | Check projects against the standards: framework (exceptions are info), properties, analyzers, test SDK, differing package versions. Read only; `ok` is false on any error. |
+| `project_fix_plan` / `project_fix_confirm` | Plan, then apply, the edits that bring projects to the standards. Confirm re-audits and builds; any failure restores every file. |
+| `project_add_plan` / `project_add_confirm` | Plan, then add a project from a template to a `.slnx`, set up to the standards. A failed build removes it and restores the solution. |
+| `project_add_test_plan` / `project_add_test_confirm` | Plan, then add `<Source>.Tests` beside a source project, referencing it, with the repo's test runner. `seedTest` adds one failing test. |
+
+Tokens from the plan tools are single use and expire after 15 minutes. Plan tools write nothing.
+
 ## Safe use
 
 - Start with `ide_list_instances` and read-only inspection tools. Select a target explicitly when several solutions are open.

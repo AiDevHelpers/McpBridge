@@ -54,14 +54,14 @@ public sealed class ProjectFixTests : IDisposable
         ProjectFixer.Plan(_root, projectFilter: null, skip ?? []);
 
     [Fact]
-    public void MissingPropertyIsSetAndTheAuditPasses()
+    public async Task MissingPropertyIsSetAndTheAuditPasses()
     {
         var path = Write("src/Lib/Lib.csproj", Csproj("net10.0", properties: "", items: Analyzer));
 
         var plan = Plan();
         Assert.Contains(plan.Actions, a => a.Kind == FixKind.SetProperty && a.Name == "Nullable");
 
-        var result = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult();
+        var result = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None);
 
         Assert.True(result.Ok, result.Error);
         Assert.Contains("<Nullable>enable</Nullable>", File.ReadAllText(path));
@@ -134,63 +134,63 @@ public sealed class ProjectFixTests : IDisposable
     }
 
     [Fact]
-    public void DriftAfterPlanIsRefusedAndNothingIsWritten()
+    public async Task DriftAfterPlanIsRefusedAndNothingIsWritten()
     {
         var path = Write("src/Lib/Lib.csproj", Csproj("net10.0", properties: "", items: Analyzer));
         var plan = Plan();
         File.WriteAllText(path, Csproj("net10.0", properties: "", items: Analyzer) + "\n<!-- edited -->\n");
         var edited = File.ReadAllText(path);
 
-        var result = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult();
+        var result = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None);
 
         Assert.False(result.Ok);
         Assert.Equal(edited, File.ReadAllText(path));
     }
 
     [Fact]
-    public void BuildFailureRollsBackByteForByte()
+    public async Task BuildFailureRollsBackByteForByte()
     {
         var original = Csproj("net8.0", properties: "", items: Analyzer);
         var path = Write("src/Lib/Lib.csproj", original);
         var before = File.ReadAllBytes(path);
         var plan = Plan();
 
-        var result = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(1), CancellationToken.None).GetAwaiter().GetResult();
+        var result = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(1), CancellationToken.None);
 
         Assert.False(result.Ok);
         Assert.Equal(before, File.ReadAllBytes(path));
     }
 
     [Fact]
-    public void SecondPlanAfterAFixIsEmpty()
+    public async Task SecondPlanAfterAFixIsEmpty()
     {
         Write("src/Lib/Lib.csproj", Csproj("net10.0", properties: "", items: Analyzer));
         var plan = Plan();
-        Assert.True(ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult().Ok);
+        Assert.True((await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None)).Ok);
 
         Assert.Empty(Plan().Actions);
     }
 
     [Fact]
-    public void TokenIsSingleUse()
+    public async Task TokenIsSingleUse()
     {
         Write("src/Lib/Lib.csproj", Csproj("net10.0", properties: "", items: Analyzer));
         var plan = Plan();
-        _ = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult();
+        _ = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None);
 
-        var again = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult();
+        var again = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None);
 
         Assert.False(again.Ok);
     }
 
     [Fact]
-    public void CrlfLineEndingsArePreserved()
+    public async Task CrlfLineEndingsArePreserved()
     {
         var text = Csproj("net10.0", properties: "", items: Analyzer).Replace("\n", "\r\n");
         var path = Write("src/Lib/Lib.csproj", text);
         var plan = Plan();
 
-        Assert.True(ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult().Ok);
+        Assert.True((await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None)).Ok);
 
         var written = File.ReadAllText(path);
         Assert.DoesNotContain("\r\r", written);
@@ -198,14 +198,14 @@ public sealed class ProjectFixTests : IDisposable
     }
 
     [Fact]
-    public void StandardsFileBytesAreUnchanged()
+    public async Task StandardsFileBytesAreUnchanged()
     {
         Write("src/Lib/Lib.csproj", Csproj("net10.0", properties: "", items: Analyzer));
         var standards = ProjectStandardsFile.FilePath(_root);
         var before = File.ReadAllBytes(standards);
         var plan = Plan();
 
-        _ = ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None).GetAwaiter().GetResult();
+        _ = await ProjectFixer.ConfirmAsync(_root, plan.Token!, Build(0), CancellationToken.None);
 
         Assert.Equal(before, File.ReadAllBytes(standards));
     }
