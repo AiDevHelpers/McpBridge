@@ -42,6 +42,9 @@ internal sealed class DocUpdateResult
     public List<string> Missing { get; } = new();
 
     public List<string> Warnings { get; } = new();
+
+    /// <summary>The rebuilt doc comment, one entry per line, each starting with the prefix and without indentation.</summary>
+    public List<string> Lines { get; } = new();
 }
 
 /// <summary>
@@ -99,6 +102,7 @@ internal static class MethodDocUpdater
             Render(block, prefix, lines);
         }
 
+        result.Lines.AddRange(lines);
         var text = string.Join(eol, lines.Select((l, i) => i == 0 ? l : indent + l)) + eol;
         if (text != trivia.ToFullString())
         {
@@ -106,6 +110,74 @@ internal static class MethodDocUpdater
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Doc lines for a method that has none yet, in the layout of a documented neighbour (<paramref name="donor"/>, may be null).
+    /// Summary, every parameter, every type parameter and a non-void return need text from the caller; nothing is invented.
+    /// </summary>
+    public static DocUpdateResult BuildNew(MethodDeclarationSyntax? donor, IMethodSymbol symbol, DocUpdates updates)
+    {
+        var result = new DocUpdateResult();
+        var prefix = "/// ";
+        var multilineSummary = false;
+        var multilineParams = false;
+        var trivia = donor?.GetLeadingTrivia().FirstOrDefault(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia));
+        if (trivia is { } found && found != default)
+        {
+            var text = found.ToFullString();
+            prefix = text.Length > 3 && text[3] == ' ' ? "/// " : "///";
+            var blocks = ParseBlocks((DocumentationCommentTriviaSyntax)found.GetStructure()!);
+            multilineSummary = blocks.FirstOrDefault(b => b.Kind == "summary")?.Multiline == true;
+            multilineParams = blocks.FirstOrDefault(b => b.Kind == "param")?.Multiline == true;
+        }
+
+        var built = new List<Block>();
+        if (updates.NewSummary is null)
+        {
+            result.Missing.Add("summary");
+        }
+        else
+        {
+            built.Add(WithText(new Block { Kind = "summary" }, updates.NewSummary, null, multilineSummary));
+        }
+
+        foreach (var tp in symbol.TypeParameters)
+        {
+            AddNew(built, result, updates, "typeparam", tp.Name, multilineParams);
+        }
+
+        foreach (var p in symbol.Parameters)
+        {
+            AddNew(built, result, updates, "param", p.Name, multilineParams);
+        }
+
+        if (!symbol.ReturnsVoid)
+        {
+            AddNew(built, result, updates, "returns", null, multilineParams);
+        }
+
+        if (result.Missing.Count == 0)
+        {
+            foreach (var block in built)
+            {
+                Render(block, prefix, result.Lines);
+            }
+        }
+
+        return result;
+    }
+
+    private static void AddNew(List<Block> built, DocUpdateResult result, DocUpdates updates, string tag, string? name, bool multiline)
+    {
+        var given = updates.Items.FirstOrDefault(d => d.Tag == tag && d.Name == name);
+        if (given is null)
+        {
+            result.Missing.Add(name is null ? tag : tag + " " + name);
+            return;
+        }
+
+        built.Add(WithText(new Block { Kind = tag, Name = name }, given.Text, name, multiline));
     }
 
     private static List<Block> ParseBlocks(DocumentationCommentTriviaSyntax doc)

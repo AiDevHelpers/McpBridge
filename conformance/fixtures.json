@@ -89,6 +89,16 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "add_method_refused_by_generic_bridge": {
+    "request": { "action": "addMethod", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newMethodText": "void M() { }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_overload_refused_by_generic_bridge": {
+    "request": { "action": "addOverload", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newMethodText": "void M(int x) { }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "semantic_references_refused_by_generic_bridge": {
     "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
     "ok": false,

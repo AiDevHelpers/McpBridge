@@ -6,7 +6,7 @@ namespace AiDevHelpers.Installers.Vs2026.Core.Tests;
 
 public sealed class MethodEditEngineTests
 {
-    private const string File = @"C:\scratch\a.cs";
+    internal const string File = @"C:\scratch\a.cs";
 
     private const string Source =
         "class C {\n" +
@@ -14,7 +14,7 @@ public sealed class MethodEditEngineTests
         "    public int Use() { return Add(1, 2); }\n" +
         "}\n";
 
-    private static Solution Create(string code)
+    internal static Solution Create(string code)
     {
         var workspace = new AdhocWorkspace();
         var project = workspace.AddProject("P", LanguageNames.CSharp)
@@ -25,7 +25,7 @@ public sealed class MethodEditEngineTests
     }
 
     // 1-based line and column of the first occurrence of a marker in the source.
-    private static (int Line, int Column) Locate(string code, string marker)
+    internal static (int Line, int Column) Locate(string code, string marker)
     {
         var index = code.IndexOf(marker, StringComparison.Ordinal);
         Assert.True(index >= 0, marker);

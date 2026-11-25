@@ -41,6 +41,16 @@ internal sealed class MethodEditPlan
 
     public List<object> NewErrors { get; } = new();
 
+    public List<object> NewWarnings { get; } = new();
+
+    public List<object> NewNotices { get; } = new();
+
+    public List<object> Rebinds { get; } = new();
+
+    public bool Formatted { get; set; }
+
+    public int InsertedAtLine { get; set; }
+
     public List<string> Files { get; } = new();
 
     public bool SignatureChanged { get; set; }
@@ -68,6 +78,11 @@ internal sealed class MethodEditPlan
         docs_updated = DocsUpdated,
         uncovered_references = Uncovered,
         new_errors = NewErrors,
+        new_warnings = NewWarnings,
+        new_notices = NewNotices,
+        rebound_references = Rebinds,
+        formatted = Formatted,
+        inserted_at_line = InsertedAtLine,
         files = Files,
         warnings = Warnings,
     };
@@ -185,7 +200,9 @@ internal static class MethodEditEngine
             await CheckSignatureChangeAsync(solution, symbol, references, callerEdits, plan).ConfigureAwait(false);
         }
 
-        await CheckNewErrorsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)).Distinct().ToList(), plan)
+        // Format the method's file, then report what the edit introduced (errors refuse; warnings and notices are reported).
+        edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan)
             .ConfigureAwait(false);
 
         plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
@@ -200,6 +217,20 @@ internal static class MethodEditEngine
         }
 
         return plan;
+    }
+
+    // The node a reference token belongs to: the whole invocation when the token names the called method, else the token's parent.
+    internal static SyntaxNode UseNode(SyntaxToken token)
+    {
+        for (var node = token.Parent; node is not null && node is not StatementSyntax && node is not MemberDeclarationSyntax; node = node.Parent)
+        {
+            if (node is InvocationExpressionSyntax invocation && invocation.Expression.Span.End == token.Span.End)
+            {
+                return invocation;
+            }
+        }
+
+        return token.Parent!;
     }
 
     private static async Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes)
@@ -365,50 +396,6 @@ internal static class MethodEditEngine
         }
     }
 
-    // New compile errors: errors in the edited documents that the same documents did not have before.
-    private static async Task CheckNewErrorsAsync(Solution before, Solution after, List<DocumentId> ids, MethodEditPlan plan)
-    {
-        foreach (var id in ids)
-        {
-            var oldErrors = await ErrorsAsync(before.GetDocument(id)!).ConfigureAwait(false);
-            var newErrors = await ErrorsAsync(after.GetDocument(id)!).ConfigureAwait(false);
-            var remaining = oldErrors.GroupBy(e => e.Key).ToDictionary(g => g.Key, g => g.Count());
-            foreach (var error in newErrors)
-            {
-                if (remaining.TryGetValue(error.Key, out var count) && count > 0)
-                {
-                    remaining[error.Key] = count - 1;
-                }
-                else if (plan.NewErrors.Count < MaxReported)
-                {
-                    plan.NewErrors.Add(new { file = after.GetDocument(id)!.FilePath, line = error.Line, id = error.Id, message = error.Message });
-                }
-            }
-        }
-
-        if (plan.NewErrors.Count > 0)
-        {
-            plan.Reasons.Add(Strings.Format("MethodEditNewErrors", plan.NewErrors.Count));
-        }
-    }
-
-    private static async Task<List<(string Key, string Id, string Message, int Line)>> ErrorsAsync(Document document)
-    {
-        var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
-        var list = new List<(string, string, string, int)>();
-        if (model is null)
-        {
-            return list;
-        }
-
-        foreach (var diagnostic in model.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error))
-        {
-            var message = diagnostic.GetMessage();
-            list.Add((diagnostic.Id + "|" + message, diagnostic.Id, message, diagnostic.Location.GetLineSpan().StartLinePosition.Line + 1));
-        }
-
-        return list;
-    }
 
     // Everything about a method that a caller can depend on. Async, attributes and the body are left out on purpose.
     internal static string SignatureKey(IMethodSymbol method)

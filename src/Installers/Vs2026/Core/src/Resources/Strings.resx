@@ -51,6 +51,12 @@
   <data name="MethodEditParamTypeChanged" xml:space="preserve"><value>The type of parameter '{0}' changed. Its description was kept; check it.</value></data>
   <data name="MethodEditReturnsMayBeStale" xml:space="preserve"><value>The return type changed and the returns text was kept. Check it, or pass a returns entry in docs.</value></data>
   <data name="MethodEditDocsMissing" xml:space="preserve"><value>The method has a doc comment and these tags need text in docs: {0}.</value></data>
+  <data name="MethodAddNoType" xml:space="preserve"><value>No type declaration contains that line.</value></data>
+  <data name="MethodAddOverloadNameDiffers" xml:space="preserve"><value>An overload must be named '{0}', like the method at that line.</value></data>
+  <data name="MethodAddAfterLineNotMember" xml:space="preserve"><value>Line {0} is not inside a member of that type.</value></data>
+  <data name="MethodAddRebinds" xml:space="preserve"><value>Adding this overload would change which method {0} existing call(s) bind to. Nothing was changed.</value></data>
+  <data name="MethodAddDocsNotGiven" xml:space="preserve"><value>Neighbouring methods have doc comments but the new method got none; these need text in newSummary or docs: {0}.</value></data>
+  <data name="MethodEditAnalysisUnavailable" xml:space="preserve"><value>Code analysis could not run: {0}</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

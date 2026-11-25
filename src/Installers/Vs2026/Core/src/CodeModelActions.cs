@@ -190,6 +190,31 @@ internal static class CodeModelActions
         });
     }
 
+    // Adds a method to the type at a line, or an overload of the method at that line, after the checks in MethodAddEngine. Same
+    // plan, refuse and apply behaviour as EditMethod.
+    public static object AddMethod(string file, int line, string newMethodText, int? afterLine, DocUpdates docs, bool overload, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            var plan = await MethodAddEngine.PlanAsync(workspace.CurrentSolution, file, line, newMethodText, afterLine, overload, docs).ConfigureAwait(true);
+            if (plan.Refused || !confirm)
+            {
+                return new { planned = !plan.Refused, applied = false, check = plan.ToReply() };
+            }
+
+            if (!workspace.TryApplyChanges(plan.Result!))
+            {
+                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
+            }
+
+            return new { planned = false, applied = true, check = plan.ToReply() };
+        });
+    }
+
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel

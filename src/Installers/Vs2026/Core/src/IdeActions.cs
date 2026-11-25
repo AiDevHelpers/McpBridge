@@ -161,6 +161,22 @@ public sealed class IdeActions(DTE2 dte)
             ParseCallerEdits(args),
             ParseDocUpdates(args),
             OptionalBool(args, "confirm") == true),
+        "addMethod" => CodeModelActions.AddMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newMethodText"),
+            OptionalInt(args, "afterLine"),
+            ParseDocUpdates(args),
+            false,
+            OptionalBool(args, "confirm") == true),
+        "addOverload" => CodeModelActions.AddMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newMethodText"),
+            null,
+            ParseDocUpdates(args),
+            true,
+            OptionalBool(args, "confirm") == true),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
