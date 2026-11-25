@@ -144,7 +144,7 @@ public sealed class IdeActions(DTE2 dte)
         "saveDocument" => SaveDocument(RequireString(args, "file"), OptionalBool(args, "confirm") == true),
         "closeDocument" => CloseDocument(RequireString(args, "file"), OptionalBool(args, "discardChanges") == true, OptionalBool(args, "confirm") == true),
         "undoGroup" => UndoGroup(RequireString(args, "name"), args, OptionalBool(args, "confirm") == true),
-        "listCodeElements" => ListCodeElements(RequireString(args, "file")),
+        "listCodeElements" => CodeModelActions.ListCodeElements(RequireString(args, "file")),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
@@ -1266,52 +1266,6 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { planned = false, applied = new { name, edits = results } };
-    }
-
-    // The code model is only reliable once the file is open in the editor, so the file is opened first when needed.
-    // The IDE's C# code model can still refuse (E_FAIL); that is reported as an error rather than an empty list.
-    private object ListCodeElements(string file)
-    {
-        var item = dte.Solution.FindProjectItem(file) ?? throw new ArgumentException(Strings.Format("NoProjectItemFor", file));
-        if (OpenDocumentFor(file) is null)
-        {
-            item.Open();
-        }
-
-        var model = item.FileCodeModel ?? throw new ArgumentException(Strings.Format("NoCodeModelFor", file));
-        var list = new List<object>();
-        try
-        {
-            foreach (CodeElement element in model.CodeElements)
-            {
-                AddCodeElement(list, element);
-            }
-        }
-        catch (COMException ex)
-        {
-            throw new InvalidOperationException(Strings.Format("CodeModelUnavailable", file, ex.Message), ex);
-        }
-
-        return new { elements = list };
-    }
-
-    private static void AddCodeElement(List<object> list, CodeElement element)
-    {
-        list.Add(new { kind = element.Kind.ToString(), name = element.Name, start_line = element.StartPoint.Line, end_line = element.EndPoint.Line });
-        if (element is CodeNamespace ns)
-        {
-            foreach (CodeElement child in ns.Members)
-            {
-                AddCodeElement(list, child);
-            }
-        }
-        else if (element is CodeType type)
-        {
-            foreach (CodeElement child in type.Members)
-            {
-                AddCodeElement(list, child);
-            }
-        }
     }
 
     private static Regex BuildSearchPattern(string pattern, bool matchCase, bool useRegex)

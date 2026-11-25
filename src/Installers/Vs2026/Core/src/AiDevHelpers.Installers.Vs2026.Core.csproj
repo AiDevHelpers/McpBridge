@@ -19,4 +19,34 @@
     <ProjectReference Include="..\..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" SetTargetFramework="TargetFramework=net48" />
   </ItemGroup>
 
+  <!-- Roslyn (phase 6). The extension uses the Roslyn assemblies the running Visual Studio already loads, so they are
+       referenced from the install (DevEnvDir) and never copied into the VSIX (Private=false). -->
+  <PropertyGroup>
+    <!-- Visual Studio 18 install that provides the Roslyn assemblies. Override with -p:VsInstallDir=... for another install. -->
+    <VsInstallDir Condition="'$(VsInstallDir)' == ''">C:\Program Files\Microsoft Visual Studio\18\Community\</VsInstallDir>
+    <RoslynDir>$(VsInstallDir)Common7\IDE\CommonExtensions\Microsoft\VBCSharp\LanguageServices\</RoslynDir>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CodeAnalysis">
+      <HintPath>$(RoslynDir)Microsoft.CodeAnalysis.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.Workspaces">
+      <HintPath>$(RoslynDir)Microsoft.CodeAnalysis.Workspaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp">
+      <HintPath>$(RoslynDir)Microsoft.CodeAnalysis.CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.CodeAnalysis.CSharp.Workspaces">
+      <HintPath>$(RoslynDir)Microsoft.CodeAnalysis.CSharp.Workspaces.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Microsoft.VisualStudio.LanguageServices">
+      <HintPath>$(RoslynDir)Microsoft.VisualStudio.LanguageServices.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
 </Project>
