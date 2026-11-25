@@ -168,7 +168,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             using var doc = JsonDocument.Parse(now);
             if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.GetBoolean() && now != baseline)
             {
-                var finished = JsonSerializer.Serialize(new { status = "finished", summary = TestSummaryCapper.Cap(doc.RootElement, maxMessageChars: settings.MaxSummaryMessageChars) });
+                var capped = TestSummaryCapper.Cap(doc.RootElement, maxMessageChars: settings.MaxSummaryMessageChars);
+                var finished = JsonSerializer.Serialize(new { status = "finished", summary = ReplySizeGuard.Fit(capped, settings.MaxReplyChars) });
                 return WithWarnings(finished, warnings);
             }
         }
@@ -343,7 +344,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         }
 
         var (settings, warnings) = LoadEventFilter(solutionPath);
-        var summary = BuildSummary.Build(result, errors, maxMessageChars: settings.MaxSummaryMessageChars);
+        var summary = ReplySizeGuard.Fit(System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(BuildSummary.Build(result, errors, maxMessageChars: settings.MaxSummaryMessageChars)))!, settings.MaxReplyChars);
         return WithWarnings(JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary }), warnings);
     }
 
