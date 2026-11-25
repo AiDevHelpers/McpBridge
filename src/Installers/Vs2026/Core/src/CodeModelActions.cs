@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.FindSymbols;
+using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.LanguageServices;
@@ -109,6 +110,51 @@ internal static class CodeModelActions
         }
 
         return new { symbol = symbol.ToDisplayString(), locations };
+    }
+
+    // Renames the symbol at a position across the solution. Plan-only lists the files that would change. Applied writes them
+    // through the VS workspace, so the change is one undoable edit set in the IDE.
+    public static object RenameSymbol(string file, int line, int column, string newName, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(() => RenameSymbolAsync(file, line, column, newName, confirm));
+    }
+
+    private static async Task<object> RenameSymbolAsync(string file, int line, int column, string newName, bool confirm)
+    {
+        var (solution, document, position) = await ResolvePositionAsync(file, line, column).ConfigureAwait(true);
+        var symbol = await SymbolFinder.FindSymbolAtPositionAsync(document, position).ConfigureAwait(true)
+            ?? throw new ArgumentException(Strings.Get("NoSymbolAtPosition"));
+
+        var renamed = await Renamer.RenameSymbolAsync(solution, symbol, new SymbolRenameOptions(), newName).ConfigureAwait(true);
+        var files = new List<string>();
+        foreach (var projectChanges in renamed.GetChanges(solution).GetProjectChanges())
+        {
+            foreach (var documentId in projectChanges.GetChangedDocuments())
+            {
+                var path = renamed.GetDocument(documentId)?.FilePath;
+                if (path is not null)
+                {
+                    files.Add(path);
+                }
+            }
+        }
+
+        var change = new { symbol = symbol.ToDisplayString(), new_name = newName, files };
+        if (!confirm)
+        {
+            return new { planned = true, would = change };
+        }
+
+        var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+            ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+        var workspace = model.GetService<VisualStudioWorkspace>();
+        if (!workspace.TryApplyChanges(renamed))
+        {
+            throw new InvalidOperationException(Strings.Get("RenameNotApplied"));
+        }
+
+        return new { planned = false, applied = change };
     }
 
     private static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)

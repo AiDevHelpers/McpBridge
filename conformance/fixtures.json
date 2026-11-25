@@ -79,6 +79,11 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "rename_symbol_refused_by_generic_bridge": {
+    "request": { "action": "renameSymbol", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newName": "x" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "semantic_references_refused_by_generic_bridge": {
     "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
     "ok": false,

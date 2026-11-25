@@ -147,6 +147,12 @@ public sealed class IdeActions(DTE2 dte)
         "listCodeElements" => CodeModelActions.ListCodeElements(RequireString(args, "file")),
         "semanticReferences" => CodeModelActions.SemanticReferences(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
         "semanticDefinition" => CodeModelActions.SemanticDefinition(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
+        "renameSymbol" => CodeModelActions.RenameSymbol(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "newName"),
+            OptionalBool(args, "confirm") == true),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),

@@ -34,6 +34,7 @@
   <data name="UnknownTaskCategory" xml:space="preserve"><value>Unknown task category '{0}'. Use Error, Warning, or Message.</value></data>
   <data name="NoSymbolAtPosition" xml:space="preserve"><value>No symbol at that position.</value></data>
   <data name="LineOutOfRange" xml:space="preserve"><value>Line {0} is outside '{1}'.</value></data>
+  <data name="RenameNotApplied" xml:space="preserve"><value>The workspace refused the rename. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>
