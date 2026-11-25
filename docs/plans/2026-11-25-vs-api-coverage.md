@@ -148,6 +148,16 @@ Phase 1 done when: each unit's build and conformance tests pass, and its live ch
 
 ### Phase 2: editor and documents
 
+Built (live checks pending). Deviations from the spec below, decided during the build:
+- **Find in files (2.1) and replace (2.2)** use a managed search over files on disk, not `Find2`. `Find2` exposes no result
+  collection, and driving it changes the global find state the user sees. Scope `solution` walks project items and
+  `SubProject`; `project` uses the named project; `openDocuments` uses the open documents on disk.
+- **Replace (2.2) partial failures** are listed in `failed` in the applied result, and the reply keeps `ok:true`. The
+  section 3.1 rule (`ok:false` on any failure) is not met for this action. Decide whether to change it.
+- **Undo group (2.4)** applies each edit through `TextSelection` (delete, then insert), inside `UndoContext`. Edits whose
+  file cannot be opened or whose range is wrong are reported per edit.
+- **Document close (2.3)** with unsaved changes needs `discardChanges` as well as `confirm`; the error names both.
+
 - [ ] **2.1** `findInFiles` (read). Args: `pattern`, `matchCase` (default false), `useRegex` (default false), `scope`
       (`solution|project|openDocuments`), `project` (required when scope is `project`). Reply `{matches:[{file,line,text}],truncated}`,
       capped at 500. Spike first: `Find2` with `Target`/`SearchPath`, and the read path (`FindResults1` text after `Execute`, or

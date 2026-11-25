@@ -10,6 +10,12 @@
   <data name="ConditionFlagRequired" xml:space="preserve"><value>Give condition, hitCountType, hitCount, or a mix.</value></data>
   <data name="UnknownHitCountType" xml:space="preserve"><value>Unknown hitCountType '{0}'. Use always, equal, multiple, or greaterOrEqual.</value></data>
   <data name="NoBreakpointAt" xml:space="preserve"><value>No breakpoint at {0}:{1}.</value></data>
+  <data name="UnknownScope" xml:space="preserve"><value>Unknown scope '{0}'. Use solution, project, or openDocuments.</value></data>
+  <data name="ProjectScopeNeedsName" xml:space="preserve"><value>Scope 'project' needs a project name.</value></data>
+  <data name="NoOpenDocument" xml:space="preserve"><value>No open document for '{0}'.</value></data>
+  <data name="DocumentDirty" xml:space="preserve"><value>'{0}' has unsaved changes. Pass discardChanges to close it anyway.</value></data>
+  <data name="NoProjectItemFor" xml:space="preserve"><value>No project item for '{0}'.</value></data>
+  <data name="NoCodeModelFor" xml:space="preserve"><value>No code model for '{0}'.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>

@@ -575,6 +575,90 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("detachAll", new { confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("Search the text of files: the solution, one project, or the open documents. Managed search over files on disk; read-only. Capped at 500 matches.")]
+    public Task<string> IdeFindInFiles(
+        [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
+        [Description("Match case. Default false.")] bool matchCase = false,
+        [Description("Treat pattern as a regular expression. Default false.")] bool useRegex = false,
+        [Description("solution, project, or openDocuments. Default solution.")] string scope = "solution",
+        [Description("Project name, required when scope is project")] string? project = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("findInFiles", new { pattern, matchCase, useRegex, scope, project }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Replace text in files (solution, project, or open documents). Without confirm it only counts matches per file and writes nothing. Open documents with unsaved changes are skipped. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeReplaceInFiles(
+        [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
+        [Description("Replacement text. With useRegex, $1 etc. refer to groups.")] string replacement,
+        [Description("Match case. Default false.")] bool matchCase = false,
+        [Description("Treat pattern as a regular expression. Default false.")] bool useRegex = false,
+        [Description("solution, project, or openDocuments. Default solution.")] string scope = "solution",
+        [Description("Project name, required when scope is project")] string? project = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("replaceInFiles", new { pattern, replacement, matchCase, useRegex, scope, project, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the open documents with saved state and read-only flag. Read-only.")]
+    public Task<string> IdeListDocuments(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listDocuments", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Save an open document. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSaveDocument(
+        [Description("Full path of the open document")] string file,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("saveDocument", new { file, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Close an open document. A document with unsaved changes is refused unless discardChanges is also true. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeCloseDocument(
+        [Description("Full path of the open document")] string file,
+        [Description("Discard unsaved changes when closing. Default false.")] bool discardChanges = false,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("closeDocument", new { file, discardChanges, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Apply several range edits in one IDE undo group, so they undo as one step. Each edit gives start and end line and column (1-based) and new text. Without confirm it lists the edits. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeUndoGroup(
+        [Description("Name of the undo group shown in the IDE")] string name,
+        [Description("Array of {file, startLine, startColumn, endLine, endColumn, newText}")] object[] edits,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("undoGroup", new { name, edits, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the code elements (namespaces, types, members) of one file with line ranges. Read-only.")]
+    public Task<string> IdeListCodeElements(
+        [Description("Full path of the source file")] string file,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listCodeElements", new { file }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,

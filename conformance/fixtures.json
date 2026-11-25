@@ -49,6 +49,41 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "find_in_files_refused_by_generic_bridge": {
+    "request": { "action": "findInFiles", "args": { "pattern": "x" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "replace_in_files_refused_by_generic_bridge": {
+    "request": { "action": "replaceInFiles", "args": { "pattern": "x", "replacement": "y" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_documents_refused_by_generic_bridge": {
+    "request": { "action": "listDocuments" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "save_document_refused_by_generic_bridge": {
+    "request": { "action": "saveDocument", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "close_document_refused_by_generic_bridge": {
+    "request": { "action": "closeDocument", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "undo_group_refused_by_generic_bridge": {
+    "request": { "action": "undoGroup", "args": { "name": "t", "edits": [] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_code_elements_refused_by_generic_bridge": {
+    "request": { "action": "listCodeElements", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "set_breakpoint_condition_refused_by_generic_bridge": {
     "request": { "action": "setBreakpointCondition", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "condition": "x > 1" } },
     "ok": false,

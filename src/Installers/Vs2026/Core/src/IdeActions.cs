@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 using EnvDTE;
 using EnvDTE80;
@@ -124,6 +126,25 @@ public sealed class IdeActions(DTE2 dte)
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(),
         "listStackFrames" => ListStackFrames(),
+        "findInFiles" => FindInFiles(
+            RequireString(args, "pattern"),
+            OptionalBool(args, "matchCase") == true,
+            OptionalBool(args, "useRegex") == true,
+            OptionalString(args, "scope") ?? "solution",
+            OptionalString(args, "project")),
+        "replaceInFiles" => ReplaceInFiles(
+            RequireString(args, "pattern"),
+            RequireString(args, "replacement"),
+            OptionalBool(args, "matchCase") == true,
+            OptionalBool(args, "useRegex") == true,
+            OptionalString(args, "scope") ?? "solution",
+            OptionalString(args, "project"),
+            OptionalBool(args, "confirm") == true),
+        "listDocuments" => ListDocuments(),
+        "saveDocument" => SaveDocument(RequireString(args, "file"), OptionalBool(args, "confirm") == true),
+        "closeDocument" => CloseDocument(RequireString(args, "file"), OptionalBool(args, "discardChanges") == true, OptionalBool(args, "confirm") == true),
+        "undoGroup" => UndoGroup(RequireString(args, "name"), args, OptionalBool(args, "confirm") == true),
+        "listCodeElements" => ListCodeElements(RequireString(args, "file")),
         "setBreakpointCondition" => SetBreakpointCondition(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -1048,6 +1069,333 @@ public sealed class IdeActions(DTE2 dte)
 
         dte.Debugger.DetachAll();
         return new { planned = false, applied = new { detached = attached } };
+    }
+
+    // ---- Phase 2: search, documents, undo groups, code elements ----
+    //
+    // Search is done in managed code over the files on disk, not through Find2. Find2 exposes no results collection, and
+    // driving it changes the global find state the user sees. The managed search is read-only and bounded.
+
+    private const int MaxSearchMatches = 500;
+
+    private object FindInFiles(string pattern, bool matchCase, bool useRegex, string scope, string? projectName)
+    {
+        var regex = BuildSearchPattern(pattern, matchCase, useRegex);
+        var matches = new List<object>();
+        var truncated = false;
+        foreach (var file in SearchScopeFiles(scope, projectName))
+        {
+            foreach (var (line, text) in SearchFile(file, regex))
+            {
+                if (matches.Count >= MaxSearchMatches)
+                {
+                    truncated = true;
+                    break;
+                }
+
+                matches.Add(new { file, line, text });
+            }
+
+            if (truncated)
+            {
+                break;
+            }
+        }
+
+        return new { matches, truncated };
+    }
+
+    // Counts matches per file without writing. Applied: writes the replacement to each file that has matches, except files open
+    // with unsaved changes, which are reported as skipped. Per-file write errors are reported in failed, not thrown.
+    private object ReplaceInFiles(string pattern, string replacement, bool matchCase, bool useRegex, string scope, string? projectName, bool confirm)
+    {
+        var regex = BuildSearchPattern(pattern, matchCase, useRegex);
+        var replaceWith = useRegex ? replacement : replacement.Replace("$", "$$");
+        var planned = new List<object>();
+        var skipped = new List<object>();
+        var targets = new List<(string File, int Count)>();
+        foreach (var file in SearchScopeFiles(scope, projectName).Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var count = SearchFile(file, regex).Count;
+            if (count == 0)
+            {
+                continue;
+            }
+
+            var openDirty = OpenDocumentFor(file) is { Saved: false };
+            if (openDirty)
+            {
+                skipped.Add(new { file, reason = "open with unsaved changes" });
+                continue;
+            }
+
+            targets.Add((file, count));
+            planned.Add(new { file, matches = count });
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { files = planned, skipped } };
+        }
+
+        var applied = new List<object>();
+        var failed = new List<object>();
+        foreach (var (file, count) in targets)
+        {
+            try
+            {
+                var original = File.ReadAllText(file);
+                var updated = regex.Replace(original, replaceWith);
+                File.WriteAllText(file, updated);
+                applied.Add(new { file, matches = count });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                failed.Add(new { file, error = ex.Message });
+            }
+        }
+
+        return new { planned = false, applied = new { files = applied, skipped }, failed };
+    }
+
+    private object ListDocuments()
+    {
+        var list = new List<object>();
+        foreach (Document document in dte.Documents)
+        {
+            list.Add(new { fullName = document.FullName, saved = document.Saved, readOnly = document.ReadOnly });
+        }
+
+        return new { documents = list };
+    }
+
+    private object SaveDocument(string file, bool confirm)
+    {
+        var document = OpenDocumentFor(file) ?? throw new ArgumentException(Strings.Format("NoOpenDocument", file));
+        var change = new { file = document.FullName, saved = document.Saved };
+        if (!confirm)
+        {
+            return new { planned = true, would = new { save = change } };
+        }
+
+        document.Save();
+        return new { planned = false, applied = new { file = document.FullName, saved = document.Saved } };
+    }
+
+    // Closes an open document. A document with unsaved changes is refused unless discardChanges is also set.
+    private object CloseDocument(string file, bool discardChanges, bool confirm)
+    {
+        var document = OpenDocumentFor(file) ?? throw new ArgumentException(Strings.Format("NoOpenDocument", file));
+        if (!document.Saved && !discardChanges)
+        {
+            throw new ArgumentException(Strings.Format("DocumentDirty", file));
+        }
+
+        var change = new { file = document.FullName, saved = document.Saved, discard_changes = discardChanges };
+        if (!confirm)
+        {
+            return new { planned = true, would = new { close = change } };
+        }
+
+        document.Close(discardChanges ? vsSaveChanges.vsSaveChangesNo : vsSaveChanges.vsSaveChangesYes);
+        return new { planned = false, applied = change };
+    }
+
+    // Applies a list of range edits inside one undo group, so the IDE undoes them as one step. Each edit's result is reported;
+    // a failed edit does not stop the others, and the group always closes.
+    private object UndoGroup(string name, JsonElement args, bool confirm)
+    {
+        var edits = ParseEdits(args);
+        if (!confirm)
+        {
+            return new { planned = true, would = new { name, edits = edits.Select(e => new { e.File, e.StartLine, e.StartColumn, e.EndLine, e.EndColumn, e.NewText }).ToList() } };
+        }
+
+        var results = new List<object>();
+        dte.UndoContext.Open(name, false);
+        try
+        {
+            foreach (var edit in edits)
+            {
+                try
+                {
+                    ApplyEdit(edit);
+                    results.Add(new { edit.File, ok = true });
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or COMException)
+                {
+                    results.Add(new { edit.File, ok = false, error = ex.Message });
+                }
+            }
+        }
+        finally
+        {
+            dte.UndoContext.Close();
+        }
+
+        return new { planned = false, applied = new { name, edits = results } };
+    }
+
+    private object ListCodeElements(string file)
+    {
+        var item = dte.Solution.FindProjectItem(file) ?? throw new ArgumentException(Strings.Format("NoProjectItemFor", file));
+        var model = item.FileCodeModel ?? throw new ArgumentException(Strings.Format("NoCodeModelFor", file));
+        var list = new List<object>();
+        foreach (CodeElement element in model.CodeElements)
+        {
+            AddCodeElement(list, element);
+        }
+
+        return new { elements = list };
+    }
+
+    private static void AddCodeElement(List<object> list, CodeElement element)
+    {
+        list.Add(new { kind = element.Kind.ToString(), name = element.Name, start_line = element.StartPoint.Line, end_line = element.EndPoint.Line });
+        if (element is CodeNamespace ns)
+        {
+            foreach (CodeElement child in ns.Members)
+            {
+                AddCodeElement(list, child);
+            }
+        }
+        else if (element is CodeType type)
+        {
+            foreach (CodeElement child in type.Members)
+            {
+                AddCodeElement(list, child);
+            }
+        }
+    }
+
+    private static Regex BuildSearchPattern(string pattern, bool matchCase, bool useRegex)
+    {
+        var text = useRegex ? pattern : Regex.Escape(pattern);
+        return new Regex(text, matchCase ? RegexOptions.None : RegexOptions.IgnoreCase);
+    }
+
+    private static List<(int Line, string Text)> SearchFile(string path, Regex regex)
+    {
+        var hits = new List<(int Line, string Text)>();
+        string[] lines;
+        try
+        {
+            lines = File.ReadAllLines(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return hits;
+        }
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (regex.IsMatch(lines[i]))
+            {
+                hits.Add((i + 1, lines[i]));
+            }
+        }
+
+        return hits;
+    }
+
+    private IEnumerable<string> SearchScopeFiles(string scope, string? projectName)
+    {
+        switch (scope)
+        {
+            case "solution":
+                var all = new List<string>();
+                foreach (Project project in dte.Solution.Projects)
+                {
+                    all.AddRange(ProjectFiles(project.ProjectItems));
+                }
+
+                return all;
+            case "project":
+                var named = FindProject(projectName ?? throw new ArgumentException(Strings.Get("ProjectScopeNeedsName")))
+                    ?? throw new ArgumentException(Strings.Format("NoProjectNamed", projectName));
+                return ProjectFiles(named.ProjectItems);
+            case "openDocuments":
+                var open = new List<string>();
+                foreach (Document document in dte.Documents)
+                {
+                    if (!string.IsNullOrEmpty(document.FullName) && File.Exists(document.FullName))
+                    {
+                        open.Add(document.FullName);
+                    }
+                }
+
+                return open;
+            default:
+                throw new ArgumentException(Strings.Format("UnknownScope", scope));
+        }
+    }
+
+    private static List<string> ProjectFiles(ProjectItems? items)
+    {
+        var files = new List<string>();
+        if (items is null)
+        {
+            return files;
+        }
+
+        foreach (ProjectItem item in items)
+        {
+            if (item.FileCount > 0 && item.FileNames[1] is string path && File.Exists(path))
+            {
+                files.Add(path);
+            }
+
+            if (item.SubProject is { } sub)
+            {
+                files.AddRange(ProjectFiles(sub.ProjectItems));
+            }
+            else
+            {
+                files.AddRange(ProjectFiles(item.ProjectItems));
+            }
+        }
+
+        return files;
+    }
+
+    private Document? OpenDocumentFor(string file)
+    {
+        foreach (Document document in dte.Documents)
+        {
+            if (SameFile(document.FullName, file))
+            {
+                return document;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<(string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText)> ParseEdits(JsonElement args)
+    {
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("edits", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            throw new ArgumentException(Strings.Format("MissingStringArgument", "edits"));
+        }
+
+        var edits = new List<(string, int, int, int, int, string)>();
+        foreach (var e in array.EnumerateArray())
+        {
+            edits.Add((RequireString(e, "file"), RequireInt(e, "startLine"), RequireInt(e, "startColumn"), RequireInt(e, "endLine"), RequireInt(e, "endColumn"), RequireString(e, "newText")));
+        }
+
+        return edits;
+    }
+
+    // Replaces one range through the editor's selection, so the change goes through the IDE's undo stack.
+    private void ApplyEdit((string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText) edit)
+    {
+        var document = OpenDocumentFor(edit.File) ?? dte.Documents.Open(edit.File);
+        var selection = (TextSelection)document.Selection;
+        selection.MoveToLineAndOffset(edit.StartLine, edit.StartColumn);
+        selection.MoveToLineAndOffset(edit.EndLine, edit.EndColumn, true);
+        selection.Delete();
+        selection.Insert(edit.NewText);
     }
 
     private object ListDebuggedProcesses()
