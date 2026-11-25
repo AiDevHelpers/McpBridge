@@ -18,6 +18,9 @@ public static class InstanceRegistry
 
     public static string PipeNameFor(int pid) => $"AiDevHelpers.VS.{pid}";
 
+    /// <summary>Events pipe for the instance: pushes events to subscribed clients (see conformance/protocol.md).</summary>
+    public static string EventPipeNameFor(int pid) => $"AiDevHelpers.VS.{pid}.events";
+
     public static void Write(int pid, string? solutionPath)
     {
         var record = new VsInstance(pid, PipeNameFor(pid), solutionPath, DateTime.UtcNow, "VisualStudio", Array.Empty<string>());

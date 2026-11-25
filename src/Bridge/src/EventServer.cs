@@ -1,0 +1,228 @@
+using System;
+using System.IO;
+using System.IO.Pipes;
+using System.Text;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace AiDevHelpers.Bridge;
+
+/// <summary>
+/// The events pipe (`AiDevHelpers.VS.&lt;pid&gt;.events`). Separate from the request pipe, which stays one request and one
+/// reply per connection. A client sends one subscribe line, gets one reply line with a subscription id, then reads event
+/// lines until it closes the connection. See conformance/protocol.md, "Events pipe".
+/// </summary>
+public sealed class EventServer : IDisposable
+{
+    /// <summary>Concurrent subscribers allowed on the events pipe.</summary>
+    public const int MaxSubscribers = 8;
+
+    /// <summary>Silence after which the writer sends a heartbeat line.</summary>
+    public static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(15);
+
+    /// <summary>How long one write may take before the subscriber is closed as slow.</summary>
+    public static readonly TimeSpan WriteLimit = TimeSpan.FromSeconds(30);
+
+    private static readonly TimeSpan SubscribeLimit = TimeSpan.FromSeconds(10);
+
+    private readonly string _pipeName;
+    private readonly int _pid;
+    private readonly EventHub _hub;
+    private readonly CancellationTokenSource _cts = new();
+    private Task? _accept;
+
+    public EventServer(string pipeName, int pid, EventHub hub)
+    {
+        _pipeName = pipeName;
+        _pid = pid;
+        _hub = hub;
+    }
+
+    public void Start()
+    {
+        _accept = Task.Run(() => AcceptLoopAsync(_cts.Token));
+    }
+
+    public void Dispose()
+    {
+        _hub.CloseAll("bridgeStopped");
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
+    private async Task AcceptLoopAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            NamedPipeServerStream stream;
+            try
+            {
+                stream = CreateStream();
+                await stream.WaitForConnectionAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception)
+            {
+                // The pipe could not be created or accepted (for example, all instances busy). Try again shortly.
+                await Task.Delay(TimeSpan.FromMilliseconds(500), ct).ConfigureAwait(false);
+                continue;
+            }
+
+            _ = Task.Run(() => ServeAsync(stream, ct));
+        }
+    }
+
+    private async Task ServeAsync(NamedPipeServerStream stream, CancellationToken ct)
+    {
+        using (stream)
+        {
+            try
+            {
+                var subscribeLine = await ReadLineAsync(stream).WithTimeout(SubscribeLimit).ConfigureAwait(false);
+                var names = ParseSubscribe(subscribeLine);
+                var subscriber = _hub.Subscribe(names);
+                try
+                {
+                    await WriteLineAsync(stream, JsonSerializer.Serialize(new { ok = true, pid = _pid, subscriptionId = subscriber.Id })).ConfigureAwait(false);
+                    await WriterLoopAsync(stream, subscriber, ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    _hub.Unsubscribe(subscriber, subscriber.CloseReason ?? "unsubscribed");
+                }
+            }
+            catch (Exception)
+            {
+                // A bad subscribe line or a dropped client only ends this connection.
+            }
+        }
+    }
+
+    private async Task WriterLoopAsync(Stream stream, EventSubscriber subscriber, CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            var line = subscriber.Next();
+            if (line is null)
+            {
+                if (subscriber.IsClosed)
+                {
+                    await WriteWithLimitAsync(stream, JsonSerializer.Serialize(new { @event = "closed", reason = subscriber.CloseReason }), subscriber, ct).ConfigureAwait(false);
+                    return;
+                }
+
+                var woke = await Task.Run(() => subscriber.WaitForEvent(HeartbeatInterval), ct).ConfigureAwait(false);
+                if (!woke && !subscriber.IsClosed)
+                {
+                    line = subscriber.Heartbeat();
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            await WriteWithLimitAsync(stream, line, subscriber, ct).ConfigureAwait(false);
+        }
+    }
+
+    // A write that takes longer than WriteLimit means the client has stopped reading: close it as slow.
+    private static async Task WriteWithLimitAsync(Stream stream, string line, EventSubscriber subscriber, CancellationToken ct)
+    {
+        var write = WriteLineAsync(stream, line);
+        var finished = await Task.WhenAny(write, Task.Delay(WriteLimit, ct)).ConfigureAwait(false);
+        if (finished != write)
+        {
+            subscriber.Close("slowSubscriber");
+            throw new IOException("Subscriber did not read within the write limit.");
+        }
+
+        await write.ConfigureAwait(false);
+    }
+
+    private static Task WriteLineAsync(Stream stream, string line)
+    {
+        var bytes = Encoding.UTF8.GetBytes(line + "\n");
+        return stream.WriteAsync(bytes, 0, bytes.Length);
+    }
+
+    private static async Task<string> ReadLineAsync(Stream stream)
+    {
+        var bytes = new System.Collections.Generic.List<byte>();
+        var one = new byte[1];
+        while (true)
+        {
+            var read = await stream.ReadAsync(one, 0, 1).ConfigureAwait(false);
+            if (read == 0 || one[0] == (byte)'\n')
+            {
+                break;
+            }
+
+            bytes.Add(one[0]);
+            if (bytes.Count > 64 * 1024)
+            {
+                throw new InvalidDataException("Subscribe line too long.");
+            }
+        }
+
+        return Encoding.UTF8.GetString(bytes.ToArray()).TrimEnd('\r');
+    }
+
+    // The subscribe line: {"action":"subscribe","args":{"events":["buildDone",...]}}. No events means all events.
+    private static System.Collections.Generic.IReadOnlyCollection<string>? ParseSubscribe(string line)
+    {
+        using var doc = JsonDocument.Parse(line);
+        var root = doc.RootElement;
+        if (!root.TryGetProperty("action", out var action) || action.GetString() != "subscribe")
+        {
+            throw new InvalidDataException("Expected a subscribe request.");
+        }
+
+        if (!root.TryGetProperty("args", out var args) || !args.TryGetProperty("events", out var events) || events.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var name in events.EnumerateArray())
+        {
+            var text = name.GetString();
+            if (!string.IsNullOrEmpty(text))
+            {
+                names.Add(text);
+            }
+        }
+
+        return names;
+    }
+
+    private NamedPipeServerStream CreateStream()
+    {
+        var security = BridgeServer.CreatePipeSecurity();
+#if NETFRAMEWORK
+        return new NamedPipeServerStream(
+            _pipeName, PipeDirection.InOut, MaxSubscribers, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, security);
+#else
+        return NamedPipeServerStreamAcl.Create(
+            _pipeName, PipeDirection.InOut, MaxSubscribers, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, security);
+#endif
+    }
+}
+
+internal static class TaskTimeoutExtensions
+{
+    public static async Task<T> WithTimeout<T>(this Task<T> task, TimeSpan limit)
+    {
+        var finished = await Task.WhenAny(task, Task.Delay(limit)).ConfigureAwait(false);
+        if (finished != task)
+        {
+            throw new TimeoutException("Subscribe line not received in time.");
+        }
+
+        return await task.ConfigureAwait(false);
+    }
+}

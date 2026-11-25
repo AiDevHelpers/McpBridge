@@ -25,6 +25,11 @@ public sealed class BridgeHost : IDisposable
     private readonly Func<Func<object>, Task<object>> _runOnMainThread;
     private BridgeServer? _server;
     private SolutionEvents? _solutionEvents;
+    private BuildEvents? _buildEvents;
+    private DebuggerEvents? _debuggerEvents;
+    private DocumentEvents? _documentEvents;
+    private readonly EventHub _events = new();
+    private EventServer? _eventServer;
     private System.Threading.Timer? _watchdog;
     private volatile string? _solutionPath;
     private bool _disposed;
@@ -67,14 +72,67 @@ public sealed class BridgeHost : IDisposable
             _solutionEvents = null;
         }
 
+        if (_buildEvents is not null)
+        {
+            _buildEvents.OnBuildBegin -= OnBuildBegin;
+            _buildEvents.OnBuildDone -= OnBuildDone;
+            _buildEvents = null;
+        }
+
+        if (_debuggerEvents is not null)
+        {
+            _debuggerEvents.OnEnterBreakMode -= OnEnterBreakMode;
+            _debuggerEvents.OnEnterRunMode -= OnEnterRunMode;
+            _debuggerEvents.OnContextChanged -= OnContextChanged;
+            _debuggerEvents = null;
+        }
+
+        if (_documentEvents is not null)
+        {
+            _documentEvents.DocumentSaved -= OnDocumentSaved;
+            _documentEvents.DocumentOpened -= OnDocumentOpened;
+            _documentEvents.DocumentClosing -= OnDocumentClosing;
+            _documentEvents = null;
+        }
+
+        _eventServer?.Dispose();
         InstanceRegistry.Remove(_pid);
         _server?.Dispose();
     }
 
     // Named so Dispose can unhook them. Lambdas could not be removed.
-    private void OnSolutionOpened() => UpdateSolutionPath(_dte.Solution?.FullName);
+    private void OnSolutionOpened()
+    {
+        UpdateSolutionPath(_dte.Solution?.FullName);
+        _events.Publish("solutionOpened", new { solution = _solutionPath });
+    }
 
-    private void OnSolutionAfterClosing() => UpdateSolutionPath(null);
+    private void OnSolutionAfterClosing()
+    {
+        UpdateSolutionPath(null);
+        _events.Publish("solutionClosing", null);
+    }
+
+    private void OnBuildBegin(vsBuildScope scope, vsBuildAction action) =>
+        _events.Publish("buildBegin", new { scope = scope.ToString(), action = action.ToString() });
+
+    private void OnBuildDone(vsBuildScope scope, vsBuildAction action) =>
+        _events.Publish("buildDone", new { scope = scope.ToString(), action = action.ToString() });
+
+    private void OnEnterBreakMode(dbgEventReason reason, ref dbgExecutionAction executionAction) =>
+        _events.Publish("enterBreakMode", new { reason = reason.ToString() });
+
+    private void OnEnterRunMode(dbgEventReason reason) =>
+        _events.Publish("enterRunMode", new { reason = reason.ToString() });
+
+    private void OnContextChanged(EnvDTE.Process newProcess, EnvDTE.Program newProgram, EnvDTE.Thread newThread, EnvDTE.StackFrame newStackFrame) =>
+        _events.Publish("contextChanged", new { process = newProcess?.Name, function = newStackFrame?.FunctionName });
+
+    private void OnDocumentSaved(Document document) => _events.Publish("documentSaved", new { file = document.FullName });
+
+    private void OnDocumentOpened(Document document) => _events.Publish("documentOpened", new { file = document.FullName });
+
+    private void OnDocumentClosing(Document document) => _events.Publish("documentClosing", new { file = document.FullName });
 
     private void Initialize()
     {
@@ -99,6 +157,23 @@ public sealed class BridgeHost : IDisposable
 #pragma warning disable VSTHRD010 // DTE solution events are raised on the UI thread.
         _solutionEvents.Opened += OnSolutionOpened;
         _solutionEvents.AfterClosing += OnSolutionAfterClosing;
+#pragma warning restore VSTHRD010
+
+        // Events pipe (phase 5): build, debugger and document events are pushed to subscribed clients.
+        _eventServer = new EventServer(InstanceRegistry.EventPipeNameFor(_pid), _pid, _events);
+        _eventServer.Start();
+        _buildEvents = _dte.Events.BuildEvents;
+        _debuggerEvents = _dte.Events.DebuggerEvents;
+        _documentEvents = _dte.Events.DocumentEvents;
+#pragma warning disable VSTHRD010 // DTE events are raised on the UI thread.
+        _buildEvents.OnBuildBegin += OnBuildBegin;
+        _buildEvents.OnBuildDone += OnBuildDone;
+        _debuggerEvents.OnEnterBreakMode += OnEnterBreakMode;
+        _debuggerEvents.OnEnterRunMode += OnEnterRunMode;
+        _debuggerEvents.OnContextChanged += OnContextChanged;
+        _documentEvents.DocumentSaved += OnDocumentSaved;
+        _documentEvents.DocumentOpened += OnDocumentOpened;
+        _documentEvents.DocumentClosing += OnDocumentClosing;
 #pragma warning restore VSTHRD010
 
         var pid = _pid;

@@ -824,6 +824,45 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("Subscribe to push events from a Visual Studio instance: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Returns a subscription id; read events with ide_read_events. Events are kept for the last 500 per subscription. Up to 8 per instance.")]
+    public async Task<string> IdeSubscribeEvents(
+        [Description("Event names to receive. Omit for all events.")] string[]? events = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        // The health reply carries the process id, which names the events pipe.
+        var health = JsonDocument.Parse(await IdeInstanceRouter.CallAsync("health", new { }, solutionPath, ct, ide, instancePid).ConfigureAwait(false));
+        if (!health.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+        {
+            return health.RootElement.GetRawText();
+        }
+
+        var pid = health.RootElement.GetProperty("pid").GetInt32();
+        var id = await EventSubscriptions.SubscribeAsync(pid, events, ct).ConfigureAwait(false);
+        return JsonSerializer.Serialize(new { ok = true, subscription_id = id, pid });
+    }
+
+    [McpServerTool]
+    [Description("Read the events of a subscription with a sequence number after sinceSeq (0 for the start). Also reports whether the subscription has closed and why. Read-only.")]
+    public string IdeReadEvents(
+        [Description("Subscription id from ide_subscribe_events")] string subscriptionId,
+        [Description("Return events with a sequence number greater than this. Default 0.")] long sinceSeq = 0)
+    {
+        return JsonSerializer.Serialize(EventSubscriptions.Read(subscriptionId, sinceSeq));
+    }
+
+    [McpServerTool]
+    [Description("End a subscription and close its events connection.")]
+    public string IdeUnsubscribeEvents(
+        [Description("Subscription id from ide_subscribe_events")] string subscriptionId)
+    {
+        EventSubscriptions.Unsubscribe(subscriptionId);
+        return JsonSerializer.Serialize(new { ok = true, subscription_id = subscriptionId });
+    }
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,
