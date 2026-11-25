@@ -30,7 +30,23 @@ names are from memory and must be checked against Learn in phase 0 before each o
 
 ## Phase 0: Wiring and verification (no code)
 
-- [ ] Confirm the MCP side: `src/MCP/Core/src/IdeTools.cs` for `ide_*` tools; `DebuggerControlService.cs` for breakpoints; the
+Results (2026-11-25, checked in the clone at `ac3e624`; Learn via search):
+
+- MCP side: `IdeTools.cs` (`[McpServerToolType]` at :16) holds the `ide_*` tools; `DebuggerControlService.cs` handles debugger
+  control. Confirmed.
+- VS SDK package: `Microsoft.VisualStudio.SDK` 18.12.1606 in both `Core` and `Installer` csproj (the review's 18.11.1036 was stale).
+- Confirmed on Learn: `Debugger.DetachAll` and `Debugger2.DetachAll`; `Process.Attach`; `Debugger` `LocalProcesses`;
+  `CodeElements` via `ProjectItem.FileCodeModel.CodeElements`; `IVsInfoBar`, `IVsInfoBarHost`, `IVsInfoBarUIFactory`;
+  `IVsActivityLog` (`SVsActivityLog`); `IVsTaskProvider4`; `SVsTaskList`; `IVsStatusbar`.
+- Not confirmed (search found nothing; check in a phase 6 or phase 1 spike before relying on them): `Breakpoints.Add` condition
+  parameters; `Find2.FindReplace` state effects; `Process.Threads`; `Debugger2.CurrentThread`; `DTE.UndoContext`;
+  `IVsSettingsReader` (the review's `ISettingsManager` is not used); `Project.Properties` names on SDK-style C#.
+- Roslyn: `Microsoft.VisualStudio.Workspace` (`IWorkspace`, the Open Folder API) is a different API from the Roslyn
+  `VisualStudioWorkspace`. Learn did not confirm `VisualStudioWorkspace` or `Microsoft.VisualStudio.LanguageServices` for net48.
+  This is a phase 6 spike.
+- Existing `findAllReferences`/`goToDefinition` (`IdeActions.cs:101-102`): recommendation is coexist, with the Roslyn tools named
+  `ide_semantic_references` and `ide_semantic_definition`. Needs user sign-off.
+- [x] Confirm the MCP side: `src/MCP/Core/src/IdeTools.cs` for `ide_*` tools; `DebuggerControlService.cs` for breakpoints; the
       debugger contract in `docs/Host-MCP/debugger-control-contract.md`. Update the phase file lists to match.
 - [ ] Check every member name in phases 1 to 6 against Microsoft Learn. Record the exact interface for each (EnvDTE, EnvDTE80,
       EnvDTE90a, EnvDTE100, or VS SDK). Include the review's doubts: `Find2.FindReplace` state effects, `Process.Threads`,
