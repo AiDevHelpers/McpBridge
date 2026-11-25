@@ -48,13 +48,13 @@ public static class EventSubscriptions
         var reader = new StreamReader(client, Encoding.UTF8, false, 4096, leaveOpen: true);
         var writer = new StreamWriter(client, new UTF8Encoding(false), 4096, leaveOpen: true) { AutoFlush = true };
         await writer.WriteLineAsync("{\"action\":\"subscribe\",\"args\":{}}").ConfigureAwait(false);
-        var replyLine = await reader.ReadLineAsync().ConfigureAwait(false) ?? throw new IOException("The bridge closed the events pipe.");
+        var replyLine = await reader.ReadLineAsync().ConfigureAwait(false) ?? throw new IOException(Strings.Get("BridgeClosedEventsPipe"));
         using (var reply = JsonDocument.Parse(replyLine))
         {
             if (!reply.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
             {
                 client.Dispose();
-                var message = reply.RootElement.TryGetProperty("error", out var error) ? error.GetString() : "subscribe refused";
+                var message = reply.RootElement.TryGetProperty("error", out var error) ? error.GetString() : Strings.Get("SubscribeRefused");
                 throw new InvalidOperationException(message);
             }
         }
@@ -109,7 +109,7 @@ public static class EventSubscriptions
         {
             if (!ByPid.Remove(pid, out subscription))
             {
-                throw new KeyNotFoundException($"No events subscription to instance {pid}.");
+                throw new KeyNotFoundException(Strings.Format("NoEventsSubscription", pid));
             }
         }
 
@@ -123,8 +123,8 @@ public static class EventSubscriptions
         return pids.Count == 1
             ? pids[0]
             : throw new InvalidOperationException(pids.Count == 0
-                ? "No Visual Studio instance is subscribed for events."
-                : "More than one instance is subscribed. Pass instancePid.");
+                ? Strings.Get("NoSubscribedInstance")
+                : Strings.Get("MultipleSubscribedInstances"));
     }
 
     private static Subscription Find(int pid)
@@ -133,7 +133,7 @@ public static class EventSubscriptions
         {
             return ByPid.TryGetValue(pid, out var subscription)
                 ? subscription
-                : throw new KeyNotFoundException($"No events subscription to instance {pid}. Subscribe first.");
+                : throw new KeyNotFoundException(Strings.Format("SubscribeFirst", pid));
         }
     }
 

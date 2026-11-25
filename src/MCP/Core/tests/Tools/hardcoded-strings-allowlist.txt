@@ -119,3 +119,5 @@ MCP.Core|method test run
 Vs2026.Core|throw new System.NotImplementedException();
 Vs2026.Core|protected internal
 Vs2026.Core|private protected
+# Task List provider name: an identifier the IDE shows as the source, not prose.
+Vs2026.Core|AiDevHelpers bridge

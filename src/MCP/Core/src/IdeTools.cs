@@ -170,7 +170,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             }
         }
 
-        return JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = "Call ide_get_test_results later for the outcome." });
+        return JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = Strings.Get("RunStillRunningHint") });
     }
 
     private const int DefaultTestWaitSeconds = 120;
@@ -1156,7 +1156,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     {
         if (!EventSeverityMap.TryParse(minSeverity, out var severity))
         {
-            throw new ArgumentException($"Unknown minSeverity '{minSeverity}'. Use info, warning or error.");
+            throw new ArgumentException(Strings.Format("UnknownMinSeverity", minSeverity));
         }
 
         var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();

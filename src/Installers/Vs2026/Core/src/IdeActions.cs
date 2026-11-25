@@ -1287,7 +1287,7 @@ public sealed class IdeActions(DTE2 dte)
             var openDirty = OpenDocumentFor(file) is { Saved: false };
             if (openDirty)
             {
-                skipped.Add(new { file, reason = "open with unsaved changes" });
+                skipped.Add(new { file, reason = Strings.Get("OpenWithUnsavedChanges") });
                 continue;
             }
 
