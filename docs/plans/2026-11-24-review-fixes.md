@@ -4,7 +4,8 @@ Source: the Sonnet review of the non-test C# changed this session (19 files), th
 Findings are numbered as in the code review. Scope: the seven high-priority items. Medium and low items are not scheduled.
 
 ## Status
-- Units 1, 2, 4, 5, 6, 7: done in code; unit 3 left as is by decision. Live checks pending: units 1 and 5 (extension), 2, 4 and 6 (server restart).
+- Units 1, 2, 4, 5, 6, 7: done in code; unit 3 left as is by decision (timed-out launch keeps its marker). Live checks pending: units 1 and 5 (extension), 2, 4 and 6 (server restart).
+- Unit 7: committed as the full split (9335f02), not only the helpers.
 - Unit 1: store-first order with rollback; no test for the pointer-write failure path yet.
 
 ## Units
@@ -20,7 +21,7 @@ Each unit: build and test the touched projects, then the lite gate, then one com
 - `BridgeAnswers` is synchronous. Cancellation takes effect between polls only; say so in the tool description.
 - The "cancels the wait" test is moved to unit 6, where the delay is injected.
 
-### Unit 3: starting markers (finding 3)  NEEDS DECISION
+### Unit 3: starting markers (finding 3)  DECIDED: keep current behaviour (timed-out launch stays listed as starting)
 - Markers stay as they are on success. On a failed launch or a timeout, clear the marker only for an exit that is not "still starting": a timeout must keep its marker, because `ide_list_instances` reports it as starting.
 - Broker launches have no pid. Find the new devenv by snapshotting devenv pids before the launch and taking the one that appears. If none appears, write no marker.
 - Decision: keep a timed-out launch listed as starting (current behaviour), or clear it?
