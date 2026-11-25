@@ -60,8 +60,10 @@ foreach ($instance in $instances) {
     }
 }
 
-Write-Host "Installing the AiDevHelpers IDE Bridge; tick every Visual Studio instance in the dialog..." -ForegroundColor Cyan
-$process = Start-Process -FilePath $installer -ArgumentList @("`"$Vsix`"") -Wait -PassThru
+# Headless: one VsixInstaller run, quiet, naming every VS 18 instance by id. No dialog to tick.
+$ids = ($instances | ForEach-Object { $_.instanceId }) -join ","
+Write-Host "Installing the AiDevHelpers IDE Bridge into $($instances.Count) Visual Studio 18 instance(s), quietly..." -ForegroundColor Cyan
+$process = Start-Process -FilePath $installer -ArgumentList @("/quiet", "/instanceIds:$ids", "`"$Vsix`"") -Wait -PassThru
 if ($process.ExitCode -ne 0) {
     throw "VsixInstaller exited with code $($process.ExitCode)."
 }
