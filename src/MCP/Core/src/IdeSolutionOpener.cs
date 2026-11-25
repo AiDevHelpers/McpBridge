@@ -108,12 +108,14 @@ internal sealed class IdeSolutionOpener(
             return Json(new { ok = false, error = brokered.Error });
         }
 
+        int? launchedPid = null;
         if (!brokered.Used)
         {
             var error = launcher.LaunchDevenv(solutionPath, out var startedPid);
             if (error is null && startedPid is { } launched)
             {
                 StartingInstances.Write(launched, solutionPath);
+                launchedPid = launched;
             }
 
             if (error is not null)
@@ -134,6 +136,12 @@ internal sealed class IdeSolutionOpener(
             }
 
             await delay(TimeSpan.FromMilliseconds(500), ct);
+        }
+
+        // A launch whose bridge never answered is not reported as starting: its marker is cleared.
+        if (launchedPid is { } timedOut)
+        {
+            StartingInstances.Clear(timedOut);
         }
 
         return Json(new { ok = false, opened = solutionPath, bridge_ready = false, error = Strings.Get("OpenBridgeNotReady") });
