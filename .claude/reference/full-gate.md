@@ -27,11 +27,11 @@ npm --prefix src/Installers/VsCode/Installer/AiDevTools.VsCode test
 The `gate` block above is what `gate_run` runs. The same gate through the aidevtools MCP tools, in an open Visual Studio
 instance on the solution, is below. Stop at the first failing step. Close the running `AiDevHelpers.MCP` servers first.
 
-1. **Instance.** `mcp__aidevtools__ide_list_instances`; if `AiDevHelpers.slnx` is not open, `mcp__aidevtools__ide_open_solution`.
-2. **Release build.** `mcp__aidevtools__ide_set_configuration` with `Release`, then `mcp__aidevtools__ide_build`. On failure,
-   `mcp__aidevtools__ide_get_build_diagnostics` with severity `error`.
-3. **Warnings.** `mcp__aidevtools__ide_get_build_diagnostics` with severity `warning`. Any warning fails the gate.
-4. **Tests.** `mcp__aidevtools__ide_run_tests`, then `mcp__aidevtools__ide_get_test_results`. Any failure fails the gate.
+1. **Instance.** `mcp__aidevhelpers__ide_list_instances`; if `AiDevHelpers.slnx` is not open, `mcp__aidevhelpers__ide_open_solution`.
+2. **Release build.** `mcp__aidevhelpers__ide_set_configuration` with `Release`, then `mcp__aidevhelpers__ide_build`. On failure,
+   `mcp__aidevhelpers__ide_get_build_diagnostics` with severity `error`.
+3. **Warnings.** `mcp__aidevhelpers__ide_get_build_diagnostics` with severity `warning`. Any warning fails the gate.
+4. **Tests.** `mcp__aidevhelpers__ide_run_tests`, then `mcp__aidevhelpers__ide_get_test_results`. Any failure fails the gate.
    Test Explorer ignores the `.runsettings` filter, so it shows the key-creation Tpm test as skipped when not elevated.
    Run `scripts/gate-tpm.ps1` as well: only the tests that need administrator rights are elevated.
 5. **Format, outdated packages, npm.** No aidevtools tool covers these. Run the matching lines from the `gate` block:
