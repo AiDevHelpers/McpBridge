@@ -29,12 +29,38 @@ public static class McpServiceCollectionExtensions
     public static IMcpServerBuilder AddAiDevHelpersMcp(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
+        services.Configure<ScriptWatchOptions>(configuration.GetSection("ScriptWatch"));
+        services.AddSingleton<ScriptRunTracker>(_ => new ScriptRunTracker());
+        services.AddSingleton(sp => new ScriptRunService(
+            sp.GetRequiredService<ScriptRunTracker>(),
+            new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
+            () => AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser().Read(),
+            AiDevHelpers.Common.Processes.CommandRunner.RunAsync,
+            new InteractiveScriptRunner(sp.GetRequiredService<ITerminalSessionManager>()).RunAsync,
+            (root, script, args, ct) => sp.GetRequiredService<IElevVisibleRunner>().RunVisibleAsync(root, script, args, ct)));
+        if (RepoSettings.GlobalAllowAllWarning(configuration) is { } globalAllowAll)
+        {
+            Console.Error.WriteLine(globalAllowAll);
+        }
+
         services.AddSingleton<ISessionRegistry, SessionRegistry>();
         services.AddSingleton<ITerminalConfigurationDiscovery, TerminalConfigurationDiscovery>();
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.ServerControlService>();
-        services.AddSingleton<IElevRunner, ProcessElevRunner>();
+        services.AddSingleton<ProcessElevRunner>();
+        services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevScanner>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevInstaller>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton<IElevVisibleRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
+        services.AddSingleton(sp => new ToolInstallService(
+            sp.GetRequiredService<IElevInstaller>(),
+            new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
+            AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser()));
+        services.AddSingleton(_ => new AiDevHelpers.MCP.Core.Services.DotnetDiagService());
+        services.AddSingleton(_ => new AiDevHelpers.Helpers.SourceControlHelper.GitHubService(new AiDevHelpers.Helpers.SourceControlHelper.ProcessGhRunner()));
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
 
         return services
             .AddMcpServer()
@@ -66,11 +92,17 @@ public static class McpServiceCollectionExtensions
             .WithTools<LintTools>()
             .WithTools<PreferredIdeTools>()
             .WithTools<SourceControlTools>()
+            .WithTools<IdeResetTools>()
+            .WithTools<TestHostTools>()
             .WithTools<OutputTools>()
             .WithTools<SelfTestTools>()
             .WithTools<GateTools>()
             .WithTools<ServerControlTools>()
             .WithTools<TerminalSessionTools>()
-            .WithTools<ScriptHelperTools>();
+            .WithTools<ScriptHelperTools>()
+            .WithTools<RepoSetupTools>()
+            .WithTools<ScriptRunTools>()
+            .WithTools<ToolInstallTools>()
+            .WithTools<DotnetDiagTools>();
     }
 }

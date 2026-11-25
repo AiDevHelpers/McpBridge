@@ -2,7 +2,18 @@ using AiDevHelpers.Common.Contracts;
 
 namespace AiDevHelpers.ScriptHelper.Core;
 
-public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args, string RequesterSid = "");
+/// <summary>
+/// One request to the broker. Kind "run" runs a script; Kind "verify" only reports the approval status of the project's allowlisted
+/// files and runs nothing.
+/// </summary>
+public sealed record BrokerRequest(string ProjectRoot, string Script, IReadOnlyList<string> Args, string RequesterSid = "", string Kind = BrokerRequest.RunKind)
+{
+    public const string RunKind = "run";
+    public const string VerifyKind = "verify";
+
+    /// <summary>Runs the script in a visible console window. The same checks as a run apply first.</summary>
+    public const string InteractiveKind = "interactive";
+}
 
 public sealed record BrokerResponse(bool Ok, string Reason, int? ExitCode, string Stdout, string Stderr);
 
@@ -15,6 +26,9 @@ public sealed class RequestHandler
 {
     private static readonly TimeSpan RunTimeout = TimeSpan.FromMinutes(5);
 
+    // Shorter than the 10 minutes elev waits for an answer, so the broker always answers first.
+    private static readonly TimeSpan VisibleTimeout = TimeSpan.FromMinutes(9);
+
     private readonly ProjectRegistry _registry;
     private readonly IApprovalSigner _signer;
     private readonly VersionCounter _versions;
@@ -24,6 +38,7 @@ public sealed class RequestHandler
     private readonly IScriptRunner _runner;
     private readonly string _stagingRoot;
     private readonly Action<string> _audit;
+    private readonly IVisibleScriptRunner? _visible;
 
     public RequestHandler(
         ProjectRegistry registry,
@@ -34,8 +49,10 @@ public sealed class RequestHandler
         IInterpreterInfo interpreter,
         IScriptRunner runner,
         string stagingRoot,
-        Action<string> audit)
+        Action<string> audit,
+        IVisibleScriptRunner? visible = null)
     {
+        _visible = visible;
         _registry = registry;
         _signer = signer;
         _versions = versions;
@@ -49,7 +66,17 @@ public sealed class RequestHandler
 
     public BrokerResponse Handle(BrokerRequest request)
     {
-        var response = Decide(request, out var stageDir);
+        if (request.Kind == BrokerRequest.VerifyKind)
+            return Verify(request);
+
+        if (request.Kind != BrokerRequest.RunKind && request.Kind != BrokerRequest.InteractiveKind)
+            return Deny(request, "unknown request kind");
+
+        var visible = request.Kind == BrokerRequest.InteractiveKind;
+        if (visible && _visible is null)
+            return Deny(request, "visible runs are not available in this broker");
+
+        var response = Decide(request, visible, out var stageDir);
         if (stageDir is not null && Directory.Exists(stageDir))
         {
             Directory.Delete(stageDir, recursive: true);
@@ -58,7 +85,34 @@ public sealed class RequestHandler
         return response;
     }
 
-    private BrokerResponse Decide(BrokerRequest request, out string? stageDir)
+    // Read-only: reports the approval status of every allowlisted file and runs nothing. Exit code 0 means all are approved.
+    private BrokerResponse Verify(BrokerRequest request)
+    {
+        var project = _registry.Find(request.ProjectRoot);
+        if (project is null)
+            return Deny(request, "project is not registered");
+
+        if (string.IsNullOrWhiteSpace(request.RequesterSid)
+            || !string.Equals(project.OwnerSid, request.RequesterSid, StringComparison.OrdinalIgnoreCase))
+        {
+            return Deny(request, "requester is not the project owner");
+        }
+
+        var report = AllowlistVerifier.Run(_config, _signer, _versions, _interpreter, _inspector, project);
+        if (!report.Ok)
+            return Deny(request, report.Reason);
+
+        var body = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            allowAllActive = report.AllowAllActive,
+            fullyApproved = report.FullyApproved,
+            scripts = report.Scripts.Select(s => new { path = s.Path, status = s.Status.ToString(), reason = s.Reason }),
+        });
+        _audit($"verified {project.Id} fullyApproved={report.FullyApproved}");
+        return new BrokerResponse(true, "verified", report.FullyApproved ? 0 : 1, body, string.Empty);
+    }
+
+    private BrokerResponse Decide(BrokerRequest request, bool visible, out string? stageDir)
     {
         stageDir = null;
 
@@ -74,21 +128,6 @@ public sealed class RequestHandler
             return Deny(request, "requester is not the project owner");
         }
 
-        var manifestPath = Path.Combine(project.Root, ".elevated.json");
-        byte[] manifestBytes;
-        try
-        {
-            manifestBytes = File.ReadAllBytes(manifestPath);
-        }
-        catch (IOException)
-        {
-            return Deny(request, ".elevated.json cannot be read");
-        }
-
-        var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(manifestBytes));
-        if (!manifest.Ok)
-            return Deny(request, manifest.Reason);
-
         var resolved = PathRules.ResolveInsideRoot(project.Root, request.Script);
         if (!resolved.Ok)
             return Deny(request, $"'{request.Script}': {resolved.Reason}");
@@ -98,9 +137,30 @@ public sealed class RequestHandler
         if (key is null)
             return Deny(request, $"'{request.Script}' is not a valid relative path");
 
-        var allow = Allowlist.Evaluate(manifest.Entries, rel, request.Args);
-        if (!allow.Allowed)
-            return Deny(request, allow.Reason);
+        // Allow-all (requested by the repo's settings file, approved by this machine's admin store) replaces the manifest
+        // allowlist and the per-script approval. The owner and inside-the-repo checks above still apply.
+        var allowAll = AllowAllStore.IsActive(_config, _signer, project.Id, project.Root, _versions.Get(project.Id));
+
+        // A folder grant (allow-folder) covers any script whose full path matches its glob, and skips the same checks as allow-all.
+        var folderAllowed = !allowAll && FolderAllowStore.Allows(
+            _config.FolderAllowDirectory, _signer, _versions, Path.GetFullPath(resolved.FullPath));
+        var skipApproval = allowAll || folderAllowed;
+
+        byte[] manifestBytes = [];
+        UserAllowDocument? userAllows = null;
+        var allowedByManifest = false;
+        if (!skipApproval)
+        {
+            // What the team allows (the repo manifest), then what this user allowed on this machine. Either one is enough to get as far
+            // as the fingerprint check; neither is needed when allow-all is active.
+            var manifestDenial = ReadManifest(project.Root, rel, request.Args, out manifestBytes, out allowedByManifest);
+            if (!allowedByManifest)
+            {
+                userAllows = UserAllowStore.Usable(_config.UserAllowPath(project.Id), _signer, project.Id, project.Root, _versions.Get(UserAllowStore.VersionKey(project.Id)), out _);
+                if (!UserAllowStore.HasEntry(userAllows, rel, request.Args))
+                    return Deny(request, manifestDenial ?? "script is not allowed by the repo or by this user");
+            }
+        }
 
         // Stage the whole approved file set, then check the approval against the staged bytes.
         var source = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
@@ -121,23 +181,58 @@ public sealed class RequestHandler
         if (!staged.Ok)
             return Deny(request, staged.Reason);
 
-        var allowHash = Fingerprint.Sha256Hex(manifestBytes);
-        var decision = ApprovalStore.Authorize(
-            _config.ApprovalsPath(project.Id),
-            _signer,
-            project.Id,
-            project.Root,
-            _versions.Get(project.Id),
-            rel,
-            staged.Fingerprint,
-            allowHash);
-        if (!decision.Allowed)
-            return Deny(request, decision.Reason);
+        if (!skipApproval && !allowedByManifest)
+        {
+            var userDecision = UserAllowStore.Authorize(userAllows, rel, request.Args, staged.Fingerprint);
+            if (!userDecision.Allowed)
+                return Deny(request, userDecision.Reason);
+        }
+        else if (!skipApproval)
+        {
+            var allowHash = Fingerprint.Sha256Hex(manifestBytes);
+            var decision = ApprovalStore.Authorize(
+                _config.ApprovalsPath(project.Id),
+                _signer,
+                project.Id,
+                project.Root,
+                _versions.Get(project.Id),
+                rel,
+                staged.Fingerprint,
+                allowHash);
+            if (!decision.Allowed)
+                return Deny(request, decision.Reason);
+        }
 
         var stagedScript = Path.Combine(stage, rel.Replace('/', '\\'));
-        var run = _runner.Run(stagedScript, request.Args, RunTimeout);
-        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}");
+        var run = visible
+            ? _visible!.RunVisible(stagedScript, request.Args, VisibleTimeout)
+            : _runner.Run(stagedScript, request.Args, RunTimeout);
+        _audit($"allowed {project.Id} {rel} exit={run.ExitCode}{(visible ? " visible" : "")}{(allowAll ? " allow-all" : "")}{(folderAllowed ? " folder-allow" : "")}");
         return new BrokerResponse(true, "ran", run.ExitCode, run.Stdout, run.Stderr);
+    }
+
+    // Reads the repo manifest and says whether it allows the script. Returns the reason it does not, or null when it does. A missing or
+    // unreadable manifest is a denial here, not an error, because a user allow can still cover the script.
+    private static string? ReadManifest(string root, string rel, IReadOnlyList<string> args, out byte[] bytes, out bool allowed)
+    {
+        bytes = [];
+        allowed = false;
+        try
+        {
+            bytes = File.ReadAllBytes(Path.Combine(root, ".elevated.json"));
+        }
+        catch (IOException)
+        {
+            return ".elevated.json cannot be read";
+        }
+
+        var manifest = ManifestParser.Parse(System.Text.Encoding.UTF8.GetString(bytes));
+        if (!manifest.Ok)
+            return manifest.Reason;
+
+        var decision = Allowlist.Evaluate(manifest.Entries, rel, args);
+        allowed = decision.Allowed;
+        return decision.Allowed ? null : decision.Reason;
     }
 
     private BrokerResponse Deny(BrokerRequest request, string reason)

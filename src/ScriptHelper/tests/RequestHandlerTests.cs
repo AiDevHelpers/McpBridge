@@ -17,6 +17,17 @@ internal sealed class FakeRunner : IScriptRunner
     }
 }
 
+internal sealed class FakeVisible : IVisibleScriptRunner
+{
+    public List<(string Path, IReadOnlyList<string> Args, string ContentAtRun)> Runs { get; } = new();
+
+    public ScriptRunResult RunVisible(string scriptPath, IReadOnlyList<string> args, TimeSpan timeout)
+    {
+        Runs.Add((scriptPath, args, File.ReadAllText(scriptPath)));
+        return new ScriptRunResult(0, "transcript", "", false);
+    }
+}
+
 public sealed class RequestHandlerTests : IDisposable
 {
     private const string Script = "scripts/debug/reset.ps1";
@@ -67,8 +78,11 @@ public sealed class RequestHandlerTests : IDisposable
         File.WriteAllText(path, text);
     }
 
-    private RequestHandler Handler() => new(
-        _registry, _signer, _versions, _config, _inspector, _interpreter, _runner, _staging, _audit.Add);
+    private RequestHandler Handler(IVisibleScriptRunner? visible = null) => new(
+        _registry, _signer, _versions, _config, _inspector, _interpreter, _runner, _staging, _audit.Add, visible);
+
+    private BrokerRequest VisibleRequest(string script = Script, params string[] args) =>
+        new(_root, script, args, Owner, BrokerRequest.InteractiveKind);
 
     /// <summary>Registers the project and approves the script, as the setup steps would.</summary>
     private void RegisterAndApprove(string script = Script)
@@ -90,6 +104,135 @@ public sealed class RequestHandlerTests : IDisposable
 
     private BrokerRequest Request(string script = Script, params string[] args) =>
         new(_root, script, args, Owner);
+
+    private void ApproveAllowAll(string settingsJson)
+    {
+        var reg = _registry.Register(_root);
+        Assert.True(reg.Ok, reg.Reason);
+        _projectId = reg.ProjectId!;
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root);
+        File.WriteAllText(settings, settingsJson);
+        var version = _versions.Get(_projectId) + 1;
+        AllowAllStore.Save(
+            _config.AllowAllPath(_projectId),
+            new AllowAllApproval(_projectId, _root, version, AiDevHelpers.Common.RepoSettingsFile.Hash(settings), ""),
+            _signer);
+        _versions.Bump(_projectId, version);
+    }
+
+    [Fact]
+    public void AllowAll_RunsAScriptThatIsNotInTheManifestOrApproved()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Single(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllRequestedWithoutAnApproval_UsesTheNormalChecks()
+    {
+        _registry.Register(_root);
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root), """{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void EditingTheSettingsAfterAllowAllWasApproved_FallsBackToTheNormalChecks()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root), """{"allowAll":true,"IdeTools":{}}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(Request("tools/anything.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllDoesNotLiftTheInsideTheRepoRule()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+
+        var r = Handler().Handle(Request("../outside.ps1"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void AllowAllDoesNotLiftTheOwnerCheck()
+    {
+        ApproveAllowAll("""{"allowAll":true}""");
+        WriteFile("tools/anything.ps1", "Write-Output 'free'");
+
+        var r = Handler().Handle(new BrokerRequest(_root, "tools/anything.ps1", Array.Empty<string>(), "S-1-5-21-someone-else"));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    private BrokerRequest VerifyRequest(string sid = Owner) => new(_root, string.Empty, Array.Empty<string>(), sid, BrokerRequest.VerifyKind);
+
+    [Fact]
+    public void Verify_ReportsEachListedScript_AndRunsNothing()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Empty(_runner.Runs);
+        using var json = System.Text.Json.JsonDocument.Parse(r.Stdout);
+        var scripts = json.RootElement.GetProperty("scripts").EnumerateArray()
+            .ToDictionary(s => s.GetProperty("path").GetString()!, s => s.GetProperty("status").GetString());
+        Assert.Equal("Approved", scripts[Script]);
+        Assert.Equal("Unsigned", scripts["scripts/debug/other.ps1"]);
+        Assert.Equal(1, r.ExitCode);
+    }
+
+    [Fact]
+    public void Verify_ExitsZeroWhenEverythingListedIsApproved()
+    {
+        RegisterAndApprove();
+        File.Delete(Path.Combine(_root, "scripts", "debug", "other.ps1"));
+
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal(0, r.ExitCode);
+    }
+
+    [Fact]
+    public void Verify_FromANonOwner_IsDenied()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VerifyRequest("S-1-5-21-someone-else"));
+
+        Assert.False(r.Ok);
+        Assert.Contains("not the project owner", r.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Verify_ForAnUnregisteredProject_IsDenied()
+    {
+        var r = Handler().Handle(VerifyRequest());
+
+        Assert.False(r.Ok);
+        Assert.Contains("not registered", r.Reason, StringComparison.OrdinalIgnoreCase);
+    }
 
     [Fact]
     public void Request_from_a_sid_that_is_not_the_owner_is_denied_and_nothing_runs()
@@ -236,4 +379,178 @@ public sealed class RequestHandlerTests : IDisposable
         Assert.False(r.Ok);
         Assert.Empty(_runner.Runs);
     }
-}
+
+    [Fact]
+    public void Interactive_RunsTheApprovedStagedScriptInTheVisibleRunner_NotTheCapturedOne()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(VisibleRequest(Script));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal("transcript", r.Stdout);
+        var run = Assert.Single(visible.Runs);
+        Assert.Equal(Approved, run.ContentAtRun);
+        Assert.Empty(run.Args);
+        Assert.Empty(_runner.Runs);
+        Assert.Contains("visible", _audit.Last(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Interactive_AnUnapprovedOrUnlistedScript_IsDenied_AndNothingOpens()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var unlisted = Handler(visible).Handle(VisibleRequest("scripts/other/x.ps1"));
+        var unapproved = Handler(visible).Handle(VisibleRequest("scripts/debug/other.ps1"));
+
+        Assert.False(unlisted.Ok);
+        Assert.False(unapproved.Ok);
+        Assert.Empty(visible.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ARequesterThatIsNotTheOwner_IsDenied()
+    {
+        RegisterAndApprove();
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(new BrokerRequest(_root, Script, [], "S-1-5-21-9-9-9-9", BrokerRequest.InteractiveKind));
+
+        Assert.False(r.Ok);
+        Assert.Empty(visible.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ABrokerWithoutAVisibleRunner_Refuses()
+    {
+        RegisterAndApprove();
+
+        var r = Handler().Handle(VisibleRequest());
+
+        Assert.False(r.Ok);
+        Assert.Contains("not available", r.Reason);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void Interactive_ScriptChangedAfterApproval_IsDenied()
+    {
+        RegisterAndApprove();
+        WriteFile(Script, "Write-Output 'tampered'");
+        var visible = new FakeVisible();
+
+        var r = Handler(visible).Handle(VisibleRequest());
+
+        Assert.False(r.Ok);
+        Assert.Empty(visible.Runs);
+    }
+    private const string Mine = "scripts/user/mine.ps1";
+
+    // Registers the project and records a user allow for a script that the repo manifest does not list.
+    private void AllowForUser(string script = Mine, string[]? args = null, string? content = null, long? version = null)
+    {
+        WriteFile(script, content ?? "Write-Output 'mine'");
+        if (_registry.Find(_root) is null)
+        {
+            var reg = _registry.Register(_root);
+            Assert.True(reg.Ok, reg.Reason);
+            _projectId = reg.ProjectId!;
+        }
+        else
+        {
+            _projectId = _registry.Find(_root)!.Id;
+        }
+
+        var fp = FingerprintBuilder.Build(_root, script, _interpreter, _inspector);
+        var v = version ?? _versions.Get(UserAllowStore.VersionKey(_projectId)) + 1;
+        var doc = new UserAllowDocument(_projectId, _root, v, [new UserAllowEntry(script, args ?? [], fp.Fingerprint)], "");
+        UserAllowStore.Save(_config.UserAllowPath(_projectId), doc, _signer);
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), v);
+    }
+
+    [Fact]
+    public void UserAllow_RunsAScriptTheRepoManifestDoesNotList()
+    {
+        AllowForUser();
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Single(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_WorksWithoutAnyElevatedJsonInTheRepo()
+    {
+        File.Delete(Path.Combine(_root, ".elevated.json"));
+        AllowForUser();
+
+        Assert.True(Handler().Handle(Request(Mine)).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AScriptChangedAfterTheAllow_IsDenied()
+    {
+        AllowForUser();
+        WriteFile(Mine, "Write-Output 'tampered'");
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.False(r.Ok);
+        Assert.Contains("changed since", r.Reason);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_OtherArgumentsOrOtherScripts_AreDenied()
+    {
+        AllowForUser(args: ["-Fast"]);
+        WriteFile("scripts/user/other.ps1", "Write-Output 'other'");
+
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+        Assert.False(Handler().Handle(Request(Mine, "-Slow")).Ok);
+        Assert.False(Handler().Handle(Request("scripts/user/other.ps1", "-Fast")).Ok);
+        Assert.True(Handler().Handle(Request(Mine, "-Fast")).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AReplayedOrCopiedFile_IsDenied()
+    {
+        AllowForUser(version: 1);
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), 5);
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+
+        var path = _config.UserAllowPath(_projectId);
+        var doc = UserAllowStore.Load(path, _signer).Document;
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(doc! with { ProjectRoot = @"C:\somewhere\else" }));
+        _versions.Bump(UserAllowStore.VersionKey(_projectId), 5);
+
+        Assert.False(Handler().Handle(Request(Mine)).Ok);
+    }
+
+    [Fact]
+    public void UserAllow_AFileWithABadSignature_IsIgnored()
+    {
+        AllowForUser();
+        var path = _config.UserAllowPath(_projectId);
+        File.WriteAllText(path, File.ReadAllText(path).Replace("Write", "Write").Replace("\"Signature\": \"", "\"Signature\": \"x"));
+
+        var r = Handler().Handle(Request(Mine));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }
+
+    [Fact]
+    public void UserAllow_NeverWidensTheManifest_AManifestScriptStillNeedsItsApproval()
+    {
+        AllowForUser();
+
+        var r = Handler().Handle(Request(Script));
+
+        Assert.False(r.Ok);
+        Assert.Empty(_runner.Runs);
+    }}

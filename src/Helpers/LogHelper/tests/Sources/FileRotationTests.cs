@@ -23,8 +23,9 @@ public sealed class FileRotationTests : IDisposable
         {
             Directory.Delete(_root, recursive: true);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            System.Diagnostics.Trace.WriteLine($"test cleanup skipped: {ex.Message}");
         }
     }
 

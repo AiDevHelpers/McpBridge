@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\AiDevHelpers.ScriptHelper.Core.csproj" />
+    <PackageReference Include="System.CommandLine" Version="2.0.14" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="AiDevHelpers.Common.Contracts" />

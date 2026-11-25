@@ -13,13 +13,27 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class TerminalSessionTools
 {
+    private static readonly System.Text.Json.JsonSerializerOptions Json = new(System.Text.Json.JsonSerializerDefaults.Web) { WriteIndented = true };
+
     private readonly ITerminalSessionManager _manager;
+    private readonly Func<AiDevHelpers.Common.Terminals.TerminalScan> _scanTypes;
+    private readonly AiDevHelpers.MCP.Core.Services.ScriptRunTracker? _tracker;
+    private readonly AiDevHelpers.MCP.Core.Services.ScriptWatchOptions _watch;
     private readonly object _initGate = new();
     private Task? _initTask;
 
-    public TerminalSessionTools(ITerminalSessionManager manager)
+    public TerminalSessionTools(
+        ITerminalSessionManager manager,
+        Func<AiDevHelpers.Common.Terminals.TerminalScan>? scanTypes = null,
+        AiDevHelpers.MCP.Core.Services.ScriptRunTracker? tracker = null,
+        Microsoft.Extensions.Options.IOptions<AiDevHelpers.MCP.Core.Services.ScriptWatchOptions>? watch = null)
     {
         _manager = manager;
+        _tracker = tracker;
+        _watch = watch?.Value ?? new AiDevHelpers.MCP.Core.Services.ScriptWatchOptions();
+        _scanTypes = scanTypes ?? (() => new AiDevHelpers.Common.Terminals.TerminalTypeScanner(
+            new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
+            AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser()).Scan());
     }
 
     [McpServerTool]
@@ -28,7 +42,9 @@ internal sealed class TerminalSessionTools
         "(visible on the user's desktop, default) or ServiceAccount (headless, under the service account) and a first tab; " +
         "elevated=true opens the session with UAC so its tabs run as administrator; tabName optional), " +
         "tab (new tab in sessionId; tabName optional), exec (run command in sessionId + tabId; " +
-        "timeoutSeconds optional, default 60), list (open sessions), close (end sessionId).")]
+        "timeoutSeconds optional, default 60), list (open sessions), close (end sessionId), types (read only: the terminal types " +
+        "installed on this machine, which the helper and Windows Terminal know, and install hints; a type with missing=true is installed but " +
+        "not registered, so ask the user to run 'elev terminals setup').")]
     public async Task<string> TerminalSession(
         string action = "list",
         string? launchMode = null,
@@ -91,6 +107,17 @@ internal sealed class TerminalSessionTools
                         text.AppendLine().Append("stderr: ").Append(result.Stderr);
                     }
 
+                    // A command run here feeds the same tracker as script_run, so one that keeps failing is noticed.
+                    if (_tracker is not null)
+                    {
+                        var key = AiDevHelpers.MCP.Core.Services.ScriptRunTracker.Key(sessionId, command, []);
+                        _tracker.Record(key, new AiDevHelpers.MCP.Core.Services.ScriptRunOutcome(result.ExitCode, TimedOut: false, Silent: false));
+                        if (AiDevHelpers.MCP.Core.Services.ScriptRunService.AdviceFor(_tracker.Assess(key, _watch)) is { } advice)
+                        {
+                            text.AppendLine().Append(advice);
+                        }
+                    }
+
                     return text.ToString();
                 });
 
@@ -103,6 +130,18 @@ internal sealed class TerminalSessionTools
 
                 return string.Join("\n", sessions.Select(s =>
                     $"{s.SessionId}  state={s.State}  elevated={s.IsElevated}"));
+
+            case "TYPES":
+                // missing is the scanner's own property, which the record does not serialize, so it is added here for the caller.
+                var scan = _scanTypes();
+                return System.Text.Json.JsonSerializer.Serialize(
+                    new
+                    {
+                        scan.WindowsTerminalFound,
+                        scan.Hints,
+                        Types = scan.Types.Select(t => new { t.Id, t.Name, t.Path, t.Version, t.Installed, t.InHelper, t.InWindowsTerminal, t.Declined, t.Missing }),
+                    },
+                    Json);
 
             case "CLOSE":
                 if (sessionId is null)

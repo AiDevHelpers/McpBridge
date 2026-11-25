@@ -24,8 +24,9 @@ public sealed class PathGuardTests : IDisposable
         {
             Directory.Delete(_base, recursive: true);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            System.Diagnostics.Trace.WriteLine($"test cleanup skipped: {ex.Message}");
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -71,6 +72,10 @@ public static class VsInstanceRegistry
             return null;
         }
     }
+
+    /// <summary>The running instance whose solution is the given .sln, or null.</summary>
+    public static VsInstance? FindBySolution(string solutionPath) =>
+        ListRunning().FirstOrDefault(i => PathCompare.Same(i.SolutionPath, solutionPath));
 
     private static bool IsRunning(int pid)
     {

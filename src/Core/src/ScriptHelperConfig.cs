@@ -26,6 +26,37 @@ public sealed class ScriptHelperConfig
     /// <summary>One signed approvals file per project.</summary>
     public string ApprovalsDirectory => Path.Combine(DataRoot, "approvals");
 
+    /// <summary>One signed allow-all approval per project, kept here and never in the repo.</summary>
+    public string AllowAllDirectory => Path.Combine(DataRoot, "allowall");
+
+    /// <summary>The allow-all approval file for a project; the id is checked the same way as for approvals.</summary>
+    public string AllowAllPath(string projectId)
+    {
+        if (string.IsNullOrEmpty(projectId) || !projectId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+        {
+            throw new ArgumentException("A project id may only contain letters, digits, '-' and '_'.", nameof(projectId));
+        }
+
+        return Path.Combine(AllowAllDirectory, projectId + ".json");
+    }
+
+    /// <summary>One signed file per allow-folder glob, kept here and never in the repo.</summary>
+    public string FolderAllowDirectory => Path.Combine(DataRoot, "folderallow");
+
+    /// <summary>One signed file per project with the scripts this user allowed, kept here and never in the repo.</summary>
+    public string UserAllowDirectory => Path.Combine(DataRoot, "userallow");
+
+    /// <summary>The user allow file for a project; the id is checked the same way as for approvals.</summary>
+    public string UserAllowPath(string projectId)
+    {
+        if (string.IsNullOrEmpty(projectId) || !projectId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_'))
+        {
+            throw new ArgumentException("A project id may only contain letters, digits, '-' and '_'.", nameof(projectId));
+        }
+
+        return Path.Combine(UserAllowDirectory, projectId + ".json");
+    }
+
     /// <summary>Per-project replay high-water marks.</summary>
     public string VersionsDirectory => Path.Combine(DataRoot, "versions");
 

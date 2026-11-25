@@ -35,7 +35,21 @@ public sealed class ScriptClient
         _requesterSid = requesterSid;
     }
 
-    public ClientResult Run(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout)
+    public Task<ClientResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, script, args), timeout);
+
+    /// <summary>Asks the broker to run the approved script in a visible console window; the transcript comes back as the output.</summary>
+    public Task<ClientResult> InteractiveAsync(string projectRoot, string script, IReadOnlyList<string> args, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, script, args, BrokerRequest.InteractiveKind), timeout);
+
+    /// <summary>
+    /// Asks the broker for the approval status of every allowlisted file in the project. Read only, and it never starts a broker:
+    /// a silent broker is reported, so opening a repo does not raise a UAC prompt.
+    /// </summary>
+    public Task<ClientResult> VerifyAsync(string projectRoot, TimeSpan timeout) =>
+        SubmitAsync(new BrokerRequestFile(projectRoot, string.Empty, Array.Empty<string>(), BrokerRequest.VerifyKind), timeout);
+
+    private async Task<ClientResult> SubmitAsync(BrokerRequestFile request, TimeSpan timeout)
     {
         switch (_ping.Check(PingTimeout))
         {
@@ -45,7 +59,7 @@ public sealed class ScriptClient
                 return new ClientResult(false, "refused: the broker is not in the admin-only install folder", null, string.Empty, string.Empty);
         }
 
-        var id = _queue.Enqueue(_requesterSid, new BrokerRequestFile(projectRoot, script, args));
+        var id = _queue.Enqueue(_requesterSid, request);
 
         var deadline = DateTime.UtcNow + timeout;
         while (DateTime.UtcNow < deadline)
@@ -58,7 +72,7 @@ public sealed class ScriptClient
                     : new ClientResult(false, answer.Reason, null, string.Empty, string.Empty);
             }
 
-            Thread.Sleep(PollInterval);
+            await Task.Delay(PollInterval);
         }
 
         return new ClientResult(false, "timed out waiting for the broker's answer", null, string.Empty, string.Empty);

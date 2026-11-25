@@ -63,6 +63,14 @@ public sealed class AffectedTestsTests : IDisposable
     }
 
     [Fact]
+    public void AllTestProjectsListsEveryTestProjectAndNoOthers()
+    {
+        var names = AffectedTests.AllTestProjects(_root).Select(p => Path.GetFileNameWithoutExtension(p)).ToList();
+
+        Assert.Equal(["App.Tests", "Lib.Tests", "Other.Tests"], names);
+    }
+
+    [Fact]
     public void UnrelatedProjectsAreLeftOut()
     {
         Assert.DoesNotContain("Other.Tests", Names("src/Lib/src/Thing.cs"));

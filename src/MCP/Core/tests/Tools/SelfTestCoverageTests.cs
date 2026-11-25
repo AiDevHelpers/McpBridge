@@ -23,6 +23,7 @@ public sealed class SelfTestCoverageTests
         ("SourceControlTools", "SourceControlHelper"),
         ("TestingTools", "TestingHelper"),
         ("TerminalSessionTools", "TerminalControl"),
+        ("ScriptHelperTools", "ScriptHelper"),
     ];
 
     [Fact]

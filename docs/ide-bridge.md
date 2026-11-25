@@ -22,9 +22,13 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 - Protocol: one JSON line per request, `{"action":"...","args":{...}}`. The reply is one JSON line,
   `{"ok":true,"pid":N,"result":...}` or `{"ok":false,"pid":N,"error":"..."}`. The VS Code bridge adds
   `"unsupported":true` for actions it can't do. The VS bridge never sends that field.
-- Watchdog: VS Code's bridge checks every 10 seconds and restarts its pipe and manifest if either is
-  missing. The VS bridge uses the same pattern in `BridgePackage`.
-- `health` is answered by each bridge directly. It reports the listener state, request count, and pipe name.
+- Watchdog (Visual Studio): `BridgeHost` checks every 10 seconds and restarts its pipe and manifest if either is missing.
+  It also pings the UI thread with a no-op. An answer within 5 seconds keeps `ui_responsive` true. No answer for 30 seconds
+  sets it false and logs a warning. A ping that never returns stays in flight, so a hung UI does not queue more pings.
+- Watchdog (VS Code): the VS Code bridge checks every 10 seconds and restarts its pipe and manifest if either is missing.
+- `health` is answered by each bridge directly. It reports the listener state, request count, pipe name, and `ui_responsive`
+  (Visual Studio only). A hung UI thread shows as `ui_responsive: false`. If the whole process is frozen, nothing answers.
+  `ide_reset_instance` uses that: it refuses a responsive instance, and kills an unresponsive one only with `confirm` true.
 
 ## Tools
 
@@ -32,27 +36,34 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 |---|---|---|
 | `IdeListInstances` | (MCP only) | Lists manifests and their solutions. |
 | `IdeBridgeHealth` | `health` | Listener state and request counters. |
-| `IdeStartDebugging` / `IdeStopDebugging` | `startDebugging` / `stopDebugging` | VS Code uses the selected or first launch configuration. |
+| `IdeStartDebugging` / `IdeStopDebugging` | `startDebugging` / `stopDebugging` | VS Code uses the selected or first launch configuration. In Visual Studio, `IdeStartDebugging` is refused, naming the reason, when the one matching instance is not elevated and its solution needs administrator rights (see `IdeLaunchInstance`); an ambiguous target is left to the router. |
 | `IdeSetConfiguration` / `IdeListConfigurations` | `setConfiguration` / `listConfigurations` | VS Code keeps the selected name for `startDebugging`. |
 | `IdeSetStartupProject` | `setStartupProject` | VS only. VS Code returns `unsupported`. |
 | `IdeRunTests` | `runTests` | VS: `dotnet test` with TRX when `IdeTestRunMode` is `DotnetTest`, otherwise Test Explorer. VS Code: `testing.runAll`. |
-| `IdeGetTestResults` | (MCP only) | Reads the newest TRX file in the solution's `TestResults` folder. |
+| `IdeGetTestResults` | `searchOutput` (TestExplorer mode) | In TestExplorer mode (default) reads the Tests output pane: counts, failing test names and `failure_details` with each message. In DotnetTest mode reads the newest TRX file in the solution's `TestResults` folder. |
 | `IdeGetTestSummary` | (MCP only) | Counts from the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. `failures` lists the tests the runner marked `[FAIL]` in that run (between the previous summary line and this one); it is empty when the pane has no such lines. |
 | `IdeBuild`, `IdeClean`, `IdePublish` | `build`, `clean`, `publish` | VS: the IDE build. VS Code: `build` runs the build task; `clean` and `publish` run `dotnet` in the workspace folder. |
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
+| `IdeFormatSolution` | `formatSolution` | Formats every C# file of the solution with the IDE's Format Document command and saves each one. Opens each file. |
+| `IdeGoToDefinition` | `goToDefinition` | Places the caret on file:line:column and runs `Edit.GoToDefinition`. Moves the IDE's active document. Returns the IDE state, not the target location. |
+| `IdeFindAllReferences` | `findAllReferences` | Places the caret and runs `Edit.FindAllReferences`. Results open in the IDE window; this tool does not read them. |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
 | `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |
 | `IdeAddWatch`, `IdeRemoveWatch`, `IdeListWatches` | `addWatch`, `removeWatch`, `listWatches` | Watches are kept by the bridge. Values show only while paused. |
 | `IdeKillProcess` | `killProcess` | Kills only processes this bridge started. VS starts none, so it refuses every pid. VS Code kills its clean/publish processes. |
-| `IdeLaunchInstance` / `IdeKillInstance` | (MCP lifecycle) | Launch or save-and-kill a VS instance. Kill refuses if any document is unsaved. |
+| `IdeLaunchInstance` / `IdeKillInstance` | (MCP lifecycle) | Launch or save-and-kill a VS instance. Kill refuses if any document is unsaved. Launch is elevated (UAC prompt, `runas`) only when the solution has a project listed in the repo's `.aidevtools/elevation.json`, or this user's mode for the repo is `always` (`user.json`); a user mode of `never` always launches normally. A running non-elevated instance of such a solution is not reused: the result says `needs_elevated_relaunch`, and only with `relaunchElevated: true` (after the user agrees) is it saved, closed and started elevated. An elevated instance cannot be closed from the non-elevated server; kill says so. |
 | `TerminalSession` | `open`, `tab`, `exec`, `list`, `close` | Runs commands in visible Windows Terminal sessions or headless service-account sessions. See [terminal-session-contract.md](terminal-session-contract.md). |
 | `ide_open_document` | `openDocument` | Opens a file and moves the caret to an optional line. |
-| `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. |
+| `ide_open_solution` | (MCP only) | Launches Visual Studio's devenv with the `.sln`. Does not use the bridge. Elevated under the same rule as `IdeLaunchInstance`. |
 | `bookmark_list`, `bookmark_get`, `bookmark_set`, `bookmark_remove` | `bookmarkList`, `bookmarkGet`, `bookmarkSet`, `bookmarkRemove` | Visual Studio bookmarks. VS Code returns not-supported. See Limits. |
 | `output_channel_set`, `output_write` | `outputWrite` | Writes text to a named output channel: an Output window pane in Visual Studio, an output channel in VS Code. The IDE for each channel is stored per repo. Reading back is not offered. |
 | `ide_set_preferred`, `ide_get_preferred` | (MCP only) | Stores or reads `preferredIde` in `.claude/aidevhelpers.json` next to the solution. See Settings. |
+| `repo_setup` | (MCP only) | Read only. `action: scan` finds projects and launch scripts in the repo that need administrator rights and says which are not yet listed or declined; `action: status` returns the elevated list, this user's mode (`listed`, `always`, `never`) and what is pending. `repoPath` is any folder inside the repo. It changes nothing and never creates `.aidevtools`: the user decides with `elev repo-setup <repo>` in a console. A repo opened with no `.aidevtools` folder is scanned once per server session and a notification names the projects found. |
+| `script_run` | (MCP only) | Runs a script from a repo (`.ps1`, `.cmd`, `.bat`, `.sh`, `.py`, `.js`) with the interpreter that fits it: PowerShell 7 or 5.1 from `#Requires`, cmd, Git Bash, Python or Node (override, `#!` name, `#Requires`, then the extension; paths come from PATH and the usual install folders, never from the repo). Output is captured, arguments are passed as data, the run stops after the timeout or after a stretch with no output, and the result names the interpreter and why. A script that keeps failing (default 3 runs in 10 minutes) or hangs gets `advice` that offers a visible terminal. With `interactive: true` the script runs in a visible non-elevated tab; with `interactive: true` and `elevated: true` an approved PowerShell script from the repo's `.elevated.json` runs elevated in a visible window through the Script Helper broker (same allowlist, fingerprint and approval checks) and the transcript comes back. A missing interpreter returns an install hint; nothing is installed. Limits come from the server's `ScriptWatch` section and a per-user `scriptWatch` block in `.aidevtools/user.json`, never from a committed file. `run_elevated_script` and `terminal_session` `exec` feed the same tracker. |
+| `tool_install` | (MCP only) | Installs a missing tool with winget through the elevated script helper. `tool` is one of `pwsh`, `gitbash`, `python`, `node` (a fixed table; `wsl` gets instructions only, it needs a restart). `action: plan` returns the exact command and a one-time token (15 minutes) and installs nothing; the AI must ask the user, and the user's yes in chat is the permission, after which `action: confirm` with the token runs it. `action: decline` records a no so the offer (shown by `script_run` when an interpreter is missing) is not repeated. The install runs `install-tool.ps1` through the broker: the user runs `elev tools` once (elevated, one UAC prompt), which writes the script and its allowlist into the admin-only install folder, registers it and asks to approve it. The script takes a tool name, not a package id, and looks the id up in its own table. |
+| `dotnet_diag` | (MCP only) | Wraps the .NET diagnostic global tools (dotnet-dump, dotnet-stack, dotnet-counters, dotnet-gcdump, dotnet-trace, dotnet-symbol). `action`: `status` (each tool's path, version, or install command), `processes`, `stack`, `dump`, `gcdump`, `counters`, `trace`, `symbols`. Takes `pid`, `seconds` (1 to 300) or an absolute `path`; never a command line. Output files go to `%TEMP%\aidev-diag` unless `path` is given. Installs nothing; see `docs/prereqs.md`. |
 | `run_elevated_script` | (MCP only) | Runs an approved script elevated through the Script Helper broker (`elev.exe`, next to the server). Needs `projectRoot`, `script` and optional `args`. Returns the exit code and output, or a refusal. The script must be in the project's `.elevated.json` and approved by a person. |
 
 ### Bridge actions used by other tools
@@ -64,6 +75,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `status` | routing and health checks | Returns `solution_path`. |
 | `listOutputPanes` | the Visual Studio output log source | Visual Studio only. Lists the Output window pane names. |
 | `listDebugSessions`, `getDebugOutput` | the VS Code debug log source | VS Code only. Lists debug sessions and reads a session's output. |
+| `hotReloadState`, `continuousTestingStart`, `continuousTestingStop`, `continuousTestingState` | the VS Code settings and testing commands | VS Code only. Reads hot reload and runs or stops continuous testing. VS Code has no API to read continuous mode, so `continuousTestingState` reports the bridge's own record. |
 | `prepareKill` | `IdeKillInstance` | Asks the instance to save every document, and reports any that stay unsaved. |
 
 ### Helper tools (MCP only, no bridge action)
@@ -74,11 +86,12 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `lint_check` | LintHelper | Checks a folder's lint setup: `.editorconfig` against csproj `NoWarn`, tsconfig strict mode, an ESLint flat config for TypeScript projects, deprecated TSLint, duplicate names in `Strings.resx` files, and optionally `dotnet format --verify-no-changes`. |
 | `string_scan` | LintHelper | Lists multi-word string literals in a C# file or folder that should be in `Resources/Strings.resx`, with the resource key when the text is already there. Skips comments, attributes, logger calls, `Strings.cs`, and `bin` or `obj` folders. |
 | `resx_check` | LintHelper | Checks each `Resources/Strings.resx` under a folder: duplicate names, keys used in code but missing, and keys never used. |
-| `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. |
-| `pr_checks`, `ci_failure` | SourceControlHelper | Read only, through the GitHub CLI (`gh`). `pr_checks` lists each CI check of a pull request with its state and bucket. `ci_failure` returns the first failing job and the error lines of its log (the end of the log when no line looks like an error). |
+| `git_status`, `git_diff`, `git_plan`, `git_confirm` | SourceControlHelper | Runs `git.exe`. Status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step: `git_plan` returns the exact command and a single-use token, and `git_confirm` runs it. When the repo has `.aidevtools/repo-rules.json` (recorded by `elev repo-setup`) or a cached live GitHub policy, `git_plan` refuses a commit or push on a protected branch, deleting one, and a new branch name that breaks the pattern, and `git_confirm` checks again. A refusal gives a request id; the user can allow that one write with `elev rules override <repo> <id>` in a console. Rules only restrict. |
+| `pr_checks`, `ci_failure` | SourceControlHelper | Read only, through the GitHub CLI (`gh`). `pr_checks` lists each CI check of a pull request with its state and bucket, and `missingRequired` (required checks from the repo rules that the pull request lacks). `ci_failure` returns the first failing job and the error lines of its log (the end of the log when no line looks like an error). |
 | `package_check` | PackageHelper | NuGet (`nuget.config`, `Directory.Packages.props`, xunit analyzers, .NET analyzers), pip (pinned requirements) and npm (a lockfile). Reads files only. |
+| `package_restore` | PackageHelper | Restores the NuGet packages of a solution (`dotnet restore`) and returns ok, the exit code and the tail of the output. Edits no project file. Run it before a build or `package_outdated` when packages may be missing. |
 | `package_outdated` | PackageHelper | Lists the outdated NuGet packages of a solution (`dotnet list package --outdated`) with the version to move to. A package that versions with .NET (`System.*`, `Microsoft.Extensions.*` and the like) is never moved past the .NET major of its project, so a net10.0 project does not get an 11.x package. Edits nothing. |
-| `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. |
+| `gate_plan`, `gate_run` | GateHelper | The full gate. Steps come from the `gate` block in `.claude/reference/full-gate.md`, or from the detected stack. A run stops at the first failure. `gate_plan` also returns `missingRequiredCommands` (gate commands in `repo-rules.json` that no step runs). |
 | `server_control_set`, `server_control_status` | (server) | Pause, close and resume every aidevtools server on this machine for an update. `paused` makes each server refuse tool calls with a message and pushes a log notification (`AiDevHelpers.Control`) to its chat. `closing` makes each server exit after a short pause, which releases its files. `running` resumes. These two tools work in every state. State lives in `%ProgramData%\AiDevHelpers\control\state.json`. `scripts/update-aidevtools.ps1` runs pause, close, update, resume and always resumes at the end. |
 | `self_test_list`, `self_test_read` | each helper | Lists helpers with their versions and the server version, and reads a helper's embedded self-test markdown. |
 | `config_resolve`, `config_read` | ConfigHelper | Real paths for remote debugger, launchSettings, appsettings, user and solution settings. Reads are limited to allowed roots and redact secrets. |
@@ -88,6 +101,8 @@ These actions are called by the MCP server's own services, not by a single tool 
 | `extension_list`, `extension_info`, `extension_add_plan`, `extension_add_confirm` | ExtensionsHelper | VS Code list and info are local. Visual Studio info queries the Marketplace. Adds are two-step and need approval. |
 | `extension_workspace_setup` | ExtensionsHelper | Recommends C# Dev Kit and C# in `.vscode/extensions.json`, and sets `dotnet.defaultSolution` when C# Dev Kit is installed. |
 | `build_env` | ExtensionsHelper | Lists the Visual Studio installs (stable and prerelease) with their MSBuild path and whether the VSSDK targets a VSIX build needs are present. |
+| `test_hosts_list`, `test_hosts_stop` | MCP Core (TestHostTools) | Lists running `testhost` processes and returns a token. `test_hosts_stop` kills only the listed pids, once, if each still has the start time the list recorded. Call the stop only after the user agrees. |
+| `ide_reset_instance` | `IdeResetTools` | Resets a Visual Studio instance whose UI thread stopped answering (health `ui_responsive` false, or no answer). Without `confirm` it changes nothing; with `confirm` true it kills the devenv process, which closes it without saving. |
 
 ## Limits
 
@@ -110,6 +125,11 @@ These actions are called by the MCP server's own services, not by a single tool 
   Marketplace query shape used by ExtensionsHelper.
 
 ## Settings
+
+- **Layers.** Global (the MCP `appsettings.json`), then the repo's committed `.aidevtools/settings.json` (repo root is the nearest folder with a
+  `.git` folder or file above the solution), then the per-user `.aidevtools/user.json` (gitignored; Script Helper's pointer to this user's
+  signed allow-all approval). The repo overrides global per key, but only for keys a repo may set (today `IdeTools.IdeTestRunMode`); other keys,
+  and a malformed file, fall back to global with a warning. `allowAll` is read only from the repo file, never from the global settings.
 
 - `IdeTestRunMode` in the MCP `appsettings.json` (`IdeTools` section): `DotnetTest` or `TestExplorer`
   (default). The VS options page's "IDE test runs use dotnet test with TRX" checkbox writes it. `DotnetTest` passes

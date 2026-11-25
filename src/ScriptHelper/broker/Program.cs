@@ -20,7 +20,7 @@ var config = ConfigRepository.FromEnvironment().ScriptHelper;
 var mode = ModeFile.Read(config.ModePath);
 if (mode is null)
 {
-    Console.Error.WriteLine("refused: no protection mode recorded; run scripthelper-setup first");
+    Console.Error.WriteLine("refused: no protection mode recorded; run elev register first");
     return 1;
 }
 
@@ -54,7 +54,8 @@ var handler = new RequestHandler(
     new PwshInterpreterInfo(),
     new ProcessScriptRunner(),
     config.StagingDirectory,
-    Audit);
+    Audit,
+    new ProcessVisibleRunner());
 var loop = new BrokerLoop(queue, handler.Handle, ex => Audit($"request failed inside the broker: {ex}"));
 
 Audit($"broker started (pid {Environment.ProcessId}, mode {mode.Value})");
@@ -68,5 +69,5 @@ var host = new BrokerHost(
     Environment.ProcessId,
     mode.Value);
 
-host.Run();
+await host.RunAsync();
 return 0;

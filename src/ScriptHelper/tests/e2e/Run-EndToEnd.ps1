@@ -22,15 +22,13 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
     exit 1
 }
 
-foreach ($project in 'src/ScriptHelper/setup', 'src/ScriptHelper/broker', 'src/ScriptHelper/client') {
+foreach ($project in 'src/ScriptHelper/broker', 'src/ScriptHelper/client') {
     dotnet build (Join-Path $repo $project) -c Debug --nologo -v q
     if ($LASTEXITCODE -ne 0) { throw "build failed: $project" }
 }
 
-$setupBin = Join-Path $repo 'src/ScriptHelper/setup/bin/Debug/net10.0-windows'
 $brokerBin = Join-Path $repo 'src/ScriptHelper/broker/bin/Debug/net10.0-windows'
 $clientBin = Join-Path $repo 'src/ScriptHelper/client/bin/Debug/net10.0-windows'
-$setupExe = Join-Path $setupBin 'scripthelper-setup.exe'
 $elevExe = Join-Path $clientBin 'elev.exe'
 
 Add-Type -TypeDefinition @'
@@ -61,14 +59,14 @@ try {
         '{"scripts":[{"path":"scripts/debug/hello.ps1","args":["-Port","*"]}]}', $utf8)
 
     # Setup: register, then the two-step approval the way an AI caller does it.
-    & $setupExe register $project
+    & $elevExe register $project
     Assert-Step ($LASTEXITCODE -eq 0) 'setup: register the project'
 
-    $prepared = (& $setupExe approve $project 'scripts/debug/hello.ps1' --prepare) -join "`n"
+    $prepared = (& $elevExe approve $project 'scripts/debug/hello.ps1' --prepare) -join "`n"
     $m = [regex]::Match($prepared, '--confirm (\S+) (\S+)')
     Assert-Step ($m.Success) 'setup: approval preview prints fingerprint and allowlist hash'
 
-    & $setupExe approve $project 'scripts/debug/hello.ps1' --confirm $m.Groups[1].Value $m.Groups[2].Value
+    & $elevExe approve $project 'scripts/debug/hello.ps1' --confirm $m.Groups[1].Value $m.Groups[2].Value
     Assert-Step ($LASTEXITCODE -eq 0) 'setup: approve the exact bytes shown'
 
     # Install the broker into the admin-only folder the client requires.
@@ -87,13 +85,13 @@ try {
     Assert-Step (-not $visible) 'broker: no visible window'
 
     # elev: an approved script runs elevated and its output and exit code come back.
-    $out = & $elevExe $project 'scripts/debug/hello.ps1' -Port 5000 2>&1
+    $out = & $elevExe run $project 'scripts/debug/hello.ps1' -Port 5000 2>&1
     $code = $LASTEXITCODE
     Assert-Step (($out -join "`n") -match 'hello from elevated') 'elev: approved script output comes back'
     Assert-Step ($code -eq 7) "elev: script exit code passes through (got $code)"
 
     # elev: a script that is not in the manifest is refused with a reason.
-    $out = & $elevExe $project 'scripts/evil.ps1' 2>&1
+    $out = & $elevExe run $project 'scripts/evil.ps1' 2>&1
     $code = $LASTEXITCODE
     Assert-Step ($code -eq 1 -and (($out -join "`n") -match 'refused')) 'elev: unlisted script is refused with a reason'
 
@@ -109,7 +107,7 @@ try {
 
     # After the stop, the heartbeat goes stale (5 s). elev must then report silence without queuing.
     Start-Sleep -Seconds 7
-    $out = & $elevExe $project 'scripts/debug/hello.ps1' -Port 5000 2>&1
+    $out = & $elevExe run $project 'scripts/debug/hello.ps1' -Port 5000 2>&1
     $code = $LASTEXITCODE
     Assert-Step ($code -eq 1 -and (($out -join "`n") -match 'not responding')) 'elev: silent broker is reported, nothing hangs'
 }

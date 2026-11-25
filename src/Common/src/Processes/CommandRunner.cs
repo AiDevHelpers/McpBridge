@@ -26,6 +26,15 @@ public sealed record CommandRequest
 
     /// <summary>Called once, right after the process starts (for example to record it in a process registry).</summary>
     public Action<Process>? OnStarted { get; init; }
+
+    /// <summary>
+    /// When set, the process tree is killed after this long without any output on either stream, and the result says
+    /// <see cref="CommandResult.Silent" />. For scripts that hang while waiting on something the caller cannot see.
+    /// </summary>
+    public TimeSpan? NoOutputTimeout { get; init; }
+
+    /// <summary>Called with each chunk of text as it arrives, from a reader thread. Keep it quick.</summary>
+    public Action<string>? OnOutput { get; init; }
 }
 
 /// <summary>Outcome of a <see cref="CommandRunner.RunAsync" /> call. Ordinary failures are data, not exceptions.</summary>
@@ -46,11 +55,14 @@ public sealed record CommandResult
     /// <summary>True when the timeout elapsed and the process tree was killed.</summary>
     public bool TimedOut { get; init; }
 
+    /// <summary>True when <see cref="CommandRequest.NoOutputTimeout" /> elapsed without output and the process tree was killed.</summary>
+    public bool Silent { get; init; }
+
     public bool StdOutTruncated { get; init; }
 
     public bool StdErrTruncated { get; init; }
 
-    public bool Success => Launched && !TimedOut && ExitCode == 0;
+    public bool Success => Launched && !TimedOut && !Silent && ExitCode == 0;
 }
 
 /// <summary>
@@ -70,7 +82,8 @@ public static class CommandRunner
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            RedirectStandardInput = false,
+            // The server's own stdin is the MCP stdio pipe. A child must not inherit it, so give it an input that ends at once.
+            RedirectStandardInput = true,
             CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8,
@@ -122,14 +135,57 @@ public static class CommandRunner
             // Tracking is best effort: a process that already exited cannot be recorded.
         }
 
-        Capture stdout = new(request.MaxOutputChars);
-        Capture stderr = new(request.MaxOutputChars);
+        try
+        {
+            process.StandardInput.Close();
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or IOException)
+        {
+            // The child already exited.
+        }
+
+        long lastOutput = Stopwatch.GetTimestamp();
+        void Touch(string text)
+        {
+            Interlocked.Exchange(ref lastOutput, Stopwatch.GetTimestamp());
+            request.OnOutput?.Invoke(text);
+        }
+
+        Capture stdout = new(request.MaxOutputChars, Touch);
+        Capture stderr = new(request.MaxOutputChars, Touch);
         Task readOut = stdout.ReadAsync(process.StandardOutput);
         Task readErr = stderr.ReadAsync(process.StandardError);
 
         using CancellationTokenSource timeoutSource = new(request.Timeout);
-        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutSource.Token);
+        using CancellationTokenSource silenceSource = new();
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutSource.Token, silenceSource.Token);
         bool timedOut = false;
+        bool silent = false;
+
+        Task watchdog = Task.CompletedTask;
+        if (request.NoOutputTimeout is { } quiet)
+        {
+            watchdog = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!linked.IsCancellationRequested)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(Math.Clamp(quiet.TotalMilliseconds / 4, 50, 1000)), linked.Token).ConfigureAwait(false);
+                        if (Stopwatch.GetElapsedTime(Interlocked.Read(ref lastOutput)) >= quiet)
+                        {
+                            silent = true;
+                            silenceSource.Cancel();
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    // The run ended or was cancelled; nothing left to watch.
+                }
+            }, CancellationToken.None);
+        }
+
         try
         {
             await process.WaitForExitAsync(linked.Token).ConfigureAwait(false);
@@ -142,8 +198,11 @@ public static class CommandRunner
                 throw;
             }
 
-            timedOut = true;
+            timedOut = !silent;
         }
+
+        await linked.CancelAsync().ConfigureAwait(false);
+        await watchdog.ConfigureAwait(false);
 
         // Killing the tree closes the pipes, so the readers end; the guard keeps a grandchild that
         // inherited a pipe from holding the call open.
@@ -151,10 +210,11 @@ public static class CommandRunner
 
         return new CommandResult
         {
-            ExitCode = timedOut || !process.HasExited ? -1 : process.ExitCode,
+            ExitCode = timedOut || silent || !process.HasExited ? -1 : process.ExitCode,
             StdOut = stdout.Text,
             StdErr = stderr.Text,
             TimedOut = timedOut,
+            Silent = silent,
             StdOutTruncated = stdout.Truncated,
             StdErrTruncated = stderr.Truncated,
         };
@@ -175,7 +235,7 @@ public static class CommandRunner
         }
     }
 
-    private sealed class Capture(int max)
+    private sealed class Capture(int max, Action<string>? onChunk = null)
     {
         private readonly StringBuilder _text = new();
         private readonly object _gate = new();
@@ -201,6 +261,7 @@ public static class CommandRunner
             {
                 while ((read = await reader.ReadAsync(buffer).ConfigureAwait(false)) > 0)
                 {
+                    onChunk?.Invoke(new string(buffer, 0, read));
                     lock (_gate)
                     {
                         int room = max - _text.Length;

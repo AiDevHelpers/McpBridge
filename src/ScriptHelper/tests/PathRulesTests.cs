@@ -73,4 +73,19 @@ public class PathRulesTests
 
         Assert.False(r.Ok);
     }
-}
+
+    [Theory]
+    [InlineData("scripts/<an")]
+    [InlineData("scripts/a|b.ps1")]
+    [InlineData("scripts/what?.ps1")]
+    [InlineData("scripts/a*.ps1")]
+    [InlineData("scripts/a.ps1:stream")]
+    [InlineData("scripts/\"quoted\".ps1")]
+    [InlineData("scripts/a\tb.ps1")]
+    public void NamesWindowsCannotHold_AreRefusedNotThrown(string path)
+    {
+        var r = PathRules.ResolveInsideRoot(Root, path);
+
+        Assert.False(r.Ok);
+        Assert.Contains("not allowed", r.Reason);
+    }}

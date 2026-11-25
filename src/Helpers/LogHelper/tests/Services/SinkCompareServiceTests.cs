@@ -27,8 +27,9 @@ public sealed class SinkCompareServiceTests : IDisposable
         {
             Directory.Delete(_root, recursive: true);
         }
-        catch (IOException)
+        catch (IOException ex)
         {
+            System.Diagnostics.Trace.WriteLine($"test cleanup skipped: {ex.Message}");
         }
     }
 

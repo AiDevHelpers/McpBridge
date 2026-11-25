@@ -26,7 +26,7 @@ public sealed class BrokerLoop
         var answered = 0;
         foreach (var item in _queue.Pending())
         {
-            var request = new BrokerRequest(item.Request.ProjectRoot, item.Request.Script, item.Request.Args, item.RequesterSid);
+            var request = new BrokerRequest(item.Request.ProjectRoot, item.Request.Script, item.Request.Args, item.RequesterSid, item.Request.Kind ?? BrokerRequest.RunKind);
 
             BrokerResponse response;
             try

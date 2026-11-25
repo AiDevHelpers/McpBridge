@@ -26,4 +26,16 @@ public interface ISetupCommands
     /// values that were shown. The caller is responsible for having asked a person.
     /// </summary>
     SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash);
+
+    /// <summary>
+    /// Approves allow-all for a registered project whose repo settings request it, after two separate confirmations in the
+    /// elevated console. Any script inside the repo may then run elevated without per-script approval.
+    /// </summary>
+    SetupResult AllowAll(string root);
+
+    /// <summary>Allow-all after the person answered both questions in chat. Writes only if the settings hash still equals approvedHash.</summary>
+    SetupResult AllowAllApproved(string root, string approvedHash);
+
+    /// <summary>Removes the registry entry and approvals for a project whose folder is gone. Needs an elevated shell.</summary>
+    SetupResult PruneStale(string root);
 }

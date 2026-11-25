@@ -1,3 +1,4 @@
+using System.Text;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -26,7 +27,54 @@ public sealed class IdeActions(DTE2 dte)
     {
         // Callers switch to the UI thread first (BridgePackage); this asserts it at runtime.
         Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
-        return InvokeOnUiThread(action, args);
+
+        // Modal prompts (line endings, reload, save) would freeze the UI thread and the bridge with it. Suppressing UI for the
+        // duration of one action lets the IDE answer with its defaults instead of waiting. Restored afterwards.
+        var previous = dte.SuppressUI;
+        dte.SuppressUI = true;
+        try
+        {
+            return InvokeOnUiThread(action, args);
+        }
+        finally
+        {
+            dte.SuppressUI = previous;
+        }
+    }
+
+    // Makes one file use a single line-ending style before the IDE opens it, so VS does not ask whether to normalize.
+    // The dominant style wins; a BOM is kept. Only files the caller is about to write to are passed here.
+    private static void NormalizeLineEndings(string path)
+    {
+        var bytes = File.ReadAllBytes(path);
+        var hasBom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+        var text = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetString(bytes, hasBom ? 3 : 0, bytes.Length - (hasBom ? 3 : 0));
+        var crlf = 0;
+        var lf = 0;
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (text[i] != '\n')
+            {
+                continue;
+            }
+
+            if (i > 0 && text[i - 1] == '\r')
+            {
+                crlf++;
+            }
+            else
+            {
+                lf++;
+            }
+        }
+
+        if (crlf == 0 || lf == 0)
+        {
+            return; // already one style (or no line breaks)
+        }
+
+        var normalized = (crlf >= lf ? text.Replace("\r\n", "\n").Replace("\n", "\r\n") : text.Replace("\r\n", "\n"));
+        File.WriteAllText(path, normalized, new UTF8Encoding(encoderShouldEmitUTF8Identifier: hasBom));
     }
 
     private object InvokeOnUiThread(string action, JsonElement args) => action switch
@@ -37,6 +85,7 @@ public sealed class IdeActions(DTE2 dte)
         "stopDebugging" => StopDebugging(),
         "runTests" => RunTests(),
         "formatDocument" => FormatDocument(),
+        "formatSolution" => FormatSolution(),
         "build" => Build(),
         "getBuildDiagnostics" => GetBuildDiagnostics(OptionalString(args, "severity") ?? "all"),
         "codeCleanup" => CodeCleanup(),
@@ -49,6 +98,8 @@ public sealed class IdeActions(DTE2 dte)
         "openSolution" => OpenSolution(RequireString(args, "solutionPath")),
         "testHotReloadState" => TestHotReloadState(),
         "openDocument" => OpenDocument(RequireString(args, "file"), OptionalInt(args, "line")),
+        "goToDefinition" => RunAtCaret(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1, "Edit.GoToDefinition"),
+        "findAllReferences" => RunAtCaret(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1, "Edit.FindAllReferences"),
         "bookmarkList" => BookmarkActions.List(dte),
         "bookmarkGet" => BookmarkActions.Get(RequireString(args, "id")),
         "bookmarkSet" => BookmarkActions.Set(dte, RequireString(args, "file"), RequireInt(args, "line")),
@@ -97,11 +148,54 @@ public sealed class IdeActions(DTE2 dte)
         return new { debugger_mode = dte.Debugger.CurrentMode.ToString() };
     }
 
+    // Starts Test Explorer's run for the whole solution. Test Explorer refuses a run while discovery or an earlier run is still
+    // going. That refusal is reported as data, not thrown, so the caller can wait on its own thread and try again.
     private object RunTests()
     {
-        // Runs every test in the solution through Test Explorer. Filtering is not supported yet.
-        dte.ExecuteCommand("TestExplorer.RunAllTests");
-        return new { command = "TestExplorer.RunAllTests" };
+        try
+        {
+            dte.ExecuteCommand("TestExplorer.RunAllTests");
+            return new { command = "TestExplorer.RunAllTests", refused = false, hresult = 0 };
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            return new { command = "TestExplorer.RunAllTests", refused = true, hresult = ex.HResult };
+        }
+    }
+
+    // Formats every C# file under the solution folder through the IDE, saving each one. SDK-style projects do not list
+    // their .cs files as project items, so the files are found on disk. Each file is opened, formatted and saved.
+    private object FormatSolution()
+    {
+        var solutionDir = Path.GetDirectoryName(dte.Solution.FullName);
+        if (string.IsNullOrEmpty(solutionDir))
+        {
+            throw new InvalidOperationException(Strings.Get("NoSolutionOpenToFormat"));
+        }
+
+        var formatted = new List<string>();
+        foreach (var path in Directory.EnumerateFiles(solutionDir, "*.cs", SearchOption.AllDirectories))
+        {
+            var relative = path.Substring(solutionDir.TrimEnd(Path.DirectorySeparatorChar).Length + 1);
+            if (relative.Split(Path.DirectorySeparatorChar).Any(part => part is "bin" or "obj" or ".git" or "TestResults" or "node_modules"))
+            {
+                continue;
+            }
+
+            NormalizeLineEndings(path);
+            dte.ItemOperations.OpenFile(path);
+            var window = dte.ActiveDocument;
+            if (window is null || !string.Equals(window.FullName, path, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            dte.ExecuteCommand("Edit.FormatDocument");
+            window.Save();
+            formatted.Add(path);
+        }
+
+        return new { formatted = formatted.Count, files = formatted };
     }
 
     private object FormatDocument()
@@ -150,7 +244,8 @@ public sealed class IdeActions(DTE2 dte)
         return new { count = items.Count, diagnostics = items };
     }
 
-    // Runs Visual Studio's Code Cleanup on the active document. The command name is not verified against a live IDE.
+    // Runs Visual Studio's default Code Cleanup profile on the active document. The command name was listed from a live VS 18.0
+    // instance; "Edit.RunCodeCleanup" does not exist there and made this action fail with E_FAIL.
     private object CodeCleanup()
     {
         if (dte.ActiveDocument is null)
@@ -158,7 +253,7 @@ public sealed class IdeActions(DTE2 dte)
             throw new InvalidOperationException(Strings.Get("NoActiveDocumentToCleanUp"));
         }
 
-        dte.ExecuteCommand("Edit.RunCodeCleanup");
+        dte.ExecuteCommand("EditorContextMenus.FileHealthIndicator.RunDefaultCodeCleanup");
         return new { document = dte.ActiveDocument.FullName };
     }
 
@@ -350,6 +445,53 @@ public sealed class IdeActions(DTE2 dte)
 
         dte.Solution.Open(solutionPath);
         return new { solution_path = solutionPath, opened = true };
+    }
+
+    // Puts the caret on file:line:column, then runs one IDE command that works on the caret. The result is the IDE state after the
+    // command: results of find commands appear in their own windows, so they are not returned as data.
+    private object RunAtCaret(string file, int line, int column, string command)
+    {
+        if (!Path.IsPathRooted(file))
+        {
+            throw new ArgumentException(Strings.Get("PathMustBeAbsolute"), nameof(file));
+        }
+
+        var full = Path.GetFullPath(file);
+        if (!File.Exists(full))
+        {
+            throw new FileNotFoundException(Strings.Get("FileNotFound"), full);
+        }
+
+        if (line < 1 || column < 1)
+        {
+            throw new ArgumentException(Strings.Get("LineAndColumnStartAtOne"));
+        }
+
+        dte.ItemOperations.OpenFile(full);
+        var document = dte.ActiveDocument;
+        if (document is null || !string.Equals(document.FullName, full, StringComparison.OrdinalIgnoreCase)
+            || document.Selection is not TextSelection selection)
+        {
+            throw new InvalidOperationException(Strings.Get("NoTextDocumentAtCaret"));
+        }
+
+        var lastLine = document.Object("TextDocument") is TextDocument text ? text.EndPoint.Line : int.MaxValue;
+        if (line > lastLine)
+        {
+            throw new ArgumentException(Strings.Format("LineBeyondEnd", line, lastLine));
+        }
+
+        selection.MoveToLineAndOffset(line, column);
+        try
+        {
+            dte.ExecuteCommand(command);
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            throw new InvalidOperationException(Strings.Format("CommandUnavailable", command, ex.HResult), ex);
+        }
+
+        return new { file = full, requested_line = line, requested_column = column, command, caret_line = selection.CurrentLine, caret_column = selection.CurrentColumn, active_document = dte.ActiveDocument?.FullName };
     }
 
     private object OpenDocument(string file, int? line)

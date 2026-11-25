@@ -16,9 +16,17 @@ internal sealed class SelfTestTools
     [
         "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "LintHelper", "LogHelper",
         "OutputHelper", "PackageHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
+        ScriptHelperName,
     ];
 
     private const string ResourceName = "AiDevHelpers.SelfTest.md";
+
+    // Script Helper is not a library of its own here: its self-test is embedded in this assembly.
+    private const string ScriptHelperName = "ScriptHelper";
+    private const string ScriptHelperResourceName = "AiDevHelpers.ScriptHelper.SelfTest.md";
+
+    private static Assembly AssemblyOf(string helper) =>
+        helper == ScriptHelperName ? typeof(SelfTestTools).Assembly : Assembly.Load("AiDevHelpers.Helpers." + helper);
 
     [McpServerTool]
     [Description("List the helpers with their versions, the MCP server (Core) version, and whether each helper has a self-test.")]
@@ -26,7 +34,7 @@ internal sealed class SelfTestTools
     {
         var helpers = HelperNames.Select(name =>
         {
-            var assembly = Assembly.Load("AiDevHelpers.Helpers." + name);
+            var assembly = AssemblyOf(name);
             return new
             {
                 name,
@@ -63,8 +71,8 @@ internal sealed class SelfTestTools
     /// <summary>The embedded self-test markdown for a helper, or null when it has none.</summary>
     internal static string? ReadSelfTest(string helper)
     {
-        var assembly = Assembly.Load("AiDevHelpers.Helpers." + helper);
-        using var stream = assembly.GetManifestResourceStream(ResourceName);
+        var assembly = AssemblyOf(helper);
+        using var stream = assembly.GetManifestResourceStream(helper == ScriptHelperName ? ScriptHelperResourceName : ResourceName);
         if (stream is null)
         {
             return null;

@@ -45,7 +45,7 @@ public static class IdeInstanceRouter
         VsInstance? target;
         if (!string.IsNullOrWhiteSpace(solutionPath))
         {
-            var matches = instances.Where(i => SamePath(i.SolutionPath, solutionPath)).ToList();
+            var matches = instances.Where(i => PathCompare.Same(i.SolutionPath, solutionPath)).ToList();
             if (matches.Count == 0)
             {
                 return Error($"No open Visual Studio instance has '{solutionPath}' open.", instances);
@@ -92,6 +92,8 @@ public static class IdeInstanceRouter
         {
             count = instances.Count,
             instances = instances.Select(Describe),
+            // Launched but the bridge has not answered yet: listed so a caller can see it is still starting.
+            starting = StartingInstances.List(),
         });
     }
 
@@ -152,13 +154,19 @@ public static class IdeInstanceRouter
             var reason = ex is UnauthorizedAccessException
                 ? "the instance's pipe refused this client (often a process running at a different elevation)"
                 : ex.Message;
+            // A timeout means the process is still there but not answering (busy or hung), not that it is gone.
+            var busy = ex is TimeoutException;
             return JsonSerializer.Serialize(new
             {
                 ide = target.Ide,
                 instance_pid = target.Pid,
                 solution_path = target.SolutionPath,
                 ok = false,
+                busy,
                 error = $"Could not reach Visual Studio instance {target.Pid}: {reason}",
+                hint = busy
+                    ? "The instance is running but not answering. Check ide_bridge_health; if it stays silent, relaunch it with ide_launch_instance (relaunchElevated when the solution needs it) after the user agrees."
+                    : null,
             });
         }
     }
@@ -179,6 +187,4 @@ public static class IdeInstanceRouter
         updated_utc = i.UpdatedUtc,
     };
 
-    private static bool SamePath(string? a, string b) =>
-        !string.IsNullOrEmpty(a) && string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), StringComparison.OrdinalIgnoreCase);
 }

@@ -1,6 +1,6 @@
 # PackageHelper self test
 
-Tools: `PackageOutdated`. The `PackageCheck` tool is served from `GateTools` (see the GateHelper self-test).
+Tools: `PackageOutdated`, `PackageRestore`. The `PackageCheck` tool is served from `GateTools` (see the GateHelper self-test).
 
 ## Full self test
 
@@ -10,6 +10,14 @@ Fixture: a scratch folder with a `.csproj` for a test project that lacks `xunit.
 - Unit tests: `dotnet test src/Helpers/PackageHelper/tests/AiDevHelpers.Helpers.PackageHelper.Tests.csproj`. PASS when every test passes.
 
 Record each as PASS or FAIL with the exact arguments and reply.
+
+## PackageRestore
+
+This runs `dotnet restore`, so it needs network access to NuGet unless the packages are cached.
+
+- `PackageRestore` (root = this repo): PASS when `ok` is true and `exit_code` is 0.
+- `PackageRestore` (root = a folder that does not exist): PASS when `ok` is false and `error` names the folder.
+- `PackageRestore` (root = a folder with no solution): PASS when `ok` is false and `error` says no solution was found.
 
 ## PackageOutdated
 

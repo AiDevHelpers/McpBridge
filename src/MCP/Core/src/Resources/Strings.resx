@@ -12,7 +12,7 @@
   <data name="ClosingNotice" xml:space="preserve"><value>aidevtools is closing for an update{0}. Reconnect after the resume signal.</value></data>
   <data name="BookmarkNotFound" xml:space="preserve"><value>Bookmark '{0}' was not found.</value></data>
   <data name="BookmarkRefused" xml:space="preserve"><value>The IDE refused '{0}'.</value></data>
-  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind '{0}'.</value></data>
+  <data name="UnknownConfigKind" xml:space="preserve"><value>Unknown config kind '{0}'. Use RemoteDebugger, LaunchSettings, AppSettings, UserSettings or SolutionSettings.</value></data>
   <data name="DebuggingStarted" xml:space="preserve"><value>Debugging started in {0}</value></data>
   <data name="DebugNotStarted" xml:space="preserve"><value>The IDE did not start debugging.</value></data>
   <data name="ConditionsNotSupported" xml:space="preserve"><value>Conditions and hit counts are not supported by the IDE bridge; no breakpoint was set.</value></data>
@@ -69,14 +69,83 @@
   <data name="IdeAlreadyRunning" xml:space="preserve"><value>{0} is already running</value></data>
   <data name="ElevNotFound" xml:space="preserve"><value>elev.exe not found next to the MCP server ({0}).</value></data>
   <data name="ElevDidNotStart" xml:space="preserve"><value>elev.exe did not start.</value></data>
+  <data name="ElevTimedOut" xml:space="preserve"><value>elev.exe did not finish within the time limit.</value></data>
   <data name="ScriptHelperNeedsArgs" xml:space="preserve"><value>Error: runElevatedScript needs projectRoot and script.</value></data>
   <data name="ScriptHelperError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="SolutionFileMissing" xml:space="preserve"><value>Solution file not found.</value></data>
   <data name="PassSolutionPathNoInstance" xml:space="preserve"><value>Pass solutionPath: no single open instance to infer it from.</value></data>
   <data name="CouldNotReadTestsPane" xml:space="preserve"><value>Could not read the Tests output pane.</value></data>
   <data name="UnreadableIdeOutput" xml:space="preserve"><value>Unreadable output from the IDE.</value></data>
+  <data name="RepoSettingIgnored" xml:space="preserve"><value>Ignored the repo setting {0} in {1}: a repo file may not set it.</value></data>
+  <data name="RepoSettingsUnreadable" xml:space="preserve"><value>Could not read the repo settings file {0}: {1} The global settings are used.</value></data>
+  <data name="GlobalAllowAllIgnored" xml:space="preserve"><value>Ignored allowAll in the global settings: it can only be requested by a repo's .aidevtools/settings.json.</value></data>
+  <data name="RepoAllowlistUnapproved" xml:space="preserve"><value>The repo {0} lists {1} elevated script(s) you have not approved on this machine: {2}. Run "setup verify {0}" in an elevated shell to review and approve them.</value></data>
+  <data name="RepoElevationFound" xml:space="preserve"><value>The repo {0} has {1} project(s) that need administrator rights to run or debug: {2}. Run "elev repo-setup {0}" to choose which ones launch elevated.</value></data>
+  <data name="RepoSetupNeedsRepo" xml:space="preserve"><value>Error: repoPath must be a folder inside a git repo.</value></data>
+  <data name="RepoSetupUnknownAction" xml:space="preserve"><value>Error: action must be scan or status.</value></data>
+  <data name="RepoSetupNextStep" xml:space="preserve"><value>Nothing was changed. Ask the user which projects should launch elevated, then have them run: elev repo-setup {0}</value></data>
+  <data name="RepoSetupScanFailed" xml:space="preserve"><value>Error: the repo scan failed: {0}</value></data>
+  <data name="ScriptHungSilent" xml:space="preserve"><value>it printed nothing for {0} seconds and was stopped</value></data>
+  <data name="ScriptHungTimeout" xml:space="preserve"><value>it ran for the whole {0} second limit and was stopped</value></data>
+  <data name="ScriptRepeating" xml:space="preserve"><value>it has run {0} times in {1} minutes without finishing cleanly</value></data>
+  <data name="ScriptRunNeedsRepo" xml:space="preserve"><value>Error: repoPath must be a folder inside a git repo.</value></data>
+  <data name="ScriptRunOutsideRepo" xml:space="preserve"><value>Error: the script must be a file inside the repo.</value></data>
+  <data name="ScriptRunUnsupported" xml:space="preserve"><value>Error: {0}.</value></data>
+  <data name="ScriptRunMissingInterpreter" xml:space="preserve"><value>Error: {0} is needed to run this script but is not installed. {1}</value></data>
+  <data name="ScriptRunAdvice" xml:space="preserve"><value>This script looks stuck: {0}. Ask the user whether to run it in a visible terminal so they can see errors it does not report; if they agree, call script_run again with interactive set to true.</value></data>
+  <data name="ScriptRunTerminalNote" xml:space="preserve"><value>The {0} terminal type is not registered for this user. Ask them to run: elev terminals setup</value></data>
+  <data name="ScriptRunInteractiveUnavailable" xml:space="preserve"><value>Error: running in a visible terminal is not available in this server.</value></data>
+  <data name="IdeNeedsElevatedRelaunch" xml:space="preserve"><value>This solution needs administrator rights ({0}), but the Visual Studio instance (pid {1}) is not elevated. Ask the user. If they agree, call ide_launch_instance again with relaunchElevated true: it saves every document, closes the instance and starts it elevated (one UAC prompt).</value></data>
+  <data name="IdeUacDeclined" xml:space="preserve"><value>The elevated launch was cancelled at the UAC prompt.</value></data>
+  <data name="IdeKillElevatedDenied" xml:space="preserve"><value>The instance is elevated and cannot be closed from this non-elevated server. Ask the user to close it.</value></data>
+  <data name="IdeDebugNeedsElevated" xml:space="preserve"><value>Debugging this solution needs administrator rights ({0}), but the Visual Studio instance (pid {1}) is not elevated. Ask the user. If they agree, call ide_launch_instance with relaunchElevated true, then start debugging again.</value></data>
+  <data name="InstallUnknownTool" xml:space="preserve"><value>Error: '{0}' is not a tool this helper installs. It installs only: {1}.</value></data>
+  <data name="InstallNoWinget" xml:space="preserve"><value>Error: winget is not installed, so nothing can be installed. Get App Installer from the Microsoft Store (aka.ms/getwinget).</value></data>
+  <data name="InstallWslInstructions" xml:space="preserve"><value>WSL is not installed by this helper because it needs a restart. In an elevated terminal run: wsl --install</value></data>
+  <data name="InstallAlreadyPresent" xml:space="preserve"><value>{0} is already installed at {1}. No install is needed; do not offer one.</value></data>
+  <data name="InstallPlanned" xml:space="preserve"><value>Ask the user whether to install {0}. Show them the command. Only if they say yes, call tool_install with action confirm and this token (it works once, for 15 minutes). If they say no, call tool_install with action decline.</value></data>
+  <data name="InstallNeedsAdmin" xml:space="preserve"><value>It installs machine-wide, so Windows may ask for administrator rights (one prompt when the elevated helper starts).</value></data>
+  <data name="InstallUnknownToken" xml:space="preserve"><value>Error: unknown, used or expired token. Plan the install again.</value></data>
+  <data name="InstallDeclined" xml:space="preserve"><value>Noted. {0} will not be offered again.</value></data>
+  <data name="InstallUnknownAction" xml:space="preserve"><value>Error: action must be plan, confirm or decline.</value></data>
+  <data name="InstallOffer" xml:space="preserve"><value>{0} is not installed. If the user wants it, call tool_install with action plan and tool {1}.</value></data>
+  <data name="InstallFailed" xml:space="preserve"><value>The install did not finish (exit {0}): {1}</value></data>
+  <data name="InstallHelperMissing" xml:space="preserve"><value>The elevated installer is not set up. Ask the user to run, in an elevated console: setup tools</value></data>
+  <data name="InstallDone" xml:space="preserve"><value>{0} was installed. Run the script again; the interpreter is found from the usual install folders, not from this server's PATH.</value></data>
+  <data name="ScriptRunElevatedPowerShellOnly" xml:space="preserve"><value>Error: an elevated visible run is only available for PowerShell scripts, because the broker runs pwsh.</value></data>
+  <data name="RepoSetupNeedsDecisions" xml:space="preserve"><value>Error: action apply needs decisions, a JSON object with projects, declineProjects, protectedBranches, requiredChecks, declineRules and mode.</value></data>
+  <data name="RepoSetupNothingChanged" xml:space="preserve"><value>Nothing was changed.</value></data>
   <data name="NoFinishedTestRunInPane" xml:space="preserve"><value>No finished test run found in the Tests output pane.</value></data>
+  <data name="TestRunStillRunning" xml:space="preserve"><value>The test run has started but has not finished yet. Wait, then call ide_get_test_summary again.</value></data>
   <data name="VsWhereNotFound" xml:space="preserve"><value>vswhere.exe was not found at {0}. Visual Studio may not be installed.</value></data>
   <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
+  <data name="NoTestProjects" xml:space="preserve"><value>No test project found under {0}.</value></data>
+  <data name="WatchExitedEarly" xml:space="preserve"><value>dotnet watch test exited at once with code {0}.</value></data>
   <data name="NoSolutionIn" xml:space="preserve"><value>No .slnx or .sln file in {0}.</value></data>
+  <data name="ElevatedOpenFailed" xml:space="preserve"><value>The elevated open failed (exit {0}): {1}</value></data>
+  <data name="OpenBridgeNotReady" xml:space="preserve"><value>devenv started, but the bridge did not answer in time. Check ide_list_instances and ide_bridge_health before retrying; do not open the solution again.</value></data>
+  <data name="TestHostTokenUnknown" xml:space="preserve"><value>Unknown or already used token. List the test hosts again.</value></data>
+  <data name="TestHostGone" xml:space="preserve"><value>Already exited, or its process id was reused by another process.</value></data>
+  <data name="SequenceChoice" xml:space="preserve"><value>Give either action or sequence, not both and not neither.</value></data>
+  <data name="ResetNotFound" xml:space="preserve"><value>No running Visual Studio instance has process id {0}.</value></data>
+  <data name="ResetResponsive" xml:space="preserve"><value>Instance {0} is responsive. Nothing was reset.</value></data>
+  <data name="ResetNeedsConfirmation" xml:space="preserve"><value>Instance {0} is not answering its UI thread. Resetting it closes Visual Studio without saving, so unsaved edits can be lost. Ask the user; only if they agree, call again with confirm true.</value></data>
+  <data name="ResetNotDevenv" xml:space="preserve"><value>Process {0} is {1}, not devenv. Nothing was reset.</value></data>
+  <data name="DiagPurposeDump" xml:space="preserve"><value>collect and analyze memory dumps of a .NET process</value></data>
+  <data name="DiagPurposeStack" xml:space="preserve"><value>print the managed stacks of every thread in a live process</value></data>
+  <data name="DiagPurposeCounters" xml:space="preserve"><value>live performance counters (CPU, GC, exceptions)</value></data>
+  <data name="DiagPurposeGcdump" xml:space="preserve"><value>GC heap snapshot of a live process</value></data>
+  <data name="DiagPurposeTrace" xml:space="preserve"><value>profiling trace of a running process</value></data>
+  <data name="DiagPurposeSymbol" xml:space="preserve"><value>download symbols for a dump or binary</value></data>
+  <data name="DiagSymbolsNeedPath" xml:space="preserve"><value>symbols needs an absolute path to the dump or binary.</value></data>
+  <data name="DiagFileNotFound" xml:space="preserve"><value>File not found: {0}</value></data>
+  <data name="DiagUnknownAction" xml:space="preserve"><value>Unknown action '{0}'. Use processes, stack, dump, gcdump, counters, trace or symbols.</value></data>
+  <data name="DiagNotInstalled" xml:space="preserve"><value>{0} is not installed. Install it: dotnet tool install --global {1}</value></data>
+  <data name="DiagCouldNotStart" xml:space="preserve"><value>{0} could not start: {1}</value></data>
+  <data name="DiagTimedOut" xml:space="preserve"><value>{0} timed out.</value></data>
+  <data name="DiagExitCode" xml:space="preserve"><value>{0} exited with code {1}.</value></data>
+  <data name="DiagPidInvalid" xml:space="preserve"><value>pid must be a process id greater than 0 (see the processes action).</value></data>
+  <data name="DiagSecondsRange" xml:space="preserve"><value>seconds must be between 1 and {0}.</value></data>
+  <data name="DiagInstallCommand" xml:space="preserve"><value>dotnet tool install --global {0}</value></data>
+  <data name="ResetNext" xml:space="preserve"><value>Relaunch the solution withide_open_solution.</value></data>
 </root>

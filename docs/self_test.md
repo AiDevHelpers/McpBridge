@@ -10,7 +10,7 @@ Use this checklist to exercise the standalone `AiDevHelpers.MCP` server and a li
 - `IdeGetBuildDiagnostics` — read the current Error List.
 - `IdeListConfigurations` — read the solution configurations.
 - `IdeGetDebugState`, `IdeListBreakpoints`, and `IdeListWatches` — read the debugger state.
-- `IdeGetTestResults` — read the newest TRX result for a supplied solution path.
+- `IdeGetTestResults` — read the newest test result: the Tests pane after a Test Explorer run (names and messages of failures), or the newest TRX in DotnetTest mode.
 - `IdeGetLocals` — inspect locals only when the debugger is already stopped at a breakpoint.
 
 Record each result as PASS, FAIL, or NOT RUN with the exact tool arguments and any error message.
@@ -55,3 +55,16 @@ There is an automated negative test for a nonexistent solution path, but no auto
 5. Close only the instance created for this check after confirming its documents are saved. Do not close an instance that was already open before the check.
 
 Record the full argument, result, PID, and confirmed loaded solution path. A successful process launch alone does not pass the test; the bridge registry and health response must identify the requested solution. The tool invokes Visual Studio with only the full solution path. It does not pass `/edit`, which opens the file in an already-running instance instead of starting a new one. This check also validates that launch behavior in the installed Visual Studio version.
+
+## Repo setup, script and install checks
+
+Run these on a scratch git repo, not on a user's active work. None of them installs software or starts an elevated process unless a step says so.
+
+1. `repo_setup` with `action: scan` on a repo that has a project whose `app.manifest` asks for `requireAdministrator`. Expect `pendingProjects` to name it, a `live` block (`checked: false` when `gh` is missing, never "no protections"), and that no `.aidevtools` folder was created.
+2. In a console run `elev repo-setup <repo>`. Answer yes to the project and no to "always elevated". Expect `.aidevtools/elevation.json` listing it, `.aidevtools/user.json` gitignored, and `repo_setup` with `action: status` showing it as listed with nothing pending.
+3. With `.aidevtools/repo-rules.json` naming `main` as protected, call `git_plan` with `action: commit` on `main`. Expect a refusal with a request id and no token. Run `elev rules override <repo> <id>`, plan again, and expect a token that works once.
+4. `script_run` on a `.ps1` that exits 1, three times in 10 minutes. Expect `advice` on the third. With the user's agreement, call it again with `interactive: true` and expect a visible tab and the tab output back.
+5. `script_run` on a `.py` or `.sh` with its interpreter missing. Expect an install hint, a `tool_install` offer, and nothing installed.
+6. `terminal_session` with `action: types`, and `elev terminals scan`. Expect the same types; run `elev terminals setup` and answer yes to one type, then check the Windows Terminal `settings.json` keeps its comments and has a `.bak`.
+7. `tool_install` with `action: plan` for `node`. Expect the exact winget command and a token, and nothing installed. Do not confirm unless installing Node is intended and `elev tools` (elevated) was run.
+8. Elevated launch (needs a UAC answer): with the repo's `elevation.json` listing a project of a scratch solution, call `IdeLaunchInstance` for it. Expect a UAC prompt, `elevated: true`, and the bridge answering `IdeBridgeHealth`. Then open the same solution non-elevated, call `IdeStartDebugging`, and expect the refusal naming the project. Record whether the elevated instance reads as elevated; this confirms the token check in `ProcessElevation`.

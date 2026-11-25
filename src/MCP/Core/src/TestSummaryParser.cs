@@ -24,7 +24,9 @@ internal static class TestSummaryParser
     public static string ParseLatest(string searchOutputJson)
     {
         string? line = null;
+        var running = false;
         var failures = new List<string>();
+        var details = new List<object>();
         try
         {
             using var doc = JsonDocument.Parse(searchOutputJson);
@@ -39,6 +41,7 @@ internal static class TestSummaryParser
             {
                 var all = lines.EnumerateArray().Select(l => l.GetString() ?? string.Empty).ToList();
                 var last = all.FindLastIndex(l => SummaryLine.IsMatch(l));
+                running = last < 0 && all.Any(l => l.Contains("Starting:", StringComparison.Ordinal) || l.Contains("VSTest Adapter", StringComparison.Ordinal));
                 if (last >= 0)
                 {
                     line = all[last];
@@ -51,6 +54,7 @@ internal static class TestSummaryParser
                         if (fail.Success && !failures.Contains(fail.Groups["name"].Value))
                         {
                             failures.Add(fail.Groups["name"].Value);
+                            details.Add(new { name = fail.Groups["name"].Value, message = MessageAfter(all, i + 1, last) });
                         }
                     }
                 }
@@ -63,7 +67,10 @@ internal static class TestSummaryParser
 
         if (line is null)
         {
-            return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("NoFinishedTestRunInPane") });
+            // A run that has started (adapter or "Starting:" lines) but has no summary yet is still running, not missing.
+            return running
+                ? JsonSerializer.Serialize(new { ok = false, running = true, error = Strings.Get("TestRunStillRunning") })
+                : JsonSerializer.Serialize(new { ok = false, running = false, error = Strings.Get("NoFinishedTestRunInPane") });
         }
 
         var m = SummaryLine.Match(line);
@@ -76,7 +83,33 @@ internal static class TestSummaryParser
             failed = int.Parse(m.Groups[3].Value),
             skipped = int.Parse(m.Groups[4].Value),
             failures,
+            failure_details = details,
             line = line.Trim('=', ' '),
         });
     }
+
+    private const int MaxMessageLines = 8;
+
+    /// <summary>The runner lines after a [FAIL] line, up to the next [FAIL] line or the summary, without the "[xUnit.net time]" prefix.</summary>
+    private static string MessageAfter(List<string> lines, int from, int end)
+    {
+        var message = new List<string>();
+        for (var i = from; i < end && message.Count < MaxMessageLines; i++)
+        {
+            if (FailLine.IsMatch(lines[i]))
+            {
+                break;
+            }
+
+            var text = XunitPrefix.Replace(lines[i], string.Empty).Trim();
+            if (text.Length > 0)
+            {
+                message.Add(text);
+            }
+        }
+
+        return string.Join('\n', message);
+    }
+
+    private static readonly Regex XunitPrefix = new(@"^\s*\[xUnit\.net [\d:.]+\]\s*", RegexOptions.CultureInvariant);
 }

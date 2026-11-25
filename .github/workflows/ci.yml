@@ -34,8 +34,33 @@ jobs:
           & $msbuild AiDevHelpers.slnx /t:Build /p:Configuration=Release /m /v:minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Install procdump for crash dumps
+        run: choco install procdump --yes --no-progress
+
+      - name: Point the Blame collector at procdump
+        shell: pwsh
+        run: |
+          # Chocolatey's PATH change is not visible to later steps, so the Blame collector cannot find procdump64.exe.
+          $exe = (Get-Command procdump64.exe -ErrorAction SilentlyContinue).Source
+          if (-not $exe) {
+            $exe = Get-ChildItem 'C:\ProgramData\chocolatey' -Recurse -Filter procdump64.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $exe) { throw 'procdump64.exe was not found after install.' }
+          "PROCDUMP_PATH=$(Split-Path $exe)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Output "procdump at $exe"
+
       - name: Test
-        run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm"
+        run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm" --blame-crash --blame-crash-dump-type full
+
+      - name: Upload crash evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-crash-evidence
+          path: |
+            **/TestResults/**
+            **/*.dmp
+          if-no-files-found: ignore
 
       - name: Install VSSDK
         shell: pwsh
@@ -116,7 +141,8 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           dotnet pack src/Bridge/src/AiDevHelpers.Bridge.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj -c Release -o artifacts -p:Version="$VERSION"
-          # Helpers ship as their own packages. LogHelper first: ErrorHelper depends on it.
+          # Helpers ship as their own packages. Common first: four helpers depend on it. LogHelper next: ErrorHelper depends on it.
+          dotnet pack src/Common/src/AiDevHelpers.Common.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/LogHelper/src/AiDevHelpers.Helpers.LogHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/ConfigHelper/src/AiDevHelpers.Helpers.ConfigHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/ErrorHelper/src/AiDevHelpers.Helpers.ErrorHelper.csproj -c Release -o artifacts -p:Version="$VERSION"

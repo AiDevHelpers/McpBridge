@@ -60,7 +60,7 @@ public static class GatePlanner
                 continue;
             }
 
-            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var parts = SplitArguments(line);
             var allowFailure = parts[0] == "!";
             if (allowFailure)
             {
@@ -78,6 +78,44 @@ public static class GatePlanner
         return steps;
     }
 
+    /// <summary>Splits a gate line on spaces. Text inside double quotes stays one argument and the quotes are dropped.</summary>
+    private static string[] SplitArguments(string line)
+    {
+        var parts = new List<string>();
+        var current = new System.Text.StringBuilder();
+        var inQuotes = false;
+        var started = false;
+        foreach (var c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+                started = true;
+            }
+            else if (c == ' ' && !inQuotes)
+            {
+                if (started)
+                {
+                    parts.Add(current.ToString());
+                    current.Clear();
+                    started = false;
+                }
+            }
+            else
+            {
+                current.Append(c);
+                started = true;
+            }
+        }
+
+        if (started)
+        {
+            parts.Add(current.ToString());
+        }
+
+        return [.. parts];
+    }
+
     /// <summary>Stack detection from root files. Solutions, package.json, Python, Go and Cargo.</summary>
     public static IReadOnlyList<GateStep> DetectStack(string root)
     {
@@ -87,9 +125,15 @@ public static class GatePlanner
         if (solution is not null)
         {
             var sln = Path.GetFileName(solution);
+            // Clean, then build with warnings as errors so every notice, warning and error shows up and fails the gate.
+            // Then analyzers (lint), format all code, rebuild because format may have changed files, and run all tests.
+            // Visual Studio's Code Cleanup profile is IDE-only; it runs through the IDE tools, not this list.
             steps.Add(new GateStep("dotnet outdated", "dotnet", ["list", sln, "package", "--outdated"], AllowFailure: true));
-            steps.Add(new GateStep("dotnet clean", "dotnet", ["clean", sln]));
-            steps.Add(new GateStep("dotnet build", "dotnet", ["build", sln, "-c", "Release"]));
+            steps.Add(new GateStep("dotnet clean", "dotnet", ["clean", sln, "-c", "Release"]));
+            steps.Add(new GateStep("dotnet build", "dotnet", ["build", sln, "-c", "Release", "--no-incremental", "-warnaserror"]));
+            steps.Add(new GateStep("dotnet lint", "dotnet", ["format", "analyzers", sln, "--verify-no-changes"]));
+            steps.Add(new GateStep("dotnet format", "dotnet", ["format", sln]));
+            steps.Add(new GateStep("dotnet rebuild", "dotnet", ["build", sln, "-c", "Release", "--no-incremental", "-warnaserror"]));
             steps.Add(new GateStep("dotnet test", "dotnet", ["test", sln, "-c", "Release"]));
         }
 
@@ -143,6 +187,8 @@ public static class GatePlanner
 /// <summary>Runs the steps in order and stops at the first failure. Later steps are reported as skipped.</summary>
 public static class GateRunner
 {
+    private static bool IsBuild(GateStep step) => step.Arguments.Contains("build", StringComparer.OrdinalIgnoreCase);
+
     public static async Task<IReadOnlyList<GateStepResult>> RunAsync(IReadOnlyList<GateStep> steps, string root, IGateRunner runner, CancellationToken ct = default)
     {
         var results = new List<GateStepResult>();
@@ -156,7 +202,8 @@ public static class GateRunner
                 continue;
             }
 
-            var (code, output) = await runner.RunAsync(step, root, ct);
+            var (code, rawOutput) = await runner.RunAsync(step, root, ct);
+            var output = IsBuild(step) ? BuildSummary.Of(rawOutput) + rawOutput : rawOutput;
             var passed = code == 0 || step.AllowFailure;
             results.Add(new GateStepResult(step.Name, command.Trim(), passed, Skipped: false, code, output));
             if (!passed)
@@ -166,5 +213,32 @@ public static class GateRunner
         }
 
         return results;
+    }
+}
+
+/// <summary>Counts the errors and warnings a build printed, per project, so the gate shows them grouped by project.</summary>
+internal static class BuildSummary
+{
+    private static readonly System.Text.RegularExpressions.Regex Diagnostic = new(
+        @"^(?<file>.*?)\(\d+(?:,\d+)?\): (?<kind>error|warning) (?<code>[A-Z]+\d+):.*\[(?<project>[^\]]+)\]\s*$",
+        System.Text.RegularExpressions.RegexOptions.Multiline);
+
+    public static string Of(string output)
+    {
+        // MSBuild repeats each diagnostic (inline, then in the summary), so count each file, line, code and project once.
+        var groups = Diagnostic.Matches(output)
+            .Select(m => (Project: m.Groups["project"].Value, Kind: m.Groups["kind"].Value, Key: m.Value))
+            .DistinctBy(d => d.Key)
+            .Select(d => (d.Project, d.Kind))
+            .GroupBy(d => d.Project)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => "  " + Strings.Format("BuildCountLine", Path.GetFileName(g.Key), g.Count(d => d.Kind == "error"), g.Count(d => d.Kind == "warning")))
+            .ToList();
+        if (groups.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        return string.Join(Environment.NewLine, [Strings.Get("BuildDiagnosticsHeader"), .. groups]) + Environment.NewLine;
     }
 }

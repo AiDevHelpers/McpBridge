@@ -69,6 +69,9 @@ public static class AffectedTests
         return Sorted(testProjects.Where(affected.Contains));
     }
 
+    /// <summary>Full paths of every test project under <paramref name="root"/>, sorted.</summary>
+    public static IReadOnlyList<string> AllTestProjects(string root) => Find(root, [BuildWideFiles[0]]);
+
     private static IReadOnlyList<string> Sorted(IEnumerable<string> paths) =>
         paths.Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
 

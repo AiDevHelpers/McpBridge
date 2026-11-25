@@ -87,6 +87,9 @@ public sealed class IdeInstanceRouterTests : IDisposable
         Assert.Same(call, finished);
         using var json = JsonDocument.Parse(await call);
         Assert.False(json.RootElement.GetProperty("ok").GetBoolean());
-        Assert.Contains("No reply", json.RootElement.GetProperty("error").GetString());
+        // Either error is correct: the pipe refuses the connect (a race with the test's own server), or the
+        // connect succeeds and no reply comes. The point of the test is that the call returns an error.
+        var error = json.RootElement.GetProperty("error").GetString() ?? string.Empty;
+        Assert.True(error.Contains("No reply") || error.Contains("Could not reach"), error);
     }
 }

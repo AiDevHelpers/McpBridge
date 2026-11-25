@@ -1,6 +1,7 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Text;
+using AiDevHelpers.Common.Processes;
+using AiDevHelpers.MCP.Core.Services;
 using ModelContextProtocol.Server;
 
 namespace AiDevHelpers.MCP.Core.Tools;
@@ -14,12 +15,69 @@ public interface IElevRunner
     Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct);
 }
 
-/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
-internal sealed class ProcessElevRunner : IElevRunner
+/// <summary>
+/// Asks the broker, through elev.exe, which of a repo's allowlisted files this user has not approved. Read only; exit 0 means all are
+/// approved, 1 some are not (the output is JSON), 2 the broker did not answer.
+/// </summary>
+public interface IElevVerifier
 {
+    Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct);
+}
+
+/// <summary>
+/// Scans a repo for projects that need elevation through <c>elev --repo-scan</c>. Local and read only: it needs no broker and
+/// writes nothing. The output is the scan as JSON.
+/// </summary>
+public interface IElevScanner
+{
+    Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct);
+
+    /// <summary>Applies the person's decisions (JSON) through elev repo-apply. The JSON must hold only names the scan reported.</summary>
+    Task<ElevRunResult> ApplyAsync(string repoRoot, string decisionsJson, CancellationToken ct);
+}
+
+/// <summary>
+/// Runs an approved script elevated in a visible console window through the broker, so the person sees its prompts and errors. The same
+/// allowlist, fingerprint and approval checks as <see cref="IElevRunner"/> apply; the transcript comes back as the output.
+/// </summary>
+public interface IElevVisibleRunner
+{
+    Task<ElevRunResult> RunVisibleAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct);
+}
+
+/// <summary>
+/// Runs the installer script the admin approved with "setup tools", through the broker, for one tool name from the built-in table.
+/// The name is checked again by elev.exe and by the script itself; nothing the caller supplies reaches winget except that name.
+/// </summary>
+public interface IElevInstaller
+{
+    Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct);
+}
+
+/// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
+internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScanner, IElevInstaller, IElevVisibleRunner
+{
+    public Task<ElevRunResult> RunVisibleAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
+        RunElevAsync(["run", "--visible", projectRoot, script, .. args], ct);
+
+    public Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct) =>
+        RunElevAsync(["install-tool", toolName], ct);
+
+    public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
+        RunElevAsync(["repo-scan", repoRoot], ct);
+
+    public Task<ElevRunResult> ApplyAsync(string repoRoot, string decisionsJson, CancellationToken ct) =>
+        RunElevAsync(["repo-apply", repoRoot, decisionsJson], ct);
+
     private static readonly TimeSpan Limit = TimeSpan.FromMinutes(10);
 
-    public async Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct)
+    public Task<ElevRunResult> RunAsync(string projectRoot, string script, IReadOnlyList<string> args, CancellationToken ct) =>
+        RunElevAsync(["run", projectRoot, script, .. args], ct);
+
+    public Task<ElevRunResult> VerifyAsync(string projectRoot, CancellationToken ct) =>
+        RunElevAsync(["verify", projectRoot], ct);
+
+    private static async Task<ElevRunResult> RunElevAsync(IReadOnlyList<string> arguments, CancellationToken ct)
     {
         var exe = Path.Combine(AppContext.BaseDirectory, "elev.exe");
         if (!File.Exists(exe))
@@ -27,40 +85,18 @@ internal sealed class ProcessElevRunner : IElevRunner
             throw new InvalidOperationException(Strings.Format("ElevNotFound", exe));
         }
 
-        var info = new ProcessStartInfo(exe)
+        var result = await CommandRunner.RunAsync(new CommandRequest { FileName = exe, Arguments = arguments, Timeout = Limit }, ct);
+        if (!result.Launched)
         {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        info.ArgumentList.Add(projectRoot);
-        info.ArgumentList.Add(script);
-        foreach (var arg in args)
-        {
-            info.ArgumentList.Add(arg);
+            throw new InvalidOperationException(Strings.Get("ElevDidNotStart"));
         }
 
-        using var process = Process.Start(info)
-            ?? throw new InvalidOperationException(Strings.Get("ElevDidNotStart"));
-
-        var stdout = process.StandardOutput.ReadToEndAsync(ct);
-        var stderr = process.StandardError.ReadToEndAsync(ct);
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(Limit);
-        try
+        if (result.TimedOut)
         {
-            await process.WaitForExitAsync(timeout.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            process.Kill(entireProcessTree: true);
-            throw;
+            throw new OperationCanceledException(Strings.Get("ElevTimedOut"));
         }
 
-        var output = await stdout + await stderr;
-        return new ElevRunResult(process.ExitCode, output);
+        return new ElevRunResult(result.ExitCode, result.StdOut + result.StdErr);
     }
 }
 
@@ -72,10 +108,14 @@ internal sealed class ProcessElevRunner : IElevRunner
 internal sealed class ScriptHelperTools
 {
     private readonly IElevRunner _runner;
+    private readonly ScriptRunTracker? _tracker;
+    private readonly ScriptWatchOptions _watch;
 
-    public ScriptHelperTools(IElevRunner runner)
+    public ScriptHelperTools(IElevRunner runner, ScriptRunTracker? tracker = null, Microsoft.Extensions.Options.IOptions<ScriptWatchOptions>? watch = null)
     {
         _runner = runner;
+        _tracker = tracker;
+        _watch = watch?.Value ?? new ScriptWatchOptions();
     }
 
     [McpServerTool]
@@ -100,6 +140,18 @@ internal sealed class ScriptHelperTools
             var text = new StringBuilder();
             text.Append("exit ").Append(result.ExitCode).AppendLine();
             text.Append(result.Output);
+
+            // An elevated run feeds the same tracker as script_run, so a script that keeps failing is noticed here too.
+            if (_tracker is not null)
+            {
+                var key = ScriptRunTracker.Key(projectRoot, script, args ?? Array.Empty<string>());
+                _tracker.Record(key, new ScriptRunOutcome(result.ExitCode, TimedOut: false, Silent: false));
+                if (ScriptRunService.AdviceFor(_tracker.Assess(key, _watch)) is { } advice)
+                {
+                    text.AppendLine().Append(advice);
+                }
+            }
+
             return text.ToString();
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

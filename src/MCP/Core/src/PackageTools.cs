@@ -44,5 +44,34 @@ internal sealed class PackageTools
         }
     }
 
+    [McpServerTool]
+    [Description("Restore the NuGet packages of the solution at a folder (dotnet restore). Use it before a build, a format check or " +
+                 "PackageOutdated when packages may be missing. Edits no project file. Returns ok, the exit code and the tail of the output.")]
+    public static async Task<string> PackageRestore(
+        [Description("Folder that holds the .slnx or .sln")] string root,
+        CancellationToken ct = default)
+    {
+        if (!Directory.Exists(root))
+        {
+            return Json(new { ok = false, error = Strings.Format("FolderNotFound", root) });
+        }
+
+        var solution = Directory.EnumerateFiles(root, "*.slnx").Concat(Directory.EnumerateFiles(root, "*.sln")).FirstOrDefault();
+        if (solution is null)
+        {
+            return Json(new { ok = false, error = Strings.Format("NoSolutionIn", root) });
+        }
+
+        try
+        {
+            var result = await new PackageRestorer(new ProcessPackageRunner()).RestoreAsync(root, Path.GetFileName(solution), ct);
+            return Json(new { ok = result.Ok, exit_code = result.ExitCode, output = result.Output });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

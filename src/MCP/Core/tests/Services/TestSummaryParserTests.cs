@@ -66,6 +66,29 @@ public class TestSummaryParserTests
     }
 
     [Fact]
+    public void ParseLatest_GivesEachFailureItsMessage()
+    {
+        const string raw = """
+            {"ok":true,"result":{"lines":[
+              "[xUnit.net 00:00:02.20]     My.Suite.First [FAIL]",
+              "[xUnit.net 00:00:02.21]       Assert.Equal() Failure: Values differ",
+              "[xUnit.net 00:00:02.22]       Expected: 6",
+              "[xUnit.net 00:00:02.23]       Actual:   5",
+              "[xUnit.net 00:00:02.30]     My.Suite.Second [FAIL]",
+              "========== Test run finished: 10 Tests (8 Passed, 2 Failed, 0 Skipped) run in 1 min =========="
+            ]}}
+            """;
+
+        using var json = JsonDocument.Parse(TestSummaryParser.ParseLatest(raw));
+
+        var details = json.RootElement.GetProperty("failure_details").EnumerateArray().ToList();
+        Assert.Equal(2, details.Count);
+        Assert.Equal("My.Suite.First", details[0].GetProperty("name").GetString());
+        Assert.Equal("Assert.Equal() Failure: Values differ\nExpected: 6\nActual:   5", details[0].GetProperty("message").GetString());
+        Assert.Equal(string.Empty, details[1].GetProperty("message").GetString());
+    }
+
+    [Fact]
     public void ParseLatest_NoFailLines_GivesAnEmptyFailureList()
     {
         const string raw = """

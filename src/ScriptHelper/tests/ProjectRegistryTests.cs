@@ -122,6 +122,16 @@ public sealed class ProjectRegistryTests : IDisposable
     }
 
     [Fact]
+    public void Register_accepts_a_ReFS_volume_such_as_a_Dev_Drive()
+    {
+        _volumes.FileSystemName = "ReFS";
+
+        var r = Registry().Register(NewRoot("repo"));
+
+        Assert.True(r.Ok, r.Reason);
+    }
+
+    [Fact]
     public void Register_refuses_an_unknown_volume_type()
     {
         _volumes.FileSystemName = null;

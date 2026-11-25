@@ -14,8 +14,16 @@ namespace AiDevHelpers.MCP.Core.Tools;
 ///     (<c>ide</c>, <c>instance_pid</c>, <c>solution_path</c>), so the caller always knows what it acted on.
 /// </summary>
 [McpServerToolType]
-internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
+internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? elevRunner = null)
 {
+    private readonly IdeSolutionOpener _opener = new(
+        new DevenvSolutionLauncher(elevRunner),
+        VsInstanceRegistry.FindBySolution,
+        IdeSolutionOpener.PipeAnswers,
+        (delay, ct) => Task.Delay(delay, ct),
+        () => DateTime.UtcNow,
+        TimeSpan.FromSeconds(60));
+
     // Resolves the solution a test-result call refers to: the given path, or the only open instance's solution.
     private static string? ResolveSolution(string? solutionPath)
     {
@@ -27,6 +35,10 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         var instances = VsInstanceRegistry.ListRunning();
         return instances.Count == 1 ? instances[0].SolutionPath : null;
     }
+
+    // The test run mode in effect for a solution: the repo's .aidevtools/settings.json wins over the global setting.
+    private string EffectiveTestRunMode(string? solutionPath) =>
+        IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
 
     [McpServerTool]
     [Description("List running IDE instances (currently Visual Studio) with their process id and the solution each has open.")]
@@ -56,22 +68,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
     [McpServerTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
-    public static string IdeOpenSolution(
-        [Description("Full path of the .sln")] string solutionPath)
-    {
-        if (!File.Exists(solutionPath))
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = Strings.Get("SolutionFileMissing") });
-        }
-
-        var error = DevenvLauncher.Open(solutionPath);
-        if (error is not null)
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
-        }
-
-        return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath });
-    }
+    public Task<string> IdeOpenSolution(
+        [Description("Full path of the .sln")] string solutionPath,
+        CancellationToken ct = default) => _opener.OpenAsync(solutionPath, ct);
 
     [McpServerTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
@@ -80,7 +79,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
+        DebugElevationGuard.Check(solutionPath, ide, instancePid) is { } refusal
+            ? Task.FromResult(System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = refusal }))
+            : IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Stop debugging in an IDE instance. Pass solutionPath when several instances are open.")]
@@ -94,14 +95,25 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     [McpServerTool]
     [Description("Run all tests in the solution. The server setting IdeTestRunMode picks the method: 'TestExplorer' " +
                  "(default) triggers Test Explorer in the IDE; 'DotnetTest' runs dotnet test with a TRX file. " +
-                 "Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome.")]
+                 "Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome. " +
+                 "Pass project (a .csproj path, relative to the solution or absolute) to run only that project; it always uses dotnet test, " +
+                 "so it can run while a whole-solution Test Explorer run is going.")]
     public Task<string> IdeRunTests(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        [Description("Optional: one test project (.csproj) to run instead of the whole solution. Uses dotnet test.")] string? project = null,
         CancellationToken ct = default)
     {
-        if (IdeTestRunService.NormalizeMode(options.Value.IdeTestRunMode) == IdeTestRunService.DotnetTestMode)
+        if (project is not null)
+        {
+            var solution = ResolveSolution(solutionPath);
+            return solution is null
+                ? Task.FromResult(JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") }))
+                : IdeTestRunService.RunDotnetTestAsync(solution, ct, project);
+        }
+
+        if (EffectiveTestRunMode(solutionPath) == IdeTestRunService.DotnetTestMode)
         {
             var solution = ResolveSolution(solutionPath);
             return solution is null
@@ -109,15 +121,87 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        return RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
     }
 
     [McpServerTool]
-    [Description("Get the outcome of the newest test run for the solution: counts and failure messages from its TRX file. " +
-                 "Covers runs from IdeRunTests in either mode, and TRX files written by other test runs in the solution's TestResults folder.")]
-    public string IdeGetTestResults(
-        [Description("Optional: full path of the solution to read results for")] string? solutionPath = null)
+    [Description("Format every C# file of the solution with the IDE's Format Document command, saving each one. Opens each file.")]
+    public Task<string> IdeFormatSolution(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("formatSolution", new { }, solutionPath, ct, ide, instancePid);
+
+    // Test Explorer refuses a run while it is still busy. Wait once on this thread and try again; the IDE never sleeps.
+    private static async Task<string> RunTestExplorerWithRetryAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
     {
+        var first = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        if (!IsTestExplorerRefusal(first))
+        {
+            return first;
+        }
+
+        await Task.Delay(3000, ct);
+        var second = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        if (!IsTestExplorerRefusal(second))
+        {
+            return second;
+        }
+
+        using var doc = JsonDocument.Parse(second);
+        var hresult = doc.RootElement.TryGetProperty("result", out var result) && result.TryGetProperty("hresult", out var h) ? h.GetInt32() : 0;
+        return JsonSerializer.Serialize(new { ok = false, attempts = 2, error = Strings.Format("TestExplorerRefusedTwice", hresult) });
+    }
+
+    private static bool IsTestExplorerRefusal(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.True
+            && doc.RootElement.TryGetProperty("result", out var result)
+            && result.ValueKind == JsonValueKind.Object
+            && result.TryGetProperty("refused", out var refused) && refused.ValueKind == JsonValueKind.True;
+    }
+
+    [McpServerTool]
+    [Description("Go to the definition of the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. Moves the IDE's active document and caret. Returns the IDE state, not the target location. Visual Studio only.")]
+    public Task<string> IdeGoToDefinition(
+        [Description("Full path of the file")] string file,
+        [Description("1-based line")] int line,
+        [Description("Optional: 1-based column of the symbol")] int column = 1,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("goToDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Find all references to the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. The results open in the IDE's Find All References window, which this tool does not read.")]
+    public Task<string> IdeFindAllReferences(
+        [Description("Full path of the file")] string file,
+        [Description("1-based line")] int line,
+        [Description("Optional: 1-based column of the symbol")] int column = 1,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("findAllReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
+                 "counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, " +
+                 "which also covers TRX files written by other test runs in the solution's TestResults folder.")]
+    public async Task<string> IdeGetTestResults(
+        [Description("Optional: full path of the solution to read results for")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open (TestExplorer mode).")] string? ide = null,
+        [Description("Optional: process id of the instance to read (TestExplorer mode).")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        if (EffectiveTestRunMode(solutionPath) != IdeTestRunService.DotnetTestMode)
+        {
+            return await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+        }
+
         var solution = ResolveSolution(solutionPath);
         return solution is null
             ? JsonSerializer.Serialize(new { ok = false, error = Strings.Get("PassSolutionPathNoInstance") })
@@ -135,7 +219,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
     {
         var raw = await IdeInstanceRouter.CallAsync(
             "searchOutput",
-            new { pattern = "Test run finished: \\d+ Tests|\\[FAIL\\]", pane = "Tests" },
+            new { pattern = "Test run finished: \\d+ Tests|\\[FAIL\\]|\\[xUnit\\.net", pane = "Tests" },
             solutionPath, ct, ide, instancePid);
         return TestSummaryParser.ParseLatest(raw);
     }
@@ -280,11 +364,14 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options)
 
     [McpServerTool]
     [Description("Launch a Visual Studio instance with a solution open. Reuses an instance that already has it open. " +
-                 "Waits for the instance's bridge to come up.")]
+                 "Waits for the instance's bridge to come up. Launches elevated (UAC prompt) only for a solution with a project the repo lists as needing " +
+                 "administrator rights, or when this user's mode for the repo is always; a running non-elevated instance of such a solution is not reused " +
+                 "unless relaunchElevated is true.")]
     public Task<string> IdeLaunchInstance(
         [Description("Full path of the .sln file to open")] string solutionPath,
+        [Description("Only after the user agreed: when the solution needs administrator rights and its open instance is not elevated, save and close that instance and start it elevated (one UAC prompt)")] bool relaunchElevated = false,
         CancellationToken ct = default) =>
-        IdeInstanceLifecycle.LaunchAsync(solutionPath, ct);
+        IdeInstanceLifecycle.LaunchAsync(solutionPath, ct, relaunchElevated);
 
     [McpServerTool]
     [Description("Save all documents and then kill a Visual Studio instance. Refuses, killing nothing, if any document is still unsaved.")]

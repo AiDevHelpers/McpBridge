@@ -11,6 +11,6 @@ Fixture: build output text with one error (`CS1002`) and one warning (`CA1822`).
 - `ErrorList` (kind = warnings, codes = CA1822): PASS when `count` is 1.
 - `ErrorList` (kind = unknown): PASS when `ok` is false.
 - `ErrorSnapshot`: PASS when `ok` is true and `snapshotId` is returned.
-- `ErrorIngest` (output = the same text without the warning), then `ErrorChanges` (snapshotId from ErrorSnapshot): PASS when the reply shows the warning as removed.
+- `ErrorIngest` (output = the fixture text plus one new warning), then `ErrorChanges` (snapshotId from ErrorSnapshot): PASS when `items` holds only the new warning. `ErrorChanges` lists additions, not removals.
 
 Record each as PASS or FAIL with the exact arguments and reply.

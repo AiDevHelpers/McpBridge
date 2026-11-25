@@ -93,5 +93,22 @@ Vs2026.Installer|Status requested: {BridgeControl.Describe()}
 # MCP.Core: a folder name on disk (where vswhere.exe lives).
 MCP.Core|Microsoft Visual Studio
 
-# MCP.Core: the pattern sent to the IDE to find summary and [FAIL] lines in the Tests pane.
-MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]
+# MCP.Core: the pattern sent to the IDE to find summary, [FAIL] and failure message lines in the Tests pane.
+MCP.Core|Test run finished: \\d+ Tests|\\[FAIL\\]|\\[xUnit\\.net
+
+# The text of the GitHub API 404 body for a branch without protection (matched, never shown).
+SourceControlHelper|not protected
+
+# The command line shown to the user in an install plan. It is the command that runs, not prose.
+MCP.Core|winget install --id {entry.PackageId} --exact --source winget
+GateHelper|dotnet lint
+GateHelper|dotnet format
+GateHelper|dotnet rebuild
+
+# Text the test runner prints to the Tests pane. The parser matches it; it is not shown to the user.
+MCP.Core|VSTest Adapter
+MCP.Core|Starting:
+
+# Log text written by the extension watchdog. It goes to the bridge log, not to the user interface.
+Vs2026.Core|Visual Studio UI thread answers again (pid {_pid}).
+Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSeconds} s (pid {_pid}).

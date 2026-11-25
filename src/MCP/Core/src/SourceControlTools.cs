@@ -10,7 +10,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class SourceControlTools
 {
-    private static readonly SourceControlService Service = new(new ProcessGitRunner());
+    private static readonly SourceControlService Service = new(new ProcessGitRunner(), new AiDevHelpers.Common.FileRepoRulesSource());
     private static readonly GitHubService GitHub = new(new ProcessGhRunner());
 
     [McpServerTool]
@@ -68,17 +68,34 @@ internal sealed class SourceControlTools
 
     [McpServerTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
-                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply.")]
-    public static string GitPlan(
+                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. " +
+                 "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
+                 "and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them.")]
+    public static async Task<string> GitPlan(
         [Description("Repo folder")] string repoPath,
-        [Description("One of the write actions above")] string action,
+        [Description("One of the write actions above (leave out when sequence is given)")] string action = "",
         [Description("Paths, for stage")] string[]? paths = null,
         [Description("Commit message, for commit")] string? message = null,
-        [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null)
+        [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null,
+        [Description("Write actions to run in order under one token, e.g. stage, commit, push")] string[]? sequence = null,
+        CancellationToken ct = default)
     {
+        var hasSequence = sequence is { Length: > 0 };
+        var hasAction = !string.IsNullOrWhiteSpace(action);
+        if (hasSequence == hasAction)
+        {
+            return Json(new { ok = false, error = Strings.Get("SequenceChoice") });
+        }
+
         try
         {
-            var pending = Service.Plan(repoPath, action, paths, message, branch);
+            if (hasSequence)
+            {
+                var planned = await Service.PlanSequenceAsync(repoPath, sequence!, paths, message, branch, ct);
+                return Json(new { ok = true, token = planned.Token, sequence = sequence, command = planned.Description });
+            }
+
+            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct);
             return Json(new { ok = true, token = pending.Token, action = pending.Action, command = pending.Description });
         }
         catch (ArgumentException ex)
@@ -105,11 +122,17 @@ internal sealed class SourceControlTools
         CancellationToken ct = default)
     {
         var result = await GitHub.ChecksAsync(repoPath, pr, ct);
+
+        // The checks this repo's rules require (committed rules plus the cached live protection) that the pull request lacks.
+        var root = AiDevHelpers.Common.RepoSettingsFile.FindRepoRootFromFolder(repoPath);
+        var required = root is null ? [] : AiDevHelpers.Common.RepoRulesFile.Effective(root).RequiredChecks;
+        var missing = result.Error is null ? RuleGuard.MissingChecks(required, result.Checks.Select(c => c.Name)) : [];
         return Json(new
         {
             ok = result.Error is null,
             count = result.Checks.Count,
             checks = result.Checks.Select(c => new { name = c.Name, state = c.State, bucket = c.Bucket, link = c.Link }),
+            missingRequired = missing,
             error = result.Error,
         });
     }

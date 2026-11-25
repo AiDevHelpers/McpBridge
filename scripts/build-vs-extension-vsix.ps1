@@ -19,9 +19,17 @@ if ([string]::IsNullOrWhiteSpace($MSBuildPath)) {
         throw "vswhere.exe not found at $vswhere. Pass -MSBuildPath explicitly."
     }
 
-    $installation = & $vswhere -latest -prerelease -products '*' -version '[18.0,19.0)' -property installationPath
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($installation)) {
+    # Pick the newest VS 18 install that has the VSSDK targets (the extension development workload); the latest one may lack it.
+    $installations = @(& $vswhere -all -prerelease -products '*' -version '[18.0,19.0)' -property installationPath)
+    if ($LASTEXITCODE -ne 0 -or $installations.Count -eq 0) {
         throw "No Visual Studio 18 installation was found. Pass -MSBuildPath explicitly."
+    }
+
+    $installation = $installations | Where-Object {
+        Test-Path -Path (Join-Path $_ 'MSBuild\Microsoft\VisualStudio\v*\VSSDK\Microsoft.VsSDK.targets')
+    } | Select-Object -Last 1
+    if (-not $installation) {
+        throw "No Visual Studio 18 installation has the extension development workload (Microsoft.VsSDK.targets). Install it or pass -MSBuildPath."
     }
 
     $MSBuildPath = Join-Path $installation "MSBuild\Current\Bin\MSBuild.exe"
