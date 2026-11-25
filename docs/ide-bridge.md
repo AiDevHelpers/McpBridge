@@ -46,8 +46,8 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
 | `IdeFormatSolution` | `formatSolution` | Formats every C# file of the solution with the IDE's Format Document command and saves each one. Opens each file. |
-| `IdeGoToDefinition` | `goToDefinition` | Places the caret on file:line:column and runs `Edit.GoToDefinition`. Moves the IDE's active document. Returns the IDE state, not the target location. Visual Studio only. |
-| `IdeFindAllReferences` | `findAllReferences` | Places the caret and runs `Edit.FindAllReferences`. Results open in the IDE window; this tool does not read them. Visual Studio only. |
+| `IdeGoToDefinition` | `goToDefinition` | Places the caret on file:line:column and runs `Edit.GoToDefinition`. Moves the IDE's active document. Returns the IDE state, not the target location. |
+| `IdeFindAllReferences` | `findAllReferences` | Places the caret and runs `Edit.FindAllReferences`. Results open in the IDE window; this tool does not read them. |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
 | `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |
@@ -72,7 +72,7 @@ These actions are called by the MCP server's own services, not by a single tool 
 | Action | Used by | Notes |
 |---|---|---|
 | `status` | routing and health checks | Returns `solution_path`. |
-| `listOutputPanes` | the Visual Studio output log source | Visual Studio only. Lists the Output window pane names. |
+| `listOutputPanes` | the Visual Studio output log source | Lists the Output window pane names. |
 | `listDebugSessions`, `getDebugOutput` | the VS Code debug log source | VS Code only. Lists debug sessions and reads a session's output. |
 | `prepareKill` | `IdeKillInstance` | Asks the instance to save every document, and reports any that stay unsaved. |
 

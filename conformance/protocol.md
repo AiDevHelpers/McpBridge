@@ -62,6 +62,8 @@ A reply that does not arrive within 60 seconds is an error, so a stalled bridge 
 | Action | Args | Result | Notes |
 |---|---|---|---|
 | `openDocument` | `file`, optional `line` (1-based) | `{file, line, opened}` | Missing file is an error. VS Code reveals the line. |
+| `goToDefinition`, `findAllReferences` | `file`, `line` (1-based), optional `column` (1-based) | `{file, line, column, command, caret_line, caret_column, active_file}` | Places the caret, then runs the IDE command: VS `Edit.GoToDefinition` / `Edit.FindAllReferences`; VS Code `editor.action.revealDefinition` / `references-view.findReferences`. Results show in the IDE, not in the reply. |
+| `formatSolution` | none | `{formatted, files}` | Formats every `.cs` file under the workspace (VS: the solution folder), saving each one. Skips bin, obj, .git, node_modules and TestResults. |
 | `openSolution` | `solutionPath` | `{solution_path, opened}` (VS) | VS Code opens the solution's folder. The MCP tool `ide_open_solution` launches devenv instead of using this action. |
 | `bookmarkList` | none | array of `{id, file, line, name}` | VS only. Reads native markers from open documents. |
 | `bookmarkGet` | `id` (`file|line`) | one bookmark, or null | VS only. |

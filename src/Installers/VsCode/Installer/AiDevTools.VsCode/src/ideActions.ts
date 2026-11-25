@@ -60,6 +60,14 @@ function optionalInt(args: Args, key: string): number | undefined {
     return typeof value === "number" ? value : undefined;
 }
 
+function requireInt(args: Args, key: string): number {
+    const value = optionalInt(args, key);
+    if (value === undefined) {
+        throw new Error(t("missingArgument", key));
+    }
+    return value;
+}
+
 function resolveFile(file: string): vscode.Uri {
     if (path.isAbsolute(file)) {
         return vscode.Uri.file(file);
@@ -294,6 +302,35 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             // C# Dev Kit: csharp.experimental.debug.hotReload (Microsoft, Feb 2025). Null when the setting is not present.
             const value = vscode.workspace.getConfiguration("csharp.experimental.debug").get<boolean>("hotReload");
             return { ide: "VsCode", enabled: value ?? null, setting: "csharp.experimental.debug.hotReload" };
+        }
+
+        case "goToDefinition":
+        case "findAllReferences": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = requireInt(args, "line");
+            const column = optionalInt(args, "column") ?? 1;
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const editor = await vscode.window.showTextDocument(doc);
+            const pos = new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1));
+            editor.selection = new vscode.Selection(pos, pos);
+            editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
+            const command = action === "goToDefinition" ? "editor.action.revealDefinition" : "references-view.findReferences";
+            await vscode.commands.executeCommand(command);
+            return { file: uri.fsPath, line, column, command, caret_line: editor.selection.active.line + 1, caret_column: editor.selection.active.character + 1, active_file: vscode.window.activeTextEditor?.document.uri.fsPath ?? null };
+        }
+
+        case "formatSolution": {
+            // C# files under the workspace, like the Visual Studio action. Each file is opened, formatted and saved.
+            const files = await vscode.workspace.findFiles("**/*.cs", "**/{bin,obj,.git,node_modules,TestResults}/**");
+            const formatted: string[] = [];
+            for (const uri of files) {
+                const doc = await vscode.workspace.openTextDocument(uri);
+                const editor = await vscode.window.showTextDocument(doc);
+                await vscode.commands.executeCommand("editor.action.formatDocument");
+                await doc.save();
+                formatted.push(editor.document.uri.fsPath);
+            }
+            return { formatted: formatted.length, files: formatted };
         }
 
         case "openDocument": {
