@@ -136,16 +136,13 @@ internal static class MemberEditEngine
 
         if (plan.SignatureChanged)
         {
-            Related(symbol, plan);
-            foreach (var reference in references)
+            var related = await CoverageOfReferences.RelatedAsync(working, symbol).ConfigureAwait(false);
+            if (related.Count > 0)
             {
-                var covered = callerEdits.Any(e => string.Equals(e.File, reference.File, StringComparison.OrdinalIgnoreCase) && e.Line == reference.Line && e.Column == reference.Column);
-                if (!covered)
-                {
-                    plan.Uncovered.Add(new { file = reference.File, line = reference.Line, column = reference.Column, implicit_use = reference.IsImplicit, candidate = reference.IsCandidate });
-                }
+                plan.Reasons.Add(Strings.Format("MemberRelatedMembers", string.Join(", ", related)));
             }
 
+            plan.Uncovered.AddRange(CoverageOfReferences.Uncovered(references, callerEdits));
             if (plan.Uncovered.Count > 0)
             {
                 plan.Reasons.Add(Strings.Format("MemberUncovered", plan.Uncovered.Count));
@@ -252,31 +249,6 @@ internal static class MemberEditEngine
         }
 
         return string.Join("|", parts);
-    }
-
-    private static void Related(ISymbol symbol, MethodEditPlan plan)
-    {
-        var related = new List<string>();
-        if (symbol is IPropertySymbol property)
-        {
-            if (property.OverriddenProperty is not null)
-            {
-                related.Add(property.OverriddenProperty.ToDisplayString());
-            }
-
-            foreach (var iface in property.ContainingType.AllInterfaces.SelectMany(i => i.GetMembers().OfType<IPropertySymbol>()))
-            {
-                if (SymbolEqualityComparer.Default.Equals(property.ContainingType.FindImplementationForInterfaceMember(iface), property))
-                {
-                    related.Add(iface.ToDisplayString());
-                }
-            }
-        }
-
-        if (related.Count > 0)
-        {
-            plan.Reasons.Add(Strings.Format("MemberRelatedMembers", string.Join(", ", related.Distinct())));
-        }
     }
 
     // The text changes for the member itself.

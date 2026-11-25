@@ -81,7 +81,9 @@ Visual Studio only and says so in its description.
       differs, and moves onto `EditTarget` in 3.1 when it accepts other kinds; 80 VS Core tests pass.) `EditTarget`: one locator for the document, the symbol and its references, for every member kind (method,
       constructor, operator, indexer, property, field, event, type, enum member). Replaces the copies in `MethodEditEngine` and
       `MemberEditEngine`. Built engines move onto it with no behaviour change.
-- [ ] **0.3** `CoverageOfReferences`: the "every reference covered, related members refused" rule for symbols of any member kind
+- [x] **0.3** (done: `CoverageOfReferences.cs`; the member and method engines use it for uncovered references and related members.
+      Behaviour change: a virtual or abstract property now also refuses a signature change that overrides it, as methods already
+      did. 83 VS Core tests pass.) `CoverageOfReferences`: the "every reference covered, related members refused" rule for symbols of any member kind
       (methods and overrides, properties, fields, events, interface members). Namespace and type moves keep their qualifier logic;
       they do not use it.
 - [ ] **0.4** Planning off the UI thread: `RunPlan` plans on a workspace snapshot with a timeout (default 60 s,

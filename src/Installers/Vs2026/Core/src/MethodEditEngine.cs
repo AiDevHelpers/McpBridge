@@ -432,16 +432,7 @@ internal static class MethodEditEngine
             plan.Reasons.Add(Strings.Format("MethodEditRelatedMembers", string.Join(", ", related.Distinct().Take(MaxReported))));
         }
 
-        foreach (var reference in references)
-        {
-            var covered = callerEdits.Any(e =>
-                string.Equals(e.File, reference.File, StringComparison.OrdinalIgnoreCase) && e.Line == reference.Line && e.Column == reference.Column);
-            if (!covered)
-            {
-                plan.Uncovered.Add(new { file = reference.File, line = reference.Line, column = reference.Column, implicit_use = reference.IsImplicit, candidate = reference.IsCandidate });
-            }
-        }
-
+        plan.Uncovered.AddRange(CoverageOfReferences.Uncovered(references, callerEdits));
         if (plan.Uncovered.Count > 0)
         {
             plan.Reasons.Add(Strings.Format("MethodEditUncovered", plan.Uncovered.Count));
