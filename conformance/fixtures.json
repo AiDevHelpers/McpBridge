@@ -38,5 +38,10 @@
     "request": { "action": "listDebuggedProcesses" },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_threads_refused_by_generic_bridge": {
+    "request": { "action": "listThreads" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }

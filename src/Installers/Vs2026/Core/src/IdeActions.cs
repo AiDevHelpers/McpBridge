@@ -121,6 +121,7 @@ public sealed class IdeActions(DTE2 dte)
         "killProcess" => KillProcess(RequireInt(args, "pid")),
         "listProcesses" => ListProcesses(),
         "listDebuggedProcesses" => ListDebuggedProcesses(),
+        "listThreads" => ListThreads(),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
@@ -765,6 +766,24 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { processes = list };
+    }
+
+    // Threads of the current process. Only meaningful in break mode; outside it the list is empty.
+    private object ListThreads()
+    {
+        var mode = dte.Debugger.CurrentMode;
+        if (mode != dbgDebugMode.dbgBreakMode)
+        {
+            return new { debugger_mode = mode.ToString(), current_thread_id = (int?)null, threads = Array.Empty<object>() };
+        }
+
+        var list = new List<object>();
+        foreach (EnvDTE.Thread thread in ((EnvDTE90.Process3)dte.Debugger.CurrentProcess).Threads)
+        {
+            list.Add(new { id = thread.ID, name = thread.Name });
+        }
+
+        return new { debugger_mode = mode.ToString(), current_thread_id = dte.Debugger.CurrentThread?.ID, threads = list };
     }
 
     private object ListDebuggedProcesses()

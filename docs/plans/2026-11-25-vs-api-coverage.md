@@ -61,8 +61,11 @@ Results (2026-11-25, checked in the clone at `ac3e624`; Learn via search):
 - [x] `ide_list_processes`: `Debugger.LocalProcesses` (name, PID; title dropped, `Process.Title` does not exist). Read-only. Built; live check pending.
 - [ ] `ide_attach_process` (confirm): attach to a chosen process from `LocalProcesses`. `ide_detach_all` (confirm): `Debugger.DetachAll()`.
 - [x] `ide_list_debugged_processes`: `Debugger4.DebuggedProcesses` (cast to `EnvDTE90a.Debugger4`). Read-only. Built; live check pending.
-- [ ] `ide_list_exceptions` / `ide_set_exception_break` (confirm): `Debugger.ExceptionGroups` and break-on-throw per type.
-- [ ] `ide_list_threads` (`Process.Threads`, plus `Debugger2.CurrentThread`) and `ide_list_stack_frames` for the current thread.
+- [ ] `ide_list_exceptions` / `ide_set_exception_break` (confirm): exception settings are `EnvDTE100.Debugger5.ExceptionGroups`
+      (Learn), which returns `EnvDTE90.ExceptionGroups`. The element types (`ExceptionGroup`, `Exception`) did not compile as
+      `EnvDTE90.ExceptionGroup`/`EnvDTE90.Exception`. Spike needed to find the real item types; the tool was dropped from this unit.
+- [x] `ide_list_threads`: `dte.Debugger.CurrentThread` and `((EnvDTE90.Process3)CurrentProcess).Threads` (Learn). Read-only,
+      empty outside break mode. Built; live check pending. `ide_list_stack_frames` is not in this unit.
 - [ ] Extend `ide_set_breakpoint` (`IdeActions.cs:513-517` currently calls `Breakpoints.Add(File, Line)` only) with `condition`,
       `hitCountType`, `hitCount` (confirm when a condition is set). `ListBreakpoints` already returns `condition` and `enabled`
       (`IdeActions.cs:543`), so reads need no change.
