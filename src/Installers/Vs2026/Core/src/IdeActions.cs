@@ -180,6 +180,14 @@ public sealed class IdeActions(DTE2 dte)
             true,
             ParseMemberSpecs(args),
             OptionalBool(args, "confirm") == true),
+        "deleteMember" => CodeModelActions.DeleteMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseCallerEdits(args),
+            StringList(args, "deleteTests").ToList(),
+            OptionalBool(args, "confirm") == true,
+            OptionalString(args, "planHash")),
         "renameNamespace" => CodeModelActions.RenameNamespace(
             RequireString(args, "oldNamespace"),
             RequireString(args, "newNamespace"),

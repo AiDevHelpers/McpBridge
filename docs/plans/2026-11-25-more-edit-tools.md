@@ -113,7 +113,8 @@ Visual Studio only and says so in its description.
 
 ### Phase 1: delete
 
-- [ ] **1.1** `ide_delete` with `target: member`: a method, property, field, event, constructor, operator, indexer, enum member or
+- [x] **1.1** (done as `ide_delete_member`: `DeleteEngine.cs`, bridge `deleteMember`, MCP tool; refuses on references, overrides,
+      implementers and tests unless named. Tests that are named are NOT deleted, as stated in the tool. 114 VS Core tests pass.) `ide_delete` with `target: member`: a method, property, field, event, constructor, operator, indexer, enum member or
       interface member. Refused while any reference remains (its own body excluded), while it overrides or implements something,
       or while an interface member has implementers. `callerEdits` may remove the references. Tests that call it are listed;
       deleting a tested member is refused unless `deleteTests` names them. Removes its doc comment and the blank line it leaves.

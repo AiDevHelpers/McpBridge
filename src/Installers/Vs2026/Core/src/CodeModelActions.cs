@@ -329,6 +329,13 @@ internal static class CodeModelActions
         return RunPlan(solution => TypeMoveEngine.MoveAsync(solution, file, line, newNamespace, moveFiles, callerEdits), confirm);
     }
 
+    // Deletes a member after the checks in DeleteEngine. Plan-only returns the checks; applied writes through the workspace.
+    public static object DeleteMember(string file, int line, int column, IReadOnlyList<CallerEdit> callerEdits, IReadOnlyList<string> deleteTests, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => DeleteEngine.DeleteMemberAsync(solution, file, line, column, callerEdits, deleteTests, _ => { }), confirm, planHash);
+    }
+
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel

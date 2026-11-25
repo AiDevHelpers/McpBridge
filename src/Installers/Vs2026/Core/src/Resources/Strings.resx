@@ -108,6 +108,10 @@
   <data name="LogicalNotRegular" xml:space="preserve"><value>'{0}' is a script document, which these tools do not edit.</value></data>
   <data name="LogicalDivergent" xml:space="preserve"><value>'{0}' is in several projects with different text, so the edit was applied by position to each. Check every target.</value></data>
   <data name="DiffFilesTruncated" xml:space="preserve"><value>Diffs are shown for the first {0} files only.</value></data>
+  <data name="DeleteRelated" xml:space="preserve"><value>The member overrides, implements or is overridden by: {0}. Remove those first; this tool does not delete them.</value></data>
+  <data name="DeleteHasImplementers" xml:space="preserve"><value>The interface member has {0} implementer(s). Delete the member from each implementer first, or change the interface through ide_edit_type.</value></data>
+  <data name="DeleteTestsCall" xml:space="preserve"><value>Tests call the member: {0}. Name them in deleteTests to confirm you want the member removed while they still exist (they are not deleted).</value></data>
+  <data name="DeleteUncovered" xml:space="preserve"><value>{0} reference(s) still use the member. Pass a callerEdits entry for each, with newText empty to remove the call.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
