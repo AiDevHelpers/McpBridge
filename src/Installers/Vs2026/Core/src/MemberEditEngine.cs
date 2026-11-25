@@ -117,7 +117,7 @@ internal static class MemberEditEngine
             return plan;
         }
 
-        var edited = await MethodEditEngine.ApplyAsync(working, changes).ConfigureAwait(false);
+        var edited = await MethodEditEngine.ApplyAsync(working, changes, plan.Divergent).ConfigureAwait(false);
         var finalName = edit.NewName ?? symbol.Name;
         var newSymbol = await FindAsync(edited, documentId, symbol.ContainingType, finalName).ConfigureAwait(false);
         if (newSymbol is null)

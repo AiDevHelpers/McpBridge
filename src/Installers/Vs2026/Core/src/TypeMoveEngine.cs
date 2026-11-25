@@ -241,7 +241,7 @@ internal static class TypeMoveEngine
             }
         }
 
-        var edited = await MethodEditEngine.ApplyAsync(solution, changes).ConfigureAwait(false);
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
         foreach (var id in changes.Keys)
         {
             plan.Files.Add(solution.GetDocument(id)!.FilePath ?? id.ToString());

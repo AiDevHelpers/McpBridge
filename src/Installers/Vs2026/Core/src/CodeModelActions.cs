@@ -259,6 +259,19 @@ internal static class CodeModelActions
             // The snapshot is taken on the UI thread; planning runs on a thread-pool thread with a time limit.
             var outcome = await PlanRunner.RunAsync(workspace.CurrentSolution, plan, PlanRunner.DefaultTimeout).ConfigureAwait(true);
             var planned = outcome.Plan ?? PlanRunner.Incomplete(PlanRunner.DefaultTimeout);
+            foreach (var path in planned.Files)
+            {
+                if (LogicalDocuments.RefusalFor(workspace.CurrentSolution, path) is { } refusal)
+                {
+                    planned.Reasons.Add(refusal);
+                }
+            }
+
+            foreach (var path in planned.Divergent)
+            {
+                planned.Warnings.Add(Strings.Format("LogicalDivergent", path));
+            }
+
             planned.Hash = await PlanHash.ComputeAsync(workspace.CurrentSolution, planned.Result).ConfigureAwait(true);
             if (confirm && expectedHash is not null && !PlanHash.Matches(expectedHash, planned.Hash))
             {

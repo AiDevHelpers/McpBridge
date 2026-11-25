@@ -96,7 +96,9 @@ Visual Studio only and says so in its description.
       note: partly done: `PlanHash.cs` fingerprints a plan by its changed paths and full new text (4 tests, 91 VS Core tests pass).
       Not yet: `plan_hash` in the reply, and the `planHash` argument that confirm checks against. Those need the reply and each
       tool's arguments wired, which is the next step of this unit.
-- [ ] **0.6** One logical document: multi-target and linked files resolve a path to all its `DocumentId`s, de-duplicate references
+- [x] **0.6** (done: `LogicalDocuments.cs` applies each edit to every document of its path, merges duplicate edits, reports
+      divergent copies, and refuses generated (obj, bin), read-only and script files in `RunPlan`; 96 VS Core tests pass. Not
+      done: per-target `#if` branch reporting; divergence is reported, not analysed.) One logical document: multi-target and linked files resolve a path to all its `DocumentId`s, de-duplicate references
       by path and position, edit once, and report the `#if` branches Roslyn did not see in each target. Generated and read-only
       documents are refused.
 - [ ] **0.7** `diff` in every plan reply: a unified diff per changed file, capped at 40 files and 400 lines each.

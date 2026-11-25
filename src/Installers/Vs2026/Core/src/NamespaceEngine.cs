@@ -201,7 +201,7 @@ internal static class NamespaceEngine
         await PlanFileMovesAsync(affectedDocuments, Map, plan, moveFiles).ConfigureAwait(false);
 
         // 5. Apply, then report what the change broke or newly warns about.
-        var edited = await MethodEditEngine.ApplyAsync(solution, changes).ConfigureAwait(false);
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
         foreach (var id in changes.Keys)
         {
             plan.Files.Add(solution.GetDocument(id)!.FilePath ?? id.ToString());

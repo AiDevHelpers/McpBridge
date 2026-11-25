@@ -85,6 +85,9 @@ internal sealed class MethodEditPlan
 
     public bool DocsUpdated { get; set; }
 
+    /// <summary>Linked or multi-target files whose copies differed before the edit (<see cref="LogicalDocuments"/>).</summary>
+    public List<string> Divergent { get; } = new();
+
     /// <summary>The fingerprint of what this plan changes (<see cref="PlanHash"/>). Set by the bridge before the reply is written.</summary>
     public string? Hash { get; set; }
 
@@ -123,6 +126,7 @@ internal sealed class MethodEditPlan
         reference_count = ReferenceCount,
         docs_updated = DocsUpdated,
         plan_hash = Hash,
+        divergent = Divergent,
         tests = Tests.Select(t => t.ToReply()).ToList(),
         method = Method,
         uncovered_references = Uncovered,
@@ -214,7 +218,7 @@ internal static class MethodEditEngine
             return plan;
         }
 
-        var edited = await ApplyAsync(solution, changes).ConfigureAwait(false);
+        var edited = await ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
         var newSymbol = await FindEditedMethodAsync(edited, documentId!, methodSpan.Start, changes[documentId!]).ConfigureAwait(false);
         if (newSymbol is null)
         {
@@ -239,7 +243,7 @@ internal static class MethodEditEngine
             else if (docResult.Change is { } docChange)
             {
                 changes[documentId!].Add(docChange);
-                edited = await ApplyAsync(solution, changes).ConfigureAwait(false);
+                edited = await ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
                 plan.DocsUpdated = true;
             }
         }
@@ -289,17 +293,8 @@ internal static class MethodEditEngine
         return token.Parent!;
     }
 
-    internal static async Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes)
-    {
-        var edited = solution;
-        foreach (var pair in changes)
-        {
-            var oldText = await solution.GetDocument(pair.Key)!.GetTextAsync().ConfigureAwait(false);
-            edited = edited.WithDocumentText(pair.Key, oldText.WithChanges(pair.Value));
-        }
-
-        return edited;
-    }
+    internal static Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes, List<string>? divergent = null) =>
+        LogicalDocuments.ApplyAsync(solution, changes, divergent ?? new List<string>());
 
     internal sealed class Reference
     {
