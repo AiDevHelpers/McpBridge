@@ -6,7 +6,7 @@ using System.Text.Json.Nodes;
 namespace AiDevHelpers.Bridge;
 
 /// <summary>Wait and cap limits from the "eventFilter" object, with their defaults.</summary>
-public sealed record EventFilterSettings(int WaitSeconds = 120, int MaxEvents = 20, int MaxEventTextChars = 300, int MaxSummaryMessageChars = 200);
+public sealed record EventFilterSettings(int WaitSeconds = 120, int MaxEvents = 20, int MaxEventTextChars = 300, int MaxSummaryMessageChars = 200, int MaxReplyChars = 6000);
 
 /// <summary>
 /// The per-repo settings file <c>.claude/aidevhelpers.json</c>, kept next to the solution.
@@ -91,7 +91,8 @@ public static class RepoConfig
             WaitSeconds: WholeNumber(section, "waitSeconds", defaults.WaitSeconds, 1, 3600, warnings),
             MaxEvents: WholeNumber(section, "maxEvents", defaults.MaxEvents, 1, 200, warnings),
             MaxEventTextChars: WholeNumber(section, "maxEventTextChars", defaults.MaxEventTextChars, 20, 10000, warnings),
-            MaxSummaryMessageChars: WholeNumber(section, "maxSummaryMessageChars", defaults.MaxSummaryMessageChars, 20, 2000, warnings));
+            MaxSummaryMessageChars: WholeNumber(section, "maxSummaryMessageChars", defaults.MaxSummaryMessageChars, 20, 2000, warnings),
+            MaxReplyChars: WholeNumber(section, "maxReplyChars", defaults.MaxReplyChars, 500, 50000, warnings));
         return (settings, warnings);
     }
 

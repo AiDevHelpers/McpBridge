@@ -44,11 +44,11 @@ public sealed class RepoConfigTests : IDisposable
     [Fact]
     public void ReadEventFilter_ReadsOverrides()
     {
-        WriteConfig("{ \"eventFilter\": { \"waitSeconds\": 30, \"maxEvents\": 50, \"maxEventTextChars\": 500, \"maxSummaryMessageChars\": 120 } }");
+        WriteConfig("{ \"eventFilter\": { \"waitSeconds\": 30, \"maxEvents\": 50, \"maxEventTextChars\": 500, \"maxSummaryMessageChars\": 120, \"maxReplyChars\": 1000 } }");
 
         var (settings, warnings) = RepoConfig.ReadEventFilter(Solution);
 
-        Assert.Equal(new EventFilterSettings(30, 50, 500, 120), settings);
+        Assert.Equal(new EventFilterSettings(30, 50, 500, 120, 1000), settings);
         Assert.Empty(warnings);
     }
 
