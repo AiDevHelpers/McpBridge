@@ -48,7 +48,7 @@ public sealed class RepoSetupTests : IDisposable
 
         Assert.Equal(["src/Drv/Drv.csproj", "src/Tool/Tool.csproj"], report.PendingProjects);
         Assert.Equal(2, report.Findings.Count);
-        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevtools")));
+        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevhelpers")));
         Assert.False(File.Exists(Path.Combine(_root, ".gitignore")));
     }
 
@@ -75,7 +75,7 @@ public sealed class RepoSetupTests : IDisposable
         Assert.Contains("requireAdministrator", elevation.Projects[0].Reason);
         Assert.Equal(["src/Tool/Tool.csproj"], elevation.Declined);
         Assert.Equal(ElevationMode.Listed, elevation.Mode);
-        Assert.Contains(".aidevtools/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
+        Assert.Contains(".aidevhelpers/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
         Assert.Equal(3, answers.Asked.Count);
     }
 

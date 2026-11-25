@@ -9,9 +9,9 @@ using ModelContextProtocol.Server;
 namespace AiDevHelpers.MCP.Core.Tools;
 
 /// <summary>
-/// MCP surface for repo setup. It reads only: it never creates the <c>.aidevtools</c> files and never applies a decision. The person
+/// MCP surface for repo setup. It reads only: it never creates the <c>.aidevhelpers</c> files and never applies a decision. The person
 /// decides in the console with <c>elev repo-setup</c>, so the agent cannot list a project, record a rule or change a mode on their
-/// behalf. The one thing it may write is the cached live GitHub policy, and only into a repo that already has an <c>.aidevtools</c> folder.
+/// behalf. The one thing it may write is the cached live GitHub policy, and only into a repo that already has an <c>.aidevhelpers</c> folder.
 /// </summary>
 [McpServerToolType]
 internal sealed class RepoSetupTools(IElevScanner scanner, GitHubService gitHub)
@@ -91,7 +91,7 @@ internal sealed class RepoSetupTools(IElevScanner scanner, GitHubService gitHub)
         }
     }
 
-    // Asks GitHub about the branches the repo's own files name. A repo with an .aidevtools folder keeps the answer for the git tools.
+    // Asks GitHub about the branches the repo's own files name. A repo with an .aidevhelpers folder keeps the answer for the git tools.
     private async Task<JsonNode> RefreshLiveAsync(string root, JsonObject scan, CancellationToken ct)
     {
         var branches = new List<string>();

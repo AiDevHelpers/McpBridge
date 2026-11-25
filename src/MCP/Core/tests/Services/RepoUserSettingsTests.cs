@@ -11,7 +11,7 @@ public sealed class RepoUserSettingsTests : IDisposable
     public RepoUserSettingsTests()
     {
         Directory.CreateDirectory(Path.Combine(_root, ".git"));
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
@@ -23,7 +23,7 @@ public sealed class RepoUserSettingsTests : IDisposable
         return sln;
     }
 
-    private void WriteSettings(string json) => File.WriteAllText(Path.Combine(_root, ".aidevtools", "settings.json"), json);
+    private void WriteSettings(string json) => File.WriteAllText(Path.Combine(_root, ".aidevhelpers", "settings.json"), json);
 
     [Fact]
     public void AllowAllIsRequestedOnlyByTheRepoFile()
@@ -38,8 +38,8 @@ public sealed class RepoUserSettingsTests : IDisposable
     [Fact]
     public void ElevationFilesAreResolvedWithoutASettingsFile()
     {
-        File.WriteAllText(Path.Combine(_root, ".aidevtools", "elevation.json"), """{ "projects": [ { "path": "src/Drv/Drv.csproj" } ] }""");
-        File.WriteAllText(Path.Combine(_root, ".aidevtools", "user.json"), """{ "elevation": { "mode": "never" } }""");
+        File.WriteAllText(Path.Combine(_root, ".aidevhelpers", "elevation.json"), """{ "projects": [ { "path": "src/Drv/Drv.csproj" } ] }""");
+        File.WriteAllText(Path.Combine(_root, ".aidevhelpers", "user.json"), """{ "elevation": { "mode": "never" } }""");
 
         var result = RepoSettings.Resolve(new IdeToolsOptions(), Solution());
 
@@ -115,7 +115,7 @@ public sealed class RepoUserSettingsTests : IDisposable
         RepoSettings.EnsureUserFileGitIgnored(_root);
 
         var lines = File.ReadAllLines(Path.Combine(_root, ".gitignore"));
-        Assert.Single(lines, l => l == ".aidevtools/user.json");
+        Assert.Single(lines, l => l == ".aidevhelpers/user.json");
     }
 
     [Fact]
@@ -126,6 +126,6 @@ public sealed class RepoUserSettingsTests : IDisposable
         RepoSettings.EnsureUserFileGitIgnored(_root);
 
         var lines = File.ReadAllLines(Path.Combine(_root, ".gitignore"));
-        Assert.Equal(["bin/", "obj/", ".aidevtools/user.json"], lines);
+        Assert.Equal(["bin/", "obj/", ".aidevhelpers/user.json"], lines);
     }
 }

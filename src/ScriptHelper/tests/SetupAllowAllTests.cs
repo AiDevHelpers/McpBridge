@@ -44,7 +44,7 @@ public sealed class SetupAllowAllTests : IDisposable
 
     private void WriteSettings(string json)
     {
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         File.WriteAllText(RepoSettingsFile.SettingsPath(_root), json);
     }
 
@@ -154,7 +154,7 @@ public sealed class SetupAllowAllTests : IDisposable
         var hash = RepoSettingsFile.Hash(RepoSettingsFile.SettingsPath(_root));
         Assert.True(AllowAllStore.Check(_config.AllowAllPath(id), _signer, id, _root, 0, hash).Allowed);
         Assert.Contains(id, File.ReadAllText(RepoSettingsFile.UserFilePath(_root)));
-        Assert.Contains(".aidevtools/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
+        Assert.Contains(".aidevhelpers/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
     }
     [Fact]
     public void PointerWriteFailure_RemovesTheNewStore()

@@ -1,5 +1,10 @@
 # Changelog
 
+## Settings folder renamed
+
+The repo settings folder is now `.aidevhelpers` (was `.aidevtools`). There is no fallback: move an existing repo's folder by hand
+(`git mv .aidevtools .aidevhelpers`) and update its `.gitignore` line for `user.json`. Older rows below keep the old name.
+
 ## Tool backlog: done
 
 Rows moved here from `docs/dogfood.md` once built or fixed. Each row keeps its original notes.

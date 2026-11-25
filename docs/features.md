@@ -44,7 +44,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 
 - `config_resolve` and `config_read`: real paths for launch, app and solution settings, with secrets redacted.
 - Extensions: list, describe and add VS Code and Visual Studio extensions (adds are two-step); workspace setup for C# Dev Kit.
-- Layered settings: global, repo `.aidevtools/settings.json`, per-user `user.json`.
+- Layered settings: global, repo `.aidevhelpers/settings.json`, per-user `user.json`.
 
 ## Server operations
 

@@ -24,7 +24,7 @@ public sealed class ApprovalCommands(SetupDeps deps) : SetupStepBase(deps)
     /// Approves allow-all for a registered project whose repo settings request it: any script inside the repo may then run
     /// elevated without per-script approval. Two separate confirmations are asked from the elevated console, the second repeating
     /// the repo path; nothing is written unless both are yes. The signed approval goes to the admin-only data root, bound to the
-    /// project, the checkout and the hash of the settings file, and this user's gitignored .aidevtools/user.json gets a pointer to it.
+    /// project, the checkout and the hash of the settings file, and this user's gitignored .aidevhelpers/user.json gets a pointer to it.
     /// </summary>
     public VerifyReport Verify(string root)
     {
