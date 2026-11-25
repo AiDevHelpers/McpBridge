@@ -1,6 +1,7 @@
 # More C# edit tools: implementation plan, 2026-11-25
 
-Status: revision 1. Not reviewed, not started. Each unit is one commit with a checklist.
+Status: revision 2, with the user's answers folded in (section 6). Not reviewed by Sonnet, not started. Each unit is one commit
+with a checklist.
 
 ## 1. Scope
 
@@ -180,12 +181,11 @@ Each is `ide_convert` with a `kind`, one unit per kind, one rewriter per kind, e
 0 first. 1 and 2.1 next, because 2.2 and 5.1 need the rewriter and 8.2 needs 1. 3 and 4 are independent of each other. 6.0 can run
 any time and decides how much of 6 to 8 is bespoke work, so run it early. 7 needs 2.1. 9 last.
 
-## 6. Open questions (need the user)
+## 6. Decided by the user
 
-- **Q1** Delete: should `ide_delete_member` offer to delete the callers too (`deleteCallers`), or only refuse? Recommended: refuse
-  and list; callers are removed through `callerEdits`.
-- **Q2** Change signature: a new required parameter has no value for old callers. Recommended: refuse without `valueForCallers`.
-- **Q3** Type creation: when the project's folders do not follow its namespaces, put the new file next to the anchor file?
-  Recommended: yes, and warn.
-- **Q4** Order: is phase 2 (change signature) before phase 1 (delete) wanted? Recommended order is as written.
-- **Q5** If the 6.0 spike fails, build 6.4 to 6.6 bespoke, or drop them? Recommended: build extract method and inline method only.
+- **Delete** refuses while a reference remains and lists it. There is no `deleteCallers`; callers are removed through
+  `callerEdits`.
+- **Change signature** refuses a new required parameter without `valueForCallers`. It never passes `default` silently.
+- **New type files** go next to the anchor file, with a warning, when the project's folders do not follow its namespaces.
+- **If the 6.0 spike fails**, build all of 6.4 to 6.6 (extract method, inline method, extract variable, constant and interface).
+- **Order** is as written (phase 1 before phase 2); not raised by the user.
