@@ -1,0 +1,36 @@
+{
+  "baseFramework": "net10.0",
+  "allowedPlatformSuffixes": [ "-windows" ],
+  "properties": {
+    "Nullable": "enable",
+    "ImplicitUsings": "enable"
+  },
+  "analyzers": [],
+  "exceptions": [
+    {
+      "project": "src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj",
+      "framework": "net48",
+      "reason": "Runs inside the Visual Studio 2026 extension host, which loads .NET Framework 4.8 assemblies."
+    },
+    {
+      "project": "src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj",
+      "framework": "net48",
+      "reason": "Tests the Visual Studio 2026 extension host code, so it targets the same .NET Framework 4.8."
+    },
+    {
+      "project": "src/Installers/Vs2026/Installer/src/AiDevHelpers.Installers.Vs2026.Installer.csproj",
+      "framework": "net48",
+      "reason": "Visual Studio 2026 VSIX installer package; VSSDK requires .NET Framework 4.8."
+    },
+    {
+      "project": "src/Installers/Vs2026/Installer/tests/AiDevHelpers.Installers.Vs2026.Installer.Tests.csproj",
+      "framework": "net48",
+      "reason": "Tests the Visual Studio 2026 VSIX installer, which targets .NET Framework 4.8."
+    },
+    {
+      "project": "src/Bridge/src/AiDevHelpers.Bridge.csproj",
+      "framework": "net48",
+      "reason": "The bridge loads into the Visual Studio extension host as .NET Framework 4.8 (see the System.Text.Json pin note in CLAUDE.md)."
+    }
+  ]
+}
