@@ -34,6 +34,9 @@ jobs:
           & $msbuild AiDevHelpers.slnx /t:Build /p:Configuration=Release /m /v:minimal
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Install procdump for crash dumps
+        run: choco install procdump --yes --no-progress
+
       - name: Test
         run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm" --blame-crash --blame-crash-dump-type full
 
