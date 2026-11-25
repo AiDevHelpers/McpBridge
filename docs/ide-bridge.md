@@ -46,6 +46,8 @@ Visual Studio and VS Code. The reply's `ide` field says which IDE handled it.
 | `IdeGetBuildDiagnostics` | `getBuildDiagnostics` | Errors and warnings from the Error List (VS) or diagnostics (VS Code). |
 | `IdeCodeCleanup` / `IdeFormatDocument` | `codeCleanup` / `formatDocument` | |
 | `IdeFormatSolution` | `formatSolution` | Formats every C# file of the solution with the IDE's Format Document command and saves each one. Opens each file. |
+| `IdeGoToDefinition` | `goToDefinition` | Places the caret on file:line:column and runs `Edit.GoToDefinition`. Moves the IDE's active document. Returns the IDE state, not the target location. Visual Studio only. |
+| `IdeFindAllReferences` | `findAllReferences` | Places the caret and runs `Edit.FindAllReferences`. Results open in the IDE window; this tool does not read them. Visual Studio only. |
 | `IdeGetOutput`, `IdeSearchOutput`, `IdeClearOutput` | `getOutput`, `searchOutput`, `clearOutput` | VS: the named Output pane. VS Code: only the lines this bridge recorded (see Limits). |
 | `IdeSetBreakpoint`, `IdeRemoveBreakpoint`, `IdeListBreakpoints` | `setBreakpoint`, `removeBreakpoint`, `listBreakpoints` | |
 | `IdeStep`, `IdeGetDebugState`, `IdeEvaluate`, `IdeGetLocals` | `step`, `debugState`, `evaluate`, `getLocals` | Locals and evaluate need a paused debugger. |

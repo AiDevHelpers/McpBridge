@@ -50,6 +50,8 @@ public sealed class IdeActions(DTE2 dte)
         "openSolution" => OpenSolution(RequireString(args, "solutionPath")),
         "testHotReloadState" => TestHotReloadState(),
         "openDocument" => OpenDocument(RequireString(args, "file"), OptionalInt(args, "line")),
+        "goToDefinition" => RunAtCaret(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1, "Edit.GoToDefinition"),
+        "findAllReferences" => RunAtCaret(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1, "Edit.FindAllReferences"),
         "bookmarkList" => BookmarkActions.List(dte),
         "bookmarkGet" => BookmarkActions.Get(RequireString(args, "id")),
         "bookmarkSet" => BookmarkActions.Set(dte, RequireString(args, "file"), RequireInt(args, "line")),
@@ -394,6 +396,53 @@ public sealed class IdeActions(DTE2 dte)
 
         dte.Solution.Open(solutionPath);
         return new { solution_path = solutionPath, opened = true };
+    }
+
+    // Puts the caret on file:line:column, then runs one IDE command that works on the caret. The result is the IDE state after the
+    // command: results of find commands appear in their own windows, so they are not returned as data.
+    private object RunAtCaret(string file, int line, int column, string command)
+    {
+        if (!Path.IsPathRooted(file))
+        {
+            throw new ArgumentException(Strings.Get("PathMustBeAbsolute"), nameof(file));
+        }
+
+        var full = Path.GetFullPath(file);
+        if (!File.Exists(full))
+        {
+            throw new FileNotFoundException(Strings.Get("FileNotFound"), full);
+        }
+
+        if (line < 1 || column < 1)
+        {
+            throw new ArgumentException(Strings.Get("LineAndColumnStartAtOne"));
+        }
+
+        dte.ItemOperations.OpenFile(full);
+        var document = dte.ActiveDocument;
+        if (document is null || !string.Equals(document.FullName, full, StringComparison.OrdinalIgnoreCase)
+            || document.Selection is not TextSelection selection)
+        {
+            throw new InvalidOperationException(Strings.Get("NoTextDocumentAtCaret"));
+        }
+
+        var lastLine = document.Object("TextDocument") is TextDocument text ? text.EndPoint.Line : int.MaxValue;
+        if (line > lastLine)
+        {
+            throw new ArgumentException(Strings.Format("LineBeyondEnd", line, lastLine));
+        }
+
+        selection.MoveToLineAndOffset(line, column);
+        try
+        {
+            dte.ExecuteCommand(command);
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            throw new InvalidOperationException(Strings.Format("CommandUnavailable", command, ex.HResult), ex);
+        }
+
+        return new { file = full, requested_line = line, requested_column = column, command, caret_line = selection.CurrentLine, caret_column = selection.CurrentColumn, active_document = dte.ActiveDocument?.FullName };
     }
 
     private object OpenDocument(string file, int? line)

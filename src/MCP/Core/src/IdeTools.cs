@@ -164,6 +164,30 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Go to the definition of the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. Moves the IDE's active document and caret. Returns the IDE state, not the target location. Visual Studio only.")]
+    public Task<string> IdeGoToDefinition(
+        [Description("Full path of the file")] string file,
+        [Description("1-based line")] int line,
+        [Description("Optional: 1-based column of the symbol")] int column = 1,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("goToDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Find all references to the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. The results open in the IDE's Find All References window, which this tool does not read.")]
+    public Task<string> IdeFindAllReferences(
+        [Description("Full path of the file")] string file,
+        [Description("1-based line")] int line,
+        [Description("Optional: 1-based column of the symbol")] int column = 1,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("findAllReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
                  "counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, " +
                  "which also covers TRX files written by other test runs in the solution's TestResults folder.")]

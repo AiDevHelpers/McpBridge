@@ -33,5 +33,10 @@ It uses a per-process named pipe and registers this instance for MCP routing.
 There are no user-configurable bridge settings at this time.</value></data>
   <data name="TestExplorerRefusedTwice" xml:space="preserve"><value>Test Explorer refused the run twice (HRESULT 0x{0:X8}). It is probably still discovering or running tests; wait, then call ide_get_test_summary before retrying.</value></data>
   <data name="NoSolutionOpenToFormat" xml:space="preserve"><value>No solution is open to format.</value></data>
+  <data name="PathMustBeAbsolute" xml:space="preserve"><value>The file path must be absolute.</value></data>
+  <data name="LineAndColumnStartAtOne" xml:space="preserve"><value>Line and column start at 1.</value></data>
+  <data name="NoTextDocumentAtCaret" xml:space="preserve"><value>The file did not open as a text document with a caret.</value></data>
+  <data name="LineBeyondEnd" xml:space="preserve"><value>Line {0} is past the end of the file ({1} lines).</value></data>
+  <data name="CommandUnavailable" xml:space="preserve"><value>The IDE command {0} is not available here (HRESULT 0x{1:X8}). The caret was moved.</value></data>
 </root>
 
