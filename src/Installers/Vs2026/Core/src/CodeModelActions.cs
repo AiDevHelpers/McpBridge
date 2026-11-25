@@ -82,12 +82,20 @@ internal static class CodeModelActions
         var symbol = await SymbolFinder.FindSymbolAtPositionAsync(document, position).ConfigureAwait(true)
             ?? throw new ArgumentException(Strings.Get("NoSymbolAtPosition"));
 
+        // One referenced symbol comes back per project, so the same location can repeat. Report each location once.
         var found = new List<object>();
+        var seen = new HashSet<(string File, int Line, int Column)>();
         foreach (var referenced in await SymbolFinder.FindReferencesAsync(symbol, solution).ConfigureAwait(true))
         {
             foreach (var reference in referenced.Locations)
             {
-                found.Add(ToLocation(reference.Location));
+                var location = (File: reference.Location.GetLineSpan().Path,
+                    Line: reference.Location.GetLineSpan().StartLinePosition.Line,
+                    Column: reference.Location.GetLineSpan().StartLinePosition.Character);
+                if (seen.Add(location))
+                {
+                    found.Add(ToLocation(reference.Location));
+                }
             }
         }
 
