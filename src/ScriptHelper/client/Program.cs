@@ -122,7 +122,13 @@ approve.Add(verbScript);
 approve.Add(prepare);
 approve.Add(confirm);
 
-var allowAll = SetupVerb("allow-all", "Let a registered repo's scripts run without per-script approval (administrator).", pr => ["allow-all", pr.GetRequiredValue(repo)]);
+// allow-all is decided in chat only (preview, then apply with the hash). The console question and its elevated copy are gone,
+// so this verb refuses before any UAC prompt.
+var allowAll = Verb("allow-all", "Refused: allow-all is decided in chat. Use allow-all-preview, show the hash, then allow-all-apply.", Sync(pr =>
+{
+    Console.Error.WriteLine($"refused: allow-all is decided in chat. Run allow-all-preview {pr.GetRequiredValue(repo)}, show the hash to the person, then allow-all-apply with that hash.");
+    return 1;
+}));
 allowAll.Add(repo);
 
 var allowFolder = SetupVerb("allow-folder", "Let every script whose full path matches a glob, such as F:\\**\\**, run without per-script approval (administrator).", pr => ["allow-folder", pr.GetRequiredValue(folderGlob)]);
