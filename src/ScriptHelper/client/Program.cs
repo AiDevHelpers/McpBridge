@@ -7,6 +7,7 @@ using AiDevHelpers.ScriptHelper.Core;
 // UAC prompt. Exit 0 done, 1 refused, 2 bad usage.
 
 var allowNoTpm = new Option<bool>("--allow-no-tpm") { Recursive = true };
+var approvedInChat = new Option<bool>("--approved-in-chat") { Description = "Set only after the person agreed to this registration in chat. Skips the console question." };
 var visible = new Option<bool>("--visible");
 var repo = new Argument<string>("repo");
 var script = new Argument<string>("script");
@@ -91,7 +92,8 @@ var terminalsSetup = Verb("setup", "Set up the terminals.", Sync(pr => Local(pr.
 terminalsSetup.Add(all);
 terminals.Add(terminalsSetup);
 
-var register = SetupVerb("register", "Register a repo as a project (administrator).", pr => ["register", pr.GetRequiredValue(repo)]);
+var register = SetupVerb("register", "Register a repo as a project (administrator). Needs --approved-in-chat after the person agreed in chat.", pr => pr.GetValue(approvedInChat) ? ["register", pr.GetRequiredValue(repo), "--approved-in-chat"] : ["register", pr.GetRequiredValue(repo)]);
+register.Add(approvedInChat);
 register.Add(repo);
 
 var approve = Verb("approve", "Approve a manifest-listed script for this user (administrator).", Sync(pr =>
@@ -147,7 +149,16 @@ var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated pro
         return 1;
     }
 
-    var exit = SetupHost.Run(pr.UnmatchedTokens.ToArray(), pr.GetValue(allowNoTpm), confirmRegister: true);
+    // Registration is decided in chat before the elevated copy starts. The copy never asks on its console.
+    var steps = pr.UnmatchedTokens.ToList();
+    var approved = steps.Remove("--approved-in-chat");
+    if (steps.Count > 0 && steps[0] == "register" && !approved)
+    {
+        Console.Error.WriteLine("refused: register needs the person's yes in chat first (--approved-in-chat).");
+        return 1;
+    }
+
+    var exit = SetupHost.Run(steps.ToArray(), pr.GetValue(allowNoTpm), confirmRegister: false);
     if (exit != 0 && !Console.IsInputRedirected)
     {
         // This window closes when the process ends, so a failure would vanish before it could be read.
