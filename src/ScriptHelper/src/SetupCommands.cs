@@ -161,6 +161,15 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
     /// the repo path; nothing is written unless both are yes. The signed approval goes to the admin-only data root, bound to the
     /// project, the checkout and the hash of the settings file, and this user's gitignored .aidevtools/user.json gets a pointer to it.
     /// </summary>
+    // The one reason every command gives when the project is not in the registry.
+    private const string NotRegisteredReason = "project is not registered; run register first";
+
+    private bool TryRegisteredProject(string root, out ProjectEntry project)
+    {
+        project = _registry.Find(root)!;
+        return project is not null;
+    }
+
     public SetupResult AllowAll(string root) => AllowAllCore(root, approvedHash: null);
 
     /// <summary>
@@ -313,9 +322,8 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         if (!_elevation.IsElevated())
             return VerifyReport.Failed("setup needs an elevated shell");
 
-        var project = _registry.Find(root);
-        if (project is null)
-            return VerifyReport.Failed("project is not registered; run register first");
+        if (!TryRegisteredProject(root, out var project))
+            return VerifyReport.Failed(NotRegisteredReason);
 
         return AllowlistVerifier.Run(_config, _signer, Versions, _interpreter, _inspector, project);
     }
@@ -326,9 +334,8 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         if (!_elevation.IsElevated())
             return ScanReport.Failed("setup needs an elevated shell");
 
-        var project = _registry.Find(root);
-        if (project is null)
-            return ScanReport.Failed("project is not registered; run register first");
+        if (!TryRegisteredProject(root, out var project))
+            return ScanReport.Failed(NotRegisteredReason);
 
         string text;
         try
@@ -427,9 +434,8 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         if (!_elevation.IsElevated())
             return Analysis.Failed("setup needs an elevated shell");
 
-        var project = _registry.Find(root);
-        if (project is null)
-            return Analysis.Failed("project is not registered; run register first");
+        if (!TryRegisteredProject(root, out var project))
+            return Analysis.Failed(NotRegisteredReason);
 
         byte[] manifestBytes;
         try
