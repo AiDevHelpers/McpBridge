@@ -495,4 +495,13 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
         IdeInstanceRouter.CallAsync("listThreads", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the debugger's exception settings, grouped as the debugger groups them, with break-when-thrown and break-when-user-unhandled. Read-only.")]
+    public Task<string> IdeListExceptions(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listExceptions", new { }, solutionPath, ct, ide, instancePid);
 }

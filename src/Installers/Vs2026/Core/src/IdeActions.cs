@@ -122,6 +122,7 @@ public sealed class IdeActions(DTE2 dte)
         "listProcesses" => ListProcesses(),
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
+        "listExceptions" => ListExceptions(),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
@@ -784,6 +785,29 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { debugger_mode = mode.ToString(), current_thread_id = dte.Debugger.CurrentThread?.ID, threads = list };
+    }
+
+    // Break-on-throw settings, grouped as the debugger groups them. Read-only: nothing is changed here.
+    private object ListExceptions()
+    {
+        var list = new List<object>();
+        foreach (EnvDTE90.ExceptionSettings group in ((EnvDTE100.Debugger5)dte.Debugger).ExceptionGroups)
+        {
+            foreach (EnvDTE90.ExceptionSetting setting in group)
+            {
+                list.Add(new
+                {
+                    group = group.Name,
+                    name = setting.Name,
+                    code = setting.Code,
+                    break_when_thrown = setting.BreakWhenThrown,
+                    break_when_user_unhandled = setting.BreakWhenUserUnhandled,
+                    user_defined = setting.UserDefined,
+                });
+            }
+        }
+
+        return new { exceptions = list };
     }
 
     private object ListDebuggedProcesses()

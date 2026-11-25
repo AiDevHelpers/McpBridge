@@ -43,5 +43,10 @@
     "request": { "action": "listThreads" },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_exceptions_refused_by_generic_bridge": {
+    "request": { "action": "listExceptions" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }
