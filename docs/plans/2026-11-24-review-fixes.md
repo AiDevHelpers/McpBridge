@@ -21,7 +21,7 @@ Each unit: build and test the touched projects, then the lite gate, then one com
 - `BridgeAnswers` is synchronous. Cancellation takes effect between polls only; say so in the tool description.
 - The "cancels the wait" test is moved to unit 6, where the delay is injected.
 
-### Unit 3: starting markers (finding 3)  DECIDED: keep current behaviour (timed-out launch stays listed as starting)
+### Unit 3: starting markers (finding 3)  DECIDED: a timed-out launch clears its starting marker (decided in chat)
 - Markers stay as they are on success. On a failed launch or a timeout, clear the marker only for an exit that is not "still starting": a timeout must keep its marker, because `ide_list_instances` reports it as starting.
 - Broker launches have no pid. Find the new devenv by snapshotting devenv pids before the launch and taking the one that appears. If none appears, write no marker.
 - Decision: keep a timed-out launch listed as starting (current behaviour), or clear it?
