@@ -52,6 +52,11 @@ When `ide_list_instances` reports an instance, choose one and pass its `solution
 - `ide_get_debug_state`, `ide_list_breakpoints`, and `ide_list_watches` return valid results. Call `ide_get_locals` only if the debugger is already stopped at a breakpoint.
 - `ide_get_test_results` reads the specified solution's latest results; record “no TRX found” as a valid empty-state response if applicable.
 
+- `ide_list_processes`, `ide_list_debugged_processes`, `ide_list_threads`, `ide_list_stack_frames`, and `ide_list_exceptions` return valid results. Thread and stack lists are empty outside break mode; record that as a valid state.
+- `ide_list_documents`, `ide_list_tasks`, `ide_project_properties` (for a known project and `TargetFramework`), and `ide_get_setting` (for a key that exists, plus one that does not, which must return `found: false`) return valid results.
+- `ide_list_code_elements` on a known source file and `ide_semantic_definition` on a known symbol return locations; `ide_semantic_references` returns a list.
+- `ide_read_events` returns events and `last_seq` for an instance the MCP server is subscribed to. Subscriptions are automatic; `ide_subscribe_events` only confirms one.
+
 Do not run `ide_run_tests`, `ide_build`, or other state-changing tools during this read-only section.
 
 ## 5. Optional authorized action checks
