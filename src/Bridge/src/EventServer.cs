@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Collections.Generic;
 using System.IO.Pipes;
 using System.Text;
 using System.Text.Json;
@@ -16,10 +17,9 @@ namespace AiDevHelpers.Bridge;
 public sealed class EventServer : IDisposable
 {
     /// <summary>
-    /// Pipe instances on the events pipe. One, as for the request pipe: with several instances the VS process could not
-    /// create the pipe (access denied), so the events pipe serves one subscriber at a time. Later subscribers wait their turn.
+    /// Pipe instances on the events pipe, and so concurrent subscribers. Each instance has its own accept loop.
     /// </summary>
-    public const int MaxSubscribers = 1;
+    public const int MaxSubscribers = 8;
 
     /// <summary>Silence after which the writer sends a heartbeat line.</summary>
     public static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(15);
@@ -34,7 +34,7 @@ public sealed class EventServer : IDisposable
     private readonly EventHub _hub;
     private readonly IBridgeLogger _logger;
     private readonly CancellationTokenSource _cts = new();
-    private Task? _accept;
+    private readonly List<Task> _accepts = new();
 
     public EventServer(string pipeName, int pid, EventHub hub, IBridgeLogger logger)
     {
@@ -46,7 +46,12 @@ public sealed class EventServer : IDisposable
 
     public void Start()
     {
-        _accept = Task.Run(() => AcceptLoopAsync(_cts.Token));
+        // One accept loop per pipe instance: a client that holds one instance (for example the MCP server's automatic
+        // subscription) leaves the others free for further subscribers.
+        for (var i = 0; i < MaxSubscribers; i++)
+        {
+            _accepts.Add(Task.Run(() => AcceptLoopAsync(_cts.Token)));
+        }
     }
 
     public void Dispose()
