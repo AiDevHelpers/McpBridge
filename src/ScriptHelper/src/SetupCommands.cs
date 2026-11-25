@@ -224,10 +224,22 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
         _ensureDirectory(_config.AllowAllDirectory);
         _ensureDirectory(_config.VersionsDirectory);
         var version = Versions.Get(project.Id) + 1;
-        AllowAllStore.Save(_config.AllowAllPath(project.Id), new AllowAllApproval(project.Id, project.Root, version, hash, ""), _signer);
-        Versions.Bump(project.Id, version);
 
-        WriteUserPointer(project, hash);
+        // Signed store first: the tool layer trusts the user pointer, so a pointer must never exist without its store.
+        // If the pointer write fails, the new store is removed again, so no approval is left behind without a pointer.
+        var storePath = _config.AllowAllPath(project.Id);
+        AllowAllStore.Save(storePath, new AllowAllApproval(project.Id, project.Root, version, hash, ""), _signer);
+        try
+        {
+            WriteUserPointer(project, hash);
+        }
+        catch (Exception)
+        {
+            File.Delete(storePath);
+            throw;
+        }
+
+        Versions.Bump(project.Id, version);
         return new SetupResult(true, $"allow-all approved for '{repo}' (version {version})", project.Id);
     }
 
