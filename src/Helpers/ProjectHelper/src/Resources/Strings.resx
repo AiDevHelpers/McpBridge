@@ -6,4 +6,14 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="TemplateHeaderMissing" xml:space="preserve"><value>dotnet new list did not print the expected table header.</value></data>
   <data name="TemplateColumnCount" xml:space="preserve"><value>dotnet new list printed a table with an unexpected column count.</value></data>
+  <data name="GuardNoStandards" xml:space="preserve"><value>No project standards are set. Add {0} with a baseFramework before targeting a framework.</value></data>
+  <data name="GuardRefused" xml:space="preserve"><value>{0} is not the base framework {1} for {2}. To allow it, add an entry to the exceptions in {3} with a reason.</value></data>
+  <data name="AuditNoStandards" xml:space="preserve"><value>No project standards are set. Add {0} to audit against it.</value></data>
+  <data name="AuditNoFramework" xml:space="preserve"><value>No target framework is set in the project file.</value></data>
+  <data name="AuditNotSet" xml:space="preserve"><value>not set</value></data>
+  <data name="AuditFrameworkExcepted" xml:space="preserve"><value>Targets {0} under an exception in the standards: {1}</value></data>
+  <data name="AuditPropertyMissing" xml:space="preserve"><value>{0} is not set to {1} (found: {2}).</value></data>
+  <data name="AuditAnalyzerMissing" xml:space="preserve"><value>Required analyzer package {0} is not referenced.</value></data>
+  <data name="AuditTestSdkMissing" xml:space="preserve"><value>Test project does not reference Microsoft.NET.Test.Sdk.</value></data>
+  <data name="AuditVersionsDiffer" xml:space="preserve"><value>{0} is pinned to different versions across projects; {1} is the chosen version ({2}).</value></data>
 </root>
