@@ -174,40 +174,9 @@ internal static class MemberEditEngine
 
     private static async Task<(DocumentId Id, MemberDeclarationSyntax Node, ISymbol Symbol)?> LocateAsync(Solution solution, string file, int line, MethodEditPlan plan)
     {
-        var id = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
-        var document = id is null ? null : solution.GetDocument(id);
-        var text = document is null ? null : await document.GetTextAsync().ConfigureAwait(false);
-        if (document is null || text is null || line < 1 || line > text.Lines.Count)
-        {
-            plan.Reasons.Add(Strings.Format("NoRoslynDocumentFor", file));
-            return null;
-        }
-
-        var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
-        var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
-        var lineText = text.Lines[line - 1].ToString();
-        var position = text.Lines[line - 1].Start + (lineText.Length - lineText.TrimStart().Length);
-        var node = root!.FindToken(Math.Min(position, root.FullSpan.End)).Parent?.AncestorsAndSelf()
-            .OfType<MemberDeclarationSyntax>().FirstOrDefault(m => m is PropertyDeclarationSyntax or FieldDeclarationSyntax);
-        if (node is FieldDeclarationSyntax { Declaration.Variables.Count: > 1 })
-        {
-            plan.Reasons.Add(Strings.Get("MemberMultiDeclarator"));
-            return null;
-        }
-
-        ISymbol? symbol = node switch
-        {
-            PropertyDeclarationSyntax p => model!.GetDeclaredSymbol(p),
-            FieldDeclarationSyntax f => model!.GetDeclaredSymbol(f.Declaration.Variables[0]),
-            _ => null,
-        };
-        if (node is null || symbol is null)
-        {
-            plan.Reasons.Add(Strings.Get("MemberNotAMember"));
-            return null;
-        }
-
-        return (id!, node, symbol);
+        var target = await EditTarget.LocateAsync(solution, file, line, 0, [typeof(PropertyDeclarationSyntax), typeof(FieldDeclarationSyntax)],
+            reason => plan.Reasons.Add(reason)).ConfigureAwait(false);
+        return target is null ? null : (target.DocumentId, (MemberDeclarationSyntax)target.Declaration, target.Symbol);
     }
 
     private static async Task<ISymbol?> FindAsync(Solution solution, DocumentId id, INamedTypeSymbol type, string name)

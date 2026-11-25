@@ -76,7 +76,9 @@ Visual Studio only and says so in its description.
 - [x] **0.1** (done: `TestSolutions.cs`, two tests; `MethodEditEngineTests.Create` now delegates to it; 75 VS Core tests pass. The other
       test files still build their own solutions and move in later units.) `TestSolutions`: one test helper for multi-file, multi-project and multi-target `AdhocWorkspace` solutions with
       framework stand-ins; the existing test files move onto it.
-- [ ] **0.2** `EditTarget`: one locator for the document, the symbol and its references, for every member kind (method,
+- [x] **0.2** (done: `EditTarget.cs` covers every member kind and takes the kinds each engine accepts; `MemberEditEngine` uses it with
+      the property and field kinds, no behaviour change; `MethodEditEngine` still has its own locator because its column rule
+      differs, and moves onto `EditTarget` in 3.1 when it accepts other kinds; 80 VS Core tests pass.) `EditTarget`: one locator for the document, the symbol and its references, for every member kind (method,
       constructor, operator, indexer, property, field, event, type, enum member). Replaces the copies in `MethodEditEngine` and
       `MemberEditEngine`. Built engines move onto it with no behaviour change.
 - [ ] **0.3** `CoverageOfReferences`: the "every reference covered, related members refused" rule for symbols of any member kind

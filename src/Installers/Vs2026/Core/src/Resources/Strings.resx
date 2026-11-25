@@ -74,8 +74,6 @@
   <data name="MemberNoDocComment" xml:space="preserve"><value>The member has no /// doc comment, so newSummary was not used.</value></data>
   <data name="MemberNotFoundAfterEdit" xml:space="preserve"><value>The edited member could not be found after the edit.</value></data>
   <data name="MemberUncovered" xml:space="preserve"><value>The change affects what other code sees and {0} reference(s) have no caller edit. Pass an edit for each one in callerEdits.</value></data>
-  <data name="MemberMultiDeclarator" xml:space="preserve"><value>That field declares several variables at once. Split it before editing.</value></data>
-  <data name="MemberNotAMember" xml:space="preserve"><value>No field or property declaration at that position.</value></data>
   <data name="MemberRelatedMembers" xml:space="preserve"><value>The change affects what other code sees, but the property overrides or implements: {0}. This tool does not edit those; change them first.</value></data>
   <data name="MemberSetterOnProperty" xml:space="preserve"><value>A setter can only be changed on a property.</value></data>
   <data name="MemberSetterOnAccessors" xml:space="preserve"><value>This property has no accessor list I can add a setter to (it may be expression-bodied).</value></data>
@@ -100,6 +98,9 @@
   <data name="FileMoveMissing" xml:space="preserve"><value>'{0}' no longer exists, so it was not moved.</value></data>
   <data name="FileMoveExists" xml:space="preserve"><value>'{0}' already exists, so the file was not moved there.</value></data>
   <data name="FileMoveNotSdk" xml:space="preserve"><value>The project is not SDK-style, so it does not pick files up by folder. Move the file in Solution Explorer.</value></data>
+  <data name="EditTargetNone" xml:space="preserve"><value>No member declaration at that position.</value></data>
+  <data name="EditTargetMultiDeclarator" xml:space="preserve"><value>That field or event declares several variables at once. Split it before editing.</value></data>
+  <data name="EditTargetNoSymbol" xml:space="preserve"><value>The declaration has no symbol Roslyn can resolve.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
