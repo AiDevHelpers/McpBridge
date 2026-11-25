@@ -103,6 +103,6 @@ internal static class UnusedFinder
         name = symbol.ToDisplayString(),
         file = symbol.Locations.FirstOrDefault(l => l.IsInSource)?.SourceTree?.FilePath,
         line = symbol.Locations.FirstOrDefault(l => l.IsInSource)?.GetLineSpan().StartLinePosition.Line + 1,
-        confidence = low ? "low: attributes, interfaces or constructors can be used without a reference" : "high",
+        confidence = low ? Strings.Get("UnusedLowConfidence") : "high",
     };
 }

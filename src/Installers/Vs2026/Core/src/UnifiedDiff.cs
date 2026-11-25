@@ -69,7 +69,7 @@ internal static class UnifiedDiff
         return sb.ToString();
     }
 
-    private static string Truncated(StringBuilder sb) => sb.Append("... diff truncated after ").Append(MaxLinesPerFile).Append(" lines\n").ToString();
+    private static string Truncated(StringBuilder sb) => sb.Append(Strings.Format("DiffTruncatedAfter", MaxLinesPerFile)).Append('\n').ToString();
 
     private static string Normalize(string text) => text.Replace("\r\n", "\n");
 

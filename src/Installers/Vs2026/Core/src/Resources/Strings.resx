@@ -148,5 +148,13 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="LineBeyondEnd" xml:space="preserve"><value>Line {0} is past the end of the file ({1} lines).</value></data>
   <data name="CommandUnavailable" xml:space="preserve"><value>The IDE command {0} is not available here (HRESULT 0x{1:X8}). The caret was moved.</value></data>
   <data name="OpenWithUnsavedChanges" xml:space="preserve"><value>open with unsaved changes</value></data>
+  <data name="DiffTruncatedAfter" xml:space="preserve"><value>... diff truncated after {0} lines</value></data>
+  <data name="UnusedLowConfidence" xml:space="preserve"><value>low: attributes, interfaces or constructors can be used without a reference</value></data>
+  <data name="CallSiteNotPlainCall" xml:space="preserve"><value>not a plain call (method group, delegate, constructor or attribute)</value></data>
+  <data name="CallSiteParams" xml:space="preserve"><value>the method takes params, which this tool does not rewrite</value></data>
+  <data name="CallSiteArgumentMismatch" xml:space="preserve"><value>an argument does not match a parameter</value></data>
+  <data name="CallSiteKeptParameterMissing" xml:space="preserve"><value>a kept parameter has no argument here (it relies on a default)</value></data>
+  <data name="CallSiteNewParameterNoValue" xml:space="preserve"><value>a new parameter has no valueForCallers</value></data>
+  <data name="CallSiteRemovedArgumentSideEffects" xml:space="preserve"><value>a removed parameter's argument could have side effects</value></data>
 </root>
 
