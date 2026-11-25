@@ -109,6 +109,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         [Description("Optional: one test project (.csproj) to run instead of the whole solution. Uses dotnet test.")] string? project = null,
+        [Description("Optional: seconds to wait for a Test Explorer run to finish (1 to 3600). Overrides eventFilter.waitSeconds for this call.")] int? waitSeconds = null,
         CancellationToken ct = default)
     {
         if (project is not null)
@@ -127,7 +128,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return RunTestsAndSummarizeAsync(solutionPath, ide, instancePid, ct);
+        return RunTestsAndSummarizeAsync(solutionPath, ide, instancePid, waitSeconds, ct);
     }
 
     [McpServerTool]
@@ -145,8 +146,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     /// is one whose summary differs from it, so an earlier run is not mistaken for this one. Returns status "running" after the
     /// wait limit, with the call to read later.
     /// </summary>
-    private async Task<string> RunTestsAndSummarizeAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
+    private async Task<string> RunTestsAndSummarizeAsync(string? solutionPath, string? ide, int? instancePid, int? waitOverride, CancellationToken ct)
     {
+        var (settings, warnings) = LoadEventFilter(solutionPath);
         var baseline = await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
         var started = await RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
         using (var startedDoc = JsonDocument.Parse(started))
@@ -157,7 +159,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             }
         }
 
-        var waitSeconds = DefaultTestWaitSeconds;
+        var waitSeconds = Math.Clamp(waitOverride ?? settings.WaitSeconds, 1, 3600);
         var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
         while (DateTime.UtcNow < deadline)
         {
@@ -166,14 +168,31 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             using var doc = JsonDocument.Parse(now);
             if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.GetBoolean() && now != baseline)
             {
-                return JsonSerializer.Serialize(new { status = "finished", summary = TestSummaryCapper.Cap(doc.RootElement) });
+                var finished = JsonSerializer.Serialize(new { status = "finished", summary = TestSummaryCapper.Cap(doc.RootElement, maxMessageChars: settings.MaxSummaryMessageChars) });
+                return WithWarnings(finished, warnings);
             }
         }
 
-        return JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = Strings.Get("RunStillRunningHint") });
+        var running = JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = Strings.Get("RunStillRunningHint") });
+        return WithWarnings(running, warnings);
     }
 
-    private const int DefaultTestWaitSeconds = 120;
+    /// <summary>The eventFilter limits for a solution, or the defaults when no solution is given.</summary>
+    private static (EventFilterSettings Settings, IReadOnlyList<string> Warnings) LoadEventFilter(string? solutionPath) =>
+        solutionPath is null ? (new EventFilterSettings(), []) : RepoConfig.ReadEventFilter(solutionPath);
+
+    /// <summary>Adds settings_warnings to a JSON object reply. Replies with no warnings are returned unchanged.</summary>
+    private static string WithWarnings(string json, IReadOnlyList<string> warnings)
+    {
+        if (warnings.Count == 0)
+        {
+            return json;
+        }
+
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+        node["settings_warnings"] = new System.Text.Json.Nodes.JsonArray(warnings.Select(w => (System.Text.Json.Nodes.JsonNode)w).ToArray());
+        return node.ToJsonString();
+    }
 
     private static async Task<string> RunTestExplorerWithRetryAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
     {
@@ -323,8 +342,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             errors = diagnostics.RootElement.GetProperty("result").GetProperty("diagnostics").Clone();
         }
 
-        var summary = BuildSummary.Build(result, errors);
-        return JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary });
+        var (settings, warnings) = LoadEventFilter(solutionPath);
+        var summary = BuildSummary.Build(result, errors, maxMessageChars: settings.MaxSummaryMessageChars);
+        return WithWarnings(JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary }), warnings);
     }
 
     [McpServerTool]
@@ -1152,22 +1172,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: only these event names. Omit for all.")] string[]? events = null,
         [Description("Optional: info, warning or error. Events below this are left out. Default info.")] string? minSeverity = null,
         [Description("Optional: most events to return (1 to 200). Default 20. The reply counts the rest in omitted; pass next_seq as sinceSeq to continue.")] int? limit = null,
-        [Description("Optional: longest text kept in one event (characters). Longer text is cut and marked truncated. Default 300.")] int? maxTextChars = null)
+        [Description("Optional: longest text kept in one event (characters). Longer text is cut and marked truncated. Default 300, or eventFilter.maxEventTextChars.")] int? maxTextChars = null,
+        [Description("Optional: solution whose .claude/aidevhelpers.json holds the eventFilter limits. Without it the defaults apply.")] string? solutionPath = null)
     {
         if (!EventSeverityMap.TryParse(minSeverity, out var severity))
         {
             throw new ArgumentException(Strings.Format("UnknownMinSeverity", minSeverity));
         }
 
+        var (settings, warnings) = LoadEventFilter(solutionPath);
         var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();
         // Default scope (plan 4.3): run results, status and errors. Pass events to ask for others by name.
         var names = events is { Length: > 0 } ? events : DefaultEventNames;
         var options = new EventFilterOptions(
             Names: null,
             MinSeverity: severity,
-            Limit: limit ?? 20,
-            MaxTextChars: maxTextChars ?? 300);
-        return JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, names, options));
+            Limit: limit ?? settings.MaxEvents,
+            MaxTextChars: maxTextChars ?? settings.MaxEventTextChars);
+        return WithWarnings(JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, names, options)), warnings);
     }
 
     [McpServerTool]
