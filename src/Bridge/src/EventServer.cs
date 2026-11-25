@@ -6,6 +6,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.AccessControl;
+using System.Security.Principal;
 
 namespace AiDevHelpers.Bridge;
 
@@ -235,9 +237,27 @@ public sealed class EventServer : IDisposable
         return names;
     }
 
+    // Several instances of one pipe name need the right to create a new instance (FILE_CREATE_PIPE_INSTANCE), which
+    // ReadWrite does not carry. The request pipe has one instance and keeps its ReadWrite ACL (BridgeServer.CreatePipeSecurity).
+    private static PipeSecurity CreateEventPipeSecurity()
+    {
+        var security = new PipeSecurity();
+        var user = WindowsIdentity.GetCurrent().User;
+        if (user is not null)
+        {
+            security.AddAccessRule(new PipeAccessRule(user, PipeAccessRights.FullControl, AccessControlType.Allow));
+        }
+
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        security.AddAccessRule(new PipeAccessRule(
+            new SecurityIdentifier(WellKnownSidType.BuiltinAdministratorsSid, null), PipeAccessRights.FullControl, AccessControlType.Allow));
+        return security;
+    }
+
     private NamedPipeServerStream CreateStream()
     {
-        var security = BridgeServer.CreatePipeSecurity();
+        var security = CreateEventPipeSecurity();
 #if NETFRAMEWORK
         return new NamedPipeServerStream(
             _pipeName, PipeDirection.InOut, MaxSubscribers, PipeTransmissionMode.Byte, PipeOptions.Asynchronous, 0, 0, security);
