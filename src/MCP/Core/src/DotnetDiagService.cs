@@ -43,7 +43,8 @@ public sealed class DotnetDiagService(
         {
             string? path = _locate(tool.Executable);
             string? version = null;
-            if (path is not null)
+            // dotnet-symbol has no --version flag; its help text would be reported as the version.
+            if (path is not null && tool.Executable != "dotnet-symbol")
             {
                 CommandResult probe = await _runner(new CommandRequest { FileName = path, Arguments = ["--version"], Timeout = TimeSpan.FromSeconds(30) }, ct);
                 version = probe.Success ? probe.StdOut.Trim() : null;

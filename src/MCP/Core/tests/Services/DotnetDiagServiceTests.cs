@@ -101,6 +101,15 @@ public sealed class DotnetDiagServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Status_does_not_probe_dotnet_symbol_for_a_version()
+    {
+        var rows = await Service("dotnet-symbol").StatusAsync(default);
+
+        Assert.Contains(rows, r => r.Tool.Executable == "dotnet-symbol" && r.Path is not null && r.Version is null);
+        Assert.DoesNotContain(_ran, r => r.FileName.EndsWith("dotnet-symbol.exe", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task Status_lists_every_tool_and_marks_the_missing_ones()
     {
         var rows = await Service("dotnet-dump").StatusAsync(default);
