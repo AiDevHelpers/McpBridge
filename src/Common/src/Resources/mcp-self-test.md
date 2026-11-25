@@ -28,7 +28,7 @@ dotnet test src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj -c Release
 dotnet test src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj -c Release
 ```
 
-Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue; the MCP test project covers tool validation and routing; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
+Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue; the MCP test project has one smoke test, so tool coverage comes from the inventory check in section 3; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
 
 ## 3. MCP protocol and inventory
 
