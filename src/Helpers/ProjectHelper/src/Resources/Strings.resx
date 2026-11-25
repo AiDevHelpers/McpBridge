@@ -17,6 +17,14 @@
   <data name="FixDescAddPackage" xml:space="preserve"><value>Add {0} {1} to {2}.</value></data>
   <data name="FixDescSetVersion" xml:space="preserve"><value>Set {0} to {1} in {2}.</value></data>
   <data name="FixDescRetarget" xml:space="preserve"><value>Retarget {0} from {1} to {2}.</value></data>
+  <data name="AddInvalidName" xml:space="preserve"><value>The project name must be a C# identifier, with dots allowed between segments.</value></data>
+  <data name="AddSolutionMissing" xml:space="preserve"><value>The solution {0} was not found or is not an .slnx file.</value></data>
+  <data name="AddFolderRequired" xml:space="preserve"><value>Folder is required: the solution has no single layout to infer it from.</value></data>
+  <data name="AddFolderUnsafe" xml:space="preserve"><value>The folder {0} must stay inside the repo.</value></data>
+  <data name="AddFolderNotEmpty" xml:space="preserve"><value>The folder {0} already has files. Choose an empty folder.</value></data>
+  <data name="AddTemplateUnknown" xml:space="preserve"><value>The template {0} is not in dotnet new list.</value></data>
+  <data name="AddLanguageUnsupported" xml:space="preserve"><value>The template {0} does not support {1}.</value></data>
+  <data name="SlnxAlreadyListed" xml:space="preserve"><value>The solution already lists {0}.</value></data>
   <data name="FixNoRootElement" xml:space="preserve"><value>The project file has no root element.</value></data>
   <data name="FixTokenUnknown" xml:space="preserve"><value>The token is unknown or was already used. Plan again.</value></data>
   <data name="FixTokenExpired" xml:space="preserve"><value>The token expired. Plan again.</value></data>

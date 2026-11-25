@@ -90,5 +90,45 @@ internal sealed class ProjectTools
         return Json(new { ok = result.Ok, error = result.Error, changed = result.Changed, buildOutput = result.BuildOutput });
     }
 
+    [McpServerTool]
+    [Description("Plan adding a .NET project from a dotnet new template to a .slnx solution, set up to the standards (properties, analyzers, test SDK for *.Tests). Framework defaults to the standard and is refused when another framework has no exception. folder is optional when the solution's layout gives a default. Writes nothing; returns a token for project_add_confirm.")]
+    public static async Task<string> ProjectAddPlan(
+        [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
+        [Description("Solution file, repo-relative, e.g. AiDevHelpers.slnx")] string solution,
+        [Description("Template short name from project_types_list, e.g. classlib")] string template,
+        [Description("Project name, e.g. Foo.Bar")] string name,
+        [Description("Repo-relative project folder; optional when the layout gives a default")] string? folder = null,
+        [Description("Solution folder, e.g. /Helpers/Foo/; omit to add at the top level")] string? solutionFolder = null,
+        [Description("Language: C#, F# or VB")] string language = "C#",
+        [Description("Target framework; defaults to the standard base framework")] string? framework = null,
+        [Description("Extra package ids to add at the repo's pinned version")] string[]? packages = null,
+        CancellationToken ct = default)
+    {
+        var request = new AiDevHelpers.Helpers.ProjectHelper.AddRequest(root, solution, template, name, folder, solutionFolder, language, framework, packages ?? []);
+        var plan = await AiDevHelpers.Helpers.ProjectHelper.ProjectAdder.PlanAsync(request, CommandSeam.Default, ct);
+        return Json(new
+        {
+            ok = plan.Errors.Count == 0,
+            token = plan.Token,
+            projectPath = plan.ProjectPath,
+            framework = plan.Framework,
+            errors = plan.Errors,
+            notes = plan.Notes,
+            edits = plan.Edits.Select(a => new { a.Id, a.Description }),
+            stubs = plan.Stubs,
+        });
+    }
+
+    [McpServerTool]
+    [Description("Apply a plan from project_add_plan: creates the project with dotnet new, removes template stubs, applies the edits, lists the project in the solution, and builds it with -warnaserror. A failed build removes what was created and restores the solution. Tokens are single use and expire after 15 minutes.")]
+    public static async Task<string> ProjectAddConfirm(
+        [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
+        [Description("Token returned by project_add_plan")] string token,
+        CancellationToken ct = default)
+    {
+        var result = await AiDevHelpers.Helpers.ProjectHelper.ProjectAdder.ConfirmAsync(root, token, CommandSeam.Default, ct);
+        return Json(new { ok = result.Ok, error = result.Error, changed = result.Changed, buildOutput = result.BuildOutput });
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

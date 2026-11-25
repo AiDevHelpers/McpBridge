@@ -209,7 +209,7 @@ public static class ProjectFixer
         name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".Test", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Applies the actions to one project file's bytes, keeping its line endings and byte order mark.</summary>
-    private static byte[] ApplyTo(byte[] original, IReadOnlyList<FixAction> actions)
+    public static byte[] ApplyTo(byte[] original, IReadOnlyList<FixAction> actions)
     {
         var hasBom = original.Length >= 3 && original[0] == 0xEF && original[1] == 0xBB && original[2] == 0xBF;
         var text = new UTF8Encoding(false).GetString(original, hasBom ? 3 : 0, original.Length - (hasBom ? 3 : 0));
@@ -312,7 +312,7 @@ public static class ProjectFixer
     }
 
     /// <summary>Adds a child element on its own line, indented like its siblings, and returns it.</summary>
-    private static XElement AppendChild(XElement parent, XElement child, string newline)
+    public static XElement AppendChild(XElement parent, XElement child, string newline)
     {
         var parentIndent = IndentOf(parent.PreviousNode as XText);
         var childIndent = parent.Elements().FirstOrDefault() is { } first
