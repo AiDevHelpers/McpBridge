@@ -79,6 +79,16 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "add_task_refused_by_generic_bridge": {
+    "request": { "action": "addTask", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "clear_tasks_refused_by_generic_bridge": {
+    "request": { "action": "clearTasks" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "list_tasks_refused_by_generic_bridge": {
     "request": { "action": "listTasks" },
     "ok": false,

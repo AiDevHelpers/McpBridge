@@ -155,6 +155,13 @@ public sealed class IdeActions(DTE2 dte)
         "removeProjectItem" => RemoveProjectItem(RequireString(args, "project"), RequireString(args, "file"), OptionalBool(args, "confirm") == true),
         "closeSolution" => CloseSolution(OptionalBool(args, "saveFirst") == true, OptionalBool(args, "confirm") == true),
         "listTasks" => ListTasks(),
+        "addTask" => TaskListActions.AddTask(
+            RequireString(args, "text"),
+            OptionalString(args, "file"),
+            OptionalInt(args, "line"),
+            OptionalString(args, "category") ?? "Message",
+            OptionalBool(args, "confirm") == true),
+        "clearTasks" => TaskListActions.ClearTasks(OptionalBool(args, "confirm") == true),
         "setStatus" => ShellActions.SetStatus(OptionalString(args, "text") ?? string.Empty, OptionalBool(args, "confirm") == true),
         "writeActivityLog" => ShellActions.WriteActivityLog(
             RequireString(args, "level"),
