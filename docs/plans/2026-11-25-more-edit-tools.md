@@ -73,7 +73,8 @@ Visual Studio only and says so in its description.
       `ICodeRefactoringService` are probably internal, so try the public `CodeFixProvider` and `CodeRefactoringProvider` MEF
       exports. Record what compiles and runs, whether a code action returns only text changes or other operations, and whether
       action ids are stable between calls. The result decides phase 6 and units 7.x and 8.1.
-- [ ] **0.1** `TestSolutions`: one test helper for multi-file, multi-project and multi-target `AdhocWorkspace` solutions with
+- [x] **0.1** (done: `TestSolutions.cs`, two tests; `MethodEditEngineTests.Create` now delegates to it; 75 VS Core tests pass. The other
+      test files still build their own solutions and move in later units.) `TestSolutions`: one test helper for multi-file, multi-project and multi-target `AdhocWorkspace` solutions with
       framework stand-ins; the existing test files move onto it.
 - [ ] **0.2** `EditTarget`: one locator for the document, the symbol and its references, for every member kind (method,
       constructor, operator, indexer, property, field, event, type, enum member). Replaces the copies in `MethodEditEngine` and

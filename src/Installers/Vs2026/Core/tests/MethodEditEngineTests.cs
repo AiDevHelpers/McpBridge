@@ -14,15 +14,7 @@ public sealed class MethodEditEngineTests
         "    public int Use() { return Add(1, 2); }\n" +
         "}\n";
 
-    internal static Solution Create(string code)
-    {
-        var workspace = new AdhocWorkspace();
-        var project = workspace.AddProject("P", LanguageNames.CSharp)
-            .WithMetadataReferences(new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
-        var document = project.AddDocument("a.cs", SourceText.From(code), filePath: File);
-        workspace.TryApplyChanges(document.Project.Solution);
-        return workspace.CurrentSolution;
-    }
+    internal static Solution Create(string code) => TestSolutions.Single([(File, code)]);
 
     // 1-based line and column of the first occurrence of a marker in the source.
     internal static (int Line, int Column) Locate(string code, string marker)
