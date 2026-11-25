@@ -25,3 +25,13 @@ dotnet tool install --global dotnet-symbol
 | dotnet-symbol | Symbols for a dump or binary | `symbols` |
 
 Check what is installed: call `dotnet_diag` with `action: status`. It lists each tool with its path and version, or the install command for a missing one.
+
+## Building the Visual Studio extension
+
+The installer project (`src/Installers/Vs2026/Installer`) is a VSSDK project. Build it with `scripts/build-vs-extension-vsix.ps1`, which uses Visual Studio's MSBuild. `dotnet build` on that project fails: the VSSDK build tasks cannot load `System.Security.Permissions` under the .NET SDK.
+
+```powershell
+pwsh -NoProfile -File scripts/build-vs-extension-vsix.ps1 -Configuration Release
+```
+
+Install the built `.vsix` with `scripts/update-vs-extension.ps1 -NoBuild` once every Visual Studio window is closed. The installer dialog lists each instance; tick them all.
