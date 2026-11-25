@@ -16,22 +16,13 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? elevRunner = null)
 {
-    private static readonly TimeSpan BridgeReadyTimeout = TimeSpan.FromSeconds(60);
-
-    // True when the instance's pipe accepts a connection, which is how the bridge says it is ready.
-    private static bool BridgeAnswers(VsInstance instance)
-    {
-        try
-        {
-            using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", instance.PipeName, System.IO.Pipes.PipeDirection.InOut);
-            pipe.Connect(1000);
-            return true;
-        }
-        catch (Exception ex) when (ex is TimeoutException or System.IO.IOException or UnauthorizedAccessException)
-        {
-            return false;
-        }
-    }
+    private readonly IdeSolutionOpener _opener = new(
+        new DevenvSolutionLauncher(elevRunner),
+        VsInstanceRegistry.FindBySolution,
+        IdeSolutionOpener.PipeAnswers,
+        (delay, ct) => Task.Delay(delay, ct),
+        () => DateTime.UtcNow,
+        TimeSpan.FromSeconds(60));
 
     // Resolves the solution a test-result call refers to: the given path, or the only open instance's solution.
     private static string? ResolveSolution(string? solutionPath)
@@ -77,117 +68,9 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
 
     [McpServerTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
-    public async Task<string> IdeOpenSolution(
+    public Task<string> IdeOpenSolution(
         [Description("Full path of the .sln")] string solutionPath,
-        CancellationToken ct = default)
-    {
-        if (!File.Exists(solutionPath))
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = Strings.Get("SolutionFileMissing") });
-        }
-
-        // Reuse an instance that already has this solution open, so a second devenv is not started for it.
-        var existing = VsInstanceRegistry.FindBySolution(solutionPath);
-        if (existing is not null)
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = true, instance_pid = existing.Pid });
-        }
-
-        // With an approved allow-all for the repo and an elevation policy, the launch goes through the broker's run channel,
-        // so no UAC prompt. Otherwise the normal launch (with its own UAC prompt when elevation is needed) is used.
-        var brokered = await TryBrokerLaunchAsync(solutionPath, ct);
-        if (brokered.Error is not null)
-        {
-            return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error = brokered.Error });
-        }
-
-        if (!brokered.Used)
-        {
-            var error = DevenvLauncher.Open(solutionPath, out var startedPid);
-            if (error is null && startedPid is { } launched)
-            {
-                StartingInstances.Write(launched, solutionPath);
-            }
-
-            if (error is not null)
-            {
-                return System.Text.Json.JsonSerializer.Serialize(new { ok = false, error });
-            }
-        }
-
-        // Return only once the new instance has registered and its bridge answers, so a follow-up call does not race it.
-        var deadline = DateTime.UtcNow + BridgeReadyTimeout;
-        while (DateTime.UtcNow < deadline)
-        {
-            var started = VsInstanceRegistry.FindBySolution(solutionPath);
-            if (started is not null && BridgeAnswers(started))
-            {
-                StartingInstances.Clear(started.Pid);
-                return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = false, instance_pid = started.Pid, bridge_ready = true });
-            }
-
-            await Task.Delay(500, ct);
-        }
-
-        return System.Text.Json.JsonSerializer.Serialize(new
-        {
-            ok = false,
-            opened = solutionPath,
-            bridge_ready = false,
-            error = Strings.Get("OpenBridgeNotReady"),
-        });
-    }
-
-    // Repo-relative script that starts devenv. It runs through the broker, so it is covered by the repo's allow-all approval.
-    private const string OpenScript = ".aidevtools/open-solution.ps1";
-
-    private async Task<(bool Used, string? Error)> TryBrokerLaunchAsync(string solutionPath, CancellationToken ct)
-    {
-        if (elevRunner is null)
-        {
-            return (false, null);
-        }
-
-        var full = Path.GetFullPath(solutionPath);
-        var repo = AiDevHelpers.Common.RepoSettingsFile.FindRepoRootFromFolder(Path.GetDirectoryName(full));
-        if (repo is null || !AiDevHelpers.Common.ElevationPolicy.Decide(full).Elevated || !AllowAllApproved(repo))
-        {
-            return (false, null);
-        }
-
-        var result = await elevRunner.RunAsync(repo, OpenScript, [full], ct);
-        return result.ExitCode == 0
-            ? (true, null)
-            : (true, Strings.Format("ElevatedOpenFailed", result.ExitCode, result.Output));
-    }
-
-    // True when this repo's settings file still has the hash the person approved allow-all for.
-    private static bool AllowAllApproved(string repo)
-    {
-        var user = AiDevHelpers.Common.RepoSettingsFile.UserFilePath(repo);
-        if (!File.Exists(user))
-        {
-            return false;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(user));
-            if (!doc.RootElement.TryGetProperty("allowAll", out var entry))
-            {
-                return false;
-            }
-
-            var recorded = entry.GetProperty("settingsHash").GetString();
-            var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(repo);
-            return File.Exists(settings)
-                && string.Equals(recorded, AiDevHelpers.Common.RepoSettingsFile.Hash(settings), StringComparison.OrdinalIgnoreCase);
-        }
-        catch (Exception ex) when (ex is JsonException or IOException or KeyNotFoundException or InvalidOperationException)
-        {
-            return false;
-        }
-    }
+        CancellationToken ct = default) => _opener.OpenAsync(solutionPath, ct);
 
     [McpServerTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
