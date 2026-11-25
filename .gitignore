@@ -105,4 +105,4 @@ secrets.json
 extension.vsixmanifest
 merged.source.extension.vsixmanifest
 
-.aidevtools/user.json
+.aidevhelpers/user.json

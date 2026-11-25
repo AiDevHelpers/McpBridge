@@ -32,7 +32,7 @@ public sealed record RepoDecisions(
 
 /// <summary>
 /// The repo setup helper for the unelevated <c>elev</c> client. <see cref="Scan"/> only reads. <see cref="Setup"/> creates the
-/// <c>.aidevtools</c> files and asks the person, from the console, about each project; nothing is listed or changed without a yes,
+/// <c>.aidevhelpers</c> files and asks the person, from the console, about each project; nothing is listed or changed without a yes,
 /// and the questions never come from arguments, so a caller cannot answer for the person.
 /// </summary>
 public static class RepoSetup

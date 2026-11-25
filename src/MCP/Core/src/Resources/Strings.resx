@@ -78,7 +78,7 @@
   <data name="UnreadableIdeOutput" xml:space="preserve"><value>Unreadable output from the IDE.</value></data>
   <data name="RepoSettingIgnored" xml:space="preserve"><value>Ignored the repo setting {0} in {1}: a repo file may not set it.</value></data>
   <data name="RepoSettingsUnreadable" xml:space="preserve"><value>Could not read the repo settings file {0}: {1} The global settings are used.</value></data>
-  <data name="GlobalAllowAllIgnored" xml:space="preserve"><value>Ignored allowAll in the global settings: it can only be requested by a repo's .aidevtools/settings.json.</value></data>
+  <data name="GlobalAllowAllIgnored" xml:space="preserve"><value>Ignored allowAll in the global settings: it can only be requested by a repo's .aidevhelpers/settings.json.</value></data>
   <data name="RepoAllowlistUnapproved" xml:space="preserve"><value>The repo {0} lists {1} elevated script(s) you have not approved on this machine: {2}. Run "setup verify {0}" in an elevated shell to review and approve them.</value></data>
   <data name="RepoElevationFound" xml:space="preserve"><value>The repo {0} has {1} project(s) that need administrator rights to run or debug: {2}. Run "elev repo-setup {0}" to choose which ones launch elevated.</value></data>
   <data name="RepoSetupNeedsRepo" xml:space="preserve"><value>Error: repoPath must be a folder inside a git repo.</value></data>
@@ -148,4 +148,20 @@
   <data name="DiagSecondsRange" xml:space="preserve"><value>seconds must be between 1 and {0}.</value></data>
   <data name="DiagInstallCommand" xml:space="preserve"><value>dotnet tool install --global {0}</value></data>
   <data name="ResetNext" xml:space="preserve"><value>Relaunch the solution withide_open_solution.</value></data>
+  <data name="MethodTestsNoDirect" xml:space="preserve"><value>No test calls this method directly, so the affected test projects run whole.</value></data>
+  <data name="MethodTestsNoProject" xml:space="preserve"><value>No test project was found for the changed files, so no tests ran.</value></data>
+  <data name="MethodTestsNoCoverageLines" xml:space="preserve"><value>The coverage report has no executable lines for the method, so no method coverage is given.</value></data>
+  <data name="MethodTestsNoCoverageTool" xml:space="preserve"><value>No coverage tool is available (coverlet.collector is not referenced and dotnet-coverage is not installed), so the tests ran without coverage.</value></data>
+  <data name="MethodTestsFilterUnsupported" xml:space="preserve"><value>This project uses Microsoft.Testing.Platform, which has no test filter here, so the whole project ran.</value></data>
+  <data name="MethodTestsNoResults" xml:space="preserve"><value>The run wrote no test results (dotnet test exit code {0}). The project may not have built.</value></data>
+  <data name="TddGreenOnFirstRun" xml:space="preserve"><value>The new test passed before the method was implemented, so it may not test anything. Check what it asserts.</value></data>
+  <data name="TddNotRun" xml:space="preserve"><value>The test did not report a result. Check test_run.warnings and the build.</value></data>
+  <data name="RunStillRunningHint" xml:space="preserve"><value>Call ide_get_test_results later for the outcome.</value></data>
+  <data name="UnknownMinSeverity" xml:space="preserve"><value>Unknown minSeverity '{0}'. Use info, warning or error.</value></data>
+  <data name="BridgeClosedEventsPipe" xml:space="preserve"><value>The bridge closed the events pipe.</value></data>
+  <data name="SubscribeRefused" xml:space="preserve"><value>Subscribe refused.</value></data>
+  <data name="NoEventsSubscription" xml:space="preserve"><value>No events subscription to instance {0}.</value></data>
+  <data name="NoSubscribedInstance" xml:space="preserve"><value>No Visual Studio instance is subscribed for events.</value></data>
+  <data name="MultipleSubscribedInstances" xml:space="preserve"><value>More than one instance is subscribed. Pass instancePid.</value></data>
+  <data name="SubscribeFirst" xml:space="preserve"><value>No events subscription to instance {0}. Subscribe first.</value></data>
 </root>

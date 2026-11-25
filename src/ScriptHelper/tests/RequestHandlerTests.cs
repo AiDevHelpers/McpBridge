@@ -110,7 +110,7 @@ public sealed class RequestHandlerTests : IDisposable
         var reg = _registry.Register(_root);
         Assert.True(reg.Ok, reg.Reason);
         _projectId = reg.ProjectId!;
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         var settings = AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root);
         File.WriteAllText(settings, settingsJson);
         var version = _versions.Get(_projectId) + 1;
@@ -137,7 +137,7 @@ public sealed class RequestHandlerTests : IDisposable
     public void AllowAllRequestedWithoutAnApproval_UsesTheNormalChecks()
     {
         _registry.Register(_root);
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.SettingsPath(_root), """{"allowAll":true}""");
         WriteFile("tools/anything.ps1", "Write-Output 'free'");
 

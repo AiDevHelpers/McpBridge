@@ -161,7 +161,7 @@ public sealed class ScriptInterpreterResolverTests
     public void ReadOverrides_ReadsTheInterpretersBlock_AndIgnoresUnknownNamesAndBadFiles()
     {
         var root = Path.Combine(Path.GetTempPath(), "interp-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(Path.Combine(root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(root, ".aidevhelpers"));
         try
         {
             File.WriteAllText(RepoSettingsFile.UserFilePath(root), """{ "interpreters": { ".ps1": "powershell", "py": "python", ".sh": "/evil/bash" } }""");

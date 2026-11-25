@@ -23,6 +23,7 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 
 ## Documentation
 
+- [Features](docs/features.md)
 - [IDE bridge tools and setup](docs/ide-bridge.md)
 - [Protocol conformance](conformance/protocol.md)
 - [Terminal session tool contract](docs/terminal-session-contract.md)

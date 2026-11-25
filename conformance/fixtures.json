@@ -28,5 +28,210 @@
     "request": { "action": "outputWrite", "args": { "channel": "SelfTest", "text": "self test" } },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_processes_refused_by_generic_bridge": {
+    "request": { "action": "listProcesses" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_debugged_processes_refused_by_generic_bridge": {
+    "request": { "action": "listDebuggedProcesses" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_threads_refused_by_generic_bridge": {
+    "request": { "action": "listThreads" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "set_exception_break_refused_by_generic_bridge": {
+    "request": { "action": "setExceptionBreak", "args": { "group": "Common Language Runtime Exceptions", "name": "System.Exception", "breakWhenThrown": true } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "find_in_files_refused_by_generic_bridge": {
+    "request": { "action": "findInFiles", "args": { "pattern": "x" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "replace_in_files_refused_by_generic_bridge": {
+    "request": { "action": "replaceInFiles", "args": { "pattern": "x", "replacement": "y" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_documents_refused_by_generic_bridge": {
+    "request": { "action": "listDocuments" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "save_document_refused_by_generic_bridge": {
+    "request": { "action": "saveDocument", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "close_document_refused_by_generic_bridge": {
+    "request": { "action": "closeDocument", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "undo_group_refused_by_generic_bridge": {
+    "request": { "action": "undoGroup", "args": { "name": "t", "edits": [] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "rename_symbol_refused_by_generic_bridge": {
+    "request": { "action": "renameSymbol", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newName": "x" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "edit_method_refused_by_generic_bridge": {
+    "request": { "action": "editMethod", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newMethodText": "void M() { }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_method_refused_by_generic_bridge": {
+    "request": { "action": "addMethod", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newMethodText": "void M() { }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_overload_refused_by_generic_bridge": {
+    "request": { "action": "addOverload", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newMethodText": "void M(int x) { }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "tdd_add_test_refused_by_generic_bridge": {
+    "request": { "action": "tddAddTest", "args": { "testFile": "C:\\__no_such__\\t.cs", "testLine": 1, "testMethodText": "[Fact] void T() { }", "methodFile": "C:\\__no_such__\\a.cs", "methodLine": 1, "methodText": "int M();" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "tdd_update_test_refused_by_generic_bridge": {
+    "request": { "action": "tddUpdateTest", "args": { "file": "C:\\__no_such__\\t.cs", "line": 1, "newBody": "{ }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_member_refused_by_generic_bridge": {
+    "request": { "action": "addMember", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "members": [] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "edit_member_refused_by_generic_bridge": {
+    "request": { "action": "editMember", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newType": "int" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "rename_namespace_refused_by_generic_bridge": {
+    "request": { "action": "renameNamespace", "args": { "oldNamespace": "Old.Ns", "newNamespace": "New.Ns" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "move_type_refused_by_generic_bridge": {
+    "request": { "action": "moveType", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newNamespace": "New.Ns" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "semantic_references_refused_by_generic_bridge": {
+    "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "semantic_definition_refused_by_generic_bridge": {
+    "request": { "action": "semanticDefinition", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_task_refused_by_generic_bridge": {
+    "request": { "action": "addTask", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "clear_tasks_refused_by_generic_bridge": {
+    "request": { "action": "clearTasks" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_tasks_refused_by_generic_bridge": {
+    "request": { "action": "listTasks" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "set_status_refused_by_generic_bridge": {
+    "request": { "action": "setStatus", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "show_info_bar_refused_by_generic_bridge": {
+    "request": { "action": "showInfoBar", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "write_activity_log_refused_by_generic_bridge": {
+    "request": { "action": "writeActivityLog", "args": { "level": "Information", "source": "s", "message": "m" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "get_setting_refused_by_generic_bridge": {
+    "request": { "action": "getSetting", "args": { "key": "k" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "project_properties_refused_by_generic_bridge": {
+    "request": { "action": "projectProperties", "args": { "project": "p", "names": ["TargetFramework"] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "add_project_item_refused_by_generic_bridge": {
+    "request": { "action": "addProjectItem", "args": { "project": "p", "file": "C:\\__no_such__\\a.cs", "mode": "fromFile" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "remove_project_item_refused_by_generic_bridge": {
+    "request": { "action": "removeProjectItem", "args": { "project": "p", "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "close_solution_refused_by_generic_bridge": {
+    "request": { "action": "closeSolution" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_code_elements_refused_by_generic_bridge": {
+    "request": { "action": "listCodeElements", "args": { "file": "C:\\__no_such__\\a.cs" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "set_breakpoint_condition_refused_by_generic_bridge": {
+    "request": { "action": "setBreakpointCondition", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "condition": "x > 1" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "enable_breakpoint_refused_by_generic_bridge": {
+    "request": { "action": "enableBreakpoint", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "disable_breakpoint_refused_by_generic_bridge": {
+    "request": { "action": "disableBreakpoint", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "attach_process_refused_by_generic_bridge": {
+    "request": { "action": "attachProcess", "args": { "pid": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "detach_all_refused_by_generic_bridge": {
+    "request": { "action": "detachAll" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_stack_frames_refused_by_generic_bridge": {
+    "request": { "action": "listStackFrames" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "list_exceptions_refused_by_generic_bridge": {
+    "request": { "action": "listExceptions" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }

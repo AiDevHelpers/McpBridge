@@ -10,7 +10,7 @@ public sealed class RepoRulesTests : IDisposable
     public RepoRulesTests()
     {
         Directory.CreateDirectory(Path.Combine(_root, ".git"));
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);

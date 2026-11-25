@@ -114,13 +114,13 @@ public sealed class RepoSetupToolsTests : IDisposable
     {
         await Tool(new FakeScanner(0, ScanJson), new FakeGh(works: true)).RepoSetup(_root, "scan");
 
-        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevtools")));
+        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevhelpers")));
     }
 
     [Fact]
     public async Task InARepoThatIsSetUp_TheLiveAnswerIsCachedForTheGitTools()
     {
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
 
         await Tool(new FakeScanner(0, ScanJson), new FakeGh(works: true)).RepoSetup(_root, "status");
 

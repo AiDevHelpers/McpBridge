@@ -6,7 +6,7 @@ namespace AiDevHelpers.ScriptHelper.Core;
 
 /// <summary>
 /// One project's allow-all approval. It binds the registered project id, the checkout root, a version (replay) and the hash of the
-/// repo's .aidevtools/settings.json, so editing that file, copying the approval to another checkout, or replaying an old one is refused.
+/// repo's .aidevhelpers/settings.json, so editing that file, copying the approval to another checkout, or replaying an old one is refused.
 /// </summary>
 public sealed record AllowAllApproval(string ProjectId, string ProjectRoot, long Version, string SettingsHash, string Signature);
 

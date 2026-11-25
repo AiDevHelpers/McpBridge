@@ -11,7 +11,7 @@ public sealed class ScriptRunTrackerTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "watch-" + Guid.NewGuid().ToString("N"));
     private DateTime _now = new(2026, 11, 23, 12, 0, 0, DateTimeKind.Utc);
 
-    public ScriptRunTrackerTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+    public ScriptRunTrackerTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 

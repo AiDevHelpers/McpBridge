@@ -83,7 +83,7 @@ public sealed class ScriptRunServiceTests : IDisposable
     [Fact]
     public async Task ThePerUserLimits_AreApplied()
     {
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         File.WriteAllText(AiDevHelpers.Common.RepoSettingsFile.UserFilePath(_root), """{ "scriptWatch": { "noOutputSeconds": 5, "timeoutSeconds": 20 } }""");
 
         await Run(Service());

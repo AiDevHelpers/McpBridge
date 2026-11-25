@@ -61,6 +61,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton(_ => new AiDevHelpers.MCP.Core.Services.DotnetDiagService());
         services.AddSingleton(_ => new AiDevHelpers.Helpers.SourceControlHelper.GitHubService(new AiDevHelpers.Helpers.SourceControlHelper.ProcessGhRunner()));
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.EventAutoSubscribeService>();
 
         return services
             .AddMcpServer()

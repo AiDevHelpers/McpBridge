@@ -66,7 +66,7 @@ public sealed class ElevationPolicyTests : IDisposable
     public void FromDisk_ReadsTheFilesAndTheSolution()
     {
         var solution = Solution("App.slnx", """<Solution><Project Path="Drv/Drv.csproj" /></Solution>""");
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         ElevationFiles.AddProject(_root, "src/Drv/Drv.csproj", "manifest");
 
         Assert.True(ElevationPolicy.Decide(solution).Elevated);

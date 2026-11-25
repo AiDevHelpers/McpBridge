@@ -33,6 +33,67 @@ public sealed class RepoConfigTests : IDisposable
     }
 
     [Fact]
+    public void ReadEventFilter_NoFile_ReturnsDefaultsAndNoWarnings()
+    {
+        var (settings, warnings) = RepoConfig.ReadEventFilter(Solution);
+
+        Assert.Equal(new EventFilterSettings(), settings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void ReadEventFilter_ReadsOverrides()
+    {
+        WriteConfig("{ \"eventFilter\": { \"waitSeconds\": 30, \"maxEvents\": 50, \"maxEventTextChars\": 500, \"maxSummaryMessageChars\": 120, \"maxReplyChars\": 1000 } }");
+
+        var (settings, warnings) = RepoConfig.ReadEventFilter(Solution);
+
+        Assert.Equal(new EventFilterSettings(30, 50, 500, 120, 1000), settings);
+        Assert.Empty(warnings);
+    }
+
+    [Fact]
+    public void ReadEventFilter_MissingFieldsUseDefaults()
+    {
+        WriteConfig("{ \"eventFilter\": { \"maxEvents\": 5 } }");
+
+        var (settings, _) = RepoConfig.ReadEventFilter(Solution);
+
+        Assert.Equal(new EventFilterSettings(MaxEvents: 5), settings);
+    }
+
+    [Fact]
+    public void ReadEventFilter_OutOfRangeOrWrongTypeFallsBackWithWarning()
+    {
+        WriteConfig("{ \"eventFilter\": { \"waitSeconds\": 0, \"maxEvents\": \"ten\", \"maxEventTextChars\": 500 } }");
+
+        var (settings, warnings) = RepoConfig.ReadEventFilter(Solution);
+
+        Assert.Equal(new EventFilterSettings(MaxEventTextChars: 500), settings);
+        Assert.Equal(2, warnings.Count);
+        Assert.Contains(warnings, w => w.Contains("eventFilter.waitSeconds"));
+        Assert.Contains(warnings, w => w.Contains("eventFilter.maxEvents"));
+    }
+
+    [Fact]
+    public void ReadEventFilter_MalformedFileUsesDefaultsWithWarning()
+    {
+        WriteConfig("{ not json");
+
+        var (settings, warnings) = RepoConfig.ReadEventFilter(Solution);
+
+        Assert.Equal(new EventFilterSettings(), settings);
+        Assert.Single(warnings);
+    }
+
+    private void WriteConfig(string json)
+    {
+        var path = RepoConfig.PathFor(Solution);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, json);
+    }
+
+    [Fact]
     public void SetPreferredIde_CreatesFileAndReadsItBack()
     {
         RepoConfig.SetPreferredIde(Solution, "VsCode");

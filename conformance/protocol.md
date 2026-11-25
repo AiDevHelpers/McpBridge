@@ -88,3 +88,35 @@ A call that can't reach an instance within 60 seconds gets an error reply. An in
 
 - `fixtures.json` runs each entry against the bridge's generic handler. An entry checks the reply shape
   (`ok`, `reply_keys`), not the action's result, so action results are tested in each bridge's own tests.
+
+## Events pipe
+
+Visual Studio only. Separate from the request pipe, which is unchanged (one request, one reply).
+
+- Name: `AiDevHelpers.VS.<pid>.events`. Up to 8 concurrent subscribers.
+- Subscribe: the client connects and writes one line `{"action":"subscribe","args":{"events":["buildDone", ...]}}`.
+  Omit `events` (or pass an empty list) for all events.
+- Reply, one line: `{"ok":true,"pid":N,"subscriptionId":"..."}`. A refused subscribe is `{"ok":false,"pid":N,"error":"..."}`.
+- Then the bridge writes event lines `{"event":"<name>","seq":N,"data":{...}}`. `seq` starts at 1 for each subscription.
+- `{"event":"heartbeat","seq":N}` every 15 seconds of silence. A client may treat 45 seconds without any line as disconnected.
+- `{"event":"dropped","seq":N,"data":{"count":K}}` precedes the next event when K events were dropped. A subscriber
+  holds 500 events; the oldest are dropped first.
+- `{"event":"closed","reason":"..."}` then the connection ends. Reasons: `bridgeStopped` (bridge disposed),
+  `slowSubscriber` (a write took more than 30 seconds), `unsubscribed`.
+- Unsubscribe: the client closes its connection. No separate request.
+- Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
+  `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`.
+- A VS Code bridge does not offer this pipe; `ide_subscribe_events` reports it as an error for VS Code.
+
+## Actions added in phases 1 to 6
+
+Visual Studio bridge actions behind the tools in `docs/ide-bridge.md`. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+
+- Debugger: `listProcesses`, `listDebuggedProcesses`, `listThreads`, `listStackFrames`, `listExceptions`, `setExceptionBreak`, `setBreakpointCondition`, `enableBreakpoint`, `disableBreakpoint`, `attachProcess`, `detachAll`.
+- Editor and documents: `findInFiles`, `replaceInFiles`, `listDocuments`, `saveDocument`, `closeDocument`, `undoGroup`, `listCodeElements`.
+- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`.
+- Tasks and shell services: `listTasks`, `addTask`, `clearTasks`, `setStatus`, `showInfoBar`, `writeActivityLog`, `getSetting`.
+- Roslyn: `semanticReferences`, `semanticDefinition`, `renameSymbol`.
+- Events: subscription over `AiDevHelpers.VS.<pid>.events`, not a request action.
+
+`setBreakpointCondition` takes `hitCountType` with the values `always`, `equal`, `multiple` or `greaterOrEqual`.

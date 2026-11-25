@@ -7,7 +7,7 @@ public sealed class RuleEnforcementTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "rule-enf-" + Guid.NewGuid().ToString("N"));
 
-    public RuleEnforcementTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+    public RuleEnforcementTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 

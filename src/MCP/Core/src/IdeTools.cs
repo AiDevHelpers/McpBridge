@@ -16,6 +16,12 @@ namespace AiDevHelpers.MCP.Core.Tools;
 [McpServerToolType]
 internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? elevRunner = null)
 {
+    /// <summary>Events read by default (plan 4.3): run results, status and errors. Build and break errors come through here.</summary>
+    private static readonly string[] DefaultEventNames =
+    {
+        "buildDone", "enterBreakMode", "enterRunMode", "solutionOpened", "solutionClosing", "dropped",
+    };
+
     private readonly IdeSolutionOpener _opener = new(
         new DevenvSolutionLauncher(elevRunner),
         VsInstanceRegistry.FindBySolution,
@@ -36,7 +42,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         return instances.Count == 1 ? instances[0].SolutionPath : null;
     }
 
-    // The test run mode in effect for a solution: the repo's .aidevtools/settings.json wins over the global setting.
+    // The test run mode in effect for a solution: the repo's .aidevhelpers/settings.json wins over the global setting.
     private string EffectiveTestRunMode(string? solutionPath) =>
         IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
 
@@ -103,6 +109,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         [Description("Optional: one test project (.csproj) to run instead of the whole solution. Uses dotnet test.")] string? project = null,
+        [Description("Optional: seconds to wait for a Test Explorer run to finish (1 to 3600). Overrides eventFilter.waitSeconds for this call.")] int? waitSeconds = null,
         CancellationToken ct = default)
     {
         if (project is not null)
@@ -121,7 +128,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
+        return RunTestsAndSummarizeAsync(solutionPath, ide, instancePid, waitSeconds, ct);
     }
 
     [McpServerTool]
@@ -134,6 +141,60 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("formatSolution", new { }, solutionPath, ct, ide, instancePid);
 
     // Test Explorer refuses a run while it is still busy. Wait once on this thread and try again; the IDE never sleeps.
+    /// <summary>
+    /// Starts the run, then waits for its summary (plan 3.3). The summary read before the run is the baseline: a finished run
+    /// is one whose summary differs from it, so an earlier run is not mistaken for this one. Returns status "running" after the
+    /// wait limit, with the call to read later.
+    /// </summary>
+    private async Task<string> RunTestsAndSummarizeAsync(string? solutionPath, string? ide, int? instancePid, int? waitOverride, CancellationToken ct)
+    {
+        var (settings, warnings) = LoadEventFilter(solutionPath);
+        var baseline = await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+        var started = await RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
+        using (var startedDoc = JsonDocument.Parse(started))
+        {
+            if (!startedDoc.RootElement.TryGetProperty("ok", out var startedOk) || !startedOk.GetBoolean())
+            {
+                return started;
+            }
+        }
+
+        var waitSeconds = Math.Clamp(waitOverride ?? settings.WaitSeconds, 1, 3600);
+        var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            var now = await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+            using var doc = JsonDocument.Parse(now);
+            if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.GetBoolean() && now != baseline)
+            {
+                var capped = TestSummaryCapper.Cap(doc.RootElement, maxMessageChars: settings.MaxSummaryMessageChars);
+                var finished = JsonSerializer.Serialize(new { status = "finished", summary = ReplySizeGuard.Fit(capped, settings.MaxReplyChars) });
+                return WithWarnings(finished, warnings);
+            }
+        }
+
+        var running = JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = Strings.Get("RunStillRunningHint") });
+        return WithWarnings(running, warnings);
+    }
+
+    /// <summary>The eventFilter limits for a solution, or the defaults when no solution is given.</summary>
+    private static (EventFilterSettings Settings, IReadOnlyList<string> Warnings) LoadEventFilter(string? solutionPath) =>
+        solutionPath is null ? (new EventFilterSettings(), []) : RepoConfig.ReadEventFilter(solutionPath);
+
+    /// <summary>Adds settings_warnings to a JSON object reply. Replies with no warnings are returned unchanged.</summary>
+    private static string WithWarnings(string json, IReadOnlyList<string> warnings)
+    {
+        if (warnings.Count == 0)
+        {
+            return json;
+        }
+
+        var node = System.Text.Json.Nodes.JsonNode.Parse(json)!.AsObject();
+        node["settings_warnings"] = new System.Text.Json.Nodes.JsonArray(warnings.Select(w => (System.Text.Json.Nodes.JsonNode)w).ToArray());
+        return node.ToJsonString();
+    }
+
     private static async Task<string> RunTestExplorerWithRetryAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
     {
         var first = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
@@ -257,12 +318,35 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     [McpServerTool]
     [Description("Build the solution in an IDE instance and report whether it succeeded. " +
                  "Pass solutionPath when several instances are open. Use IdeGetBuildDiagnostics for the errors.")]
-    public Task<string> IdeBuild(
+    public async Task<string> IdeBuild(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide, instancePid);
+        CancellationToken ct = default)
+    {
+        // The bridge build blocks until the build finishes. The reply is a summary: status, and on failure the errors (capped).
+        var raw = await IdeInstanceRouter.CallAsync("build", new { }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        using var reply = JsonDocument.Parse(raw);
+        if (!reply.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+        {
+            return raw;
+        }
+
+        var result = reply.RootElement.GetProperty("result").Clone();
+        var succeeded = result.TryGetProperty("succeeded", out var s) && s.ValueKind == JsonValueKind.True;
+        JsonElement? errors = null;
+        using var diagnostics = succeeded
+            ? null
+            : JsonDocument.Parse(await IdeInstanceRouter.CallAsync("getBuildDiagnostics", new { severity = "error" }, solutionPath, ct, ide, instancePid).ConfigureAwait(false));
+        if (diagnostics is not null && diagnostics.RootElement.TryGetProperty("ok", out var dok) && dok.GetBoolean())
+        {
+            errors = diagnostics.RootElement.GetProperty("result").GetProperty("diagnostics").Clone();
+        }
+
+        var (settings, warnings) = LoadEventFilter(solutionPath);
+        var summary = ReplySizeGuard.Fit(System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(BuildSummary.Build(result, errors, maxMessageChars: settings.MaxSummaryMessageChars)))!, settings.MaxReplyChars);
+        return WithWarnings(JsonSerializer.Serialize(new { ok = true, pid = reply.RootElement.GetProperty("pid").GetInt32(), summary }), warnings);
+    }
 
     [McpServerTool]
     [Description("Read build errors and warnings from an IDE instance's Error List (the last build's results).")]
@@ -468,4 +552,667 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
         IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the processes the IDE's debugger can attach to (local processes), with pid and name. Read-only.")]
+    public Task<string> IdeListProcesses(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listProcesses", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the processes the IDE's debugger is currently attached to. Read-only.")]
+    public Task<string> IdeListDebuggedProcesses(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listDebuggedProcesses", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the threads of the debugged process with their ids, and the current thread. Empty unless the debugger is in break mode. Read-only.")]
+    public Task<string> IdeListThreads(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listThreads", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the debugger's exception settings, grouped as the debugger groups them, with break-when-thrown and break-when-user-unhandled. Read-only.")]
+    public Task<string> IdeListExceptions(
+        [Description("Optional: only this exception group, for example 'Common Language Runtime Exceptions'. The full list is large; name a group when you can.")] string? group = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listExceptions", new { group }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the stack frames of the current thread (index, function, return type). Empty unless the debugger is in break mode. Read-only.")]
+    public Task<string> IdeListStackFrames(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listStackFrames", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Set the condition, hit-count type, or hit count of the breakpoint(s) at a file and line. Re-adds the breakpoint, so hit counts reset. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetBreakpointCondition(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: condition expression, for example 'count > 10'")] string? condition = null,
+        [Description("Optional: always, equal, multiple, or greaterOrEqual")] string? hitCountType = null,
+        [Description("Optional: hit count for the hit-count type")] int? hitCount = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setBreakpointCondition", new { file, line, condition, hitCountType, hitCount, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Enable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeEnableBreakpoint(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("enableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Disable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeDisableBreakpoint(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("disableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Attach the debugger to one local process by pid. Without confirm it only returns the target. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeAttachProcess(
+        [Description("Process id from ide_list_processes")] int pid,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("attachProcess", new { pid, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Detach the debugger from every attached process. Without confirm it only lists what would be detached. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeDetachAll(
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("detachAll", new { confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Search the text of files: the solution, one project, or the open documents. Managed search over files on disk; read-only. Capped at 500 matches.")]
+    public Task<string> IdeFindInFiles(
+        [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
+        [Description("Match case. Default false.")] bool matchCase = false,
+        [Description("Treat pattern as a regular expression. Default false.")] bool useRegex = false,
+        [Description("solution, project, or openDocuments. Default solution.")] string scope = "solution",
+        [Description("Project name, required when scope is project")] string? project = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("findInFiles", new { pattern, matchCase, useRegex, scope, project }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Replace text in files (solution, project, or open documents). Without confirm it only counts matches per file and writes nothing. Open documents with unsaved changes are skipped. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeReplaceInFiles(
+        [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
+        [Description("Replacement text. With useRegex, $1 etc. refer to groups.")] string replacement,
+        [Description("Match case. Default false.")] bool matchCase = false,
+        [Description("Treat pattern as a regular expression. Default false.")] bool useRegex = false,
+        [Description("solution, project, or openDocuments. Default solution.")] string scope = "solution",
+        [Description("Project name, required when scope is project")] string? project = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("replaceInFiles", new { pattern, replacement, matchCase, useRegex, scope, project, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the open documents with saved state and read-only flag. Read-only.")]
+    public Task<string> IdeListDocuments(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listDocuments", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Save an open document. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSaveDocument(
+        [Description("Full path of the open document")] string file,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("saveDocument", new { file, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Close an open document. A document with unsaved changes is refused unless discardChanges is also true. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeCloseDocument(
+        [Description("Full path of the open document")] string file,
+        [Description("Discard unsaved changes when closing. Default false.")] bool discardChanges = false,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("closeDocument", new { file, discardChanges, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Apply several range edits in one IDE undo group, so they undo as one step. Each edit gives start and end line and column (1-based) and new text. Without confirm it lists the edits. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeUndoGroup(
+        [Description("Name of the undo group shown in the IDE")] string name,
+        [Description("Array of {file, startLine, startColumn, endLine, endColumn, newText}")] object[] edits,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("undoGroup", new { name, edits, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the code elements (namespaces, types, members) of one file with line ranges. Read-only.")]
+    public Task<string> IdeListCodeElements(
+        [Description("Full path of the source file")] string file,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listCodeElements", new { file }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Read named properties of a project (for example TargetFramework, OutputType). Unknown names return null. Read-only.")]
+    public Task<string> IdeProjectProperties(
+        [Description("Project name, as shown in Solution Explorer")] string project,
+        [Description("Property names to read")] string[] names,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("projectProperties", new { project, names }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeAddProjectItem(
+        [Description("Project name")] string project,
+        [Description("Full path of the file to add or create")] string file,
+        [Description("fromFile or fromNew")] string mode,
+        [Description("Template path, required for fromNew")] string? template = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("addProjectItem", new { project, file, mode, template, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Remove a file from a project. The file stays on disk. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeRemoveProjectItem(
+        [Description("Project name")] string project,
+        [Description("Full path of the file to remove from the project")] string file,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("removeProjectItem", new { project, file, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Close the solution. Refused while documents have unsaved changes unless saveFirst is true. Without confirm it lists the dirty documents and the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeCloseSolution(
+        [Description("Save dirty documents before closing. Default false.")] bool saveFirst = false,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("closeSolution", new { saveFirst, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("List the items in the Visual Studio Task List window (category, text, file, line). Read-only.")]
+    public Task<string> IdeListTasks(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listTasks", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Set the status bar text of the IDE (empty clears it). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetStatus(
+        [Description("Status text; empty clears it")] string text,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setStatus", new { text, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Show an info bar in the IDE's main window with a message and optional button labels. Buttons do not report clicks. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeShowInfoBar(
+        [Description("Message text")] string text,
+        [Description("Optional: button labels")] string[]? actions = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("showInfoBar", new { text, actions = (actions ?? Array.Empty<string>()).Select(label => new { label }), confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Write an entry to the Visual Studio activity log (ActivityLog.xml). Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeWriteActivityLog(
+        [Description("Error, Warning, or Information")] string level,
+        [Description("Source name for the entry")] string source,
+        [Description("Message text")] string message,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("writeActivityLog", new { level, source, message, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Read one Visual Studio setting by its key path. Returns found:false when the setting does not exist. Read-only.")]
+    public Task<string> IdeGetSetting(
+        [Description("Setting key path")] string key,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("getSetting", new { key }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Add a task to the Visual Studio Task List under the bridge's own provider. Category is Error, Warning, or Message. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeAddTask(
+        [Description("Task text")] string text,
+        [Description("Optional: full path of the file the task refers to")] string? file = null,
+        [Description("Optional: 1-based line in the file")] int? line = null,
+        [Description("Error, Warning, or Message. Default Message.")] string category = "Message",
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("addTask", new { text, file, line, category, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Remove every task this bridge added to the Task List. Tasks from other tools are not touched. Without confirm it only reports the count. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeClearTasks(
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("clearTasks", new { confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Find every reference to the symbol at a file position, across the solution, using Roslyn. Sees unsaved editor edits. Read-only.")]
+    public Task<string> IdeSemanticReferences(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("semanticReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Find where the symbol at a file position is declared in source, using Roslyn. Sees unsaved editor edits. Read-only.")]
+    public Task<string> IdeSemanticDefinition(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("semanticDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Rename the symbol at a file position everywhere in the solution, using Roslyn. Without confirm it only lists the files that would change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeRenameSymbol(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("New name for the symbol")] string newName,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Set true to apply the rename. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. If the method has a /// doc comment, its param, typeparam and returns tags are updated to the new signature in the comment's own layout; a new parameter needs its text in docs (the tool never invents text), and newSummary replaces the summary when the purpose changed. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeEditMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method (its name line is best)")] int line,
+        [Description("Full replacement text of the method declaration")] string newMethodText,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {file, line, column, newText} for callers when the signature changes. file, line and column are a reference location from ide_semantic_references.")] object[]? callerEdits = null,
+        [Description("Optional: new text for the summary of the method's XML doc comment, when the method's purpose changed.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
+        [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Add one C# method to the type that contains a line, using Roslyn, with checks. The new method goes at the end of the type, or after the member at afterLine. If neighbouring methods have /// doc comments, the new one gets a doc comment in the same layout from newSummary and docs (a {tag, name, text} entry for each parameter, type parameter and a non-void return); the tool never invents text and warns when it is missing. The file is formatted, a new compile error refuses the edit, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeAddMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the target type")] int line,
+        [Description("Full text of the new method declaration, without a doc comment")] string newMethodText,
+        [Description("Optional: insert after the member that contains this 1-based line. Default is the end of the type.")] int? afterLine = null,
+        [Description("Optional: summary text for the new method's doc comment.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags.")] object[]? docs = null,
+        [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Add an overload of the method at a line, using Roslyn, with checks. The overload has the same name, goes after the method's last overload, and gets a doc comment like the original's (newSummary and docs supply the text; the tool never invents it). It is refused if it changes which method any existing call binds to, if the file then has a new compile error, or if its signature matches an existing method. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeAddOverload(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method to overload")] int line,
+        [Description("Full text of the new overload, without a doc comment")] string newMethodText,
+        [Description("Optional: summary text for the overload's doc comment. Without it the original's summary is kept.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags that differ from the original.")] object[]? docs = null,
+        [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("TDD step 1: add a test and the method it tests, then run the test to show it red. The method goes into the type at methodFile:methodLine; give it without a body (ending in ;) and it is added as a stub that throws NotImplementedException, so the test compiles and fails. The test goes into the class at testFile:testLine (testMethodText includes its attribute). The two must be in different files. Both are formatted and checked like ide_add_method. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the new test runs with coverage and tdd.status says red (failed, as wanted), green (it passed before the method existed, so it may not test anything) or not_run. Visual Studio only.")]
+    public async Task<string> IdeTddAddTest(
+        [Description("Full path of the test file")] string testFile,
+        [Description("1-based line inside the test class")] int testLine,
+        [Description("Full text of the test method, with its [Fact], [Test] or [TestMethod] attribute")] string testMethodText,
+        [Description("Full path of the file that gets the new method")] string methodFile,
+        [Description("1-based line inside the type that gets the new method")] int methodLine,
+        [Description("Full text of the method under test. Without a body it becomes a stub that throws.")] string methodText,
+        [Description("Optional: summary for the method's doc comment, when its neighbours have one.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for the method's param, typeparam and returns doc tags.")] object[]? docs = null,
+        [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the new test with coverage after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddRed).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("TDD step 2: replace the body of a test, then run it and return its result. newBody is a block or the statements of the new body; the test's attribute and signature stay. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the test runs, and tdd.status says red or green. Give targetFile and targetLine (a line inside the method under test) to also get that method's line coverage. Then implement the method with ide_edit_method, which runs the tests that call it. Visual Studio only.")]
+    public async Task<string> IdeTddUpdateTest(
+        [Description("Full path of the test file")] string file,
+        [Description("1-based line inside the test method")] int line,
+        [Description("New body: a { block } or its statements")] string newBody,
+        [Description("Optional: full path of the file with the method under test, for coverage.")] string? targetFile = null,
+        [Description("Optional: 1-based line inside the method under test, for coverage.")] int? targetLine = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the test with coverage after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddUpdate).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("List C# members and types with no references, for review before deleting them: private and internal ones by default, public ones when includePublic is true (other assemblies may use public ones). Read only. Each entry gives its kind, name, file and line, and a confidence: members with attributes, interfaces or constructors may be used by reflection, serialization or dependency injection, and are marked low. Feeds ide_delete_member and ide_delete_type. Visual Studio only.")]
+    public async Task<string> IdeListUnused(
+        [Description("Optional: one project's name. Default: every project in the solution.")] string? project = null,
+        [Description("Include public members and types. Default false.")] bool includePublic = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        await IdeInstanceRouter.CallAsync("listUnused", new { project, includePublic }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+
+    [McpServerTool]
+    [Description("Delete one C# member (method, property, field, event, constructor, operator, indexer, enum member or interface member) using Roslyn, with checks. Refused while any reference remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the call, use an empty value only where that leaves valid code). Refused when the member overrides or implements another member, when an interface member has implementers, and when tests call it unless their names are given in deleteTests (those tests are not deleted). Removes the member and its doc comment. A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeDeleteMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the member to delete")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {file, line, column, newText} for each reference that is removed or rewritten.")] object[]? callerEdits = null,
+        [Description("Optional: names of tests that call the member and may stay while it is removed (they are not deleted).")] string[]? deleteTests = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Run the affected tests after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("deleteMember", new { file, line, column, callerEdits = callerEdits ?? [], deleteTests = deleteTests ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Delete one C# type (class, struct, interface, record or enum, top-level or nested) using Roslyn, with checks. Refused while any reference outside the type remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the reference). Refused while tests call it unless their names are in deleteTests (those tests are not deleted). With deleteFile true, the file is deleted too when the type was its only declaration (SDK-style projects only). A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeDeleteType(
+        [Description("Full path of the file that declares the type")] string file,
+        [Description("1-based line inside the type declaration")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {file, line, column, newText} for each reference outside the type.")] object[]? callerEdits = null,
+        [Description("Optional: names of tests that call the type and may stay while it is removed.")] string[]? deleteTests = null,
+        [Description("Delete the file too when the type was its only declaration. Default false.")] bool deleteFile = false,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Run the affected tests after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("deleteType", new { file, line, column, callerEdits = callerEdits ?? [], deleteTests = deleteTests ?? [], deleteFile, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Rename a namespace across the solution, using Roslyn, with checks. The namespace and every namespace under it change: each declaration, using, qualified name, alias and cref that spells it out. It is refused if the name is not a valid dotted name, if no source file declares the namespace, if it is also declared in a referenced assembly, if a type in it would collide with a type already in the new namespace, if a declaration is a block nested inside another namespace block, or if code names it relative to an enclosing namespace (those references need callerEdits entries with file, line, column and newText). Strings that still mention the old name are listed in string_mentions and not changed. A new compile error refuses the change; new warnings and notices are returned. When the project's folders follow its namespaces, files that no longer match are warned about, or moved when moveFiles is true (SDK-style projects only; ask the user first). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
+    public async Task<string> IdeRenameNamespace(
+        [Description("The namespace to rename, such as Company.Product.Old")] string oldNamespace,
+        [Description("The new name, such as Company.Product.New")] string newNamespace,
+        [Description("Move files so their folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
+        [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Move one top-level type to another namespace, using Roslyn, with checks. The type's declaration moves, every qualified use is rewritten, and code that used the type by its simple name gets a using for the new namespace; the moved type gets the usings it used to have implicitly, and usings of the old namespace that nothing needs any more are removed. It is refused if the new name is not valid, the type is nested or in the global namespace, its file also declares other types (or a partial part's file does), a type of that name already exists in the new namespace, or code names the type relative to an enclosing namespace (those need callerEdits entries). A new compile error refuses the change. The same moveFiles rule as ide_rename_namespace applies. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
+    public async Task<string> IdeMoveType(
+        [Description("Full path of the file that declares the type")] string file,
+        [Description("1-based line inside the type declaration")] int line,
+        [Description("The namespace to move it to")] string newNamespace,
+        [Description("Move the file so its folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
+        [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Add one or more fields or properties to the type that contains a line, using Roslyn, with checks. For each member you give its name, type, accessibility (always required: public, internal, protected, private, protected internal or private protected) and how it is backed: auto ({ get; set; }), field (a private backing field and a property over it), readonly-field, field-only (a plain field) or expression (a get-only property computed from initializer). Also setter (set, init, none, or \"private set\" style), required, initializer, attributes (for example \"Required\" or \"JsonProperty(\\\"x\\\")\") and summary. They go after the type's last field or property, in its layout, with doc comments in the neighbours' style when they have them. The file is formatted, a new compile error refuses the change, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the type's members, if any. Visual Studio only.")]
+    public async Task<string> IdeAddMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the target type")] int line,
+        [Description("Array of {name, type, accessibility, backing, setter, required, initializer, attributes, summary}")] object[] members,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+
+    [McpServerTool]
+    [Description("Change an existing field or property, whatever its accessibility, using Roslyn, with checks. Set only what changes: newType, accessibility, setter (set, init, none, \"private set\" style), required, backing (auto or field: swap between an auto property and a property over a private field), addAttributes, removeAttributes, newSummary, or newName. Every reference is checked: a change to the type, accessibility, setter or required needs a callerEdits entry (file, line, column from ide_semantic_references, and newText for the invocation or name) for each reference, or it is refused; a rename updates its references itself and must be a call of its own; attribute, backing and summary changes touch no reference. A change on a property that overrides or implements another member is refused. A new compile error refuses the change. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the member, with coverage. Visual Studio only.")]
+    public async Task<string> IdeEditMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the field or property")] int line,
+        [Description("Optional: new name (alone in its call)")] string? newName = null,
+        [Description("Optional: new type")] string? newType = null,
+        [Description("Optional: new accessibility: public, internal, protected, private, protected internal or private protected")] string? accessibility = null,
+        [Description("Optional: set, init, none, or an accessibility and set or init such as \"private set\"")] string? setter = null,
+        [Description("Optional: true or false to add or remove the required modifier")] bool? required = null,
+        [Description("Optional: auto or field, to swap how the property is backed")] string? backing = null,
+        [Description("Optional: attributes to add, such as \"Required\" or \"JsonProperty(\\\"x\\\")\"")] string[]? addAttributes = null,
+        [Description("Optional: names of attributes to remove, such as \"Required\"")] string[]? removeAttributes = null,
+        [Description("Optional: new summary for the member's existing doc comment")] string? newSummary = null,
+        [Description("Optional: array of {file, line, column, newText} for references, when the change affects what other code sees.")] object[]? callerEdits = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the member, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync(
+            "editMember",
+            new { file, line, newName, newType, accessibility, setter, required, backing, addAttributes = addAttributes ?? [], removeAttributes = removeAttributes ?? [], newSummary, callerEdits = callerEdits ?? [], confirm },
+            solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events.")]
+    public async Task<string> IdeSubscribeEvents(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        // The health reply carries the process id, which names the events pipe.
+        var health = JsonDocument.Parse(await IdeInstanceRouter.CallAsync("health", new { }, solutionPath, ct, ide, instancePid).ConfigureAwait(false));
+        if (!health.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
+        {
+            return health.RootElement.GetRawText();
+        }
+
+        var pid = health.RootElement.GetProperty("pid").GetInt32();
+        var created = await EventSubscriptions.EnsureSubscribedAsync(pid, ct).ConfigureAwait(false);
+        return JsonSerializer.Serialize(new { ok = true, pid, created });
+    }
+
+    [McpServerTool]
+    [Description("Read events from a Visual Studio instance, after a sequence number (0 for everything kept). Events are kept for the last 500 per instance from the time this server started. Events: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Read-only.")]
+    public string IdeReadEvents(
+        [Description("Optional: process id of the instance. Needed when more than one instance is subscribed.")] int? instancePid = null,
+        [Description("Return events with a sequence number greater than this. Default 0.")] long sinceSeq = 0,
+        [Description("Optional: only these event names. Omit for all.")] string[]? events = null,
+        [Description("Optional: info, warning or error. Events below this are left out. Default info.")] string? minSeverity = null,
+        [Description("Optional: most events to return (1 to 200). Default 20. The reply counts the rest in omitted; pass next_seq as sinceSeq to continue.")] int? limit = null,
+        [Description("Optional: longest text kept in one event (characters). Longer text is cut and marked truncated. Default 300, or eventFilter.maxEventTextChars.")] int? maxTextChars = null,
+        [Description("Optional: solution whose .claude/aidevhelpers.json holds the eventFilter limits. Without it the defaults apply.")] string? solutionPath = null)
+    {
+        if (!EventSeverityMap.TryParse(minSeverity, out var severity))
+        {
+            throw new ArgumentException(Strings.Format("UnknownMinSeverity", minSeverity));
+        }
+
+        var (settings, warnings) = LoadEventFilter(solutionPath);
+        var pid = instancePid ?? EventSubscriptions.OnlySubscribedPid();
+        // Default scope (plan 4.3): run results, status and errors. Pass events to ask for others by name.
+        var names = events is { Length: > 0 } ? events : DefaultEventNames;
+        var options = new EventFilterOptions(
+            Names: null,
+            MinSeverity: severity,
+            Limit: limit ?? settings.MaxEvents,
+            MaxTextChars: maxTextChars ?? settings.MaxEventTextChars);
+        return WithWarnings(JsonSerializer.Serialize(EventSubscriptions.Read(pid, sinceSeq, names, options)), warnings);
+    }
+
+    [McpServerTool]
+    [Description("Stop this server's events subscription to one instance. Automatic subscription resumes on the next check unless the instance is closed.")]
+    public string IdeUnsubscribeEvents(
+        [Description("Process id of the instance")] int instancePid)
+    {
+        EventSubscriptions.Unsubscribe(instancePid);
+        return JsonSerializer.Serialize(new { ok = true, pid = instancePid });
+    }
+
+    [McpServerTool]
+    [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetExceptionBreak(
+        [Description("Exception group name, as listed by ide_list_exceptions")] string group,
+        [Description("Exception name, as listed by ide_list_exceptions")] string name,
+        [Description("Optional: true to break when thrown, false to not break")] bool? breakWhenThrown = null,
+        [Description("Optional: true to break when user-unhandled, false to not break")] bool? breakWhenUserUnhandled = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setExceptionBreak", new { group, name, breakWhenThrown, breakWhenUserUnhandled, confirm }, solutionPath, ct, ide, instancePid);
 }

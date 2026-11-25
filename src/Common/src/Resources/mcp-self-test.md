@@ -21,19 +21,21 @@ $msbuild = Join-Path $installation "MSBuild\Current\Bin\MSBuild.exe"
 if ($LASTEXITCODE -ne 0) { throw "Solution build failed: $LASTEXITCODE" }
 
 pwsh -NoProfile -File scripts/build-vs-extension-vsix.ps1 -Configuration Release
-dotnet test tests/AiDevHelpers.Helpers.LogHelper.Tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj
-dotnet test tests/AiDevHelpers.Bridge.Tests/AiDevHelpers.Bridge.Tests.csproj
-dotnet test tests/AiDevHelpers.Helpers.TerminalControl.Tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj
+dotnet test src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj -c Release
+dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release
+dotnet test src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj -c Release
+dotnet test src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj -c Release
+dotnet test src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj -c Release
 ```
 
-Record exit status and reported test counts for each. The bridge MCP test project includes tool validation and integration coverage; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing.
+Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue; the MCP test project has one smoke test, so tool coverage comes from the inventory check in section 3; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
 
 ## 3. MCP protocol and inventory
 
-Start `src/AiDevHelpers.MCP` using its normal stdio transport and an MCP client. Confirm:
+Start the built server `src/MCP/Server/src/bin/Release/net10.0-windows/AiDevHelpers.MCP.exe` (build `src/MCP/Server/src/AiDevHelpers.MCP.csproj` first) using its normal stdio transport and an MCP client. Confirm:
 
 1. The stdio initialize handshake completes and the server responds to `tools/list`.
-2. The list includes all currently registered IDE and terminal tools. Compare the names with `docs://ide-bridge/mcp-tools` and use the live schemas as authority.
+2. The list includes all currently registered tools: about 124 at the time of writing (75 `ide_*`, plus git, gate, lint, test, bookmark, error, extension, config, server, self-test, terminal and the rest). Compare the names with `docs://ide-bridge/mcp-tools` and use the live schemas as authority. A count that differs from the documented one is a finding, not an automatic failure.
 3. `resources/list` includes `docs://ide-bridge/mcp-tools` and `docs://ide-bridge/mcp-self-test`.
 4. Read both resources and confirm they return non-empty Markdown with `text/markdown` content.
 5. Call `ide_list_instances`; confirm a valid result, even if its list is empty.
@@ -45,16 +47,48 @@ If no MCP client or runnable bridge process is available, record the protocol se
 When `ide_list_instances` reports an instance, choose one and pass its `solutionPath` when needed. Confirm:
 
 - `ide_bridge_health` responds and returns health/request metadata.
-- `ide_get_output` and `ide_search_output` read an existing output pane, preferably Build or Debug. If those panes are unavailable or return a pane-specific COM/automation error, try `AiDevHelpers IDE Bridge` and report both results. If no pane can be read, mark these checks `SKIPPED`.
+- `ide_get_output` and `ide_search_output` read the Build and Debug panes and the `AiDevHelpers IDE Bridge` pane. A pane that has never been written is empty, not an error. An unknown pane name returns "no output pane named". Report each pane's result separately. Last run: the bridge pane returned its log lines; Build and Debug were empty before the fix in commit `21c3604`, and the live check of that fix is still pending.
 - `ide_get_build_diagnostics` and `ide_list_configurations` return valid results.
 - `ide_get_debug_state`, `ide_list_breakpoints`, and `ide_list_watches` return valid results. Call `ide_get_locals` only if the debugger is already stopped at a breakpoint.
 - `ide_get_test_results` reads the specified solution's latest results; record “no TRX found” as a valid empty-state response if applicable.
+
+- `ide_list_processes`, `ide_list_debugged_processes`, `ide_list_threads`, and `ide_list_stack_frames` return valid results. Thread and stack lists are empty outside break mode; record that as a valid state. `ide_list_processes` lists every process on the machine (hundreds of entries), so check only that it is valid.
+- `ide_list_exceptions` lists every exception group, which is over 100 KB. Call it with a `group` (for example `Common Language Runtime Exceptions`) and check that group only. Without `group`, the reply may be too large for the MCP client.
+- `ide_list_documents`, `ide_list_tasks`, and `ide_get_setting` (for a key that exists, plus one that does not, which must return `found: false`) return valid results.
+- `ide_project_properties` takes the project's name as shown in Solution Explorer, for example `AiDevHelpers.Bridge`, not `Bridge`. `TargetFramework` comes back as a number (for example `262152`), not a framework name. A wrong project name must report "no project named", not a COM error; check that too.
+- `ide_list_code_elements` on a known source file and `ide_semantic_definition` on a known symbol return locations; `ide_semantic_references` returns a list.
+- `ide_read_events` returns events and `last_seq` for an instance the MCP server is subscribed to. Subscriptions are automatic; `ide_subscribe_events` only confirms one. An empty list right after launch is valid: no events have fired yet.
+- `ide_semantic_definition` can fail once with "No open Visual Studio instance" while the instance is registering. Retry once before recording it as a failure.
 
 Do not run `ide_run_tests`, `ide_build`, or other state-changing tools during this read-only section.
 
 ## 5. Optional authorized action checks
 
 Only perform a check when the operator explicitly requests it and a scratch solution/session is selected. Agree on the expected change and cleanup first. Possible checks include build/diagnostics, tests/TRX, formatting/cleanup, configuration/startup project, debugger operations, IDE launch/close, or terminal open/tab/exec/close. Capture before/after state and clean up only resources created by this check. Avoid publish, process termination, and closing an existing IDE unless specifically authorized.
+
+### Confirm-gated writes
+
+Every write takes `confirm` (default false). Without it the reply must be `planned: true` and nothing may change. Check each in a scratch solution, with before and after state:
+
+- Breakpoints: `ide_set_breakpoint_condition`, `ide_enable_breakpoint`, `ide_disable_breakpoint` (set on a scratch line, then remove it).
+- Exceptions: `ide_set_exception_break` on one exception, then restore it.
+- Documents and edits: `ide_save_document`, `ide_close_document` (`discardChanges` only on scratch files), `ide_undo_group` with one edit, then undo.
+- Find and replace: `ide_replace_in_files` on a scratch token; `ide_find_in_files` first.
+- Rename: `ide_rename_symbol` on a scratch symbol. Without `confirm` the file list is the plan. Check `ide_semantic_references` before and after.
+- Method edit: `ide_edit_method` on a scratch method. Without `confirm` the checks are the plan. Change a parameter on a method with a caller and expect a refusal that lists the uncovered reference; pass a `callerEdits` entry for it and expect the checks to pass. Check `ide_semantic_references` before and after.
+- Add method and overload: `ide_add_method` and `ide_add_overload` on a scratch class. Without `confirm` the checks are the plan. Add an overload whose parameter makes an existing call bind to it and expect a refusal that lists the call. Check the new method's doc comment matches its neighbours.
+- Delete: `ide_delete_member` on an unused private method; expect the member gone with its doc comment. On a method with a caller, expect refusal listing the reference; pass a callerEdits entry and expect success.
+- Namespaces: `ide_rename_namespace` on a scratch namespace used by a using, a qualified name and a string literal; expect string_mentions and no refusal. Rename into a name that exists and expect a collision refusal. `ide_move_type` on a type used by simple name in a sibling file and expect a using added there. With `moveFiles` on an SDK-style scratch project, expect the file to move.
+- Members: `ide_add_member` on a scratch class with an auto, a field-backed and a readonly-field member; check privacy and layout. `ide_edit_member` to change a type and expect a refusal that lists every reference; cover them and expect success. Rename a member alone and check its references moved. Pass `members` to `ide_edit_method` and expect `members_added`.
+- Tests after a change: `ide_edit_method` with `confirm` on a method a scratch test calls; expect `test_run` with that test's outcome and `coverage.method`. Edit a method no test calls and expect the whole test project to run, with a warning. Pass `runTests: false` and expect no `test_run`.
+- TDD: `ide_tdd_add_test` with a method given as `int M(int x);` and a failing test; expect `tdd.status` red. Then `ide_tdd_update_test`, then implement with `ide_edit_method` and expect green with coverage.
+- Tasks and shell services: `ide_add_task`, `ide_clear_tasks` (only bridge-added tasks), `ide_set_status`, `ide_show_info_bar`, `ide_write_activity_log`.
+- Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
+- Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.
+- Events, with a build or a breakpoint: `ide_read_events` shows `buildBegin`, `buildDone`, `enterBreakMode`, `documentSaved` in order.
+- Build summary: `ide_build` returns `summary` with `status: "finished"`, `succeeded`, `error_count`, and capped `errors` (20, messages 200 characters). A build with a compile error lists it.
+- Test summary: `ide_run_tests` returns `status: "finished"` with the capped summary, or `status: "running"` after `waitSeconds` (120). Confirm a run longer than the wait returns `running`, and that `ide_get_test_summary` then shows it finished.
+- Read options: `ide_read_events` with `minSeverity: "error"` and `limit: 2` returns at most two events, `omitted`, and `next_seq`. Passing `next_seq` as `sinceSeq` returns the rest.
 
 ### VSIX actions and launching a solution argument
 

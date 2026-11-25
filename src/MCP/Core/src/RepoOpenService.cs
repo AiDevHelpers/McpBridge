@@ -26,7 +26,7 @@ internal sealed class RepoOpenService(IElevVerifier verifier, IElevScanner scann
             root => File.Exists(Path.Combine(root, ".elevated.json")),
             notice => _ = PushAsync(notice));
 
-        // A repo with no .aidevtools folder is scanned once per server session, on its own task so a slow scan never delays the tick.
+        // A repo with no .aidevhelpers folder is scanned once per server session, on its own task so a slow scan never delays the tick.
         var setupChecker = new RepoSetupChecker(
             OpenSolutions,
             scanner,
