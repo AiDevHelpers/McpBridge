@@ -825,19 +825,21 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. If the method has a /// doc comment, its param, typeparam and returns tags are updated to the new signature in the comment's own layout; a new parameter needs its text in docs (the tool never invents text), and newSummary replaces the summary when the purpose changed. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public Task<string> IdeEditMethod(
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the method (its name line is best)")] int line,
         [Description("Full replacement text of the method declaration")] string newMethodText,
         [Description("Optional: 1-based column. Default 1.")] int? column = null,
         [Description("Optional: array of {file, line, column, newText} for callers when the signature changes. file, line and column are a reference location from ide_semantic_references.")] object[]? callerEdits = null,
+        [Description("Optional: new text for the summary of the method's XML doc comment, when the method's purpose changed.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
         [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid);
+        IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
     [Description("Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events.")]

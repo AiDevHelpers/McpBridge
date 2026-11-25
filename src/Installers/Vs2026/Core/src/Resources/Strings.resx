@@ -45,6 +45,12 @@
   <data name="MethodEditNewErrors" xml:space="preserve"><value>The edit would add {0} compile error(s). Nothing was changed.</value></data>
   <data name="MethodEditWarnUnseen" xml:space="preserve"><value>Roslyn cannot see reflection, string names, XAML, dependency injection, or projects outside the open solution. Search for the method name with ide_find_in_files.</value></data>
   <data name="MethodEditWarnCandidates" xml:space="preserve"><value>Some references are implicit or only candidates. Check them in the reply.</value></data>
+  <data name="MethodEditNewTextHasDocs" xml:space="preserve"><value>newMethodText must not include a doc comment. The existing doc comment is updated for you; pass newSummary and docs for new text.</value></data>
+  <data name="MethodEditDocStyleUnsupported" xml:space="preserve"><value>The method has a /** */ doc comment. Only /// doc comments are updated, so its docs were left as they are.</value></data>
+  <data name="MethodEditSummaryMayBeStale" xml:space="preserve"><value>The signature changed and the summary was not rewritten. Check it, or pass newSummary.</value></data>
+  <data name="MethodEditParamTypeChanged" xml:space="preserve"><value>The type of parameter '{0}' changed. Its description was kept; check it.</value></data>
+  <data name="MethodEditReturnsMayBeStale" xml:space="preserve"><value>The return type changed and the returns text was kept. Check it, or pass a returns entry in docs.</value></data>
+  <data name="MethodEditDocsMissing" xml:space="preserve"><value>The method has a doc comment and these tags need text in docs: {0}.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

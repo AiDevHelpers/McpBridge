@@ -159,6 +159,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalInt(args, "column") ?? 1,
             RequireString(args, "newMethodText"),
             ParseCallerEdits(args),
+            ParseDocUpdates(args),
             OptionalBool(args, "confirm") == true),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
@@ -1451,6 +1452,21 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return edits;
+    }
+
+    // The optional newSummary and docs of editMethod: docs is an array of {tag, name, text} for param, typeparam and returns tags.
+    private static DocUpdates ParseDocUpdates(JsonElement args)
+    {
+        var updates = new DocUpdates { NewSummary = OptionalString(args, "newSummary") };
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("docs", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                updates.Items.Add(new DocItem(RequireString(e, "tag"), OptionalString(e, "name"), RequireString(e, "text")));
+            }
+        }
+
+        return updates;
     }
 
     // Replaces one range through the editor's selection, so the change goes through the IDE's undo stack.

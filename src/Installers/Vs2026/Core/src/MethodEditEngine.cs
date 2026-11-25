@@ -51,6 +51,8 @@ internal sealed class MethodEditPlan
 
     public int ReferenceCount { get; set; }
 
+    public bool DocsUpdated { get; set; }
+
     public Solution? Result { get; set; }
 
     public bool Refused => Reasons.Count > 0;
@@ -63,6 +65,7 @@ internal sealed class MethodEditPlan
         old_signature = OldSignature,
         new_signature = NewSignature,
         reference_count = ReferenceCount,
+        docs_updated = DocsUpdated,
         uncovered_references = Uncovered,
         new_errors = NewErrors,
         files = Files,
@@ -83,7 +86,7 @@ internal static class MethodEditEngine
         .AddMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits)
+        Solution solution, string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates? docs = null)
     {
         var plan = new MethodEditPlan();
 
@@ -120,6 +123,12 @@ internal static class MethodEditEngine
             return plan;
         }
 
+        if (parsed.GetLeadingTrivia().Any(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)))
+        {
+            plan.Reasons.Add(Strings.Get("MethodEditNewTextHasDocs"));
+            return plan;
+        }
+
         // The references of the old symbol, before any edit. References inside the method itself are covered by its new text.
         var methodSpan = methodNode.Span;
         var references = await CollectReferencesAsync(solution, symbol).ConfigureAwait(false);
@@ -136,14 +145,7 @@ internal static class MethodEditEngine
             return plan;
         }
 
-        var edited = solution;
-        foreach (var pair in changes)
-        {
-            var oldText = await solution.GetDocument(pair.Key)!.GetTextAsync().ConfigureAwait(false);
-            edited = edited.WithDocumentText(pair.Key, oldText.WithChanges(pair.Value));
-            plan.Files.Add(solution.GetDocument(pair.Key)!.FilePath ?? pair.Key.ToString());
-        }
-
+        var edited = await ApplyAsync(solution, changes).ConfigureAwait(false);
         var newSymbol = await FindEditedMethodAsync(edited, documentId!, methodSpan.Start, changes[documentId!]).ConfigureAwait(false);
         if (newSymbol is null)
         {
@@ -154,6 +156,29 @@ internal static class MethodEditEngine
         plan.OldSignature = symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
         plan.NewSignature = newSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
         plan.SignatureChanged = SignatureKey(symbol) != SignatureKey(newSymbol);
+
+        // The XML doc comment follows the signature, in the layout it already has. Only when something changed or the caller asked.
+        if (plan.SignatureChanged || docs?.NewSummary is not null || docs?.Items.Count > 0)
+        {
+            var eol = text.ToString().Contains("\r\n") ? "\r\n" : "\n";
+            var docResult = MethodDocUpdater.Update(methodNode, symbol, newSymbol, docs ?? new DocUpdates(), plan.SignatureChanged, eol);
+            plan.Warnings.AddRange(docResult.Warnings);
+            if (docResult.Missing.Count > 0)
+            {
+                plan.Reasons.Add(Strings.Format("MethodEditDocsMissing", string.Join(", ", docResult.Missing)));
+            }
+            else if (docResult.Change is { } docChange)
+            {
+                changes[documentId!].Add(docChange);
+                edited = await ApplyAsync(solution, changes).ConfigureAwait(false);
+                plan.DocsUpdated = true;
+            }
+        }
+
+        foreach (var id in changes.Keys)
+        {
+            plan.Files.Add(solution.GetDocument(id)!.FilePath ?? id.ToString());
+        }
 
         if (plan.SignatureChanged)
         {
@@ -175,6 +200,18 @@ internal static class MethodEditEngine
         }
 
         return plan;
+    }
+
+    private static async Task<Solution> ApplyAsync(Solution solution, Dictionary<DocumentId, List<TextChange>> changes)
+    {
+        var edited = solution;
+        foreach (var pair in changes)
+        {
+            var oldText = await solution.GetDocument(pair.Key)!.GetTextAsync().ConfigureAwait(false);
+            edited = edited.WithDocumentText(pair.Key, oldText.WithChanges(pair.Value));
+        }
+
+        return edited;
     }
 
     private sealed class Reference
