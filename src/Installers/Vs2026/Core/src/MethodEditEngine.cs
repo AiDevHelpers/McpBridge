@@ -63,6 +63,17 @@ internal sealed class MethodEditPlan
 
     public bool DocsUpdated { get; set; }
 
+    /// <summary>Test methods that call the edited method, found before the edit. The MCP server runs them after an applied edit.</summary>
+    public List<TestTarget> Tests { get; } = new();
+
+    /// <summary>Where the edited, added or overloaded method sits in its file after the edit, for coverage.</summary>
+    public object? Method { get; set; }
+
+    /// <summary>The method an add or overload plan inserts, and whether it is a test method.</summary>
+    public TestTarget? Added { get; set; }
+
+    public bool AddedIsTest { get; set; }
+
     public Solution? Result { get; set; }
 
     public bool Refused => Reasons.Count > 0;
@@ -76,6 +87,8 @@ internal sealed class MethodEditPlan
         new_signature = NewSignature,
         reference_count = ReferenceCount,
         docs_updated = DocsUpdated,
+        tests = Tests.Select(t => t.ToReply()).ToList(),
+        method = Method,
         uncovered_references = Uncovered,
         new_errors = NewErrors,
         new_warnings = NewWarnings,
@@ -149,6 +162,7 @@ internal static class MethodEditEngine
         var references = await CollectReferencesAsync(solution, symbol).ConfigureAwait(false);
         references.RemoveAll(r => r.DocumentId == documentId && methodSpan.Contains(r.Span));
         plan.ReferenceCount = references.Count;
+        plan.Tests.AddRange(await TestDiscovery.FindDirectAsync(solution, references).ConfigureAwait(false));
 
         var changes = new Dictionary<DocumentId, List<TextChange>>
         {
@@ -204,6 +218,8 @@ internal static class MethodEditEngine
         edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
         await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan)
             .ConfigureAwait(false);
+        plan.Method = await TestDiscovery.LocateAsync(edited, documentId!, TestDiscovery.MetadataName(newSymbol.ContainingType), SignatureKey(newSymbol))
+            .ConfigureAwait(false);
 
         plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
         if (references.Any(r => r.IsCandidate || r.IsImplicit))
@@ -245,7 +261,7 @@ internal static class MethodEditEngine
         return edited;
     }
 
-    private sealed class Reference
+    internal sealed class Reference
     {
         public DocumentId DocumentId { get; set; } = null!;
 
@@ -262,7 +278,7 @@ internal static class MethodEditEngine
         public bool IsCandidate { get; set; }
     }
 
-    private static async Task<List<Reference>> CollectReferencesAsync(Solution solution, ISymbol symbol)
+    internal static async Task<List<Reference>> CollectReferencesAsync(Solution solution, ISymbol symbol)
     {
         var found = new List<Reference>();
         var seen = new HashSet<(DocumentId, int)>();

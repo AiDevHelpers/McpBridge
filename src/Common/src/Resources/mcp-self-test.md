@@ -77,6 +77,8 @@ Every write takes `confirm` (default false). Without it the reply must be `plann
 - Rename: `ide_rename_symbol` on a scratch symbol. Without `confirm` the file list is the plan. Check `ide_semantic_references` before and after.
 - Method edit: `ide_edit_method` on a scratch method. Without `confirm` the checks are the plan. Change a parameter on a method with a caller and expect a refusal that lists the uncovered reference; pass a `callerEdits` entry for it and expect the checks to pass. Check `ide_semantic_references` before and after.
 - Add method and overload: `ide_add_method` and `ide_add_overload` on a scratch class. Without `confirm` the checks are the plan. Add an overload whose parameter makes an existing call bind to it and expect a refusal that lists the call. Check the new method's doc comment matches its neighbours.
+- Tests after a change: `ide_edit_method` with `confirm` on a method a scratch test calls; expect `test_run` with that test's outcome and `coverage.method`. Edit a method no test calls and expect the whole test project to run, with a warning. Pass `runTests: false` and expect no `test_run`.
+- TDD: `ide_tdd_add_test` with a method given as `int M(int x);` and a failing test; expect `tdd.status` red. Then `ide_tdd_update_test`, then implement with `ide_edit_method` and expect green with coverage.
 - Tasks and shell services: `ide_add_task`, `ide_clear_tasks` (only bridge-added tasks), `ide_set_status`, `ide_show_info_bar`, `ide_write_activity_log`.
 - Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
 - Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.

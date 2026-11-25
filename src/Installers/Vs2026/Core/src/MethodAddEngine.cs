@@ -99,6 +99,7 @@ internal static class MethodAddEngine
         }
 
         plan.NewSignature = newSymbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+        plan.AddedIsTest = TestDiscovery.IsTestMethod(newSymbol);
 
         // Phase 2: with a doc comment, when the neighbours have one.
         var docLines = new List<string>();
@@ -129,11 +130,17 @@ internal static class MethodAddEngine
 
         if (overload)
         {
+            // The tests that call the original are the nearest tests the overload has.
+            var originalReferences = await MethodEditEngine.CollectReferencesAsync(solution, existingSymbol!).ConfigureAwait(false);
+            plan.Tests.AddRange(await TestDiscovery.FindDirectAsync(solution, originalReferences).ConfigureAwait(false));
             await CheckRebindsAsync(solution, edited, existingSymbol!, documentId!, insertAt, (before + block + suffix).Length, plan).ConfigureAwait(false);
         }
 
         edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
         await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId! }, plan).ConfigureAwait(false);
+        plan.Method = await TestDiscovery.LocateAsync(edited, documentId!, TestDiscovery.MetadataName(newSymbol.ContainingType), MethodEditEngine.SignatureKey(newSymbol))
+            .ConfigureAwait(false);
+        plan.Added = TestDiscovery.TargetFor(newSymbol, document, plan.InsertedAtLine);
 
         if (!plan.Refused)
         {

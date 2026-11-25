@@ -215,6 +215,43 @@ internal static class CodeModelActions
         });
     }
 
+    // The TDD steps: add a test with its method, or replace a test's body. Same plan, refuse and apply behaviour as EditMethod.
+    public static object TddAddTest(
+        string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => TddEngine.StartAsync(solution, testFile, testLine, testMethodText, methodFile, methodLine, methodText, docs), confirm);
+    }
+
+    public static object TddUpdateTest(string file, int line, string newBody, string? targetFile, int? targetLine, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => TddEngine.UpdateTestAsync(solution, file, line, newBody, targetFile, targetLine), confirm);
+    }
+
+    private static object RunPlan(Func<Solution, Task<MethodEditPlan>> plan, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            var planned = await plan(workspace.CurrentSolution).ConfigureAwait(true);
+            if (planned.Refused || !confirm)
+            {
+                return new { planned = !planned.Refused, applied = false, check = planned.ToReply() };
+            }
+
+            if (!workspace.TryApplyChanges(planned.Result!))
+            {
+                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
+            }
+
+            return new { planned = false, applied = true, check = planned.ToReply() };
+        });
+    }
+
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel

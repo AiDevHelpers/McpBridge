@@ -825,8 +825,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. If the method has a /// doc comment, its param, typeparam and returns tags are updated to the new signature in the comment's own layout; a new parameter needs its text in docs (the tool never invents text), and newSummary replaces the summary when the purpose changed. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
-    public Task<string> IdeEditMethod(
+    [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. If the method has a /// doc comment, its param, typeparam and returns tags are updated to the new signature in the comment's own layout; a new parameter needs its text in docs (the tool never invents text), and newSummary replaces the summary when the purpose changed. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeEditMethod(
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the method (its name line is best)")] int line,
         [Description("Full replacement text of the method declaration")] string newMethodText,
@@ -835,15 +835,19 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: new text for the summary of the method's XML doc comment, when the method's purpose changed.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
         [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid);
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
 
     [McpServerTool]
-    [Description("Add one C# method to the type that contains a line, using Roslyn, with checks. The new method goes at the end of the type, or after the member at afterLine. If neighbouring methods have /// doc comments, the new one gets a doc comment in the same layout from newSummary and docs (a {tag, name, text} entry for each parameter, type parameter and a non-void return); the tool never invents text and warns when it is missing. The file is formatted, a new compile error refuses the edit, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
-    public Task<string> IdeAddMethod(
+    [Description("Add one C# method to the type that contains a line, using Roslyn, with checks. The new method goes at the end of the type, or after the member at afterLine. If neighbouring methods have /// doc comments, the new one gets a doc comment in the same layout from newSummary and docs (a {tag, name, text} entry for each parameter, type parameter and a non-void return); the tool never invents text and warns when it is missing. The file is formatted, a new compile error refuses the edit, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeAddMethod(
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the target type")] int line,
         [Description("Full text of the new method declaration, without a doc comment")] string newMethodText,
@@ -851,26 +855,75 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary text for the new method's doc comment.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags.")] object[]? docs = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid);
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
 
     [McpServerTool]
-    [Description("Add an overload of the method at a line, using Roslyn, with checks. The overload has the same name, goes after the method's last overload, and gets a doc comment like the original's (newSummary and docs supply the text; the tool never invents it). It is refused if it changes which method any existing call binds to, if the file then has a new compile error, or if its signature matches an existing method. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
-    public Task<string> IdeAddOverload(
+    [Description("Add an overload of the method at a line, using Roslyn, with checks. The overload has the same name, goes after the method's last overload, and gets a doc comment like the original's (newSummary and docs supply the text; the tool never invents it). It is refused if it changes which method any existing call binds to, if the file then has a new compile error, or if its signature matches an existing method. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeAddOverload(
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the method to overload")] int line,
         [Description("Full text of the new overload, without a doc comment")] string newMethodText,
         [Description("Optional: summary text for the overload's doc comment. Without it the original's summary is kept.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags that differ from the original.")] object[]? docs = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
-        CancellationToken ct = default) =>
-        IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid);
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("TDD step 1: add a test and the method it tests, then run the test to show it red. The method goes into the type at methodFile:methodLine; give it without a body (ending in ;) and it is added as a stub that throws NotImplementedException, so the test compiles and fails. The test goes into the class at testFile:testLine (testMethodText includes its attribute). The two must be in different files. Both are formatted and checked like ide_add_method. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the new test runs with coverage and tdd.status says red (failed, as wanted), green (it passed before the method existed, so it may not test anything) or not_run. Visual Studio only.")]
+    public async Task<string> IdeTddAddTest(
+        [Description("Full path of the test file")] string testFile,
+        [Description("1-based line inside the test class")] int testLine,
+        [Description("Full text of the test method, with its [Fact], [Test] or [TestMethod] attribute")] string testMethodText,
+        [Description("Full path of the file that gets the new method")] string methodFile,
+        [Description("1-based line inside the type that gets the new method")] int methodLine,
+        [Description("Full text of the method under test. Without a body it becomes a stub that throws.")] string methodText,
+        [Description("Optional: summary for the method's doc comment, when its neighbours have one.")] string? newSummary = null,
+        [Description("Optional: array of {tag, name, text} for the method's param, typeparam and returns doc tags.")] object[]? docs = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the new test with coverage after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddRed).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("TDD step 2: replace the body of a test, then run it and return its result. newBody is a block or the statements of the new body; the test's attribute and signature stay. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the test runs, and tdd.status says red or green. Give targetFile and targetLine (a line inside the method under test) to also get that method's line coverage. Then implement the method with ide_edit_method, which runs the tests that call it. Visual Studio only.")]
+    public async Task<string> IdeTddUpdateTest(
+        [Description("Full path of the test file")] string file,
+        [Description("1-based line inside the test method")] int line,
+        [Description("New body: a { block } or its statements")] string newBody,
+        [Description("Optional: full path of the file with the method under test, for coverage.")] string? targetFile = null,
+        [Description("Optional: 1-based line inside the method under test, for coverage.")] int? targetLine = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the test with coverage after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddUpdate).ConfigureAwait(false);
+    }
 
     [McpServerTool]
     [Description("Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events.")]

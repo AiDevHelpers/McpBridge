@@ -57,6 +57,9 @@
   <data name="MethodAddRebinds" xml:space="preserve"><value>Adding this overload would change which method {0} existing call(s) bind to. Nothing was changed.</value></data>
   <data name="MethodAddDocsNotGiven" xml:space="preserve"><value>Neighbouring methods have doc comments but the new method got none; these need text in newSummary or docs: {0}.</value></data>
   <data name="MethodEditAnalysisUnavailable" xml:space="preserve"><value>Code analysis could not run: {0}</value></data>
+  <data name="TddSameFile" xml:space="preserve"><value>The test and the method must be in different files. Add them with ide_add_method, one at a time, when they share a file.</value></data>
+  <data name="TddNotATest" xml:space="preserve"><value>That method has no test attribute (Fact, Theory, Test, TestCase, TestMethod or DataTestMethod).</value></data>
+  <data name="TddBodyNotABlock" xml:space="preserve"><value>newBody must be a block, or statements, with no syntax errors.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

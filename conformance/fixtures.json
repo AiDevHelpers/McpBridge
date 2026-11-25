@@ -99,6 +99,16 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "tdd_add_test_refused_by_generic_bridge": {
+    "request": { "action": "tddAddTest", "args": { "testFile": "C:\\__no_such__\\t.cs", "testLine": 1, "testMethodText": "[Fact] void T() { }", "methodFile": "C:\\__no_such__\\a.cs", "methodLine": 1, "methodText": "int M();" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "tdd_update_test_refused_by_generic_bridge": {
+    "request": { "action": "tddUpdateTest", "args": { "file": "C:\\__no_such__\\t.cs", "line": 1, "newBody": "{ }" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "semantic_references_refused_by_generic_bridge": {
     "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
     "ok": false,

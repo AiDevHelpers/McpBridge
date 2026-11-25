@@ -48,7 +48,7 @@ internal static class IdeTestRunService
 
     // Microsoft.Testing.Platform projects take --report-xunit-trx; VSTest projects reject it and need the trx logger.
     // A marker in any project or build props file under the solution folder counts, since props files apply to every project.
-    private static bool UsesTestingPlatform(string solutionDir)
+    internal static bool UsesTestingPlatform(string solutionDir)
     {
         if (!Directory.Exists(solutionDir))
         {

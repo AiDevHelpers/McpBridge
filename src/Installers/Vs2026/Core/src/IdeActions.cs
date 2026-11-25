@@ -177,6 +177,22 @@ public sealed class IdeActions(DTE2 dte)
             ParseDocUpdates(args),
             true,
             OptionalBool(args, "confirm") == true),
+        "tddAddTest" => CodeModelActions.TddAddTest(
+            RequireString(args, "testFile"),
+            RequireInt(args, "testLine"),
+            RequireString(args, "testMethodText"),
+            RequireString(args, "methodFile"),
+            RequireInt(args, "methodLine"),
+            RequireString(args, "methodText"),
+            ParseDocUpdates(args),
+            OptionalBool(args, "confirm") == true),
+        "tddUpdateTest" => CodeModelActions.TddUpdateTest(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newBody"),
+            OptionalString(args, "targetFile"),
+            OptionalInt(args, "targetLine"),
+            OptionalBool(args, "confirm") == true),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
