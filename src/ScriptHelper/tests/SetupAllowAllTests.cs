@@ -126,6 +126,21 @@ public sealed class SetupAllowAllTests : IDisposable
     }
 
     [Fact]
+    public void PointerWriteFails_RemovesTheNewStoreAndBumpsNoVersion()
+    {
+        var confirmer = new CountingConfirmer(2);
+        var c = Commands(confirmer);
+        var id = Register(c, _root);
+        WriteSettings("""{"allowAll":true}""");
+        // A directory where the user file should be makes the pointer write throw.
+        Directory.CreateDirectory(RepoSettingsFile.UserFilePath(_root));
+
+        Assert.ThrowsAny<Exception>(() => c.AllowAll(_root));
+
+        Assert.False(File.Exists(_config.AllowAllPath(id)));
+    }
+
+    [Fact]
     public void BothConfirmations_WriteASignedApprovalAndTheUserPointer()
     {
         var confirmer = new CountingConfirmer(2);
