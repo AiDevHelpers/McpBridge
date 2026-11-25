@@ -98,26 +98,18 @@ public sealed class IdeActions(DTE2 dte)
         return new { debugger_mode = dte.Debugger.CurrentMode.ToString() };
     }
 
+    // Starts Test Explorer's run for the whole solution. Test Explorer refuses a run while discovery or an earlier run is still
+    // going. That refusal is reported as data, not thrown, so the caller can wait on its own thread and try again.
     private object RunTests()
     {
-        // Runs every test in the solution through Test Explorer. Filtering is not supported yet.
-        // Test Explorer refuses a run while discovery or an earlier run is still going; retry once after a short wait,
-        // then say why it refused instead of returning a bare E_FAIL.
-        for (var attempt = 1; ; attempt++)
+        try
         {
-            try
-            {
-                dte.ExecuteCommand("TestExplorer.RunAllTests");
-                return new { command = "TestExplorer.RunAllTests", attempts = attempt };
-            }
-            catch (System.Runtime.InteropServices.COMException) when (attempt == 1)
-            {
-                System.Threading.Thread.Sleep(3000);
-            }
-            catch (System.Runtime.InteropServices.COMException ex)
-            {
-                throw new InvalidOperationException(Strings.Format("TestExplorerRefusedTwice", ex.HResult), ex);
-            }
+            dte.ExecuteCommand("TestExplorer.RunAllTests");
+            return new { command = "TestExplorer.RunAllTests", refused = false, hresult = 0 };
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            return new { command = "TestExplorer.RunAllTests", refused = true, hresult = ex.HResult };
         }
     }
 

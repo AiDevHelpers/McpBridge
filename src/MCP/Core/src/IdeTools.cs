@@ -87,9 +87,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         }
 
         // Reuse an instance that already has this solution open, so a second devenv is not started for it.
-        var existing = VsInstanceRegistry.ListRunning().FirstOrDefault(i =>
-            !string.IsNullOrEmpty(i.SolutionPath)
-            && string.Equals(Path.GetFullPath(i.SolutionPath), Path.GetFullPath(solutionPath), StringComparison.OrdinalIgnoreCase));
+        var existing = VsInstanceRegistry.FindBySolution(solutionPath);
         if (existing is not null)
         {
             return System.Text.Json.JsonSerializer.Serialize(new { ok = true, opened = solutionPath, already_running = true, instance_pid = existing.Pid });
@@ -121,9 +119,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         var deadline = DateTime.UtcNow + BridgeReadyTimeout;
         while (DateTime.UtcNow < deadline)
         {
-            var started = VsInstanceRegistry.ListRunning().FirstOrDefault(i =>
-                !string.IsNullOrEmpty(i.SolutionPath)
-                && string.Equals(Path.GetFullPath(i.SolutionPath), Path.GetFullPath(solutionPath), StringComparison.OrdinalIgnoreCase));
+            var started = VsInstanceRegistry.FindBySolution(solutionPath);
             if (started is not null && BridgeAnswers(started))
             {
                 StartingInstances.Clear(started.Pid);
@@ -242,7 +238,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        return RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
     }
 
     [McpServerTool]
@@ -253,6 +249,36 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
         IdeInstanceRouter.CallAsync("formatSolution", new { }, solutionPath, ct, ide, instancePid);
+
+    // Test Explorer refuses a run while it is still busy. Wait once on this thread and try again; the IDE never sleeps.
+    private static async Task<string> RunTestExplorerWithRetryAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
+    {
+        var first = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        if (!IsTestExplorerRefusal(first))
+        {
+            return first;
+        }
+
+        await Task.Delay(3000, ct);
+        var second = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
+        if (!IsTestExplorerRefusal(second))
+        {
+            return second;
+        }
+
+        using var doc = JsonDocument.Parse(second);
+        var hresult = doc.RootElement.TryGetProperty("result", out var result) && result.TryGetProperty("hresult", out var h) ? h.GetInt32() : 0;
+        return JsonSerializer.Serialize(new { ok = false, attempts = 2, error = Strings.Format("TestExplorerRefusedTwice", hresult) });
+    }
+
+    private static bool IsTestExplorerRefusal(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.TryGetProperty("ok", out var ok) && ok.ValueKind == JsonValueKind.True
+            && doc.RootElement.TryGetProperty("result", out var result)
+            && result.ValueKind == JsonValueKind.Object
+            && result.TryGetProperty("refused", out var refused) && refused.ValueKind == JsonValueKind.True;
+    }
 
     [McpServerTool]
     [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
