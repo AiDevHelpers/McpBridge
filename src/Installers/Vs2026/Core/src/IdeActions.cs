@@ -123,6 +123,12 @@ public sealed class IdeActions(DTE2 dte)
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(),
+        "setExceptionBreak" => SetExceptionBreak(
+            RequireString(args, "group"),
+            RequireString(args, "name"),
+            OptionalBool(args, "breakWhenThrown"),
+            OptionalBool(args, "breakWhenUserUnhandled"),
+            OptionalBool(args, "confirm") == true),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
     };
 
@@ -808,6 +814,57 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { exceptions = list };
+    }
+
+    // Changes break-on-throw settings for one exception. Without confirm it only reports the change.
+    private object SetExceptionBreak(string group, string name, bool? breakWhenThrown, bool? breakWhenUserUnhandled, bool confirm)
+    {
+        if (breakWhenThrown is null && breakWhenUserUnhandled is null)
+        {
+            throw new ArgumentException(Strings.Get("ExceptionFlagRequired"));
+        }
+
+        foreach (EnvDTE90.ExceptionSettings groupSettings in ((EnvDTE100.Debugger5)dte.Debugger).ExceptionGroups)
+        {
+            if (groupSettings.Name != group)
+            {
+                continue;
+            }
+
+            foreach (EnvDTE90.ExceptionSetting setting in groupSettings)
+            {
+                if (setting.Name != name)
+                {
+                    continue;
+                }
+
+                var change = new
+                {
+                    group,
+                    name,
+                    break_when_thrown = new { current = setting.BreakWhenThrown, proposed = breakWhenThrown ?? setting.BreakWhenThrown },
+                    break_when_user_unhandled = new { current = setting.BreakWhenUserUnhandled, proposed = breakWhenUserUnhandled ?? setting.BreakWhenUserUnhandled },
+                };
+                if (!confirm)
+                {
+                    return new { planned = true, would = change };
+                }
+
+                if (breakWhenThrown is bool thrown)
+                {
+                    groupSettings.SetBreakWhenThrown(thrown, setting);
+                }
+
+                if (breakWhenUserUnhandled is bool unhandled)
+                {
+                    groupSettings.SetBreakWhenUserUnhandled(unhandled, setting);
+                }
+
+                return new { planned = false, applied = change };
+            }
+        }
+
+        throw new ArgumentException(Strings.Format("NoExceptionNamed", group, name));
     }
 
     private object ListDebuggedProcesses()

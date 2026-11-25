@@ -470,7 +470,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("List the processes the IDE's debugger can attach to (local processes), with pid, name and title. Read-only.")]
+    [Description("List the processes the IDE's debugger can attach to (local processes), with pid and name. Read-only.")]
     public Task<string> IdeListProcesses(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
@@ -504,4 +504,18 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
         IdeInstanceRouter.CallAsync("listExceptions", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetExceptionBreak(
+        [Description("Exception group name, as listed by ide_list_exceptions")] string group,
+        [Description("Exception name, as listed by ide_list_exceptions")] string name,
+        [Description("Optional: true to break when thrown, false to not break")] bool? breakWhenThrown = null,
+        [Description("Optional: true to break when user-unhandled, false to not break")] bool? breakWhenUserUnhandled = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setExceptionBreak", new { group, name, breakWhenThrown, breakWhenUserUnhandled, confirm }, solutionPath, ct, ide, instancePid);
 }

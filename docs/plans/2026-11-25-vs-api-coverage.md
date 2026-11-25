@@ -123,11 +123,11 @@ Units run in order. A blocked unit does not stop a later unit unless the later u
 ### Phase 1: debugger
 
 - [x] **1.1** `listProcesses`, `listDebuggedProcesses`, `OptionalBool`, refusal fixtures (`4a41fbb`).
-      Fix: `ide_list_processes` description promises `title`; the code returns only `pid` and `name`. Remove `title` from the
-      description (`IdeTools.cs`) in unit 1.1b.
+      Fixed in 1.1b: `ide_list_processes` description no longer mentions `title` (`IdeTools.cs`). Builds.
 - [x] **1.2** `listThreads` (`e10f11c`). Read in wrong state returns `threads: []` with `debugger_mode`.
 - [x] **1.3** `listExceptions` (`0d3b894`). Reply `{exceptions:[{group,name,code,break_when_thrown,break_when_user_unhandled,user_defined}]}`.
-- [ ] **1.4** `setExceptionBreak` (confirm). Args: `group` (string), `name` (string), `breakWhenThrown` (bool, optional),
+- [x] **1.4** Built. `setExceptionBreak` (confirm); setters compile; bridge tests 41 pass; live check pending. Deviation: a missing
+      group or name throws an argument error (one target, so no `failed` list). Args: `group` (string), `name` (string), `breakWhenThrown` (bool, optional),
       `breakWhenUserUnhandled` (bool, optional). At least one flag required; neither is an argument error. Not found is a
       per-item `failed` entry (3.1). Plan-only lists current and proposed values per item.
       Spike: exact setter call through `ExceptionSettings`. Live: value changes in VS Exceptions window, then is restored.

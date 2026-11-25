@@ -44,6 +44,11 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "set_exception_break_refused_by_generic_bridge": {
+    "request": { "action": "setExceptionBreak", "args": { "group": "Common Language Runtime Exceptions", "name": "System.Exception", "breakWhenThrown": true } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "list_exceptions_refused_by_generic_bridge": {
     "request": { "action": "listExceptions" },
     "ok": false,

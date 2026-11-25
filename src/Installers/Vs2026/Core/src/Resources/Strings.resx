@@ -5,6 +5,8 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="UnknownAction" xml:space="preserve"><value>Unknown action '{0}'.</value></data>
+  <data name="ExceptionFlagRequired" xml:space="preserve"><value>Give breakWhenThrown, breakWhenUserUnhandled, or both.</value></data>
+  <data name="NoExceptionNamed" xml:space="preserve"><value>No exception setting named '{1}' in group '{0}'.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>
   <data name="NoActiveDocumentToCleanUp" xml:space="preserve"><value>No active document to clean up.</value></data>
