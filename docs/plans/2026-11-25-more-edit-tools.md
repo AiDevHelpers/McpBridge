@@ -118,7 +118,8 @@ Visual Studio only and says so in its description.
       interface member. Refused while any reference remains (its own body excluded), while it overrides or implements something,
       or while an interface member has implementers. `callerEdits` may remove the references. Tests that call it are listed;
       deleting a tested member is refused unless `deleteTests` names them. Removes its doc comment and the blank line it leaves.
-- [ ] **1.2** `ide_delete` with `target: type`: top-level or nested. Refused while referenced from outside itself. `deleteFile`
+- [x] **1.2** (done as `ide_delete_type`: `DeleteEngine.DeleteTypeAsync`; deleteFile removes the file only when the type is its only
+      declaration, via `FileOperations.Delete`, after the text change. 118 VS Core tests pass.) `ide_delete` with `target: type`: top-level or nested. Refused while referenced from outside itself. `deleteFile`
       true deletes a file left with only usings (0.8).
 - [ ] **1.3** `ide_list_unused`: read only. Private, internal and (when asked) public members and types with no references, from
       reference search plus IDE0051 and IDE0052. The search is scoped by accessibility (a private member searches only its type,

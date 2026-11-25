@@ -188,6 +188,15 @@ public sealed class IdeActions(DTE2 dte)
             StringList(args, "deleteTests").ToList(),
             OptionalBool(args, "confirm") == true,
             OptionalString(args, "planHash")),
+        "deleteType" => CodeModelActions.DeleteType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseCallerEdits(args),
+            StringList(args, "deleteTests").ToList(),
+            OptionalBool(args, "deleteFile") == true,
+            OptionalBool(args, "confirm") == true,
+            OptionalString(args, "planHash")),
         "renameNamespace" => CodeModelActions.RenameNamespace(
             RequireString(args, "oldNamespace"),
             RequireString(args, "newNamespace"),

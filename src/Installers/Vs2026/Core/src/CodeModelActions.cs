@@ -312,7 +312,8 @@ internal static class CodeModelActions
 
             // Files move on disk only after the text changes are in, and only when the plan asked for it.
             var moved = planned.FileMoves.Count > 0 ? FileMover.Apply(planned.FileMoves) : new List<object>();
-            return (object)new { planned = false, applied = true, check = planned.ToReply(), moved };
+            var deleted = planned.FileDeletes.Select(p => FileOperations.Delete(p, planned.DeleteProject)).ToList();
+            return (object)new { planned = false, applied = true, check = planned.ToReply(), moved, deleted };
         });
     }
 
@@ -334,6 +335,13 @@ internal static class CodeModelActions
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(solution => DeleteEngine.DeleteMemberAsync(solution, file, line, column, callerEdits, deleteTests, _ => { }), confirm, planHash);
+    }
+
+    // Deletes a type after the checks in DeleteEngine.DeleteTypeAsync. The file goes too when it held only this type and deleteFile is set.
+    public static object DeleteType(string file, int line, int column, IReadOnlyList<CallerEdit> callerEdits, IReadOnlyList<string> deleteTests, bool deleteFile, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => DeleteEngine.DeleteTypeAsync(solution, file, line, column, callerEdits, deleteTests, deleteFile), confirm, planHash);
     }
 
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)

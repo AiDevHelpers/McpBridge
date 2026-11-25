@@ -99,6 +99,7 @@ internal sealed class EditTarget
         EventDeclarationSyntax e => model.GetDeclaredSymbol(e),
         EventFieldDeclarationSyntax ef => model.GetDeclaredSymbol(ef.Declaration.Variables[0]),
         EnumMemberDeclarationSyntax em => model.GetDeclaredSymbol(em),
+        BaseTypeDeclarationSyntax t => model.GetDeclaredSymbol(t),
         _ => null,
     };
 }

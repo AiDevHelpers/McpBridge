@@ -951,6 +951,27 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Delete one C# type (class, struct, interface, record or enum, top-level or nested) using Roslyn, with checks. Refused while any reference outside the type remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the reference). Refused while tests call it unless their names are in deleteTests (those tests are not deleted). With deleteFile true, the file is deleted too when the type was its only declaration (SDK-style projects only). A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeDeleteType(
+        [Description("Full path of the file that declares the type")] string file,
+        [Description("1-based line inside the type declaration")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {file, line, column, newText} for each reference outside the type.")] object[]? callerEdits = null,
+        [Description("Optional: names of tests that call the type and may stay while it is removed.")] string[]? deleteTests = null,
+        [Description("Delete the file too when the type was its only declaration. Default false.")] bool deleteFile = false,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Run the affected tests after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("deleteType", new { file, line, column, callerEdits = callerEdits ?? [], deleteTests = deleteTests ?? [], deleteFile, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
     [Description("Rename a namespace across the solution, using Roslyn, with checks. The namespace and every namespace under it change: each declaration, using, qualified name, alias and cref that spells it out. It is refused if the name is not a valid dotted name, if no source file declares the namespace, if it is also declared in a referenced assembly, if a type in it would collide with a type already in the new namespace, if a declaration is a block nested inside another namespace block, or if code names it relative to an enclosing namespace (those references need callerEdits entries with file, line, column and newText). Strings that still mention the old name are listed in string_mentions and not changed. A new compile error refuses the change; new warnings and notices are returned. When the project's folders follow its namespaces, files that no longer match are warned about, or moved when moveFiles is true (SDK-style projects only; ask the user first). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
     public async Task<string> IdeRenameNamespace(
         [Description("The namespace to rename, such as Company.Product.Old")] string oldNamespace,

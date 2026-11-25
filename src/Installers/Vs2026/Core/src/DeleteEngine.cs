@@ -96,4 +96,80 @@ internal static class DeleteEngine
 
         return plan;
     }
+
+    /// <summary>
+    /// Plans deleting a top-level or nested type. Refused while any reference to it remains outside its own declaration (each needs a
+    /// callerEdits entry), and while tests call it unless <paramref name="deleteTests"/> names them. With <paramref name="deleteFile"/>,
+    /// a file that held only this type and its usings is deleted too.
+    /// </summary>
+    public static async Task<MethodEditPlan> DeleteTypeAsync(
+        Solution solution, string file, int line, int column, IReadOnlyList<CallerEdit> callerEdits, IReadOnlyList<string> deleteTests, bool deleteFile)
+    {
+        var plan = new MethodEditPlan();
+        var target = await EditTarget.LocateAsync(solution, file, line, column, new[] { typeof(BaseTypeDeclarationSyntax) }, r => plan.Reasons.Add(r)).ConfigureAwait(false);
+        if (target is null)
+        {
+            return plan;
+        }
+
+        var symbol = target.Symbol;
+        plan.OldSignature = symbol.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+        plan.SignatureChanged = true;
+
+        var references = await MethodEditEngine.CollectReferencesAsync(solution, symbol).ConfigureAwait(false);
+        references.RemoveAll(r => r.DocumentId == target.DocumentId && target.Declaration.Span.Contains(r.Span));
+        plan.ReferenceCount = references.Count;
+
+        var tests = await TestDiscovery.FindDirectAsync(solution, references).ConfigureAwait(false);
+        var untested = tests.Where(t => !deleteTests.Contains(t.Name, StringComparer.Ordinal)).ToList();
+        plan.Tests.AddRange(tests);
+        if (untested.Count > 0)
+        {
+            plan.Reasons.Add(Strings.Format("DeleteTestsCall", string.Join(", ", untested.Select(t => t.Name))));
+        }
+
+        if (plan.Refused)
+        {
+            return plan;
+        }
+
+        var changes = new Dictionary<DocumentId, List<TextChange>> { [target.DocumentId] = new List<TextChange>() };
+        if (!await MethodEditEngine.AddCallerEditsAsync(solution, references, callerEdits, changes, plan).ConfigureAwait(false))
+        {
+            return plan;
+        }
+
+        plan.Uncovered.AddRange(CoverageOfReferences.Uncovered(references, callerEdits));
+        if (plan.Uncovered.Count > 0)
+        {
+            plan.Reasons.Add(Strings.Format("DeleteUncovered", plan.Uncovered.Count));
+            return plan;
+        }
+
+        changes[target.DocumentId].Add(new TextChange(target.Declaration.FullSpan, ""));
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        plan.Files.AddRange(changes.Keys.Select(id => solution.GetDocument(id)!.FilePath ?? id.ToString()));
+        plan.DeclarationCount = 1;
+
+        // The file goes only when this type was the file's only declaration.
+        if (deleteFile && target.Declaration.Parent is CompilationUnitSyntax unit && unit.Members.Count == 1)
+        {
+            var document = solution.GetDocument(target.DocumentId)!;
+            if (document.FilePath is not null)
+            {
+                plan.FileDeletes.Add(document.FilePath);
+                plan.DeleteProject = document.Project.FilePath;
+            }
+        }
+
+        edited = await EditChecks.FormatFileAsync(edited, target.DocumentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan).ConfigureAwait(false);
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
 }

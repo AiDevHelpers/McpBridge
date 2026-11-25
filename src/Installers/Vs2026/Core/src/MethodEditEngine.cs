@@ -113,6 +113,12 @@ internal sealed class MethodEditPlan
 
     public List<object> StringMentions { get; } = new();
 
+    /// <summary>Source files a plan deletes on disk after the text changes (SDK-style projects only, <see cref="FileOperations"/>).</summary>
+    public List<string> FileDeletes { get; } = new();
+
+    /// <summary>The project file each file delete or move needs to be SDK-style (kept per delete).</summary>
+    public string? DeleteProject { get; set; }
+
     public int DeclarationCount { get; set; }
 
     public Solution? Result { get; set; }
