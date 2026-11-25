@@ -130,5 +130,41 @@ internal sealed class ProjectTools
         return Json(new { ok = result.Ok, error = result.Error, changed = result.Changed, buildOutput = result.BuildOutput });
     }
 
+    [McpServerTool]
+    [Description("Plan a test project beside a source project: <Source>.Tests, referencing the source, with the repo's test runner packages, the test SDK and the standards. folder defaults to the solution's test layout. seedTest adds one failing test. Writes nothing; returns a token for project_add_test_confirm.")]
+    public static async Task<string> ProjectAddTestPlan(
+        [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
+        [Description("Solution file, repo-relative, e.g. AiDevHelpers.slnx")] string solution,
+        [Description("Source project path, repo-relative, e.g. src/Core/Core.csproj")] string sourceProject,
+        [Description("Repo-relative test folder; optional when the layout gives a default")] string? folder = null,
+        [Description("Solution folder, e.g. /Core/; omit to add at the top level")] string? solutionFolder = null,
+        [Description("Add one failing test so the project starts red")] bool seedTest = false,
+        CancellationToken ct = default)
+    {
+        var plan = await AiDevHelpers.Helpers.ProjectHelper.TestProjectAdder.PlanAsync(root, solution, sourceProject, folder, solutionFolder, seedTest, CommandSeam.Default, ct);
+        return Json(new
+        {
+            ok = plan.Errors.Count == 0,
+            token = plan.Token,
+            projectPath = plan.ProjectPath,
+            framework = plan.Framework,
+            errors = plan.Errors,
+            notes = plan.Notes,
+            edits = plan.Edits.Select(a => new { a.Id, a.Description }),
+            stubs = plan.Stubs,
+        });
+    }
+
+    [McpServerTool]
+    [Description("Apply a plan from project_add_test_plan. Same steps and rollback as project_add_confirm.")]
+    public static async Task<string> ProjectAddTestConfirm(
+        [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
+        [Description("Token returned by project_add_test_plan")] string token,
+        CancellationToken ct = default)
+    {
+        var result = await AiDevHelpers.Helpers.ProjectHelper.ProjectAdder.ConfirmAsync(root, token, CommandSeam.Default, ct);
+        return Json(new { ok = result.Ok, error = result.Error, changed = result.Changed, buildOutput = result.BuildOutput });
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

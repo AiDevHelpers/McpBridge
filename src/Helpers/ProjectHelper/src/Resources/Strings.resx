@@ -25,6 +25,17 @@
   <data name="AddTemplateUnknown" xml:space="preserve"><value>The template {0} is not in dotnet new list.</value></data>
   <data name="AddLanguageUnsupported" xml:space="preserve"><value>The template {0} does not support {1}.</value></data>
   <data name="SlnxAlreadyListed" xml:space="preserve"><value>The solution already lists {0}.</value></data>
+  <data name="SeedTestSource" xml:space="preserve"><value>using Xunit;
+
+namespace {0};
+
+public sealed class SeedTest
+{{
+    [Fact]
+    public void Seed_fails_until_the_first_test_is_written() => Assert.Fail("seed");
+}}
+</value></data>
+  <data name="FixDescAddReference" xml:space="preserve"><value>Add a ProjectReference to {1} in {0}.</value></data>
   <data name="FixNoRootElement" xml:space="preserve"><value>The project file has no root element.</value></data>
   <data name="FixTokenUnknown" xml:space="preserve"><value>The token is unknown or was already used. Plan again.</value></data>
   <data name="FixTokenExpired" xml:space="preserve"><value>The token expired. Plan again.</value></data>

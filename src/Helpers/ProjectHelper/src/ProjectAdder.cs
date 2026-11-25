@@ -18,7 +18,9 @@ public sealed record AddRequest(
     string? SolutionFolder,
     string Language,
     string? Framework,
-    IReadOnlyList<string> Packages);
+    IReadOnlyList<string> Packages,
+    string? ProjectReference = null,
+    bool SeedTest = false);
 
 /// <summary>The plan: what will be created, edited and removed. <see cref="Token"/> is null when there are errors.</summary>
 public sealed record AddPlanResult(
@@ -116,6 +118,11 @@ public static class ProjectAdder
             foreach (var stub in TemplateStubs.Select(s => Path.Combine(folder, s)).Where(File.Exists))
             {
                 File.Delete(stub);
+            }
+
+            if (request.SeedTest)
+            {
+                File.WriteAllText(Path.Combine(folder, "SeedTest.cs"), Strings.Format("SeedTestSource", request.Name));
             }
 
             File.WriteAllBytes(projectFile, ProjectFixer.ApplyTo(File.ReadAllBytes(projectFile), again.Edits));
@@ -229,9 +236,18 @@ public static class ProjectAdder
         }
 
         var uses = ProjectFiles.Read(root).SelectMany(p => p.Uses).ToList();
+        var isTest = name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".Test", StringComparison.OrdinalIgnoreCase);
         var packages = standards.Analyzers.Concat(request.Packages)
-            .Concat(name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase) || name.EndsWith(".Test", StringComparison.OrdinalIgnoreCase) ? [TestSdk] : [])
+            .Concat(isTest ? [TestSdk] : [])
+            .Concat(isTest ? TestRunnerPackages(root, standards) : [])
             .Distinct(StringComparer.OrdinalIgnoreCase);
+
+        if (request.ProjectReference is not null)
+        {
+            var reference = Path.GetRelativePath(folderFull, Path.Combine(root, request.ProjectReference.Replace('/', Path.DirectorySeparatorChar))).Replace('\\', '/');
+            edits.Add(new FixAction($"{FixKind.AddReference}:{projectPath}:ProjectReference", projectPath, FixKind.AddReference, "ProjectReference", reference,
+                Strings.Format("FixDescAddReference", projectPath, reference)));
+        }
         foreach (var package in packages)
         {
             var choice = PackageVersions.Choose(uses.Where(u => string.Equals(u.Package, package, StringComparison.OrdinalIgnoreCase)).ToList());
@@ -249,6 +265,28 @@ public static class ProjectAdder
     }
 
     private static AddPlanResult Failed(string message) => new(null, null, null, [], TemplateStubs, [message], []);
+
+    /// <summary>Packages every existing test project references, minus the test SDK and the standard analyzers: the repo's test runner.</summary>
+    private static IReadOnlyList<string> TestRunnerPackages(string root, ProjectStandards standards)
+    {
+        var tests = ProjectFiles.Read(root)
+            .Where(p => p.Name.EndsWith(".Tests", StringComparison.OrdinalIgnoreCase) || p.Name.EndsWith(".Test", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (tests.Count == 0)
+        {
+            return [];
+        }
+
+        var common = tests.Select(t => t.Uses.Select(u => u.Package).ToHashSet(StringComparer.OrdinalIgnoreCase))
+            .Aggregate((a, b) => { a.IntersectWith(b); return a; });
+        common.Remove(TestSdk);
+        foreach (var analyzer in standards.Analyzers)
+        {
+            common.Remove(analyzer);
+        }
+
+        return common.OrderBy(p => p, StringComparer.OrdinalIgnoreCase).ToList();
+    }
 
     private static void Rollback(string folder, bool folderExisted, string solutionFile, byte[] solutionBytes)
     {

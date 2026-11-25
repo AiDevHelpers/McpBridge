@@ -15,6 +15,7 @@ public enum FixKind
     AddPackage,
     SetPackageVersion,
     Retarget,
+    AddReference,
 }
 
 /// <summary>One edit the fix would make. <see cref="Id"/> is <c>Kind:Project:Name</c>, the key a skip list uses.</summary>
@@ -260,6 +261,16 @@ public static class ProjectFixer
                 var element = new XElement(ns + "PackageReference", new XAttribute("Include", action.Name), new XAttribute("Version", action.Value!));
                 var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
                     && e.Elements().Any(i => i.Name.LocalName == "PackageReference"))
+                    ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
+                AppendChild(group, element, newline);
+                return;
+            }
+
+            case FixKind.AddReference:
+            {
+                var element = new XElement(ns + "ProjectReference", new XAttribute("Include", action.Value!));
+                var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
+                    && e.Elements().Any(i => i.Name.LocalName == "ProjectReference"))
                     ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
                 AppendChild(group, element, newline);
                 return;
