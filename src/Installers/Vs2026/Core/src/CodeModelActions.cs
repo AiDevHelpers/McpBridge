@@ -259,7 +259,7 @@ internal static class CodeModelActions
             var planned = await plan(workspace.CurrentSolution).ConfigureAwait(true);
             if (planned.Refused || !confirm)
             {
-                return new { planned = !planned.Refused, applied = false, check = planned.ToReply() };
+                return (object)new { planned = !planned.Refused, applied = false, check = planned.ToReply() };
             }
 
             if (!workspace.TryApplyChanges(planned.Result!))
@@ -267,8 +267,23 @@ internal static class CodeModelActions
                 throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
             }
 
-            return new { planned = false, applied = true, check = planned.ToReply() };
+            // Files move on disk only after the text changes are in, and only when the plan asked for it.
+            var moved = planned.FileMoves.Count > 0 ? FileMover.Apply(planned.FileMoves) : new List<object>();
+            return (object)new { planned = false, applied = true, check = planned.ToReply(), moved };
         });
+    }
+
+    // Renames a namespace across the solution, or moves one type to another namespace.
+    public static object RenameNamespace(string oldName, string newName, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => NamespaceEngine.RenameAsync(solution, oldName, newName, moveFiles, callerEdits), confirm);
+    }
+
+    public static object MoveType(string file, int line, string newNamespace, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => TypeMoveEngine.MoveAsync(solution, file, line, newNamespace, moveFiles, callerEdits), confirm);
     }
 
     internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)

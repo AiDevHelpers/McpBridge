@@ -180,6 +180,19 @@ public sealed class IdeActions(DTE2 dte)
             true,
             ParseMemberSpecs(args),
             OptionalBool(args, "confirm") == true),
+        "renameNamespace" => CodeModelActions.RenameNamespace(
+            RequireString(args, "oldNamespace"),
+            RequireString(args, "newNamespace"),
+            OptionalBool(args, "moveFiles") == true,
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
+        "moveType" => CodeModelActions.MoveType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "newNamespace"),
+            OptionalBool(args, "moveFiles") == true,
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true),
         "addMember" => CodeModelActions.AddMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),

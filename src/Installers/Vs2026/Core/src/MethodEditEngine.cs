@@ -10,6 +10,23 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace AiDevHelpers.Installers.Vs2026.Core;
 
+/// <summary>A file a namespace change would move so its folder matches its namespace.</summary>
+internal sealed class FileMove
+{
+    public FileMove(string from, string to, string? project)
+    {
+        From = from;
+        To = to;
+        Project = project;
+    }
+
+    public string From { get; }
+
+    public string To { get; }
+
+    public string? Project { get; }
+}
+
 /// <summary>One caller edit: the reference at File:Line:Column (as <c>semanticReferences</c> returns it) gets NewText.</summary>
 internal sealed class CallerEdit
 {
@@ -82,6 +99,13 @@ internal sealed class MethodEditPlan
     /// <summary>Names of the fields and properties added alongside the method.</summary>
     public List<string> MembersAdded { get; } = new();
 
+    /// <summary>Files a namespace change would move so their folder matches (from, to), and string literals that still mention the old name.</summary>
+    public List<FileMove> FileMoves { get; } = new();
+
+    public List<object> StringMentions { get; } = new();
+
+    public int DeclarationCount { get; set; }
+
     public Solution? Result { get; set; }
 
     public bool Refused => Reasons.Count > 0;
@@ -105,6 +129,9 @@ internal sealed class MethodEditPlan
         formatted = Formatted,
         inserted_at_line = InsertedAtLine,
         members_added = MembersAdded,
+        file_moves = FileMoves.Select(m => new { from = m.From, to = m.To }).ToList(),
+        string_mentions = StringMentions,
+        declaration_count = DeclarationCount,
         files = Files,
         warnings = Warnings,
     };

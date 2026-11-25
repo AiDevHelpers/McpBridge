@@ -83,6 +83,23 @@
   <data name="MemberBackingUnsupported" xml:space="preserve"><value>Only an auto property and a property over one private field can swap backing (auto and field).</value></data>
   <data name="MemberBackingFieldShared" xml:space="preserve"><value>The field '{0}' is used elsewhere in the type, so it cannot be folded into an auto property.</value></data>
   <data name="MemberBackingNoChange" xml:space="preserve"><value>The member already has that backing.</value></data>
+  <data name="NamespaceBadName" xml:space="preserve"><value>'{0}' is not a valid namespace name: use dotted identifiers that are not C# keywords.</value></data>
+  <data name="NamespaceSame" xml:space="preserve"><value>The new name is the same as the old one.</value></data>
+  <data name="NamespaceNestedBlock" xml:space="preserve"><value>{0}:{1} declares the namespace as a block nested inside another namespace block. Flatten it to one dotted name first.</value></data>
+  <data name="NamespaceNotDeclared" xml:space="preserve"><value>No source file declares the namespace '{0}'.</value></data>
+  <data name="NamespaceInMetadata" xml:space="preserve"><value>The namespace '{0}' is also declared in a referenced assembly, which cannot be renamed.</value></data>
+  <data name="NamespaceMerges" xml:space="preserve"><value>The namespace '{0}' already exists in source; the renamed types join it.</value></data>
+  <data name="NamespaceCollision" xml:space="preserve"><value>The type '{0}' would collide with a type of the same name in '{1}'.</value></data>
+  <data name="NamespaceRelativeReferences" xml:space="preserve"><value>{0} reference(s) name the namespace relative to an enclosing namespace, so they cannot be rewritten safely. Pass a callerEdits entry for each, or qualify them first.</value></data>
+  <data name="NamespaceStringMentions" xml:space="preserve"><value>{0} string literal(s) still mention the old name. Roslyn cannot update them; see string_mentions.</value></data>
+  <data name="NamespaceFolderMismatch" xml:space="preserve"><value>{0} file(s) no longer sit in the folder their namespace implies. Pass moveFiles true to move them.</value></data>
+  <data name="TypeMoveNotAType" xml:space="preserve"><value>No type declaration at that position.</value></data>
+  <data name="TypeMoveNested" xml:space="preserve"><value>Only a top-level type can move to another namespace. Move its outer type instead.</value></data>
+  <data name="TypeMoveGlobal" xml:space="preserve"><value>The type is in the global namespace, which this tool does not move types out of.</value></data>
+  <data name="TypeMoveSharedFile" xml:space="preserve"><value>{0} also declares other types ({1}). Move this type to its own file first, so its namespace can change.</value></data>
+  <data name="FileMoveMissing" xml:space="preserve"><value>'{0}' no longer exists, so it was not moved.</value></data>
+  <data name="FileMoveExists" xml:space="preserve"><value>'{0}' already exists, so the file was not moved there.</value></data>
+  <data name="FileMoveNotSdk" xml:space="preserve"><value>The project is not SDK-style, so it does not pick files up by folder. Move the file in Solution Explorer.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

@@ -119,6 +119,16 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "rename_namespace_refused_by_generic_bridge": {
+    "request": { "action": "renameNamespace", "args": { "oldNamespace": "Old.Ns", "newNamespace": "New.Ns" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "move_type_refused_by_generic_bridge": {
+    "request": { "action": "moveType", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "newNamespace": "New.Ns" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "semantic_references_refused_by_generic_bridge": {
     "request": { "action": "semanticReferences", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
     "ok": false,

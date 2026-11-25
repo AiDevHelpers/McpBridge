@@ -930,6 +930,43 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Rename a namespace across the solution, using Roslyn, with checks. The namespace and every namespace under it change: each declaration, using, qualified name, alias and cref that spells it out. It is refused if the name is not a valid dotted name, if no source file declares the namespace, if it is also declared in a referenced assembly, if a type in it would collide with a type already in the new namespace, if a declaration is a block nested inside another namespace block, or if code names it relative to an enclosing namespace (those references need callerEdits entries with file, line, column and newText). Strings that still mention the old name are listed in string_mentions and not changed. A new compile error refuses the change; new warnings and notices are returned. When the project's folders follow its namespaces, files that no longer match are warned about, or moved when moveFiles is true (SDK-style projects only; ask the user first). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
+    public async Task<string> IdeRenameNamespace(
+        [Description("The namespace to rename, such as Company.Product.Old")] string oldNamespace,
+        [Description("The new name, such as Company.Product.New")] string newNamespace,
+        [Description("Move files so their folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
+        [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Move one top-level type to another namespace, using Roslyn, with checks. The type's declaration moves, every qualified use is rewritten, and code that used the type by its simple name gets a using for the new namespace; the moved type gets the usings it used to have implicitly, and usings of the old namespace that nothing needs any more are removed. It is refused if the new name is not valid, the type is nested or in the global namespace, its file also declares other types (or a partial part's file does), a type of that name already exists in the new namespace, or code names the type relative to an enclosing namespace (those need callerEdits entries). A new compile error refuses the change. The same moveFiles rule as ide_rename_namespace applies. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
+    public async Task<string> IdeMoveType(
+        [Description("Full path of the file that declares the type")] string file,
+        [Description("1-based line inside the type declaration")] int line,
+        [Description("The namespace to move it to")] string newNamespace,
+        [Description("Move the file so its folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
+        [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
     [Description("Add one or more fields or properties to the type that contains a line, using Roslyn, with checks. For each member you give its name, type, accessibility (always required: public, internal, protected, private, protected internal or private protected) and how it is backed: auto ({ get; set; }), field (a private backing field and a property over it), readonly-field, field-only (a plain field) or expression (a get-only property computed from initializer). Also setter (set, init, none, or \"private set\" style), required, initializer, attributes (for example \"Required\" or \"JsonProperty(\\\"x\\\")\") and summary. They go after the type's last field or property, in its layout, with doc comments in the neighbours' style when they have them. The file is formatted, a new compile error refuses the change, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the type's members, if any. Visual Studio only.")]
     public async Task<string> IdeAddMember(
         [Description("Full path of the source file")] string file,
