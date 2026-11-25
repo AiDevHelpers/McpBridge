@@ -7,7 +7,7 @@ using System.Text.Json.Nodes;
 namespace AiDevHelpers.MCP.Core.Services;
 
 /// <summary>Severity of one event, as the filter sees it. Ordered: Info &lt; Warning &lt; Error.</summary>
-internal enum EventSeverity
+public enum EventSeverity
 {
     Info = 0,
     Warning = 1,

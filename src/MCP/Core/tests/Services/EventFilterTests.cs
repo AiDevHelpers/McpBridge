@@ -120,4 +120,35 @@ public sealed class EventFilterTests
         var result = EventFilter.Apply(Buffer(2), 0, new EventFilterOptions(MinSeverity: EventSeverity.Info));
         Assert.Equal(2, result.Events.Count);
     }
+
+    [Fact]
+    public void Apply_MinWarning_DropsInfo()
+    {
+        var buffer = new[] { Evt(1, "buildDone"), Evt(2, "dropped", "{\"count\":1}") };
+        var result = EventFilter.Apply(buffer, 0, new EventFilterOptions(MinSeverity: EventSeverity.Warning));
+        Assert.Equal(new[] { "dropped" }, result.Events.Select(e => (string)e!["event"]!).ToArray());
+    }
+
+    [Fact]
+    public void Apply_MinError_KeepsOnlyErrors()
+    {
+        var buffer = new[]
+        {
+            Evt(1, "dropped", "{\"count\":1}"),
+            Evt(2, "enterBreakMode", "{\"reason\":\"dbgEventReasonExceptionNotHandled\"}"),
+            Evt(3, "buildDone"),
+        };
+        var result = EventFilter.Apply(buffer, 0, new EventFilterOptions(MinSeverity: EventSeverity.Error));
+        Assert.Equal(new long[] { 2 }, result.Events.Select(e => (long)e!["seq"]!).ToArray());
+    }
+
+    [Fact]
+    public void Apply_MinSeverityAppliesBeforeLimit()
+    {
+        var buffer = new[] { Evt(1, "buildDone"), Evt(2, "buildDone"), Evt(3, "dropped", "{\"count\":1}") };
+        var result = EventFilter.Apply(buffer, 0, new EventFilterOptions(MinSeverity: EventSeverity.Warning, Limit: 1));
+        Assert.Single(result.Events);
+        Assert.Equal(3L, (long)result.Events[0]!["seq"]!);
+        Assert.Equal(0, result.Omitted);
+    }
 }
