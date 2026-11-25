@@ -131,5 +131,21 @@
   <data name="ResetResponsive" xml:space="preserve"><value>Instance {0} is responsive. Nothing was reset.</value></data>
   <data name="ResetNeedsConfirmation" xml:space="preserve"><value>Instance {0} is not answering its UI thread. Resetting it closes Visual Studio without saving, so unsaved edits can be lost. Ask the user; only if they agree, call again with confirm true.</value></data>
   <data name="ResetNotDevenv" xml:space="preserve"><value>Process {0} is {1}, not devenv. Nothing was reset.</value></data>
-  <data name="ResetNext" xml:space="preserve"><value>Relaunch the solution with ide_open_solution.</value></data>
+  <data name="DiagPurposeDump" xml:space="preserve"><value>collect and analyze memory dumps of a .NET process</value></data>
+  <data name="DiagPurposeStack" xml:space="preserve"><value>print the managed stacks of every thread in a live process</value></data>
+  <data name="DiagPurposeCounters" xml:space="preserve"><value>live performance counters (CPU, GC, exceptions)</value></data>
+  <data name="DiagPurposeGcdump" xml:space="preserve"><value>GC heap snapshot of a live process</value></data>
+  <data name="DiagPurposeTrace" xml:space="preserve"><value>profiling trace of a running process</value></data>
+  <data name="DiagPurposeSymbol" xml:space="preserve"><value>download symbols for a dump or binary</value></data>
+  <data name="DiagSymbolsNeedPath" xml:space="preserve"><value>symbols needs an absolute path to the dump or binary.</value></data>
+  <data name="DiagFileNotFound" xml:space="preserve"><value>File not found: {0}</value></data>
+  <data name="DiagUnknownAction" xml:space="preserve"><value>Unknown action '{0}'. Use processes, stack, dump, gcdump, counters, trace or symbols.</value></data>
+  <data name="DiagNotInstalled" xml:space="preserve"><value>{0} is not installed. Install it: dotnet tool install --global {1}</value></data>
+  <data name="DiagCouldNotStart" xml:space="preserve"><value>{0} could not start: {1}</value></data>
+  <data name="DiagTimedOut" xml:space="preserve"><value>{0} timed out.</value></data>
+  <data name="DiagExitCode" xml:space="preserve"><value>{0} exited with code {1}.</value></data>
+  <data name="DiagPidInvalid" xml:space="preserve"><value>pid must be a process id greater than 0 (see the processes action).</value></data>
+  <data name="DiagSecondsRange" xml:space="preserve"><value>seconds must be between 1 and {0}.</value></data>
+  <data name="DiagInstallCommand" xml:space="preserve"><value>dotnet tool install --global {0}</value></data>
+  <data name="ResetNext" xml:space="preserve"><value>Relaunch the solution withide_open_solution.</value></data>
 </root>

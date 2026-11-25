@@ -58,6 +58,7 @@ public static class McpServiceCollectionExtensions
             sp.GetRequiredService<IElevInstaller>(),
             new AiDevHelpers.Common.Terminals.SystemTerminalProbe(),
             AiDevHelpers.Common.Terminals.TerminalRegistry.ForCurrentUser()));
+        services.AddSingleton(_ => new AiDevHelpers.MCP.Core.Services.DotnetDiagService());
         services.AddSingleton(_ => new AiDevHelpers.Helpers.SourceControlHelper.GitHubService(new AiDevHelpers.Helpers.SourceControlHelper.ProcessGhRunner()));
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
 
@@ -101,6 +102,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ScriptHelperTools>()
             .WithTools<RepoSetupTools>()
             .WithTools<ScriptRunTools>()
-            .WithTools<ToolInstallTools>();
+            .WithTools<ToolInstallTools>()
+            .WithTools<DotnetDiagTools>();
     }
 }
