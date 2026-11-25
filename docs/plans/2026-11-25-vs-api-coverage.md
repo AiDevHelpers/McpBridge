@@ -131,7 +131,7 @@ Units run in order. A blocked unit does not stop a later unit unless the later u
       `breakWhenUserUnhandled` (bool, optional). At least one flag required; neither is an argument error. Not found is a
       per-item `failed` entry (3.1). Plan-only lists current and proposed values per item.
       Spike: exact setter call through `ExceptionSettings`. Live: value changes in VS Exceptions window, then is restored.
-- [ ] **1.5** `listStackFrames` (read). No args. Current thread, break mode; otherwise `frames: []` with `debugger_mode`.
+- [x] **1.5** Built: `listStackFrames` (read). `Thread.StackFrames`, `FunctionName`, `ReturnType` compile; bridge tests 42 pass; live check pending. No args. Current thread, break mode; otherwise `frames: []` with `debugger_mode`.
       Reply `{frames:[{index,function,return_type}]}`. Module is out of scope unless the spike finds it cheaply.
       Spike: `Thread.StackFrames` compile. Live: frames match the Call Stack window.
 - [ ] **1.6** `setBreakpointCondition` (confirm). New action; `setBreakpoint` is unchanged. Args: `file`, `line`, `condition`

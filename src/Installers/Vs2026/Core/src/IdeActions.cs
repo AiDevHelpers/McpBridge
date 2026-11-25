@@ -123,6 +123,7 @@ public sealed class IdeActions(DTE2 dte)
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(),
+        "listStackFrames" => ListStackFrames(),
         "setExceptionBreak" => SetExceptionBreak(
             RequireString(args, "group"),
             RequireString(args, "name"),
@@ -865,6 +866,25 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         throw new ArgumentException(Strings.Format("NoExceptionNamed", group, name));
+    }
+
+    // Stack frames of the current thread. Only meaningful in break mode; outside it the list is empty.
+    private object ListStackFrames()
+    {
+        var mode = dte.Debugger.CurrentMode;
+        var frames = new List<object>();
+        var thread = mode == dbgDebugMode.dbgBreakMode ? dte.Debugger.CurrentThread : null;
+        if (thread is not null)
+        {
+            var index = 0;
+            foreach (EnvDTE.StackFrame frame in thread.StackFrames)
+            {
+                frames.Add(new { index, function = frame.FunctionName, return_type = frame.ReturnType });
+                index++;
+            }
+        }
+
+        return new { debugger_mode = mode.ToString(), frames };
     }
 
     private object ListDebuggedProcesses()

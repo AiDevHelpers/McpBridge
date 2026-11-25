@@ -49,6 +49,11 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "list_stack_frames_refused_by_generic_bridge": {
+    "request": { "action": "listStackFrames" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "list_exceptions_refused_by_generic_bridge": {
     "request": { "action": "listExceptions" },
     "ok": false,
