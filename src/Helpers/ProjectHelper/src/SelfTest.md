@@ -1,6 +1,6 @@
 # ProjectHelper self test
 
-Tools: `ProjectTypesList`, `ProjectAudit`. The other project tools (`ProjectFixPlan`, `ProjectFixConfirm`, `ProjectAddPlan`, `ProjectAddConfirm`, `ProjectAddTestPlan`, `ProjectAddTestConfirm`) are listed here as their units land.
+Tools: `ProjectTypesList`, `ProjectAudit`, `ProjectFixPlan`, `ProjectFixConfirm`. The other project tools (`ProjectAddPlan`, `ProjectAddConfirm`, `ProjectAddTestPlan`, `ProjectAddTestConfirm`) are listed here as their units land.
 
 ## Full self test
 
