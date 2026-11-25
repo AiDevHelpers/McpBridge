@@ -141,6 +141,20 @@ public sealed class SetupAllowAllTests : IDisposable
         Assert.Contains(id, File.ReadAllText(RepoSettingsFile.UserFilePath(_root)));
         Assert.Contains(".aidevtools/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
     }
+    [Fact]
+    public void PointerWriteFailure_RemovesTheNewStore()
+    {
+        var c = Commands(new CountingConfirmer(2));
+        var id = Register(c, _root);
+        WriteSettings("""{"allowAll":true}""");
+
+        // A directory where the user file must go makes the pointer write fail after the store is written.
+        Directory.CreateDirectory(RepoSettingsFile.UserFilePath(_root));
+
+        Assert.ThrowsAny<Exception>(() => c.AllowAll(_root));
+        Assert.False(File.Exists(_config.AllowAllPath(id)));
+    }
+
 
     [Fact]
     public void BothPromptsNameTheRepoAndTheSecondOneIsDistinct()
