@@ -37,6 +37,18 @@ jobs:
       - name: Install procdump for crash dumps
         run: choco install procdump --yes --no-progress
 
+      - name: Point the Blame collector at procdump
+        shell: pwsh
+        run: |
+          # Chocolatey's PATH change is not visible to later steps, so the Blame collector cannot find procdump64.exe.
+          $exe = (Get-Command procdump64.exe -ErrorAction SilentlyContinue).Source
+          if (-not $exe) {
+            $exe = Get-ChildItem 'C:\ProgramData\chocolatey' -Recurse -Filter procdump64.exe -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not $exe) { throw 'procdump64.exe was not found after install.' }
+          "PROCDUMP_PATH=$(Split-Path $exe)" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Output "procdump at $exe"
+
       - name: Test
         run: dotnet test AiDevHelpers.slnx -c Release --no-build --filter "Category!=Tpm" --blame-crash --blame-crash-dump-type full
 
