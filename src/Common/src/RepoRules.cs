@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace AiDevHelpers.Common;
 
 /// <summary>
-/// The structured rules a person confirmed for a repo, from the committed <c>.aidevtools/repo-rules.json</c>. Branch names may use
+/// The structured rules a person confirmed for a repo, from the committed <c>.aidevhelpers/repo-rules.json</c>. Branch names may use
 /// <c>*</c> as a wildcard (<c>release/*</c>). Gate commands are the commands the repo's gate runs.
 /// </summary>
 public sealed record RepoRules(

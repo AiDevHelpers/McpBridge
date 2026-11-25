@@ -154,6 +154,7 @@ jobs:
           dotnet pack src/Helpers/OutputHelper/src/AiDevHelpers.Helpers.OutputHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/PackageHelper/src/AiDevHelpers.Helpers.PackageHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/GateHelper/src/AiDevHelpers.Helpers.GateHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          dotnet pack src/Helpers/ProjectHelper/src/AiDevHelpers.Helpers.ProjectHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
 
       - name: Publish to GitHub Packages
         run: >

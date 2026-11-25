@@ -39,12 +39,13 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - Errors: `error_ingest`, `error_list`, `error_snapshot`, `error_changes` with suppression.
 - Diagnostics: `dotnet_diag` wraps dotnet-dump, stack, counters, gcdump, trace and symbol.
 - Build environment: `build_env` lists Visual Studio installs with MSBuild and VSSDK targets.
+- Projects: `project_types_list`, `project_audit`, `project_fix_plan`/`confirm`, `project_add_plan`/`confirm`, `project_add_test_plan`/`confirm`. Standards in `.aidevhelpers/project-standards.json`.
 
 ## Configuration and extensions
 
 - `config_resolve` and `config_read`: real paths for launch, app and solution settings, with secrets redacted.
 - Extensions: list, describe and add VS Code and Visual Studio extensions (adds are two-step); workspace setup for C# Dev Kit.
-- Layered settings: global, repo `.aidevtools/settings.json`, per-user `user.json`.
+- Layered settings: global, repo `.aidevhelpers/settings.json`, per-user `user.json`.
 
 ## Server operations
 

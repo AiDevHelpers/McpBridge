@@ -36,7 +36,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         return instances.Count == 1 ? instances[0].SolutionPath : null;
     }
 
-    // The test run mode in effect for a solution: the repo's .aidevtools/settings.json wins over the global setting.
+    // The test run mode in effect for a solution: the repo's .aidevhelpers/settings.json wins over the global setting.
     private string EffectiveTestRunMode(string? solutionPath) =>
         IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
 

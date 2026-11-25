@@ -7,7 +7,7 @@ namespace AiDevHelpers.MCP.Core.Services;
 public sealed record RepoElevationNotice(string RepoRoot, IReadOnlyList<string> Projects);
 
 /// <summary>
-/// The "repo opened with no .aidevtools folder" trigger. For each open repo that has no setup folder it runs the elevation scan
+/// The "repo opened with no .aidevhelpers folder" trigger. For each open repo that has no setup folder it runs the elevation scan
 /// once per server session, and tells the client when projects need elevation. It only reads: it creates no folder, asks nothing
 /// and never edits the elevated list; the person runs <c>elev repo-setup</c> to decide.
 /// Scans run on their own tasks, so a slow scan never delays the next look at the open solutions.

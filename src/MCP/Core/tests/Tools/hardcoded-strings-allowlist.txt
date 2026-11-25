@@ -112,3 +112,6 @@ MCP.Core|Starting:
 # Log text written by the extension watchdog. It goes to the bridge log, not to the user interface.
 Vs2026.Core|Visual Studio UI thread answers again (pid {_pid}).
 Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSeconds} s (pid {_pid}).
+
+# dotnet new list column header, matched when parsing the CLI table.
+ProjectHelper|Template Name

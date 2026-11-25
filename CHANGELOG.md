@@ -1,5 +1,17 @@
 # Changelog
 
+## Project scaffolding tools (unreleased)
+
+- New ProjectHelper: `project_types_list`, `project_audit`, `project_fix_plan`/`project_fix_confirm`, `project_add_plan`/`project_add_confirm`, `project_add_test_plan`/`project_add_test_confirm`.
+- Repo standards in `.aidevhelpers/project-standards.json`, read through repo settings and validated. The repo's own exceptions (net48 for the VS installer and bridge) are seeded.
+- Every write is plan, then confirm, with a single-use token. A failed build restores the files byte for byte.
+- `AiDevTools.VsCode.csproj` now sets `Nullable` and `ImplicitUsings`, as the standards require.
+
+## Settings folder renamed
+
+The repo settings folder is now `.aidevhelpers` (was `.aidevtools`). There is no fallback: move an existing repo's folder by hand
+(`git mv .aidevtools .aidevhelpers`) and update its `.gitignore` line for `user.json`. Older rows below keep the old name.
+
 ## Tool backlog: done
 
 Rows moved here from `docs/dogfood.md` once built or fixed. Each row keeps its original notes.

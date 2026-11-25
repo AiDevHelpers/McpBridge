@@ -1,0 +1,11 @@
+These templates matched your input: --type='project'
+
+Template Name                           Short Name                          Language    Tags
+--------------------------------------  ----------------------------------  ----------  -----------------------------------------------------------------------
+Android Test Project                    androidtest                         [C#]        Android/Mobile/Test
+ASP.NET Core Web App (Model-View-Co...  mvc                                 [C#],F#     Web/MVC
+Class Library                           classlib                            [C#],F#,VB  Common/Library
+Console App                             console                             [C#],F#,VB  Common/Console
+xUnit Test Project                      xunit                               [C#],F#,VB  Test/xUnit/Test Project
+NUnit 3 Test Project                    nunit                               [C#],F#,VB  Test/NUnit/Test Project
+

@@ -7,7 +7,7 @@ public sealed class ElevationFilesTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "elev-files-" + Guid.NewGuid().ToString("N"));
 
-    public ElevationFilesTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+    public ElevationFilesTests() => Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
@@ -121,7 +121,7 @@ public sealed class ElevationFilesTests : IDisposable
         Assert.True(root["other"]!.GetValue<bool>());
         Assert.Equal("never", root["elevation"]!["mode"]!.GetValue<string>());
         Assert.Single(root["elevation"]!["declined"]!.AsArray());
-        Assert.Contains(".aidevtools/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
+        Assert.Contains(".aidevhelpers/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
         Assert.Equal(ElevationMode.Never, ElevationFiles.Read(_root).Mode);
     }
 

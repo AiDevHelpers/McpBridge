@@ -112,7 +112,7 @@ public sealed class SetupVerifyTests : IDisposable
     public void AllowAllActive_IsReported()
     {
         var c = Registered();
-        Directory.CreateDirectory(Path.Combine(_root, ".aidevtools"));
+        Directory.CreateDirectory(Path.Combine(_root, ".aidevhelpers"));
         File.WriteAllText(RepoSettingsFile.SettingsPath(_root), """{"allowAll":true}""");
         var confirmer = new FakeConfirmer();
         var withAllowAll = new SetupCommands(

@@ -25,8 +25,8 @@ public sealed record RepoElevation(
     IReadOnlyList<string> Warnings);
 
 /// <summary>
-/// Reads and writes the repo's elevation files. <c>.aidevtools/elevation.json</c> is committed and lists the projects that need
-/// elevation (facts). The <c>elevation</c> block of the gitignored <c>.aidevtools/user.json</c> holds this user's choices (the mode
+/// Reads and writes the repo's elevation files. <c>.aidevhelpers/elevation.json</c> is committed and lists the projects that need
+/// elevation (facts). The <c>elevation</c> block of the gitignored <c>.aidevhelpers/user.json</c> holds this user's choices (the mode
 /// and the findings they declined). Neither file is read by the broker or the allowlist logic, so they can only ask for an
 /// elevated launch, which the user still approves at the UAC prompt. Writers keep every key they do not own.
 /// </summary>

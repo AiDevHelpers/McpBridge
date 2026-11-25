@@ -53,7 +53,7 @@ public sealed class RepoApplyTests : IDisposable
         Assert.Equal(["main", "dev"], rules.ProtectedBranches);
         Assert.Equal(["build"], rules.RequiredChecks);
         Assert.Equal("main", rules.DefaultBranch);
-        Assert.Contains(".aidevtools/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
+        Assert.Contains(".aidevhelpers/user.json", File.ReadAllLines(Path.Combine(_root, ".gitignore")));
         Assert.Empty(RepoSetup.Scan(_root).PendingProjects);
     }
 
@@ -64,7 +64,7 @@ public sealed class RepoApplyTests : IDisposable
 
         Assert.Equal(1, exit);
         Assert.Contains("'release' is not a pending protected branch", output);
-        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevtools")));
+        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevhelpers")));
     }
 
     [Theory]
@@ -74,7 +74,7 @@ public sealed class RepoApplyTests : IDisposable
     {
         Assert.Equal(1, Apply(new RepoDecisions(Mode: mode), out var output));
         Assert.Contains("unknown mode", output);
-        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevtools")));
+        Assert.False(Directory.Exists(Path.Combine(_root, ".aidevhelpers")));
     }
 
     [Fact]

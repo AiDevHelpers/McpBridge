@@ -15,4 +15,10 @@
   <data name="PackageListFailed" xml:space="preserve"><value>dotnet list package failed (exit {0}): {1}</value></data>
   <data name="UpdateCapped" xml:space="preserve"><value>Latest {0} needs .NET {1}; this project targets .NET {2}, so {3} is the newest allowed.</value></data>
   <data name="UpdateNothingAllowed" xml:space="preserve"><value>Latest {0} needs .NET {1}; no newer version up to {2}.x exists, so the package stays.</value></data>
+  <data name="VersionNotReferenced" xml:space="preserve"><value>not referenced</value></data>
+  <data name="VersionFloatingOnly" xml:space="preserve"><value>floating version only</value></data>
+  <data name="VersionNonePinned" xml:space="preserve"><value>no version pinned</value></data>
+  <data name="VersionMajority" xml:space="preserve"><value>used by {0} of {1} projects</value></data>
+  <data name="VersionTieNewestAllowed" xml:space="preserve"><value>tie of {0} projects each; newest allowed for the frameworks</value></data>
+  <data name="VersionTieNoneAllowed" xml:space="preserve"><value>tie with no allowed version</value></data>
 </root>

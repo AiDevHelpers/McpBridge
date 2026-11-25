@@ -31,7 +31,7 @@ public sealed class RepoSettingsTests : IDisposable
 
     private void WriteSettings(string json)
     {
-        var dir = Path.Combine(_root, ".aidevtools");
+        var dir = Path.Combine(_root, ".aidevhelpers");
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, "settings.json"), json);
     }

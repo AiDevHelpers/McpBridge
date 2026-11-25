@@ -21,7 +21,7 @@ internal interface ISolutionLauncher
 internal sealed class DevenvSolutionLauncher(IElevRunner? elevRunner) : ISolutionLauncher
 {
     // Repo-relative script that starts devenv. It runs through the broker, so it is covered by the repo's allow-all approval.
-    private const string OpenScript = ".aidevtools/open-solution.ps1";
+    private const string OpenScript = ".aidevhelpers/open-solution.ps1";
 
     public string? LaunchDevenv(string solutionPath, out int? pid) => DevenvLauncher.Open(solutionPath, out pid);
 

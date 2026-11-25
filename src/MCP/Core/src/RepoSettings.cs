@@ -8,16 +8,17 @@ internal sealed record RepoSettingsResult(
     IdeToolsOptions Options,
     IReadOnlyList<string> Warnings,
     bool AllowAllRequested = false,
-    AiDevHelpers.Common.RepoElevation? Elevation = null);
+    AiDevHelpers.Common.RepoElevation? Elevation = null,
+    AiDevHelpers.Common.ProjectStandardsResult? Standards = null);
 
 /// <summary>
-/// Layers <c>&lt;repo&gt;/.aidevtools/settings.json</c> over the global settings: each key the repo sets wins, the rest fall
+/// Layers <c>&lt;repo&gt;/.aidevhelpers/settings.json</c> over the global settings: each key the repo sets wins, the rest fall
 /// through. Only the keys in <see cref="OverridableKeys"/> may come from a repo, because a cloned repo is untrusted input.
 /// A missing or unreadable file never changes the global values.
 /// </summary>
 internal static class RepoSettings
 {
-    public const string FolderName = ".aidevtools";
+    public const string FolderName = ".aidevhelpers";
     public const string FileName = "settings.json";
     private const string SectionName = "IdeTools";
 
@@ -36,10 +37,14 @@ internal static class RepoSettings
         var elevation = root is null ? null : AiDevHelpers.Common.ElevationFiles.Read(root);
         warnings.AddRange(elevation?.Warnings ?? []);
 
+        // The project standards are read the same way: optional, never throws, and their warnings join this result.
+        var standards = root is null ? null : AiDevHelpers.Common.ProjectStandardsFile.Read(root);
+        warnings.AddRange(standards?.Warnings ?? []);
+
         var file = root is null ? null : Path.Combine(root, FolderName, FileName);
         if (file is null || !File.Exists(file))
         {
-            return new RepoSettingsResult(effective, warnings, false, elevation);
+            return new RepoSettingsResult(effective, warnings, false, elevation, standards);
         }
 
         try
@@ -80,7 +85,7 @@ internal static class RepoSettings
             allowAll = false;
         }
 
-        return new RepoSettingsResult(effective, warnings, allowAll, elevation);
+        return new RepoSettingsResult(effective, warnings, allowAll, elevation, standards);
     }
 
     /// <summary>A global allowAll is never honored. Returns a warning when the global configuration sets one, else null.</summary>
@@ -92,7 +97,7 @@ internal static class RepoSettings
     /// <summary>The canonical hash of a settings file; the same value Script Helper binds an approval to.</summary>
     public static string HashFile(string path) => AiDevHelpers.Common.RepoSettingsFile.Hash(path);
 
-    /// <summary>Adds <c>.aidevtools/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
+    /// <summary>Adds <c>.aidevhelpers/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
     public static void EnsureUserFileGitIgnored(string repoRoot) => AiDevHelpers.Common.RepoSettingsFile.EnsureUserFileGitIgnored(repoRoot);
 
     private const string AllowAllKey = "allowAll";

@@ -4,16 +4,16 @@ using System.Text;
 namespace AiDevHelpers.Common;
 
 /// <summary>
-/// The repo's <c>.aidevtools</c> files, shared by the MCP server (reads them) and Script Helper (binds an approval to them),
+/// The repo's <c>.aidevhelpers</c> files, shared by the MCP server (reads them) and Script Helper (binds an approval to them),
 /// so both compute the same hash for the same file.
 /// </summary>
 public static class RepoSettingsFile
 {
-    public const string FolderName = ".aidevtools";
+    public const string FolderName = ".aidevhelpers";
     public const string SettingsFileName = "settings.json";
     public const string UserFileName = "user.json";
 
-    private const string UserFileIgnoreLine = ".aidevtools/user.json";
+    private const string UserFileIgnoreLine = ".aidevhelpers/user.json";
 
     /// <summary>The nearest folder at or above <paramref name="folder"/> with a <c>.git</c> folder or file (a worktree or submodule has a file), or null.</summary>
     public static string? FindRepoRootFromFolder(string? folder)
@@ -82,7 +82,7 @@ public static class RepoSettingsFile
         EnsureUserFileGitIgnored(repoRoot);
     }
 
-    /// <summary>Adds <c>.aidevtools/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
+    /// <summary>Adds <c>.aidevhelpers/user.json</c> to the repo's .gitignore when it is not already listed.</summary>
     public static void EnsureUserFileGitIgnored(string repoRoot)
     {
         var path = Path.Combine(repoRoot, ".gitignore");

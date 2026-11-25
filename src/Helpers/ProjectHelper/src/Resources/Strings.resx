@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="TemplateHeaderMissing" xml:space="preserve"><value>dotnet new list did not print the expected table header.</value></data>
+  <data name="TemplateColumnCount" xml:space="preserve"><value>dotnet new list printed a table with an unexpected column count.</value></data>
+  <data name="GuardNoStandards" xml:space="preserve"><value>No project standards are set. Add {0} with a baseFramework before targeting a framework.</value></data>
+  <data name="GuardRefused" xml:space="preserve"><value>{0} is not the base framework {1} for {2}. To allow it, add an entry to the exceptions in {3} with a reason.</value></data>
+  <data name="AuditNoStandards" xml:space="preserve"><value>No project standards are set. Add {0} to audit against it.</value></data>
+  <data name="AuditNoFramework" xml:space="preserve"><value>No target framework is set in the project file.</value></data>
+  <data name="AuditNotSet" xml:space="preserve"><value>not set</value></data>
+  <data name="FixNoStandards" xml:space="preserve"><value>No project standards are set. Add {0} to fix against it.</value></data>
+  <data name="FixNoVersion" xml:space="preserve"><value>No usable version of {0} is pinned in the repo, so it was not added. Add it by hand.</value></data>
+  <data name="FixDescSetProperty" xml:space="preserve"><value>Set {0} to {1} in {2}.</value></data>
+  <data name="FixDescAddPackage" xml:space="preserve"><value>Add {0} {1} to {2}.</value></data>
+  <data name="FixDescSetVersion" xml:space="preserve"><value>Set {0} to {1} in {2}.</value></data>
+  <data name="FixDescRetarget" xml:space="preserve"><value>Retarget {0} from {1} to {2}.</value></data>
+  <data name="AddInvalidName" xml:space="preserve"><value>The project name must be a C# identifier, with dots allowed between segments.</value></data>
+  <data name="AddSolutionMissing" xml:space="preserve"><value>The solution {0} was not found or is not an .slnx file.</value></data>
+  <data name="AddFolderRequired" xml:space="preserve"><value>Folder is required: the solution has no single layout to infer it from.</value></data>
+  <data name="AddFolderUnsafe" xml:space="preserve"><value>The folder {0} must stay inside the repo.</value></data>
+  <data name="AddFolderNotEmpty" xml:space="preserve"><value>The folder {0} already has files. Choose an empty folder.</value></data>
+  <data name="AddTemplateUnknown" xml:space="preserve"><value>The template {0} is not in dotnet new list.</value></data>
+  <data name="AddLanguageUnsupported" xml:space="preserve"><value>The template {0} does not support {1}.</value></data>
+  <data name="SlnxAlreadyListed" xml:space="preserve"><value>The solution already lists {0}.</value></data>
+  <data name="SeedTestSource" xml:space="preserve"><value>using Xunit;
+
+namespace {0};
+
+public sealed class SeedTest
+{{
+    [Fact]
+    public void Seed_fails_until_the_first_test_is_written() => Assert.Fail("seed");
+}}
+</value></data>
+  <data name="FixDescAddReference" xml:space="preserve"><value>Add a ProjectReference to {1} in {0}.</value></data>
+  <data name="FixNoRootElement" xml:space="preserve"><value>The project file has no root element.</value></data>
+  <data name="FixTokenUnknown" xml:space="preserve"><value>The token is unknown or was already used. Plan again.</value></data>
+  <data name="FixTokenExpired" xml:space="preserve"><value>The token expired. Plan again.</value></data>
+  <data name="FixDrift" xml:space="preserve"><value>The project files changed since the plan. Plan again.</value></data>
+  <data name="FixAuditRemaining" xml:space="preserve"><value>Errors remain after the fix, so every file was restored: {0}</value></data>
+  <data name="FixBuildFailed" xml:space="preserve"><value>The build failed for {0}, so every file was restored.</value></data>
+  <data name="FixFailed" xml:space="preserve"><value>The fix failed, so every file was restored: {0}</value></data>
+  <data name="AuditFrameworkExcepted" xml:space="preserve"><value>Targets {0} under an exception in the standards: {1}</value></data>
+  <data name="AuditPropertyMissing" xml:space="preserve"><value>{0} is not set to {1} (found: {2}).</value></data>
+  <data name="AuditAnalyzerMissing" xml:space="preserve"><value>Required analyzer package {0} is not referenced.</value></data>
+  <data name="AuditTestSdkMissing" xml:space="preserve"><value>Test project does not reference Microsoft.NET.Test.Sdk.</value></data>
+  <data name="AuditVersionsDiffer" xml:space="preserve"><value>{0} is pinned to different versions across projects; {1} is the chosen version ({2}).</value></data>
+</root>

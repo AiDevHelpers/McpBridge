@@ -78,7 +78,7 @@
   <data name="UnreadableIdeOutput" xml:space="preserve"><value>Unreadable output from the IDE.</value></data>
   <data name="RepoSettingIgnored" xml:space="preserve"><value>Ignored the repo setting {0} in {1}: a repo file may not set it.</value></data>
   <data name="RepoSettingsUnreadable" xml:space="preserve"><value>Could not read the repo settings file {0}: {1} The global settings are used.</value></data>
-  <data name="GlobalAllowAllIgnored" xml:space="preserve"><value>Ignored allowAll in the global settings: it can only be requested by a repo's .aidevtools/settings.json.</value></data>
+  <data name="GlobalAllowAllIgnored" xml:space="preserve"><value>Ignored allowAll in the global settings: it can only be requested by a repo's .aidevhelpers/settings.json.</value></data>
   <data name="RepoAllowlistUnapproved" xml:space="preserve"><value>The repo {0} lists {1} elevated script(s) you have not approved on this machine: {2}. Run "setup verify {0}" in an elevated shell to review and approve them.</value></data>
   <data name="RepoElevationFound" xml:space="preserve"><value>The repo {0} has {1} project(s) that need administrator rights to run or debug: {2}. Run "elev repo-setup {0}" to choose which ones launch elevated.</value></data>
   <data name="RepoSetupNeedsRepo" xml:space="preserve"><value>Error: repoPath must be a folder inside a git repo.</value></data>

@@ -75,11 +75,11 @@ elev allow-script C:\path\to\repo scripts/debug/attach.ps1 -Port 5000
 - `scan-launch` reads `Properties/launchSettings.json`, `.vscode/launch.json` and `.vscode/tasks.json` for scripts they run (`.ps1`, `.cmd`,
   `.bat`, `.sh` inside the repo) and asks per script whether to add it to `.elevated.json`. Adding changes the allowlist, so run `review`
   afterwards.
-- `allow-all` is for a registered repo whose `.aidevtools/settings.json` contains `"allowAll": true`. It asks two separate confirmations
+- `allow-all` is for a registered repo whose `.aidevhelpers/settings.json` contains `"allowAll": true`. It asks two separate confirmations
   (the second repeats the repo path), then writes a signed approval to the admin-only data root, bound to the project, the checkout and the
   hash of `settings.json`. While the approval matches, the broker runs any script inside the repo without the allowlist or per-script
   approval; the owner and inside-the-repo checks still apply. Editing `settings.json` revokes it. The gitignored per-user
-  `.aidevtools/user.json` only points at the approval. A repo file alone, or a global `allowAll`, grants nothing.
+  `.aidevhelpers/user.json` only points at the approval. A repo file alone, or a global `allowAll`, grants nothing.
 - `allow-script` records a user allow for one script and its exact arguments, without changing the repo. See User allows.
 
 ## Repo setup, rules, terminals and tools (unelevated `elev` verbs)
@@ -87,7 +87,7 @@ elev allow-script C:\path\to\repo scripts/debug/attach.ps1 -Port 5000
 These run locally, need no broker and no elevation, and ask from the console, never from arguments.
 
 - `elev repo-scan <repo>` prints, as JSON, projects and launch scripts that need administrator rights, the repo's CI branches and checks, instruction files, hooks and what is already recorded. It writes nothing.
-- `elev repo-setup <repo>` asks per project whether to list it in `.aidevtools/elevation.json` (committed), once whether this repo should always launch elevated (`user.json`, per user), and whether to record the CI branches and checks as protected branches and required checks in `.aidevtools/repo-rules.json`. A no is remembered per user.
+- `elev repo-setup <repo>` asks per project whether to list it in `.aidevhelpers/elevation.json` (committed), once whether this repo should always launch elevated (`user.json`, per user), and whether to record the CI branches and checks as protected branches and required checks in `.aidevhelpers/repo-rules.json`. A no is remembered per user.
 - `elev rules override <repo> <id>` allows one git write that a rule refused, for 10 minutes.
 - `elev terminals scan` and `elev terminals setup [--all]` list the terminal types on the machine and, per type, register it for the helper and add a Windows Terminal profile (text insert, `.bak` backup) after a yes.
 - `elev tools` (elevated, one UAC prompt) writes `install-tool.ps1` and its allowlist into the install folder, registers it and asks to approve it; `elev install-tool <name>` then runs it through the broker for `pwsh`, `gitbash`, `python` or `node` (winget). The MCP `tool_install` tool uses it after the user's yes.
