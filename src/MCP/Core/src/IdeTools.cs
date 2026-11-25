@@ -127,7 +127,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
                 : IdeTestRunService.RunDotnetTestAsync(solution, ct);
         }
 
-        return RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
+        return RunTestsAndSummarizeAsync(solutionPath, ide, instancePid, ct);
     }
 
     [McpServerTool]
@@ -140,6 +140,41 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("formatSolution", new { }, solutionPath, ct, ide, instancePid);
 
     // Test Explorer refuses a run while it is still busy. Wait once on this thread and try again; the IDE never sleeps.
+    /// <summary>
+    /// Starts the run, then waits for its summary (plan 3.3). The summary read before the run is the baseline: a finished run
+    /// is one whose summary differs from it, so an earlier run is not mistaken for this one. Returns status "running" after the
+    /// wait limit, with the call to read later.
+    /// </summary>
+    private async Task<string> RunTestsAndSummarizeAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
+    {
+        var baseline = await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+        var started = await RunTestExplorerWithRetryAsync(solutionPath, ide, instancePid, ct);
+        using (var startedDoc = JsonDocument.Parse(started))
+        {
+            if (!startedDoc.RootElement.TryGetProperty("ok", out var startedOk) || !startedOk.GetBoolean())
+            {
+                return started;
+            }
+        }
+
+        var waitSeconds = DefaultTestWaitSeconds;
+        var deadline = DateTime.UtcNow.AddSeconds(waitSeconds);
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            var now = await IdeGetTestSummary(solutionPath, ide, instancePid, ct);
+            using var doc = JsonDocument.Parse(now);
+            if (doc.RootElement.TryGetProperty("ok", out var ok) && ok.GetBoolean() && now != baseline)
+            {
+                return JsonSerializer.Serialize(new { status = "finished", summary = TestSummaryCapper.Cap(doc.RootElement) });
+            }
+        }
+
+        return JsonSerializer.Serialize(new { ok = true, status = "running", wait_seconds = waitSeconds, hint = "Call ide_get_test_results later for the outcome." });
+    }
+
+    private const int DefaultTestWaitSeconds = 120;
+
     private static async Task<string> RunTestExplorerWithRetryAsync(string? solutionPath, string? ide, int? instancePid, CancellationToken ct)
     {
         var first = await IdeInstanceRouter.CallAsync("runTests", new { }, solutionPath, ct, ide, instancePid);
