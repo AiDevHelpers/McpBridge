@@ -20,6 +20,7 @@ public sealed class SelfTestCoverageTests
         ("OutputTools", "OutputHelper"),
         ("GateTools", "GateHelper"),
         ("PackageTools", "PackageHelper"),
+        ("ProjectTools", "ProjectHelper"),
         ("SourceControlTools", "SourceControlHelper"),
         ("TestingTools", "TestingHelper"),
         ("TerminalSessionTools", "TerminalControl"),

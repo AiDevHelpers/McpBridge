@@ -58,15 +58,15 @@ public static class PackageVersions
     {
         if (uses.Count == 0)
         {
-            return new VersionChoice(null, "not referenced");
+            return new VersionChoice(null, Strings.Get("VersionNotReferenced"));
         }
 
         var pinned = uses.Where(u => u.Version is not null && !u.Version.Contains('*')).ToList();
         if (pinned.Count == 0)
         {
             return uses.Any(u => u.Version is not null)
-                ? new VersionChoice(null, "floating version only")
-                : new VersionChoice(null, "no version pinned");
+                ? new VersionChoice(null, Strings.Get("VersionFloatingOnly"))
+                : new VersionChoice(null, Strings.Get("VersionNonePinned"));
         }
 
         var counts = pinned.GroupBy(u => u.Version!, StringComparer.Ordinal).Select(g => (Version: g.Key, Count: g.Count())).ToList();
@@ -74,7 +74,7 @@ public static class PackageVersions
         var tied = counts.Where(c => c.Count == top).Select(c => c.Version).ToList();
         if (tied.Count == 1)
         {
-            return new VersionChoice(tied[0], $"used by {top} of {pinned.Count} projects");
+            return new VersionChoice(tied[0], Strings.Format("VersionMajority", top, pinned.Count));
         }
 
         var frameworks = pinned.Where(u => tied.Contains(u.Version!, StringComparer.Ordinal)).SelectMany(u => u.Frameworks);
@@ -83,7 +83,7 @@ public static class PackageVersions
             ? PackageUpdateRule.NewestAllowed(tied, major)
             : tied.OrderByDescending(v => PackageUpdateRule.Parse(v)).FirstOrDefault();
         return newest is null
-            ? new VersionChoice(null, "tie with no allowed version")
-            : new VersionChoice(newest, $"tie of {top} projects each; newest allowed for the frameworks");
+            ? new VersionChoice(null, Strings.Get("VersionTieNoneAllowed"))
+            : new VersionChoice(newest, Strings.Format("VersionTieNewestAllowed", top));
     }
 }
