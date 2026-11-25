@@ -1,5 +1,9 @@
 # McpBridge
 
+## Branches
+
+All new work branches from `wip`, and its PRs and merges go into `wip`. Do not branch from or merge into `main` or `dev` unless the user approves that step.
+
 ## Dogfood the aidevtools MCP tools
 
 This repo builds the aidevtools MCP server and the VS/VS Code bridge. Use them for your own work here.
