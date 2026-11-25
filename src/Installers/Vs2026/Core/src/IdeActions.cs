@@ -852,11 +852,25 @@ public sealed class IdeActions(DTE2 dte)
         {
             foreach (EnvDTE90.ExceptionSetting setting in group)
             {
+                // Code throws for exception types that have no exception code; report null for those.
+                uint? code = null;
+                if (group.SupportsExceptionCodes)
+                {
+                    try
+                    {
+                        code = setting.Code;
+                    }
+                    catch (COMException)
+                    {
+                        code = null;
+                    }
+                }
+
                 list.Add(new
                 {
                     group = group.Name,
                     name = setting.Name,
-                    code = setting.Code,
+                    code,
                     break_when_thrown = setting.BreakWhenThrown,
                     break_when_user_unhandled = setting.BreakWhenUserUnhandled,
                     user_defined = setting.UserDefined,
