@@ -197,6 +197,8 @@ public sealed class BridgeHost : IDisposable
                 _server.Start();
             }
 
+            _eventServer?.EnsureRunning();
+
             InstanceRegistry.Write(_pid, _solutionPath);
         }
         catch (Exception ex)

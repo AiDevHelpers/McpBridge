@@ -54,6 +54,29 @@ public sealed class EventServer : IDisposable
         }
     }
 
+    /// <summary>
+    /// Restarts any accept loop that has stopped (faulted or ended) while the server is still meant to run. Called by the
+    /// bridge watchdog.
+    /// </summary>
+    public void EnsureRunning()
+    {
+        if (_cts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        lock (_accepts)
+        {
+            for (var i = 0; i < _accepts.Count; i++)
+            {
+                if (_accepts[i].IsCompleted)
+                {
+                    _accepts[i] = Task.Run(() => AcceptLoopAsync(_cts.Token));
+                }
+            }
+        }
+    }
+
     public void Dispose()
     {
         _hub.CloseAll("bridgeStopped");
