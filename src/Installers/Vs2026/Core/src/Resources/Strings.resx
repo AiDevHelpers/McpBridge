@@ -19,6 +19,13 @@
   <data name="TemplateRequiredForNew" xml:space="preserve"><value>Mode fromNew needs a template path.</value></data>
   <data name="UnknownItemMode" xml:space="preserve"><value>Unknown mode '{0}'. Use fromFile or fromNew.</value></data>
   <data name="SolutionHasDirtyDocuments" xml:space="preserve"><value>Unsaved documents: {0}. Pass saveFirst to save them, or close them first.</value></data>
+  <data name="StatusBarUnavailable" xml:space="preserve"><value>The status bar service is not available.</value></data>
+  <data name="ActivityLogUnavailable" xml:space="preserve"><value>The activity log service is not available.</value></data>
+  <data name="SettingsReaderUnavailable" xml:space="preserve"><value>The settings reader service is not available.</value></data>
+  <data name="UnknownLogLevel" xml:space="preserve"><value>Unknown level '{0}'. Use Error, Warning, or Information.</value></data>
+  <data name="ShellUnavailable" xml:space="preserve"><value>The Visual Studio shell service is not available.</value></data>
+  <data name="InfoBarHostUnavailable" xml:space="preserve"><value>The main window has no info bar host.</value></data>
+  <data name="InfoBarUnavailable" xml:space="preserve"><value>The info bar UI factory is not available.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>
   <data name="NoActiveDocumentToFormat" xml:space="preserve"><value>No active document to format.</value></data>

@@ -707,6 +707,61 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("closeSolution", new { saveFirst, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("List the items in the Visual Studio Task List window (category, text, file, line). Read-only.")]
+    public Task<string> IdeListTasks(
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listTasks", new { }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Set the status bar text of the IDE (empty clears it). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetStatus(
+        [Description("Status text; empty clears it")] string text,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setStatus", new { text, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Show an info bar in the IDE's main window with a message and optional button labels. Buttons do not report clicks. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeShowInfoBar(
+        [Description("Message text")] string text,
+        [Description("Optional: button labels")] string[]? actions = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("showInfoBar", new { text, actions = (actions ?? Array.Empty<string>()).Select(label => new { label }), confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Write an entry to the Visual Studio activity log (ActivityLog.xml). Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeWriteActivityLog(
+        [Description("Error, Warning, or Information")] string level,
+        [Description("Source name for the entry")] string source,
+        [Description("Message text")] string message,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("writeActivityLog", new { level, source, message, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Read one Visual Studio setting by its key path. Returns found:false when the setting does not exist. Read-only.")]
+    public Task<string> IdeGetSetting(
+        [Description("Setting key path")] string key,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("getSetting", new { key }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,

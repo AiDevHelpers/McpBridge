@@ -154,6 +154,15 @@ public sealed class IdeActions(DTE2 dte)
             OptionalBool(args, "confirm") == true),
         "removeProjectItem" => RemoveProjectItem(RequireString(args, "project"), RequireString(args, "file"), OptionalBool(args, "confirm") == true),
         "closeSolution" => CloseSolution(OptionalBool(args, "saveFirst") == true, OptionalBool(args, "confirm") == true),
+        "listTasks" => ListTasks(),
+        "setStatus" => ShellActions.SetStatus(OptionalString(args, "text") ?? string.Empty, OptionalBool(args, "confirm") == true),
+        "writeActivityLog" => ShellActions.WriteActivityLog(
+            RequireString(args, "level"),
+            RequireString(args, "source"),
+            RequireString(args, "message"),
+            OptionalBool(args, "confirm") == true),
+        "getSetting" => ShellActions.GetSetting(RequireString(args, "key")),
+        "showInfoBar" => ShellActions.ShowInfoBar(RequireString(args, "text"), InfoBarLabels(args), OptionalBool(args, "confirm") == true),
         "setBreakpointCondition" => SetBreakpointCondition(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -1527,6 +1536,23 @@ public sealed class IdeActions(DTE2 dte)
         return null;
     }
 
+    // Labels of the info bar buttons: the actions argument is an array of { "label": "..." } objects.
+    private static IReadOnlyList<string> InfoBarLabels(JsonElement args)
+    {
+        var labels = new List<string>();
+        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("actions", out var array) || array.ValueKind != JsonValueKind.Array)
+        {
+            return labels;
+        }
+
+        foreach (var action in array.EnumerateArray())
+        {
+            labels.Add(RequireString(action, "label"));
+        }
+
+        return labels;
+    }
+
     private static IReadOnlyList<string> RequireStringArray(JsonElement args, string name)
     {
         if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var array) || array.ValueKind != JsonValueKind.Array)
@@ -1541,6 +1567,18 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return values;
+    }
+
+    // Read-only view of the Task List window. Adding or clearing tasks needs a registered task provider (unit 4.2, not here).
+    private object ListTasks()
+    {
+        var list = new List<object>();
+        foreach (TaskItem task in dte.ToolWindows.TaskList.TaskItems)
+        {
+            list.Add(new { category = task.Category.ToString(), text = task.Description, file = task.FileName, line = task.Line });
+        }
+
+        return new { tasks = list };
     }
 
     private object ListDebuggedProcesses()

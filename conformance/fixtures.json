@@ -79,6 +79,31 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "list_tasks_refused_by_generic_bridge": {
+    "request": { "action": "listTasks" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "set_status_refused_by_generic_bridge": {
+    "request": { "action": "setStatus", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "show_info_bar_refused_by_generic_bridge": {
+    "request": { "action": "showInfoBar", "args": { "text": "t" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "write_activity_log_refused_by_generic_bridge": {
+    "request": { "action": "writeActivityLog", "args": { "level": "Information", "source": "s", "message": "m" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "get_setting_refused_by_generic_bridge": {
+    "request": { "action": "getSetting", "args": { "key": "k" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "project_properties_refused_by_generic_bridge": {
     "request": { "action": "projectProperties", "args": { "project": "p", "names": ["TargetFramework"] } },
     "ok": false,
