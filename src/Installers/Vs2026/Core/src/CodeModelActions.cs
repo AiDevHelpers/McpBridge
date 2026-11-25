@@ -157,7 +157,7 @@ internal static class CodeModelActions
         return new { planned = false, applied = change };
     }
 
-    private static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
+    internal static async Task<(Solution Solution, Document Document, int Position)> ResolvePositionAsync(string file, int line, int column)
     {
         var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
             ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
