@@ -1,336 +1,327 @@
 # Visual Studio API coverage: implementation plan, 2026-11-25
 
-Status: draft for review. Full specification. Covers every gap from the Visual Studio API review, with per-tool contracts,
-files, API members, tests and done criteria. Replaces the earlier gap-list version of this file.
+Status: revision 2, after the Sonnet review of revision 1. Full specification. Each unit is one commit with a checklist.
 
-## 1. Goal and scope
+## 1. Scope
 
-Add the Visual Studio (EnvDTE, EnvDTE80/90/90a/100 and VS SDK) areas the bridge does not use yet, exposed as `ide_*` MCP tools
-through the existing bridge protocol, with the same confirm rules for writes and the same refusal shape everywhere.
+Add the Visual Studio areas the bridge does not use yet, as `ide_*` MCP tools over the existing bridge protocol. Covers debugger
+processes, exceptions, threads, stack frames, breakpoint conditions, find/replace in files, documents, undo groups, code model,
+project items, task list, status bar, info bars, activity log, settings read, push events, and Roslyn semantic tools.
 
-In scope: debugger processes, exceptions, threads, stack frames, breakpoint detail, find/replace in files, documents, undo
-groups, code model, project items, task list, status bar, info bars, activity log, settings read, push events, Roslyn semantic
-tools.
+Out of scope: existing behaviour of current actions, the aidevtools server, packaging.
 
-Out of scope: changing existing `aidevhelpers` behaviour, the aidevtools MCP server, new packaging.
+## 2. Decisions
 
-## 2. Decisions (from the user)
+- Roslyn tools are in scope (phase 6).
+- Every write takes `confirm` (default false). Without it: plan-only reply. The MCP description tells the model to show the plan
+  and ask the user before setting `confirm`.
+- Events are pushed to the MCP server over a dedicated events pipe (phase 5). The request pipe is not changed.
+- Events go only to the client that subscribed.
+- Existing actions keep their contracts. `setBreakpoint` stays as it is; conditions use a new action.
+- Global services are reached through `ServiceProvider.GetGlobalService`, as `BookmarkActions.cs` and `OutputChannelActions.cs`
+  already do. No constructor changes to `IdeActions` or `BridgeHost` are needed for services.
+- VS Code gets each tool where it has an equivalent; otherwise `{"ok":false,"unsupported":true,"error":...}`.
 
-- Roslyn tools are in this plan (phase 6).
-- Every write action takes `confirm`. Without it the tool returns `{"ok":true,"result":{"planned":true,"would":{...}}}` and changes
-  nothing. This includes breakpoint enable/disable, status, info bar, activity log, save, close and task writes.
-- Events are pushed from the bridge to the MCP server in this plan (phase 5), delivered only to the client that subscribed.
-- One plan, grouped into phases.
-- The VS Code bridge gets the same tools where VS Code has an equivalent API. Otherwise it replies with `unsupported: true`.
+## 3. Cross-cutting contracts
 
-## 3. Cross-cutting rules
+### 3.1 Reply shapes
 
-### 3.1 Dispatch and threading
+- Read action: `{"ok":true,"pid":N,"result":{...}}`. A read in the wrong state returns a result with the state (for example
+  `debugger_mode`, `threads: []`), not an error.
+- Write action, plan-only (no `confirm`): `{"ok":true,"pid":N,"result":{"planned":true,"would":{...}}}`. Nothing changes.
+- Write action, applied: `{"ok":true,"pid":N,"result":{"planned":false,"applied":{...}}}`.
+- Partial failure: `{"ok":false,"pid":N,"error":"...","result":{"planned":false,"applied":{...},"failed":[{...,"error":"..."}]}}`.
+  Applied items are listed; each failed item says why. `ok` is false whenever `failed` is non-empty.
+- Wrong state for a write (for example not in break mode): `{"ok":false,"pid":N,"error":"..."}`, nothing changed, even without
+  `confirm`.
+- Argument errors: thrown `ArgumentException` becomes `{"ok":false,"error":...}` (`BridgeServer.cs:165-168`).
+- Plan-only validates arguments exactly as the applied path does, so a bad plan never becomes a surprise later.
 
-- Each new VS action is one `case` in `IdeActions.InvokeOnUiThread` (`src/Installers/Vs2026/Core/src/IdeActions.cs`).
-  `Invoke` already runs on the UI thread and sets `SuppressUI` (`IdeActions.cs:33-41`).
-- Actions that need a break-mode state check it first and return `{"error": ...}` through the existing exception path
-  (`RequireBreakMode`, `IdeActions.cs:687`).
+### 3.2 Confirm enforcement
 
-### 3.2 Argument helpers
+- Enforced in the bridge. `IdeActions.OptionalBool(args,"confirm") == true` selects the applied path; anything else is plan-only.
+- The MCP tool forwards `confirm` unchanged.
+- Tool descriptions for every write say: "Without confirm it only returns the plan. Show the plan to the user and get their yes before
+  setting confirm to true." (This is the same instruction style as `IdeResetTools.cs`.)
 
-- Add `internal static bool? OptionalBool(JsonElement args, string name)` beside `OptionalString` (`IdeActions.cs:746`).
-  Already added in phase 1 unit 1.
-- `confirm` is read with `OptionalBool(args, "confirm") == true`. A missing or non-boolean value means plan-only.
+### 3.3 Dispatch and threading
 
-### 3.3 Confirm contract
-
-- Plan-only reply: `{"ok":true,"pid":N,"result":{"planned":true,"would":{<what would change>}}}`. Nothing changes.
-- Applied reply: `{"ok":true,"pid":N,"result":{"planned":false,"applied":{<what changed>}}}`.
-- Enforcement is on the bridge side. The MCP tool forwards `confirm` unchanged, so a direct pipe call cannot skip it.
-- Every write action has a fixture for plan-only and applied replies once it is live (see 3.6).
+- Each VS action is a `case` in `IdeActions.InvokeOnUiThread` (`IdeActions.cs:80`). `Invoke` already runs on the UI thread with
+  `SuppressUI` (`IdeActions.cs:26-45`).
+- Break-mode checks: `RequireBreakMode` (`IdeActions.cs:691`).
 
 ### 3.4 MCP tools
 
-- Each action gets one `[McpServerTool]` method in `src/MCP/Core/src/IdeTools.cs` with `[Description]` on the method and every
-  parameter, and the standard routing arguments (`solutionPath`, `ide`, `instancePid`) via `IdeInstanceRouter.CallAsync`.
+- One `[McpServerTool]` per action in `src/MCP/Core/src/IdeTools.cs`, with `[Description]` on the method and every parameter, and the
+  routing arguments (`solutionPath`, `ide`, `instancePid`) through `IdeInstanceRouter.CallAsync`.
 - Writes add `bool confirm = false`.
-- Docs: each tool is listed in `src/Common/src/Resources/mcp-tools.md` and `docs/ide-bridge.md`.
+- Each tool is listed in `src/Common/src/Resources/mcp-tools.md` and `docs/ide-bridge.md`.
 
-### 3.5 Errors and strings
+### 3.5 Strings
 
-- Unknown or unsupported arguments throw `ArgumentException` through `RequireString`/`RequireInt`/`OptionalBool`.
-- User-facing strings go to `Strings.resx` (`Strings.Format`, `IdeActions.cs:122`). Messages shown to the user must be in the resx.
+- User-facing text goes to `Strings.resx` via `Strings.Format` (`IdeActions.cs:126`).
 
-### 3.6 Conformance and VS Code parity
+### 3.6 Conformance and parity
 
-- `conformance/fixtures.json` gets one fixture per new action:
-  - VS-only actions: `<action>_refused_by_generic_bridge`, asserting `ok:false` (the generic bridge refuses VS-only actions).
-  - Actions with a VS Code equivalent: a VS Code fixture asserting the same reply shape.
-- VS Code: the same action names go into `src/Installers/VsCode/Installer/AiDevTools.VsCode/src/ideActions.ts` (switch,
-  `case` per action). Where VS Code has no equivalent, the case returns `{"ok":false,"unsupported":true,"error":...}`
-  (`protocol.md:83`). Replies are checked for shape only (`protocol.md:87`).
-- Fixtures are shared. The VS Code core tests (`npm run test` under `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`) must
-  pass with them; their dependencies are installed first (phase 0 item).
+- `conformance/fixtures.json` gets an optional `"bridges"` field: `["visualstudio"]`, `["vscode"]`, or both (default both).
+  Unit 0.2 adds it and changes the VS Code test (`bridgeProtocol.test.ts`) to read it. Before this change the VS Code test compares
+  reply keys exactly, so a VS-only fixture would fail there.
+- VS-only actions get one fixture: `<action>_refused_by_generic_bridge` with `bridges: ["visualstudio"]`, asserting `ok:false`.
+  A VS-only fixture asserts the generic refusal, not the VS contract; the VS contract is tested in the VS Core unit tests and live.
+- Actions with a VS Code equivalent get a fixture for each bridge with its own reply keys.
+- Every tool in section 6 lists its VS Code status.
 
 ### 3.7 Tests
 
-- Bridge conformance: `dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release` runs the shared fixtures. It
-  passes with 39 of 39 after phase 1 unit 2.
-- VS Core: `src/Installers/Vs2026/Core/tests` holds `SmokeTests.cs` only. Pure logic (argument helpers, reply shapes) gets unit
-  tests there. Anything that needs EnvDTE runs live.
-- Live checks run in Visual Studio through the bridge. Each unit has a live checklist (section 6).
+- Bridge conformance: `dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release` (40 passing at `0d3b894`).
+- VS Core unit tests (`src/Installers/Vs2026/Core/tests`): pure logic only. Reply builders (`planned`/`applied`/`failed` shape),
+  argument validation, and the confirm switch are factored into static helpers so they can be tested without EnvDTE.
+- VS Code: `npm run test` and `npm run lint` for the core project; build, lint and test for the installer project. Requires
+  `npm ci` first (unit 0.1).
+- Live checks: section 7.
 
 ### 3.8 Build
 
-- VS Core and MCP Core build with `dotnet build <csproj> -c Release` (verified in phase 1). The VS installer project needs the
-  VSSDK build tools and is built by `scripts/update-vs-extension.ps1`.
+- `dotnet build src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj -c Release` and
+  `dotnet build src/MCP/Core/src/AiDevHelpers.MCP.Core.csproj -c Release`. The VS installer project is built by
+  `scripts/update-vs-extension.ps1`.
 
-## 4. Confirmed and unconfirmed APIs
+## 4. API status
 
-Confirmed by compiling against `Microsoft.VisualStudio.Interop` 17.14.40260 (the NuGet copy the Core project uses) or by Learn:
+Compiled against the interop DLL (`Microsoft.VisualStudio.Interop` 17.14.40260, `net472` copy) or checked by reflection on it:
 
-| Area | Member (interface) | Status |
-|---|---|---|
-| Processes | `Debugger.LocalProcesses`, `Process.ProcessID`, `Process.Name`, `Process.Attach()` | compiled, Learn |
-| Processes | `Debugger.DetachAll()`, `Debugger2.DetachAll()` | Learn |
-| Processes | `Debugger4.DebuggedProcesses` (`EnvDTE90a`) | compiled |
-| Threads | `Debugger.CurrentThread`, `Debugger.CurrentProcess`, `Process3.Threads` (`EnvDTE90`), `Thread.ID`, `Thread.Name` | compiled |
-| Exceptions | `EnvDTE100.Debugger5.ExceptionGroups` returns `EnvDTE90.ExceptionGroups` (enumerates `ExceptionSettings`, which enumerates `ExceptionSetting`); `ExceptionSetting`: `Name`, `Code`, `BreakWhenThrown`, `BreakWhenUserUnhandled`, `UserDefined`; `ExceptionSettings.SetBreakWhenThrown(bool, ExceptionSetting)`, `SetBreakWhenUserUnhandled(bool, ExceptionSetting)` | reflection on the interop DLL (`ExceptionGroups` and its item types); compile pending |
-| Stack frames | `Thread.StackFrames`, `StackFrame.FunctionName`, `StackFrame.ReturnType` | Learn (used in examples), compile pending |
-| Breakpoints | `Breakpoint.Condition`, `Breakpoint.Enabled`, `Breakpoints.Add` | `Breakpoints.Add(File, Line)` compiled. Condition overload: pending spike |
-| Find | `Find2` (`Target`, `SearchPath`, `FindWhat`, `Execute`), `Find2.FindReplace` | Learn for `Find2` and `FindReplace` remarks. Results path: pending spike |
-| Documents | `DTE.Documents`, `Document.Saved`, `Save`, `Close`, `ReadOnly`, `FullName` | pending spike |
-| Undo | `DTE.UndoContext.Open(name)`, `Close()` | pending spike |
-| Code model | `ProjectItem.FileCodeModel.CodeElements` | Learn |
-| Projects | `Project.Properties` (`Item(name)`), `ProjectItems.AddFromFile`, `AddFromNew`, `ProjectItem.Remove()`, `Solution.Close(SaveFirst)` | pending spike for SDK-style names |
-| Task list | `SVsTaskList` / `IVsTaskList`, `IVsTaskProvider4` | Learn |
-| Status bar | `IVsStatusbar.SetText` | Learn |
-| Info bar | `IVsInfoBar`, `IVsInfoBarHost`, `IVsInfoBarUIFactory` | Learn |
-| Activity log | `IVsActivityLog` (`SVsActivityLog`) | Learn |
-| Settings | `IVsSettingsReader` (`SVsSettingsReader`) | Learn list only; member names pending |
-| Events | `SolutionEvents`, `BuildEvents`, `DebuggerEvents`, `DocumentEvents` (`DTE.Events`) | `SolutionEvents` in use (`BridgeHost.cs:27,86-90`). Others pending |
-| Roslyn | `VisualStudioWorkspace` via `IComponentModel`, `SymbolFinder`, `Renamer`, `CodeFixProvider` | not confirmed for net48 (spike) |
+- `Debugger.LocalProcesses`, `Process.ProcessID`, `Process.Name`, `Debugger.CurrentThread`, `Debugger.CurrentProcess`,
+  `Thread.ID`, `Thread.Name`, `Process3.Threads`, `Debugger4.DebuggedProcesses`.
+- `EnvDTE100.Debugger5.ExceptionGroups` → `EnvDTE90.ExceptionGroups` → `ExceptionSettings` → `ExceptionSetting`
+  (`Name`, `Code`, `BreakWhenThrown`, `BreakWhenUserUnhandled`, `UserDefined`). Setters:
+  `ExceptionSettings.SetBreakWhenThrown(bool, ExceptionSetting)`, `SetBreakWhenUserUnhandled(bool, ExceptionSetting)`.
 
-Spike means: one short throwaway change that compiles a single call against the interop DLL (`dotnet build`), records the result
-here, and is reverted if it does not compile. Learn results are not enough on their own.
+Learn only (compile pending): `Process.Attach`, `Debugger.DetachAll`, `ProjectItem.FileCodeModel.CodeElements`, `Thread.StackFrames`,
+`StackFrame.FunctionName`, `StackFrame.ReturnType`, `IVsInfoBar`, `IVsInfoBarHost`, `IVsInfoBarUIFactory`, `IVsActivityLog`,
+`IVsTaskProvider4`, `SVsTaskList`, `IVsStatusbar`.
 
-## 5. Work units
+Pending spike (not yet checked): `Breakpoints.Add` condition overload; `Find2` results read path (`FindResults1`); `Document`
+members; `UndoContext`; `Project.Properties` names on SDK-style C#; `ProjectItem.Remove` behaviour; `IVsSettingsReader` members;
+`DebuggerEvents`/`DocumentEvents` members; `VisualStudioWorkspace` on net48.
 
-Each unit is one commit on `feature/vs-api-coverage-wt`, with its own checks. A unit is done when its checks pass and its plan
-boxes are ticked. Units run in order; a blocked unit does not stop the next unit unless it is a dependency.
+**Spike rule:** a spike is a throwaway call that compiles against the interop DLL (`dotnet build`), with the result recorded here.
+If it does not compile, the unit is blocked and its alternative is recorded. Learn alone does not confirm a member.
 
-### Phase 0: Wiring and verification (done except for the items below)
+## 5. Units
 
-- [x] MCP tools in `src/MCP/Core/src/IdeTools.cs`; debugger control in `DebuggerControlService.cs`.
-- [x] SDK version `Microsoft.VisualStudio.SDK` 18.12.1606 in `Core` and `Installer`.
-- [ ] Install the VS Code extension dependencies (`npm ci`) in both VS Code projects so their tests can run.
-- [ ] Spikes listed in section 4 as "pending". Each spike is recorded here with its result.
-- [ ] Roslyn spike: whether `VisualStudioWorkspace` and `Microsoft.VisualStudio.LanguageServices` can be referenced from net48.
-- [ ] Decide `ide_find_all_references` / `ide_go_to_definition` coexistence (recommended: coexist, Roslyn tools named
-      `ide_semantic_references` and `ide_semantic_definition`).
+Units run in order. A blocked unit does not stop a later unit unless the later unit depends on it.
 
-### Phase 1: Debugger
+### Phase 0: wiring
 
-Unit 1.1 (done, commit `4a41fbb`): `listProcesses`, `listDebuggedProcesses`, `OptionalBool`, refusal fixtures.
+- [x] MCP tool locations (`IdeTools.cs`, `DebuggerControlService.cs`). SDK 18.12.1606 in both VS csproj.
+- [ ] **0.1** `npm ci` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core` and `src/Installers/VsCode/Installer/AiDevTools.VsCode`.
+      Done when both test/lint/build commands run.
+- [ ] **0.2** Fixture `bridges` field (section 3.6), plus the VS Code test change. Done when the bridge tests and VS Code tests pass
+      with the new field.
+- [ ] **0.3** Confirm the coexist decision for `findAllReferences`/`goToDefinition` (recommended: coexist, Roslyn tools
+      `ide_semantic_references`, `ide_semantic_definition`). Needs user yes.
 
-Unit 1.2 (done, commit `e10f11c`): `listThreads` (`Debugger.CurrentThread`, `Process3.Threads`; empty outside break mode).
+### Phase 1: debugger
 
-Unit 1.3 (in progress): `listExceptions`.
-- Action `listExceptions`, no args. Reply `{"exceptions":[{group,name,code,break_when_thrown,break_when_user_unhandled,user_defined}]}`.
-- Code: `IdeActions.ListExceptions` (enumerates `EnvDTE90.ExceptionSettings` then `ExceptionSetting`).
-- MCP: `IdeListExceptions`. Fixture: `list_exceptions_refused_by_generic_bridge`.
-- Live check: the list matches the Exceptions window in VS.
+- [x] **1.1** `listProcesses`, `listDebuggedProcesses`, `OptionalBool`, refusal fixtures (`4a41fbb`).
+      Fix: `ide_list_processes` description promises `title`; the code returns only `pid` and `name`. Remove `title` from the
+      description (`IdeTools.cs`) in unit 1.1b.
+- [x] **1.2** `listThreads` (`e10f11c`). Read in wrong state returns `threads: []` with `debugger_mode`.
+- [x] **1.3** `listExceptions` (`0d3b894`). Reply `{exceptions:[{group,name,code,break_when_thrown,break_when_user_unhandled,user_defined}]}`.
+- [ ] **1.4** `setExceptionBreak` (confirm). Args: `group` (string), `name` (string), `breakWhenThrown` (bool, optional),
+      `breakWhenUserUnhandled` (bool, optional). At least one flag required; neither is an argument error. Not found is a
+      per-item `failed` entry (3.1). Plan-only lists current and proposed values per item.
+      Spike: exact setter call through `ExceptionSettings`. Live: value changes in VS Exceptions window, then is restored.
+- [ ] **1.5** `listStackFrames` (read). No args. Current thread, break mode; otherwise `frames: []` with `debugger_mode`.
+      Reply `{frames:[{index,function,return_type}]}`. Module is out of scope unless the spike finds it cheaply.
+      Spike: `Thread.StackFrames` compile. Live: frames match the Call Stack window.
+- [ ] **1.6** `setBreakpointCondition` (confirm). New action; `setBreakpoint` is unchanged. Args: `file`, `line`, `condition`
+      (string, optional), `hitCountType` (`always|equal|multiple|greaterOrEqual`, optional), `hitCount` (int, optional).
+      At least one of the three. Plan-only lists the breakpoint and the new values. Breakpoint not found is a `failed` entry.
+      Spike: `Breakpoints.Add` condition overload, or `Breakpoint` property setters (`Condition`, `HitCountType`, `HitCountTarget`).
+      Reads already return `condition` (`IdeActions.cs:547`); unit 1.6 adds `hit_count_type` to `listBreakpoints`.
+- [ ] **1.7** `enableBreakpoint` / `disableBreakpoint` (confirm). Args `file`, `line`. Writes `Breakpoint.Enabled`. Not found
+      is a `failed` entry. Plan-only names the breakpoints that would change.
+- [ ] **1.8** `attachProcess` (confirm) and `detachAll` (confirm). `attachProcess` args `pid`; calls `Process.Attach()` on the
+      `LocalProcesses` item with that pid. Elevation mismatch: `Attach` throws; the reply carries the message, `ok:false`.
+      `detachAll` calls `Debugger.DetachAll()`. Live: attach to a throwaway console app, detach, check it keeps running.
 
-Unit 1.4: `setExceptionBreak` (confirm). Args `group` (string), `name` (string), `breakWhenThrown` (bool, optional),
-`breakWhenUserUnhandled` (bool, optional).
-- Writes through `ExceptionSettings.SetBreakWhenThrown(bool, ExceptionSetting)` and `SetBreakWhenUserUnhandled`.
-- Plan-only reply lists the current and proposed values per exception. No write without `confirm`.
-- Fixture: refused by generic bridge. Live check: value changes in the VS Exceptions window, then is restored.
+Phase 1 done when: each unit's build and conformance tests pass, and its live check is recorded.
 
-Unit 1.5: `listStackFrames` (read-only). No args (current thread, break mode required; otherwise
-`{"frames":[]}` with `debugger_mode`). Reply `{"frames":[{index,function,return_type,module}]}`.
-- Code: `dte.Debugger.CurrentThread.StackFrames` (compile first; spike if `module` is not available).
-- MCP: `IdeListStackFrames`. Fixture: refused by generic bridge.
+### Phase 2: editor and documents
 
-Unit 1.6: breakpoint detail.
-- Extend `setBreakpoint` with optional `condition` (string), `hitCountType` (string: `always|equal|multiple|greaterOrEqual`),
-  `hitCount` (int). Confirm is required when `condition` or `hitCount` is set.
-- Spike first: the overload of `Breakpoints.Add` that takes a condition (EnvDTE `Breakpoints.Add` takes `Function`, `File`,
-  `Line`, `Column`, `Condition`, `ConditionType`, `HitCountTarget`, `HitCountType`, `Language`, `Disabled`? confirm in the
-  interop DLL). Record the exact signature here.
-- Reply includes the stored `condition` and `hit_count_type` (reads already return `condition`, `IdeActions.cs:543`).
+- [ ] **2.1** `findInFiles` (read). Args: `pattern`, `matchCase` (default false), `useRegex` (default false), `scope`
+      (`solution|project|openDocuments`), `project` (required when scope is `project`). Reply `{matches:[{file,line,text}],truncated}`,
+      capped at 500. Spike first: `Find2` with `Target`/`SearchPath`, and the read path (`FindResults1` text after `Execute`, or
+      a `Find2` results property). The spike must show the global find state is not changed (`Find2.FindReplace`, Learn remarks).
+      VS Code: `vscode.workspace.findFiles`/search, equivalent for read.
+- [ ] **2.2** `replaceInFiles` (confirm). Same args plus `replacement`. Plan-only counts matches per file without writing: it uses
+      the same search, so regex and match-case behaviour are identical. Dirty open buffers are listed as `skipped` in plan and
+      applied replies. Applied: replace, then report `applied` and `failed` per file. Spike: `Find2.FindReplace` availability.
+- [ ] **2.3** Documents. `listDocuments` (read): `{documents:[{fullName,saved,readOnly}]}`. `saveDocument` (confirm) and
+      `closeDocument` (confirm), arg `file`. `closeDocument` on a dirty document: `failed` entry unless `discardChanges` is
+      also true, which is a second confirmed input (plan-only lists the discard). Spike: `Document.Saved`, `Save`, `Close`,
+      `ReadOnly` compile (`FullName` already compiles, `IdeActions.cs:209`).
+- [ ] **2.4** `undoGroup` (confirm). Args: `name`, `edits:[{file,startLine,startColumn,endLine,endColumn,newText}]`
+      (ranges, not single lines). Opens `DTE.UndoContext`, applies all edits, closes it in `finally`. Partial failure: edits that
+      failed are listed; the group still closes. Plan-only validates ranges and lists each edit. Spike: `UndoContext.Open`/`Close`
+      compile, and edit application through `TextDocument`/`EditPoint`.
+- [ ] **2.5** `listCodeElements` (read). Arg `file`. Walks `ProjectItem.FileCodeModel.CodeElements`, returns
+      `{elements:[{kind,name,startLine,endLine}]}`. Spike: `FileCodeModel` access from a `ProjectItem`.
 
-Unit 1.7: `enableBreakpoint` / `disableBreakpoint` (confirm). Args `file`, `line`. Writes `Breakpoint.Enabled`. Plan-only
-reply names the breakpoints that would change. Fixture: refused by generic bridge.
+### Phase 3: solution and projects
 
-Unit 1.8: `attachProcess` / `detachAll` (confirm). `attachProcess` args `pid` (int). Calls `Process.Attach()` on the
-`LocalProcesses` item with that pid. `detachAll` calls `Debugger.DetachAll()`. Plan-only replies list the processes that would
-change. Fixture: refused by generic bridge. Live check: attach to a throwaway console app, then detach.
+- [ ] **3.0** Named event handlers and unhooking. Refactor `BridgeHost` so `SolutionEvents` handlers are named fields
+      (`BridgeHost.cs:88-89` today are lambdas), and `Dispose` (`BridgeHost.cs:54-65`) unhooks them. This must land before 3.4.
+- [ ] **3.1** `projectProperties` (read). Args `project` (name), `names` (array). Returns values from `Project.Properties`; unknown
+      names return `null`. Spike: SDK-style C# names (`TargetFramework`, `OutputType`).
+- [ ] **3.2** `addProjectItem` (confirm). Args `project`, `file` (path), `mode` (`fromFile|fromNew`), `template` (string, required
+      for `fromNew`). Spike: `ProjectItems.AddFromFile`/`AddFromNew` compile. Plan-only shows the target project and path.
+- [ ] **3.3** `removeProjectItem` (confirm). Args `project`, `file`. Calls `ProjectItem.Remove()`. The reply says the file stays on
+      disk. Spike: confirm `Remove` on an SDK-style item does not delete the file (live check before enabling).
+- [ ] **3.4** `closeSolution` (confirm). Arg `saveFirst` (bool, default false). Depends on 3.0. After close the instance has no
+      solution, so `solutionPath` routing finds no match; callers must use `instancePid`. With `SuppressUI` on, a dirty document
+      with `saveFirst:false` is discarded without a prompt, so plan-only lists dirty documents and applied refuses when any are dirty
+      and `saveFirst` is false (`failed` entries).
 
-Phase 1 checks: `dotnet build` clean; bridge conformance 39+ passing; live checklist per unit (section 6).
+### Phase 4: tool windows, status, settings
 
-### Phase 2: Editor and documents
+- [ ] **4.1** `listTasks` (read). `SVsTaskList` through `ServiceProvider.GetGlobalService`. Spike: `IVsTaskList` enumeration.
+      Reply `{tasks:[{category,text,file,line}]}`.
+- [ ] **4.2a** Task provider registration in `BridgePackage` (Installer project). Registers an `IVsTaskProvider4` at package init.
+      Not testable in Core unit tests; live only.
+- [ ] **4.2b** `addTask` / `clearTasks` (confirm). `addTask` args `text`, `file`, `line`, `category` (`Error|Warning|Message`).
+      `clearTasks` removes only bridge-owned tasks (tagged on creation). Plan-only describes the change.
+- [ ] **4.3** `setStatus` (confirm). Arg `text` (empty clears). `IVsStatusbar.SetText`. Spike: `SVsStatusbar` via global service.
+- [ ] **4.4** `showInfoBar` (confirm). Args `text`, `actions:[{label}]` (labels only; clicks are not returned in this unit).
+      Builds an info bar and hosts it through `IVsInfoBarHost` on the solution window frame. Spike: host acquisition (`VSFPROPID_InfoBarHost`
+      or `VSSPROPID_MainWindowInfoBarHost`, per Learn).
+- [ ] **4.5** `writeActivityLog` (confirm). Args `level` (`Error|Warning|Information`), `source`, `message`. `IVsActivityLog.LogEntry`.
+- [ ] **4.6** `getSetting` (read). Arg `key` (VS setting path, documented in the reply schema). Reply `{key,value,found}`. Spike:
+      `IVsSettingsReader` member names; unknown key returns `found:false`.
 
-Unit 2.1: `findInFiles` (read-only). Args `pattern` (string), `matchCase` (bool, default false), `useRegex` (bool, default false),
-`scope` (`solution|project|openDocuments`, default `solution`).
-- Code: `Find2` with `Target` set from `scope` and `FindWhat` set from `pattern`, executed through `Find2.FindReplace` so the
-  global find state is unchanged (Learn). Results: the Find Results window (`FindResults1`) is read after `Execute`.
-  Spike the results read path first (`FindResults1` text or `Find2` results properties). Record the chosen path here.
-- Reply `{"matches":[{file,line,text}],"truncated":false}` capped at 500 matches.
-- Fixture: refused by generic bridge. Live check: a known string in the solution returns the expected line.
+Phase 4 units are checked visually in VS (info bar, status, task list, activity log).
 
-Unit 2.2: `replaceInFiles` (confirm). Same args plus `replacement` (string). Plan-only reply gives a count per file and never
-writes. Applied reply gives the same counts. Fixture: refused by generic bridge.
+### Phase 5: events over a dedicated pipe
 
-Unit 2.3: documents.
-- `listDocuments` (read-only): `DTE.Documents` with `fullName`, `saved` (bool), `readOnly`.
-- `saveDocument` (confirm) and `closeDocument` (confirm) with `file`. Both plan-only unless `confirm`. `closeDocument` refuses a
-  dirty document unless `discardChanges` is also true (also confirmed).
-- Fixture: refused by generic bridge.
+The request pipe is not changed. It stays one-instance, one request, one reply (`BridgeServer.cs:127-134`).
 
-Unit 2.4: `undoGroup`. Args `name` (string) and `steps` (array of `{file,line,newText}` edits). Opens `DTE.UndoContext`, applies
-the edits, and closes the context in a `finally`. Plan-only reply lists the edits. Edits run in one bridge call so the group
-never spans calls. Fixture: refused by generic bridge.
-- Spike first: `UndoContext.Open` / `Close` signatures in the interop DLL.
+- [ ] **5.1** Protocol text in `conformance/protocol.md` (new section "Events pipe"), before code.
+      - Pipe name: `AiDevHelpers.VS.<pid>.events`. Separate from the request pipe.
+      - `maxInstances`: 8 (one per MCP client; the MCP limits subscriptions to 8 per bridge).
+      - Subscribe: the client connects, writes `{"action":"subscribe","args":{"events":[...]}}` as one line. The bridge replies
+        `{"ok":true,"pid":N,"subscriptionId":"..."}` then writes event lines.
+      - Event line: `{"event":"<name>","seq":N,"data":{...}}`. `seq` is per subscription, starting at 1.
+      - Heartbeat: `{"event":"heartbeat","seq":N}` every 15 s. Client treats 45 s of silence as disconnected.
+      - Closing: the bridge writes `{"event":"closed","reason":"..."}` then closes. Reasons: `bridgeStopped` (dispose),
+        `slowSubscriber` (3.4 below), `unsubscribed`.
+      - Unsubscribe: the client closes its connection. No separate request, because the events connection carries nothing
+        else.
+      - Watchdog: restarting the events pipe closes existing subscriptions with `bridgeRestarted`; clients resubscribe.
+      - Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
+        `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`, `dropped` (`data.count`).
+      - Pid change is not a case: the pid is part of the pipe name, so a new pid is a new bridge with new subscriptions.
+- [ ] **5.2** `EventServer` class in the bridge (new file). Owns the events pipe and its accept loop, separate from `BridgeServer`.
+      Subscribers are tracked in a list; each subscriber has its own queue and writer task.
+- [ ] **5.3** Event sources. Named handlers (from 3.0) for `SolutionEvents` (existing). New: `BuildEvents` (`OnBuildBegin`,
+      `OnBuildDone`), `DebuggerEvents` (`OnEnterBreakMode`, `OnEnterRunMode`, `OnContextChanged`), `DocumentEvents` (`DocumentSaved`,
+      `DocumentOpened`, `DocumentClosing`). Spike: member names on each. Handlers only enqueue an event object and never wait.
+      Reason: `Build(WaitForBuildToFinish:true)` runs on the UI thread with `SuppressUI` (`IdeActions.cs:216`), so a waiting handler
+      would deadlock; enqueueing lets the build finish. Events fired during build are delivered after it completes.
+- [ ] **5.4** Per-subscriber queue: bounded at 500. Overflow drops the oldest and records a count; a `dropped` event with `count` is
+      written before the next event.
+- [ ] **5.5** Slow subscriber: if a subscriber's write does not complete within 30 s, close that subscriber with
+      `reason:"slowSubscriber"`. Other subscribers are unaffected.
+- [ ] **5.6** `BridgeHost.Dispose` closes all subscriptions with `bridgeStopped` and unhooks all handlers (3.0 and 5.3).
+- [ ] **5.7** MCP side. `ide_subscribe_events(events?)` opens the events pipe for the routed instance and returns a subscription id.
+      A background reader keeps the last 500 events in memory. `ide_read_events(subscriptionId, sinceSeq)` returns events with
+      `seq > sinceSeq`, plus `closed` if the subscription ended. `ide_unsubscribe_events(subscriptionId)` closes the connection.
+      Limit: 8 subscriptions per bridge.
+- [ ] **5.8** Tests: bridge unit tests for queue overflow, slow-subscriber close, and heartbeat. Live: subscribe, build a project
+      (expect `buildBegin`, `buildDone`), break in the debugger (expect `enterBreakMode`).
 
-Unit 2.5: `listCodeElements` (read-only). Args `file` (string). Walks `ProjectItem.FileCodeModel.CodeElements` (types, members)
-and returns `{"elements":[{kind,name,startLine,endLine}]}`. Fixture: refused by generic bridge.
+Phase 5 is a new transport. Its check is the bridge test suite plus the live run in 5.8. VS Code: `subscribe` is `unsupported`.
 
-Phase 2 checks: as phase 1.
+### Phase 6: Roslyn
 
-### Phase 3: Solution and projects
+- [ ] **6.1** Spike: `VisualStudioWorkspace` through `IComponentModel`, with `Microsoft.VisualStudio.LanguageServices` referenced
+      from the net48 Core project. If it does not compile, phase 6 is blocked and the user decides the host (the Roslyn tools need
+      a different host). Phases 1 to 5 proceed.
+- [ ] **6.2** `ide_semantic_references`, `ide_semantic_definition` (read). `SymbolFinder.FindReferencesAsync`,
+      `SymbolFinder.FindDeclarationsAsync`/`ISymbol.Locations`. Args `file`, `line`, `column`. Reply `{locations:[{file,line,column}]}`.
+      Existing `findAllReferences` and `goToDefinition` are unchanged.
+- [ ] **6.3** `ide_rename_symbol` (confirm). Args `file`, `line`, `column`, `newName`. Plan-only lists affected files and counts.
+      Applied applies changed documents through the workspace; per-file `failed` entries as 3.1. Live only.
+- [ ] **6.4** `ide_code_fixes` (read) and `ide_apply_code_fix` (confirm, arg `id`). Live only.
+- [ ] **6.5** Unsaved buffers: tool descriptions say results include unsaved edits. Live: edit a buffer without saving, confirm the
+      result includes the edit.
 
-Unit 3.1: `projectProperties` (read-only). Args `project` (string, name) and `names` (array of strings). Returns the named
-values from `Project.Properties`. Spike first: confirm names such as `TargetFramework` on SDK-style C# projects; unknown names
-return `null`, not an error. Fixture: refused by generic bridge.
+## 6. Tools at a glance
 
-Unit 3.2: `addProjectItem` (confirm). Args `project`, `file` (path), `mode` (`fromFile|fromNew`). Plan-only shows the item that
-would be added. Fixture: refused.
+| Tool | Action | Write | VS Code |
+|---|---|---|---|
+| ide_list_processes | listProcesses | no | unsupported |
+| ide_list_debugged_processes | listDebuggedProcesses | no | unsupported |
+| ide_list_threads | listThreads | no | unsupported |
+| ide_list_exceptions | listExceptions | no | unsupported |
+| ide_set_exception_break | setExceptionBreak | yes | unsupported |
+| ide_list_stack_frames | listStackFrames | no | unsupported |
+| ide_set_breakpoint_condition | setBreakpointCondition | yes | unsupported |
+| ide_enable_breakpoint / ide_disable_breakpoint | enableBreakpoint / disableBreakpoint | yes | equivalent (VS Code breakpoints API) |
+| ide_attach_process / ide_detach_all | attachProcess / detachAll | yes | unsupported |
+| ide_find_in_files | findInFiles | no | equivalent |
+| ide_replace_in_files | replaceInFiles | yes | equivalent |
+| ide_list_documents | listDocuments | no | equivalent |
+| ide_save_document / ide_close_document | saveDocument / closeDocument | yes | equivalent |
+| ide_undo_group | undoGroup | yes | unsupported |
+| ide_list_code_elements | listCodeElements | no | unsupported (VS Code symbols differ) |
+| ide_project_properties | projectProperties | no | unsupported |
+| ide_add_project_item / ide_remove_project_item | addProjectItem / removeProjectItem | yes | equivalent |
+| ide_close_solution | closeSolution | yes | unsupported |
+| ide_list_tasks | listTasks | no | unsupported |
+| ide_add_task / ide_clear_tasks | addTask / clearTasks | yes | unsupported |
+| ide_set_status | setStatus | yes | equivalent (status bar) |
+| ide_show_info_bar | showInfoBar | yes | equivalent (message) |
+| ide_write_activity_log | writeActivityLog | yes | unsupported |
+| ide_get_setting | getSetting | no | unsupported |
+| ide_subscribe_events / ide_read_events / ide_unsubscribe_events | (events pipe) | no | unsupported |
+| ide_semantic_references / ide_semantic_definition | (Roslyn) | no | unsupported |
+| ide_rename_symbol / ide_code_fixes / ide_apply_code_fix | (Roslyn) | yes (rename, apply) | unsupported |
 
-Unit 3.3: `removeProjectItem` (confirm). Args `project`, `file`. Calls `ProjectItem.Remove()`. The reply says the file stays on
-disk. Fixture: refused.
+"equivalent" means VS Code has an API for the same operation; the VS Code case is implemented in `ideActions.ts` in the same unit.
 
-Unit 3.4: `closeSolution` (confirm). Args `saveFirst` (bool, default false). Calls `Solution.Close(saveFirst)`. The bridge's own
-`AfterClosing` handler runs during this call, so unit 5.3 (handler unhooking) must be in place first. Fixture: refused.
+## 7. Live checklist (every unit that touches VS)
 
-Phase 3 checks: as phase 1.
+1. Close all VS instances, reinstall with `scripts/update-vs-extension.ps1` (one installer run). Check Community and Insiders.
+2. Open a solution. Call the tool through the MCP. Check the result matches the VS window it describes.
+3. For writes: call without `confirm` (expect `planned:true`, no change), then with `confirm:true` (expect the change).
+4. Restore any state changed.
+5. Record the result in the unit's checkbox and the commit message.
 
-### Phase 4: Tool windows, status and settings
+The aidevtools MCP is disconnected in this session. Until it is back, the live checks are run by hand and recorded here.
 
-Unit 4.1: `listTasks` (read-only) via `IVsTaskList`. Reply `{"tasks":[{category,text,file,line}]}` for tasks in the Task List.
-Spike: `SVsTaskList` service access from the package. Fixture: refused.
-
-Unit 4.2: `addTask` / `clearTasks` (confirm). An `IVsTaskProvider4` is registered by `BridgePackage` at initialisation (not in the
-action switch). `addTask` args `text`, `file`, `line`, `category` (`Error|Warning|Message`). `clearTasks` removes only tasks this
-bridge added (tracked by a bridge-owned category tag). Plan-only replies describe the change. Fixture: refused.
-
-Unit 4.3: `setStatus` (confirm). Args `text` (string, may be empty to clear). Calls `IVsStatusbar.SetText`. Fixture: refused.
-
-Unit 4.4: `showInfoBar` (confirm). Args `text`, `actions` (array of `{label, actionId}`, optional). Builds an `InfoBarModel`
-(`Microsoft.VisualStudio.Shell`) and hosts it through `IVsInfoBarHost` from the solution window frame. Action clicks are not
-returned in this unit (they need the event channel, phase 5). Fixture: refused.
-
-Unit 4.5: `writeActivityLog` (confirm). Args `level` (`Error|Warning|Information`), `source`, `message`. Calls
-`IVsActivityLog.LogEntry`. Fixture: refused.
-
-Unit 4.6: `getSetting` (read-only). Args `key` (string). Reads a VS setting through `IVsSettingsReader` (spike the member names
-first). Fixture: refused.
-
-Phase 4 checks: as phase 1. Info-bar and status changes are checked visually in VS.
-
-### Phase 5: Events (push channel)
-
-The current protocol is one request and one reply per connection (`conformance/protocol.md`, Pipe). A push channel is a new
-transport.
-
-Unit 5.1: transport design, written into `conformance/protocol.md` before any code.
-- A subscription is a `subscribe` request on a connection that stays open. The bridge replies `{"ok":true,"subscriptionId":"..."}`
-  then writes event lines `{"event":"<name>","seq":N,"data":{...}}` on that connection.
-- `unsubscribe` with the same id, or the connection closing, ends the subscription.
-- Heartbeat: the bridge writes `{"event":"heartbeat","seq":N}` every 15 seconds. The MCP side treats 45 seconds of silence as
-  disconnected.
-- Pid change: the subscription is closed with `{"event":"closed","reason":"pidChanged"}`. The MCP reconnects to the new manifest.
-- Watchdog restart: the subscription is closed with `{"event":"closed","reason":"bridgeRestarted"}`. Subscribers resubscribe.
-- Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
-  `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`, `dropped` (`data.count`).
-
-Unit 5.2: event sources in the bridge.
-- Keep the event objects as fields on `BridgeHost` (currently only `SolutionEvents` at `BridgeHost.cs:27`). Add `BuildEvents`,
-  `DebuggerEvents`, `DocumentEvents`. Extend the existing `SolutionEvents` handlers (`BridgeHost.cs:86-90`) rather than adding
-  a second subscription.
-- Spike the `DebuggerEvents` and `DocumentEvents` member names first.
-- Handlers only enqueue an event object. No handler waits on `_runOnMainThread` (`BridgeHost.cs:87` DTE events are already on the
-  UI thread; a handler that waits would deadlock while `SuppressUI` is on during `Build()`, `IdeActions.cs:214`).
-
-Unit 5.3: unhooking.
-- `BridgeHost.Dispose` (`BridgeHost.cs:54-65`) unhooks every handler. `unsubscribe` unhooks nothing global; it removes that
-  subscriber's queue only.
-- Dispose also closes every open subscription with `reason: bridgeRestarted`.
-
-Unit 5.4: per-subscriber queue.
-- Bounded queue, 500 events per subscriber, oldest dropped. A `dropped` event with `count` is written before the next event.
-- A subscriber that stops reading is closed after its queue has been full for 30 seconds.
-
-Unit 5.5: MCP side.
-- `ide_subscribe_events` starts a subscription and returns the subscription id. `ide_read_events` returns queued events since
-  a sequence number. `ide_unsubscribe_events` ends it. These are the MCP tools; the MCP process holds the connection and
-  buffers events.
-
-Unit 5.6: tests.
-- Bridge tests: a fake event source feeds the queue; drop, heartbeat and close reasons are asserted.
-- Live: subscribe, build a project, expect `buildBegin` then `buildDone`; break in the debugger, expect `enterBreakMode`.
-
-Phase 5 checks: bridge tests; live run above. VS Code parity: `subscribe` is `unsupported` for VS Code in this plan.
-
-### Phase 6: Roslyn semantic tools
-
-Unit 6.1: spike.
-- Reference `Microsoft.VisualStudio.LanguageServices` from the net48 Core project. Get `VisualStudioWorkspace` through
-  `IComponentModel` (`SComponentModel`). Record the result here. If it does not compile on net48, phase 6 stops here and the
-  rest of this phase is blocked until the user decides (the Roslyn tools need a different host).
-
-Unit 6.2: `ide_semantic_references` and `ide_semantic_definition` (read-only): `SymbolFinder.FindReferencesAsync` and
-`SymbolFinder.FindDeclarationsAsync` or `ISymbol.Locations`. Args `file`, `line`, `column`. Replies `{"locations":[{file,line,column}]}`.
-Existing `findAllReferences` and `goToDefinition` are kept.
-
-Unit 6.3: `ide_rename_symbol` (confirm). Args `file`, `line`, `column`, `newName`. Plan-only reply lists affected files and the
-count per file. Applied reply applies the changed documents through the workspace. Live only.
-
-Unit 6.4: `ide_code_fixes` (read-only) and `ide_apply_code_fix` (confirm). `ide_code_fixes` lists `{id,title,file,line}`.
-`ide_apply_code_fix` applies one by id; plan-only without `confirm`. Live only.
-
-Unit 6.5: unsaved buffers.
-- Roslyn sees the editor buffer. Tool descriptions say so. A live check edits a buffer without saving and confirms the result
-  includes the edit.
-
-Phase 6 tests: live only, with a fixture project under `tests/` for rename and references.
-
-## 6. Live checklist (every unit that touches VS)
-
-1. Reinstall the extension: `scripts/update-vs-extension.ps1` with all VS instances closed (one installer run). Check Community
-   and Insiders.
-2. Open a solution in VS. Call the new tool through the MCP. Check the result matches what the VS UI shows.
-3. For writes: call with `confirm` absent (expect `planned:true`, no change), then with `confirm:true` (expect the change).
-4. Restore any state changed in step 3.
-5. Record the result in the plan (the unit's box) and in the commit message.
-
-The aidevtools MCP is disconnected in this session. Until it is back, the live checklist is run manually and recorded here.
-
-## 7. Verification (whole plan)
+## 8. Verification
 
 - `dotnet build` clean for `src/Installers/Vs2026/Core` and `src/MCP/Core` after every unit.
-- `dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release` passes after every unit that touches fixtures.
-- VS Code core and installer tests pass after every unit that touches fixtures (after phase 0 `npm ci`).
-- Lite gate (`.claude/reference/lite-gate.md`) before each commit where aidevtools is available; full gate before the PR to `dev`.
+- Bridge conformance tests pass after every unit that touches fixtures.
+- VS Code core and installer tests pass after every unit that touches fixtures (after 0.1).
+- Lite gate before each commit where aidevtools is available. Full gate before the PR to `dev`.
 
-## 8. Risks
+## 9. Risks
 
-- Roslyn on net48 may not reference cleanly (unit 6.1). Phase 6 is blocked by it, not the other phases.
-- Event handlers that block can deadlock VS. Handlers only enqueue (unit 5.2).
-- Attach, detach, rename, replace, close and task writes change state outside the bridge. `confirm` is the only guard.
-- `SuppressUI` is on for all of `Invoke`. A long action (rename, replace, build) can hide a prompt. Each long action gets a live
-  run before it is enabled.
-- The `RunTests` action refuses in some states (`IdeActions.cs:158-163`). New actions use the same refusal shape.
-- VS Code parity doubles the fixture work. Each action states its VS Code status in the fixture.
+- Roslyn on net48 may not reference cleanly (6.1). Blocks phase 6 only.
+- Events pipe: a subscriber that never reads holds a writer. Covered by 5.5. A slow VS handler can delay events; handlers only enqueue (5.3).
+- `SuppressUI` is on for all of `Invoke`. Rename, replace, close and build run without prompts, so a dirty document can be discarded
+  silently. Closing and replacing refuse dirty state unless the caller says so (2.2, 3.4).
+- `Find2` results land in the shared Find Results window and change user-visible state (2.1).
+- Attach and detach act on other processes. Elevation mismatch fails with an error (1.8).
+- Destructive or state-changing writes depend on the model asking the user first (3.2). The bridge cannot tell a user's yes from a
+  model's guess. The `confirm` flag is a guard against accidents, not a security boundary.
 - `System.Text.Json` must match the version VS ships (csproj comment).
-- The worktree's git metadata was lost once this session; the worktree was re-cloned from origin. Keep pushing after each unit.
+- The worktree's git metadata was lost once this session. Push after each unit.
 
-## 9. Open items
+## 10. Open items
 
-None that block phases 1 to 5. Phase 6 depends on unit 6.1. Pending spikes are listed in section 4 and phase 0.
+- 0.3: coexist decision for the existing reference and definition actions. Needs the user's yes.
+- 6.1: Roslyn host. Decides whether phase 6 runs.
+- Pending spikes in section 4 are recorded as they are checked.
