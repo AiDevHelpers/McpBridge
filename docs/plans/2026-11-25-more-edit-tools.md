@@ -101,7 +101,8 @@ Visual Studio only and says so in its description.
       done: per-target `#if` branch reporting; divergence is reported, not analysed.) One logical document: multi-target and linked files resolve a path to all its `DocumentId`s, de-duplicate references
       by path and position, edit once, and report the `#if` branches Roslyn did not see in each target. Generated and read-only
       documents are refused.
-- [ ] **0.7** `diff` in every plan reply: a unified diff per changed file, capped at 40 files and 400 lines each.
+- [x] **0.7** (done: `UnifiedDiff.cs` gives one hunk per file, capped at 400 lines and 40 files with a note; `RunPlan` puts a `diff` array
+      in every plan reply; 101 VS Core tests pass.) `diff` in every plan reply: a unified diff per changed file, capped at 40 files and 400 lines each.
 - [ ] **0.8** `FileMover` creates and deletes files as well as moving them (SDK-style projects only), with a reply that says what
       happened to each. Checks that a file-system failure after the apply leaves a reported, recoverable state.
 - [ ] **0.9** Undo and atomicity check: record how many undo steps one `TryApplyChanges` over several files makes in Visual Studio

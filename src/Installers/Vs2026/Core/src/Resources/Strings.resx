@@ -107,6 +107,7 @@
   <data name="LogicalReadOnlyFile" xml:space="preserve"><value>'{0}' is read-only. Make it writable first.</value></data>
   <data name="LogicalNotRegular" xml:space="preserve"><value>'{0}' is a script document, which these tools do not edit.</value></data>
   <data name="LogicalDivergent" xml:space="preserve"><value>'{0}' is in several projects with different text, so the edit was applied by position to each. Check every target.</value></data>
+  <data name="DiffFilesTruncated" xml:space="preserve"><value>Diffs are shown for the first {0} files only.</value></data>
   <data name="MethodEditNotApplied" xml:space="preserve"><value>The workspace refused the method edit. Nothing was changed.</value></data>
   <data name="NoLocalProcess" xml:space="preserve"><value>No local process with pid {0}.</value></data>
   <data name="NoProjectNamed" xml:space="preserve"><value>No project named '{0}' in the open solution.</value></data>

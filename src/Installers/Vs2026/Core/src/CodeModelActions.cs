@@ -272,6 +272,28 @@ internal static class CodeModelActions
                 planned.Warnings.Add(Strings.Format("LogicalDivergent", path));
             }
 
+            if (planned.Result is { } changed)
+            {
+                var current = workspace.CurrentSolution;
+                var count = 0;
+                foreach (var documentId in changed.GetChanges(current).GetProjectChanges().SelectMany(p => p.GetChangedDocuments()))
+                {
+                    if (count++ >= UnifiedDiff.MaxFiles)
+                    {
+                        planned.Diffs.Add(Strings.Format("DiffFilesTruncated", UnifiedDiff.MaxFiles));
+                        break;
+                    }
+
+                    var before = await current.GetDocument(documentId)!.GetTextAsync().ConfigureAwait(true);
+                    var after = await changed.GetDocument(documentId)!.GetTextAsync().ConfigureAwait(true);
+                    var path = changed.GetDocument(documentId)!.FilePath ?? documentId.ToString();
+                    if (UnifiedDiff.Of(path, before.ToString(), after.ToString()) is { } diff)
+                    {
+                        planned.Diffs.Add(diff);
+                    }
+                }
+            }
+
             planned.Hash = await PlanHash.ComputeAsync(workspace.CurrentSolution, planned.Result).ConfigureAwait(true);
             if (confirm && expectedHash is not null && !PlanHash.Matches(expectedHash, planned.Hash))
             {

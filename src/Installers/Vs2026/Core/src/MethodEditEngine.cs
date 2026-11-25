@@ -85,6 +85,9 @@ internal sealed class MethodEditPlan
 
     public bool DocsUpdated { get; set; }
 
+    /// <summary>The unified diff of each changed file (<see cref="UnifiedDiff"/>), so the user can read the change before approving it.</summary>
+    public List<string> Diffs { get; } = new();
+
     /// <summary>Linked or multi-target files whose copies differed before the edit (<see cref="LogicalDocuments"/>).</summary>
     public List<string> Divergent { get; } = new();
 
@@ -127,6 +130,7 @@ internal sealed class MethodEditPlan
         docs_updated = DocsUpdated,
         plan_hash = Hash,
         divergent = Divergent,
+        diff = Diffs,
         tests = Tests.Select(t => t.ToReply()).ToList(),
         method = Method,
         uncovered_references = Uncovered,
