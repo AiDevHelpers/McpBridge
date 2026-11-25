@@ -35,6 +35,10 @@
     <Project Path="src/Helpers/PackageHelper/src/AiDevHelpers.Helpers.PackageHelper.csproj" />
     <Project Path="src/Helpers/PackageHelper/tests/AiDevHelpers.Helpers.PackageHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/ProjectHelper/">
+    <Project Path="src/Helpers/ProjectHelper/src/AiDevHelpers.Helpers.ProjectHelper.csproj" />
+    <Project Path="src/Helpers/ProjectHelper/tests/AiDevHelpers.Helpers.ProjectHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/GateHelper/">
     <Project Path="src/Helpers/GateHelper/src/AiDevHelpers.Helpers.GateHelper.csproj" />
     <Project Path="src/Helpers/GateHelper/tests/AiDevHelpers.Helpers.GateHelper.Tests.csproj" />

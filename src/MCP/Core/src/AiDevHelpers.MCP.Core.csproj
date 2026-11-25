@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\..\Helpers\SourceControlHelper\src\AiDevHelpers.Helpers.SourceControlHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\OutputHelper\src\AiDevHelpers.Helpers.OutputHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\PackageHelper\src\AiDevHelpers.Helpers.PackageHelper.csproj" />
+    <ProjectReference Include="..\..\..\Helpers\ProjectHelper\src\AiDevHelpers.Helpers.ProjectHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\GateHelper\src\AiDevHelpers.Helpers.GateHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\ExtensionsHelper\src\AiDevHelpers.Helpers.ExtensionsHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\TestingHelper\src\AiDevHelpers.Helpers.TestingHelper.csproj" />

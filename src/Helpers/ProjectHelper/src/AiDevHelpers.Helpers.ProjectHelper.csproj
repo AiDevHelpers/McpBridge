@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>AiDevHelpers.Helpers.ProjectHelper</PackageId>
+    <IsPackable>true</IsPackable>
+    <Authors>AiDevHelpers</Authors>
+    <RepositoryUrl>https://github.com/AiDevHelpers/McpBridge</RepositoryUrl>
+    <Description>AiDevHelpers ProjectHelper library: checks, audits and adds .NET projects to a solution.</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\src\AiDevHelpers.Common.csproj" />
+    <ProjectReference Include="..\..\PackageHelper\src\AiDevHelpers.Helpers.PackageHelper.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />
+  </ItemGroup>
+</Project>
