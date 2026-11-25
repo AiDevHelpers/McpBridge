@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
+
 using System.Linq;
 using EnvDTE;
 using Microsoft.VisualStudio.Shell;
@@ -29,34 +29,12 @@ internal static class FileMover
     private static object Apply(FileMove move, DTE? dte)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        string? error = null;
-        if (!File.Exists(move.From))
+        // An open copy is saved first so the move does not lose unsaved text.
+        if (File.Exists(move.From))
         {
-            error = Strings.Format("FileMoveMissing", move.From);
-        }
-        else if (File.Exists(move.To))
-        {
-            error = Strings.Format("FileMoveExists", move.To);
-        }
-        else if (move.Project is null || !File.Exists(move.Project) || !File.ReadAllText(move.Project).Contains("Sdk=\""))
-        {
-            error = Strings.Get("FileMoveNotSdk");
+            dte?.Documents.Cast<Document>().FirstOrDefault(d => string.Equals(d.FullName, move.From, StringComparison.OrdinalIgnoreCase))?.Save();
         }
 
-        if (error is null)
-        {
-            try
-            {
-                dte?.Documents.Cast<Document>().FirstOrDefault(d => string.Equals(d.FullName, move.From, StringComparison.OrdinalIgnoreCase))?.Save();
-                Directory.CreateDirectory(Path.GetDirectoryName(move.To)!);
-                File.Move(move.From, move.To);
-            }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                error = ex.Message;
-            }
-        }
-
-        return new { from = move.From, to = move.To, ok = error is null, error };
+        return FileOperations.Move(move.From, move.To, move.Project);
     }
 }

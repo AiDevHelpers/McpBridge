@@ -105,9 +105,10 @@ Visual Studio only and says so in its description.
       in every plan reply; 101 VS Core tests pass.) `diff` in every plan reply: a unified diff per changed file, capped at 40 files and 400 lines each.
 - [ ] **0.8** `FileMover` creates and deletes files as well as moving them (SDK-style projects only), with a reply that says what
       happened to each. Checks that a file-system failure after the apply leaves a reported, recoverable state.
-- [ ] **0.9** Undo and atomicity check: record how many undo steps one `TryApplyChanges` over several files makes in Visual Studio
+- [~] **0.9** Deferred to the live check in 9.1: it needs a running Visual Studio, and this session cannot measure undo steps. Until
+      then, the plan's "one undo" wording stands as a claim to verify. Undo and atomicity check: record how many undo steps one `TryApplyChanges` over several files makes in Visual Studio
       and what a closed file does; adjust section 2's "one undo" wording to what is true.
-- [ ] **0.10** `CallerPropagator`: the walk that follows callers up `depth` levels, shared by 2.5 and 7.5.
+- [x] **0.10** (done: `CallerPropagator.cs` walks callers up to a depth, each method once, recursion-safe; 4 tests pass.) `CallerPropagator`: the walk that follows callers up `depth` levels, shared by 2.5 and 7.5.
 
 ### Phase 1: delete
 
