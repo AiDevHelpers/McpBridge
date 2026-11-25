@@ -124,7 +124,7 @@ public sealed class IdeActions(DTE2 dte)
         "listProcesses" => ListProcesses(),
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
-        "listExceptions" => ListExceptions(),
+        "listExceptions" => ListExceptions(OptionalString(args, "group")),
         "listStackFrames" => ListStackFrames(),
         "findInFiles" => FindInFiles(
             RequireString(args, "pattern"),
@@ -342,8 +342,7 @@ public sealed class IdeActions(DTE2 dte)
                 continue;
             }
 
-            var doc = pane.TextDocument;
-            var text = doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+            var text = PaneText(pane);
             if (fromOffset is int offset)
             {
                 var slice = OutputPaneSlice.Slice(text, offset, maxChars, anchor);
@@ -372,8 +371,7 @@ public sealed class IdeActions(DTE2 dte)
     private object SearchOutput(string paneName, string pattern)
     {
         var pane = FindOutputPane(paneName);
-        var doc = pane.TextDocument;
-        var text = doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+        var text = PaneText(pane);
         var regex = new System.Text.RegularExpressions.Regex(pattern);
         var matches = text.Split('\n')
             .Select(l => l.TrimEnd('\r'))
@@ -386,6 +384,20 @@ public sealed class IdeActions(DTE2 dte)
     {
         FindOutputPane(paneName).Clear();
         return new { pane = paneName, cleared = true };
+    }
+
+    // A pane that has never been written has no text document yet. That is an empty pane, not an error.
+    private static string PaneText(OutputWindowPane pane)
+    {
+        try
+        {
+            var doc = pane.TextDocument;
+            return doc.StartPoint.CreateEditPoint().GetText(doc.EndPoint);
+        }
+        catch (COMException)
+        {
+            return string.Empty;
+        }
     }
 
     private OutputWindowPane FindOutputPane(string paneName)
@@ -775,7 +787,18 @@ public sealed class IdeActions(DTE2 dte)
     {
         foreach (Project project in dte.Solution.Projects)
         {
-            var found = FindInProject(project, name);
+            // Some solution folders and unloaded projects refuse the walk (E_INVALIDARG). Skip them; a name that is
+            // really missing then returns null, and the caller reports "no project named".
+            Project? found;
+            try
+            {
+                found = FindInProject(project, name);
+            }
+            catch (COMException)
+            {
+                continue;
+            }
+
             if (found is not null)
             {
                 return found;
@@ -860,11 +883,17 @@ public sealed class IdeActions(DTE2 dte)
     }
 
     // Break-on-throw settings, grouped as the debugger groups them. Read-only: nothing is changed here.
-    private object ListExceptions()
+    // Optional group filter: the full list is large (over 100 KB), so callers usually name one group.
+    private object ListExceptions(string? groupFilter)
     {
         var list = new List<object>();
         foreach (EnvDTE90.ExceptionSettings group in ((EnvDTE100.Debugger5)dte.Debugger).ExceptionGroups)
         {
+            if (groupFilter is not null && group.Name != groupFilter)
+            {
+                continue;
+            }
+
             foreach (EnvDTE90.ExceptionSetting setting in group)
             {
                 // Code throws for exception types that have no exception code; report null for those.
