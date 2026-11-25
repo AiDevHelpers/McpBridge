@@ -124,6 +124,17 @@ public sealed class IdeActions(DTE2 dte)
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(),
         "listStackFrames" => ListStackFrames(),
+        "setBreakpointCondition" => SetBreakpointCondition(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "condition"),
+            OptionalString(args, "hitCountType"),
+            OptionalInt(args, "hitCount"),
+            OptionalBool(args, "confirm") == true),
+        "enableBreakpoint" => SetBreakpointEnabled(RequireString(args, "file"), RequireInt(args, "line"), true, OptionalBool(args, "confirm") == true),
+        "disableBreakpoint" => SetBreakpointEnabled(RequireString(args, "file"), RequireInt(args, "line"), false, OptionalBool(args, "confirm") == true),
+        "attachProcess" => AttachProcess(RequireInt(args, "pid"), OptionalBool(args, "confirm") == true),
+        "detachAll" => DetachAll(OptionalBool(args, "confirm") == true),
         "setExceptionBreak" => SetExceptionBreak(
             RequireString(args, "group"),
             RequireString(args, "name"),
@@ -885,6 +896,158 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { debugger_mode = mode.ToString(), frames };
+    }
+
+    // Changes the condition, hit-count rule, or both, on the breakpoint(s) at file:line. Without confirm it only reports the change.
+    private object SetBreakpointCondition(string file, int line, string? condition, string? hitCountType, int? hitCount, bool confirm)
+    {
+        if (condition is null && hitCountType is null && hitCount is null)
+        {
+            throw new ArgumentException(Strings.Get("ConditionFlagRequired"));
+        }
+
+        var hitType = hitCountType switch
+        {
+            null => (dbgHitCountType?)null,
+            "always" => dbgHitCountType.dbgHitCountTypeNone,
+            "equal" => dbgHitCountType.dbgHitCountTypeEqual,
+            "multiple" => dbgHitCountType.dbgHitCountTypeMultiple,
+            "greaterOrEqual" => dbgHitCountType.dbgHitCountTypeGreaterOrEqual,
+            _ => throw new ArgumentException(Strings.Format("UnknownHitCountType", hitCountType)),
+        };
+
+        var matches = new List<Breakpoint>();
+        var breakpoints = dte.Debugger.Breakpoints;
+        for (var i = 1; i <= breakpoints.Count; i++)
+        {
+            var bp = breakpoints.Item(i);
+            if (SameFile(bp.File, file) && bp.FileLine == line)
+            {
+                matches.Add(bp);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new ArgumentException(Strings.Format("NoBreakpointAt", file, line));
+        }
+
+        var changes = matches.Select(bp => new
+        {
+            file = bp.File,
+            line = bp.FileLine,
+            condition = new { current = bp.Condition, proposed = condition ?? bp.Condition },
+            hit_count_type = new { current = bp.HitCountType.ToString(), proposed = hitType?.ToString() ?? bp.HitCountType.ToString() },
+            hit_count = new { current = bp.HitCountTarget, proposed = hitCount ?? bp.HitCountTarget },
+        }).ToList();
+
+        if (!confirm)
+        {
+            return new { planned = true, would = changes };
+        }
+
+        // Breakpoint.Condition and the hit-count properties are read-only. The supported path is to re-add the breakpoint at the
+        // same location with the new values (Breakpoints.Add overload with Condition and HitCount). Hit counts reset on re-add.
+        foreach (var bp in matches)
+        {
+            var bpFile = bp.File;
+            var bpLine = bp.FileLine;
+            var wasEnabled = bp.Enabled;
+            var newCondition = condition ?? bp.Condition;
+            var newConditionType = condition is not null ? dbgBreakpointConditionType.dbgBreakpointConditionTypeWhenTrue : bp.ConditionType;
+            var newHitType = hitType ?? bp.HitCountType;
+            var newHitCount = hitCount ?? bp.HitCountTarget;
+
+            bp.Delete();
+            var added = dte.Debugger.Breakpoints.Add(
+                File: bpFile,
+                Line: bpLine,
+                Condition: newCondition,
+                ConditionType: newConditionType,
+                HitCount: newHitCount,
+                HitCountType: newHitType);
+            added.Item(1).Enabled = wasEnabled;
+        }
+
+        return new { planned = false, applied = changes };
+    }
+
+    // Enables or disables every breakpoint at file:line. Without confirm it only reports the change.
+    private object SetBreakpointEnabled(string file, int line, bool enabled, bool confirm)
+    {
+        var matches = new List<Breakpoint>();
+        var breakpoints = dte.Debugger.Breakpoints;
+        for (var i = 1; i <= breakpoints.Count; i++)
+        {
+            var bp = breakpoints.Item(i);
+            if (SameFile(bp.File, file) && bp.FileLine == line)
+            {
+                matches.Add(bp);
+            }
+        }
+
+        if (matches.Count == 0)
+        {
+            throw new ArgumentException(Strings.Format("NoBreakpointAt", file, line));
+        }
+
+        var changes = matches.Select(bp => new { file = bp.File, line = bp.FileLine, enabled = new { current = bp.Enabled, proposed = enabled } }).ToList();
+        if (!confirm)
+        {
+            return new { planned = true, would = changes };
+        }
+
+        foreach (var bp in matches)
+        {
+            bp.Enabled = enabled;
+        }
+
+        return new { planned = false, applied = changes };
+    }
+
+    // Attaches the debugger to one local process. Without confirm it only reports the target.
+    private object AttachProcess(int pid, bool confirm)
+    {
+        EnvDTE.Process? target = null;
+        foreach (EnvDTE.Process process in dte.Debugger.LocalProcesses)
+        {
+            if (process.ProcessID == pid)
+            {
+                target = process;
+                break;
+            }
+        }
+
+        if (target is null)
+        {
+            throw new ArgumentException(Strings.Format("NoLocalProcess", pid));
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { pid, name = target.Name } };
+        }
+
+        target.Attach();
+        return new { planned = false, applied = new { pid, name = target.Name } };
+    }
+
+    // Detaches from every attached process. Without confirm it lists what would be detached.
+    private object DetachAll(bool confirm)
+    {
+        var attached = new List<object>();
+        foreach (EnvDTE.Process process in ((EnvDTE90a.Debugger4)dte.Debugger).DebuggedProcesses)
+        {
+            attached.Add(new { pid = process.ProcessID, name = process.Name });
+        }
+
+        if (!confirm)
+        {
+            return new { planned = true, would = new { detached = attached } };
+        }
+
+        dte.Debugger.DetachAll();
+        return new { planned = false, applied = new { detached = attached } };
     }
 
     private object ListDebuggedProcesses()

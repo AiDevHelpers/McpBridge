@@ -49,6 +49,31 @@
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
   },
+  "set_breakpoint_condition_refused_by_generic_bridge": {
+    "request": { "action": "setBreakpointCondition", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1, "condition": "x > 1" } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "enable_breakpoint_refused_by_generic_bridge": {
+    "request": { "action": "enableBreakpoint", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "disable_breakpoint_refused_by_generic_bridge": {
+    "request": { "action": "disableBreakpoint", "args": { "file": "C:\\__no_such__\\a.cs", "line": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "attach_process_refused_by_generic_bridge": {
+    "request": { "action": "attachProcess", "args": { "pid": 1 } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "detach_all_refused_by_generic_bridge": {
+    "request": { "action": "detachAll" },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
   "list_stack_frames_refused_by_generic_bridge": {
     "request": { "action": "listStackFrames" },
     "ok": false,

@@ -515,6 +515,66 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listStackFrames", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [Description("Set the condition, hit-count type, or hit count of the breakpoint(s) at a file and line. Re-adds the breakpoint, so hit counts reset. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeSetBreakpointCondition(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Optional: condition expression, for example 'count > 10'")] string? condition = null,
+        [Description("Optional: always, equal, multiple, or greaterOrEqual")] string? hitCountType = null,
+        [Description("Optional: hit count for the hit-count type")] int? hitCount = null,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("setBreakpointCondition", new { file, line, condition, hitCountType, hitCount, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Enable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeEnableBreakpoint(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("enableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Disable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeDisableBreakpoint(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line number")] int line,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("disableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Attach the debugger to one local process by pid. Without confirm it only returns the target. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeAttachProcess(
+        [Description("Process id from ide_list_processes")] int pid,
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("attachProcess", new { pid, confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Detach the debugger from every attached process. Without confirm it only lists what would be detached. Show the plan to the user and get their yes before setting confirm to true.")]
+    public Task<string> IdeDetachAll(
+        [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("detachAll", new { confirm }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,

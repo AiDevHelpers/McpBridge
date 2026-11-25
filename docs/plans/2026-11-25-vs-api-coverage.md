@@ -134,14 +134,13 @@ Units run in order. A blocked unit does not stop a later unit unless the later u
 - [x] **1.5** Built: `listStackFrames` (read). `Thread.StackFrames`, `FunctionName`, `ReturnType` compile; bridge tests 42 pass; live check pending. No args. Current thread, break mode; otherwise `frames: []` with `debugger_mode`.
       Reply `{frames:[{index,function,return_type}]}`. Module is out of scope unless the spike finds it cheaply.
       Spike: `Thread.StackFrames` compile. Live: frames match the Call Stack window.
-- [ ] **1.6** `setBreakpointCondition` (confirm). New action; `setBreakpoint` is unchanged. Args: `file`, `line`, `condition`
-      (string, optional), `hitCountType` (`always|equal|multiple|greaterOrEqual`, optional), `hitCount` (int, optional).
-      At least one of the three. Plan-only lists the breakpoint and the new values. Breakpoint not found is a `failed` entry.
-      Spike: `Breakpoints.Add` condition overload, or `Breakpoint` property setters (`Condition`, `HitCountType`, `HitCountTarget`).
-      Reads already return `condition` (`IdeActions.cs:547`); unit 1.6 adds `hit_count_type` to `listBreakpoints`.
-- [ ] **1.7** `enableBreakpoint` / `disableBreakpoint` (confirm). Args `file`, `line`. Writes `Breakpoint.Enabled`. Not found
-      is a `failed` entry. Plan-only names the breakpoints that would change.
-- [ ] **1.8** `attachProcess` (confirm) and `detachAll` (confirm). `attachProcess` args `pid`; calls `Process.Attach()` on the
+- [x] **1.6** Built: `setBreakpointCondition` (confirm). Spike result: `Breakpoint.Condition`, `ConditionType`, `HitCountType`,
+      `HitCountTarget` are read-only (compile error), so applying re-adds the breakpoint with `Breakpoints.Add(File, Line, Condition,
+      ConditionType, HitCount, HitCountType)`, which compiles. Hit counts reset on re-add (stated in the tool description). `enabled`
+      is restored after re-add. Live check pending. `listBreakpoints` `hit_count_type` not added in this unit.
+- [x] **1.7** Built: `enableBreakpoint` / `disableBreakpoint` (confirm). `Enabled` is read-write. Not-found is an argument error
+      (single location, same as 1.4).
+- [ ] **1.8** `attachProcess` (confirm) and `detachAll` (confirm). Built, live check pending. `attachProcess` args `pid`; calls `Process.Attach()` on the
       `LocalProcesses` item with that pid. Elevation mismatch: `Attach` throws; the reply carries the message, `ok:false`.
       `detachAll` calls `Debugger.DetachAll()`. Live: attach to a throwaway console app, detach, check it keeps running.
 
