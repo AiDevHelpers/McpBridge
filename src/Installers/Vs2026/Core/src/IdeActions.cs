@@ -171,6 +171,18 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "valueAtTop"),
             OptionalInt(args, "depth") ?? 1,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addEnumMember" => CodeModelActions.AddEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "name"),
+            OptionalString(args, "value"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editEnumMember" => CodeModelActions.EditEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "value"),
+            OptionalBool(args, "allowValueChange") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "changeSignature" => CodeModelActions.ChangeSignature(
             RequireString(args, "file"),
             RequireInt(args, "line"),

@@ -912,6 +912,42 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add a member to an enum, using Roslyn, with checks. name is the member's name and value an optional constant expression. The member goes after the last member, in the enum's own comma layout. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeAddEnumMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the enum")] int line,
+        [Description("The new member's name")] string name,
+        [Description("Optional: the member's constant value, such as 4 or 1 << 3")] string? value = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addEnumMember", new { file, line, name, value, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Change the value of the enum member at a line, using Roslyn, with checks. A [Flags] enum's values are bits, and an enum that looks persisted (it has attributes, or is public) may be stored by number, so those refuse a value change unless allowValueChange is true. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeEditEnumMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line of the enum member")] int line,
+        [Description("The new constant value, such as 4 or 1 << 3")] string value,
+        [Description("Optional: true allows the value change for a [Flags] or persisted enum. Default false.")] bool allowValueChange = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editEnumMember", new { file, line, value, allowValueChange, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Change a method's parameter list with Roslyn, and rewrite every call site to match, with checks. parameters is the new list in order, each {declaration, fromOld, valueForCallers}: declaration is the parameter as written in the new signature (such as \"int b\" or \"CancellationToken ct = default\"); fromOld is the index of the old parameter it keeps (omit it for a new parameter); valueForCallers is the argument every existing call gets for a new parameter (an expression, or default). A new parameter without a default needs valueForCallers. A removed parameter's argument is dropped only when it has no side effects. Calls it cannot rewrite (method groups, delegates, constructors, attributes, params) refuse the change and are listed as uncovered. A method that overrides, implements or is overridden is refused. The doc comment's param tags follow, as in ide_edit_method, and docs needs an entry for each new parameter when the method has a doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeChangeSignature(
         [Description("Full path of the source file")] string file,

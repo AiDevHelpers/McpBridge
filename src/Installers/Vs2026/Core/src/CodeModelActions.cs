@@ -195,6 +195,20 @@ internal static class CodeModelActions
         return RunPlan(solution => ThreadParameterEngine.PlanAsync(solution, file, line, column, declaration, valueAtTop, depth), confirm, planHash);
     }
 
+    // Adds a member to the enum at a line, or changes the value of the enum member at a line (EnumMemberEngine). Same plan, refuse and
+    // apply behaviour as EditMethod.
+    public static object AddEnumMember(string file, int line, string name, string? value, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EnumMemberEngine.AddAsync(solution, file, line, name, value), confirm, planHash);
+    }
+
+    public static object EditEnumMember(string file, int line, string value, bool allowValueChange, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EnumMemberEngine.EditValueAsync(solution, file, line, value, allowValueChange), confirm, planHash);
+    }
+
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
     // the inserted lines. The method plan checks diagnostics against the original solution, so members' own warnings are reported too.
     internal static async Task<MethodEditPlan> WithMembersAsync(
