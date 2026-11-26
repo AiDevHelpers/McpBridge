@@ -11,4 +11,6 @@
   <data name="KeyExists" xml:space="preserve"><value>Key {0} already exists with different text.</value></data>
   <data name="CultureSuggestInvariant" xml:space="preserve"><value>Pass CultureInfo.InvariantCulture, or CultureInfo.CurrentCulture for text shown to the user.</value></data>
   <data name="CultureSuggestOrdinal" xml:space="preserve"><value>Pass StringComparison.Ordinal or OrdinalIgnoreCase, or a culture when the order is shown to the user.</value></data>
+  <data name="OutputOutsideRoot" xml:space="preserve"><value>The output path is outside the root folder: {0}</value></data>
+  <data name="NotAResx" xml:space="preserve"><value>Not a .resx file: {0}</value></data>
 </root>

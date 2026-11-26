@@ -152,6 +152,47 @@ internal sealed class LocalizationTools
         }
     }
 
+    [McpServerTool]
+    [Description("Write a pseudo-localized copy (Strings.qps-ploc.resx) of a neutral Strings.resx: letters become accented look-alikes, text grows about 30 percent and is wrapped in brackets, " +
+                 "placeholders such as {0} are kept. Run the app with that culture to find unlocalized text and layout limits. The file is generated, so do not commit it. " +
+                 "Two steps: without confirm it returns the first 20 changes and a token and writes nothing; call again with confirm set to the token to write.")]
+    public static string LocalizationPseudo(
+        [Description("Folder the output must stay inside, usually the repo root")] string root,
+        [Description("The neutral Strings.resx, absolute or relative to root")] string resx,
+        [Description("Output path inside root, ending in .resx; default is Strings.qps-ploc.resx beside the neutral file")] string? output = null,
+        [Description("The token from the plan call; writes that plan")] string? confirm = null)
+    {
+        try
+        {
+            var writer = new PseudoWriter(PseudoPlans);
+            if (confirm is null)
+            {
+                var plan = writer.Plan(root, resx, output);
+                return Json(new
+                {
+                    ok = true,
+                    plan = true,
+                    token = plan.Token,
+                    expires_utc = plan.ExpiresUtc,
+                    count = plan.Changes.Count,
+                    output = Path.GetRelativePath(plan.Root, plan.OutputPath),
+                    changes = plan.Changes.Take(PseudoPreviewLimit).Select(c => new { key = c.Key, source = c.Source, pseudo = c.Pseudo }),
+                });
+            }
+
+            var file = writer.Apply(confirm);
+            return Json(new { ok = true, applied = true, count = 1, files = new[] { file } });
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or FileNotFoundException or ArgumentException or InvalidOperationException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
+    private const int PseudoPreviewLimit = 20;
+
+    private static readonly PlanStore<PseudoPlan> PseudoPlans = new();
+
     private static readonly PlanStore<ExtractPlan> ExtractPlans = new();
 
     private static readonly PlanStore<SyncPlan> SyncPlans = new();

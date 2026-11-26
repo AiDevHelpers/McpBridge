@@ -133,6 +133,24 @@ public sealed class LocalizationToolsTests : IDisposable
     }
 
     [Fact]
+    public void Pseudo_PlanThenConfirm()
+    {
+        Write("P/Resources/Strings.resx", TwoKeys);
+        var pseudoPath = Path.Combine(_root, "P/Resources/Strings.qps-ploc.resx");
+
+        using var plan = JsonDocument.Parse(LocalizationTools.LocalizationPseudo(_root, "P/Resources/Strings.resx"));
+
+        Assert.True(plan.RootElement.GetProperty("plan").GetBoolean());
+        Assert.Equal(2, plan.RootElement.GetProperty("count").GetInt32());
+        Assert.False(File.Exists(pseudoPath));
+
+        using var applied = JsonDocument.Parse(LocalizationTools.LocalizationPseudo(_root, "P/Resources/Strings.resx", confirm: plan.RootElement.GetProperty("token").GetString()));
+
+        Assert.True(applied.RootElement.GetProperty("applied").GetBoolean());
+        Assert.True(File.Exists(pseudoPath));
+    }
+
+    [Fact]
     public void BothToolsReturnOkFalseForAMissingFolder()
     {
         var missing = Path.Combine(_root, "nope");
