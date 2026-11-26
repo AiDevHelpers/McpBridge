@@ -1,6 +1,9 @@
 # Multi-word literals in helper sources that are not user-facing text. Format: Helper|literal. Anything else must be in Resources/Strings.resx.
 
 # Folder names on disk.
+# RoslynHelper protocol errors returned to the bridge caller; developer-facing, not UI text.
+RoslynHelper|Unknown or incomplete argument: {args[i]}
+RoslynHelper|Unknown action: {action}.
 ConfigHelper|Remote Debugger
 ExtensionsHelper|Microsoft Visual Studio
 
