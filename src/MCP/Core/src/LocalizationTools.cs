@@ -134,6 +134,24 @@ internal sealed class LocalizationTools
         }
     }
 
+    [McpServerTool]
+    [Description("List culture-sensitive C# calls that name no culture or comparison: string.Format, Parse and TryParse on numbers and dates, ToUpper and ToLower, string.Compare, " +
+                 "StartsWith, EndsWith, IndexOf and LastIndexOf with a string, and ToString() on numbers and dates. Takes a .cs file or a folder (bin and obj are skipped). " +
+                 "Uses the compiler's semantic model, so a call whose types do not resolve is skipped. A trailing // culture-ok comment suppresses a line. Report only; nothing is changed.")]
+    public static string LocalizationCultureCheck(
+        [Description("A .cs file or a folder")] string path)
+    {
+        try
+        {
+            var findings = CultureCallChecker.Check(path);
+            return Json(new { ok = true, count = findings.Count, findings = findings.Select(f => new { file = f.File, line = f.Line, kind = f.Kind, call = f.Call, suggestion = f.Suggestion }) });
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static readonly PlanStore<ExtractPlan> ExtractPlans = new();
 
     private static readonly PlanStore<SyncPlan> SyncPlans = new();

@@ -11,6 +11,13 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Dependency check (dependency-selection), 2026-11-26. Why: the compiler's own syntax tree and semantic model, so ToString() is flagged only
+         on numeric and date types; a line regex cannot know the receiver type. Newest stable on nuget.org (5.12.0), MIT, maintained by the .NET team.
+         Transitive: Microsoft.CodeAnalysis.Common 5.12.0, System.Collections.Immutable and System.Reflection.Metadata (in the net10.0 shared runtime).
+         Pinned exactly. The Vs2026 installer uses a VS-matched prerelease with ExcludeAssets="runtime", which a shipped library cannot use. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.12.0" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <ItemGroup>

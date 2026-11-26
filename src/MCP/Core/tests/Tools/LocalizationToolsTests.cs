@@ -122,6 +122,17 @@ public sealed class LocalizationToolsTests : IDisposable
     }
 
     [Fact]
+    public void CultureCheck_ReturnsTheFindingShape()
+    {
+        Write("C.cs", "class C { string M(int i) => i.ToString(); }\n");
+
+        using var doc = JsonDocument.Parse(LocalizationTools.LocalizationCultureCheck(_root));
+
+        var f = Assert.Single(doc.RootElement.GetProperty("findings").EnumerateArray());
+        Assert.Equal(("culture-call", "i.ToString()", 1), (f.GetProperty("kind").GetString(), f.GetProperty("call").GetString(), f.GetProperty("line").GetInt32()));
+    }
+
+    [Fact]
     public void BothToolsReturnOkFalseForAMissingFolder()
     {
         var missing = Path.Combine(_root, "nope");

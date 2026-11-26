@@ -37,7 +37,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - Gate: `gate_plan` and `gate_run` run the repo's full gate.
 - Tests: `test_affected`, `test_watch`, `test_failures`, `test_coverage`, `live_test_start`, and `test_hosts_list`/`test_hosts_stop` for stray test hosts.
 - Lint: `lint_check`.
-- Localization: `string_scan`, `resx_check`, `localization_sync_check`, `localization_sync`, `localization_extract`.
+- Localization: `string_scan`, `resx_check`, `localization_sync_check`, `localization_sync`, `localization_extract`, `localization_culture_check`.
 - Packages: `package_check`, `package_restore`, `package_outdated`.
 - Errors: `error_ingest`, `error_list`, `error_snapshot`, `error_changes` with suppression.
 - Diagnostics: `dotnet_diag` wraps dotnet-dump, stack, counters, gcdump, trace and symbol.
