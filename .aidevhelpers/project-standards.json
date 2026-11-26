@@ -28,6 +28,11 @@
       "reason": "Tests the Visual Studio 2026 VSIX installer, which targets .NET Framework 4.8."
     },
     {
+      "project": "src/Installers/Vs2026/Engines/src/AiDevHelpers.Installers.Vs2026.Engines.csproj",
+      "framework": "net48",
+      "reason": "Shared engine code for the Visual Studio 2026 extension, which loads .NET Framework 4.8 assemblies."
+    },
+    {
       "project": "src/Bridge/src/AiDevHelpers.Bridge.csproj",
       "framework": "net48",
       "reason": "The bridge loads into the Visual Studio extension host as .NET Framework 4.8 (see the System.Text.Json pin note in CLAUDE.md)."
