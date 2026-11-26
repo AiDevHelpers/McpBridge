@@ -190,8 +190,9 @@ var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated pro
     if (exit != 0 && !Console.IsInputRedirected)
     {
         // This window closes when the process ends, so a failure would vanish before it could be read.
-        Console.Error.WriteLine("The step did not finish. Press Enter to close this window.");
-        Console.ReadLine();
+        // No question is asked: the window stays open for ten seconds so the message can be read.
+        Console.Error.WriteLine("The step did not finish. This window closes in 10 seconds.");
+        Thread.Sleep(TimeSpan.FromSeconds(10));
     }
 
     return exit;

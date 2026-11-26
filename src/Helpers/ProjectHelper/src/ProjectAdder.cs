@@ -253,7 +253,7 @@ public static class ProjectAdder
             var choice = PackageVersions.Choose(uses.Where(u => string.Equals(u.Package, package, StringComparison.OrdinalIgnoreCase)).ToList());
             if (choice.Version is null)
             {
-                errors.Add(Strings.Format("FixNoVersion", package));
+                errors.Add(Strings.Format(isTest ? "AddTestVersionAsk" : "FixNoVersion", package));
                 continue;
             }
 
