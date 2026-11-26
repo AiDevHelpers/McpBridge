@@ -161,6 +161,72 @@ public sealed class IdeActions(DTE2 dte)
             ParseCallerEdits(args),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
+            OptionalBool(args, "rewriteCallers") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "threadParameter" => CodeModelActions.ThreadParameter(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "declaration"),
+            RequireString(args, "valueAtTop"),
+            OptionalInt(args, "depth") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addEnumMember" => CodeModelActions.AddEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "name"),
+            OptionalString(args, "value"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editEnumMember" => CodeModelActions.EditEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "value"),
+            OptionalBool(args, "allowValueChange") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editType" => CodeModelActions.EditType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "modifiers"),
+            args.ValueKind == JsonValueKind.Object && args.TryGetProperty("baseList", out _) ? StringList(args, "baseList").ToList() : null,
+            StringList(args, "attributesAdd").ToList(),
+            StringList(args, "attributesRemove").ToList(),
+            OptionalString(args, "typeParameters"),
+            OptionalString(args, "constraints"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "generateConstructor" => CodeModelActions.GenerateConstructor(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            OptionalString(args, "accessibility") ?? "public",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "implementMembers" => CodeModelActions.ImplementMembers(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "mode"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "explicit") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addType" => CodeModelActions.AddType(
+            RequireString(args, "anchorFile"),
+            RequireString(args, "declaration"),
+            StringList(args, "usings").ToList(),
+            OptionalString(args, "namespaceName"),
+            OptionalString(args, "summary"),
+            StringList(args, "attributes").ToList(),
+            OptionalBool(args, "withTests") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addInterfaceMember" => CodeModelActions.AddInterfaceMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "declaration"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "changeSignature" => CodeModelActions.ChangeSignature(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseNewParameters(args),
+            ParseDocUpdates(args),
+            new HeaderChange { ReturnType = OptionalString(args, "returnType"), Accessibility = OptionalString(args, "accessibility") },
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
@@ -170,7 +236,7 @@ public sealed class IdeActions(DTE2 dte)
             ParseDocUpdates(args),
             false,
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addOverload" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -179,7 +245,7 @@ public sealed class IdeActions(DTE2 dte)
             ParseDocUpdates(args),
             true,
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "deleteMember" => CodeModelActions.DeleteMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -203,25 +269,25 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "newNamespace"),
             OptionalBool(args, "moveFiles") == true,
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "moveType" => CodeModelActions.MoveType(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             RequireString(args, "newNamespace"),
             OptionalBool(args, "moveFiles") == true,
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMember" => CodeModelActions.AddMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "editMember" => CodeModelActions.EditMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             ParseMemberEdit(args),
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "tddAddTest" => CodeModelActions.TddAddTest(
             RequireString(args, "testFile"),
             RequireInt(args, "testLine"),
@@ -231,14 +297,14 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "methodText"),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "tddUpdateTest" => CodeModelActions.TddUpdateTest(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             RequireString(args, "newBody"),
             OptionalString(args, "targetFile"),
             OptionalInt(args, "targetLine"),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
@@ -1517,6 +1583,22 @@ public sealed class IdeActions(DTE2 dte)
         return edits;
     }
 
+    // The parameters array of changeSignature, in the new order: each item is a declaration, the old index it keeps (absent for a new
+    // parameter) and the argument existing calls get for a new parameter.
+    private static List<NewParameter> ParseNewParameters(JsonElement args)
+    {
+        var parameters = new List<NewParameter>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("parameters", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                parameters.Add(new NewParameter(RequireString(e, "declaration"), OptionalInt(e, "fromOld"), OptionalString(e, "valueForCallers")));
+            }
+        }
+
+        return parameters;
+    }
+
     // The optional callerEdits array of editMethod: each item names a reference (file, line, column) and its replacement text.
     private static List<CallerEdit> ParseCallerEdits(JsonElement args)
     {
@@ -1540,10 +1622,12 @@ public sealed class IdeActions(DTE2 dte)
         {
             foreach (var e in array.EnumerateArray())
             {
+                var declaration = OptionalString(e, "declaration");
                 var spec = new MemberSpec
                 {
-                    Name = RequireString(e, "name"),
-                    Type = RequireString(e, "type"),
+                    Name = declaration is null ? RequireString(e, "name") : OptionalString(e, "name") ?? "",
+                    Type = declaration is null ? RequireString(e, "type") : OptionalString(e, "type") ?? "",
+                    Declaration = declaration,
                     Accessibility = OptionalString(e, "accessibility") ?? "",
                     Backing = OptionalString(e, "backing") ?? "auto",
                     Setter = OptionalString(e, "setter") ?? "set",

@@ -84,6 +84,10 @@ MCP.Core|Test run finished: (\d+) Tests \((\d+) Passed, (\d+) Failed, (\d+) Skip
 Vs2026.Core|Every entry point runs on the UI thread: BridgePackage switches to it before calling Invoke, and Invoke asserts it with ThreadHelper.ThrowIfNotOnUIThread.
 Vs2026.Core|Visual Studio bridge package initialized for process {_pid}.
 Vs2026.Core|[IdeBridge] Watchdog error: {ex}
+# ide_add_type withTests writes this C# test source into the user's test project; it is code, not a user-facing message.
+Vs2026.Core|public sealed class
+Vs2026.Core|    public void NotWrittenYet() => Assert.Fail(\"test not written\");
+Vs2026.Core|public override
 Vs2026.Core|AiDevHelpers IDE Bridge
 Vs2026.Core|{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}
 Vs2026.Installer|AiDevHelpers IDE Bridge

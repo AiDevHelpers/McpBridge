@@ -36,7 +36,7 @@ internal static class MethodAddEngine
             return plan;
         }
 
-        var parsed = SyntaxFactory.ParseMemberDeclaration(newMethodText) as MethodDeclarationSyntax;
+        var parsed = SyntaxFactory.ParseMemberDeclaration(newMethodText) as BaseMethodDeclarationSyntax;
         if (parsed is null || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
         {
             plan.Reasons.Add(Strings.Get("MethodEditNewTextNotOneMethod"));
@@ -55,21 +55,21 @@ internal static class MethodAddEngine
         var position = lineStart + (text.Lines[line - 1].ToString().Length - text.Lines[line - 1].ToString().TrimStart().Length);
         var at = root!.FindToken(Math.Min(position, root.FullSpan.End)).Parent;
 
-        MethodDeclarationSyntax? existing = null;
+        BaseMethodDeclarationSyntax? existing = null;
         IMethodSymbol? existingSymbol = null;
         if (overload)
         {
-            existing = at?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-            existingSymbol = existing is null ? null : model!.GetDeclaredSymbol(existing);
+            existing = at?.AncestorsAndSelf().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
+            existingSymbol = existing is null ? null : model!.GetDeclaredSymbol(existing) as IMethodSymbol;
             if (existing is null || existingSymbol is null)
             {
                 plan.Reasons.Add(Strings.Get("MethodEditNotAMethod"));
                 return plan;
             }
 
-            if (parsed.Identifier.ValueText != existing.Identifier.ValueText)
+            if (NameOf(parsed) != NameOf(existing))
             {
-                plan.Reasons.Add(Strings.Format("MethodAddOverloadNameDiffers", existing.Identifier.ValueText));
+                plan.Reasons.Add(Strings.Format("MethodAddOverloadNameDiffers", NameOf(existing)));
                 return plan;
             }
         }
@@ -105,7 +105,7 @@ internal static class MethodAddEngine
         var docLines = new List<string>();
         var donor = overload && existing is not null && HasDocs(existing)
             ? existing
-            : type.Members.OfType<MethodDeclarationSyntax>().FirstOrDefault(HasDocs);
+            : type.Members.OfType<BaseMethodDeclarationSyntax>().FirstOrDefault(HasDocs);
         if (donor is not null)
         {
             var result = overload && existing is not null && ReferenceEquals(donor, existing)
@@ -152,12 +152,23 @@ internal static class MethodAddEngine
 
     internal static int CountLines(string text) => text.Count(c => c == '\n');
 
-    private static bool HasDocs(MethodDeclarationSyntax method) =>
+    private static bool HasDocs(BaseMethodDeclarationSyntax method) =>
         method.GetLeadingTrivia().Any(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia));
+
+    // The name a method is matched by: its identifier, or the operator or conversion it declares.
+    internal static string NameOf(BaseMethodDeclarationSyntax method) => method switch
+    {
+        MethodDeclarationSyntax m => m.Identifier.ValueText,
+        ConstructorDeclarationSyntax c => c.Identifier.ValueText,
+        DestructorDeclarationSyntax d => "~" + d.Identifier.ValueText,
+        OperatorDeclarationSyntax o => "operator " + o.OperatorToken.ValueText,
+        ConversionOperatorDeclarationSyntax co => co.ImplicitOrExplicitKeyword.ValueText + " operator " + co.Type.WithoutTrivia(),
+        _ => method.Kind().ToString(),
+    };
 
     // Where the new text goes: after the last overload, after the member at afterLine, or at the end of the type.
     private static (int At, string Before, string Suffix, string Indent) FindInsertion(
-        SourceText text, TypeDeclarationSyntax type, MethodDeclarationSyntax? existing, int? afterLine, string eol, MethodEditPlan plan)
+        SourceText text, TypeDeclarationSyntax type, BaseMethodDeclarationSyntax? existing, int? afterLine, string eol, MethodEditPlan plan)
     {
         var indent = type.Members.Count > 0
             ? LeadingWhitespace(text.Lines.GetLineFromPosition(type.Members[0].SpanStart).ToString())
@@ -166,7 +177,7 @@ internal static class MethodAddEngine
         MemberDeclarationSyntax? after = null;
         if (existing is not null)
         {
-            after = type.Members.OfType<MethodDeclarationSyntax>().Last(m => m.Identifier.ValueText == existing.Identifier.ValueText);
+            after = type.Members.OfType<BaseMethodDeclarationSyntax>().Last(m => NameOf(m) == NameOf(existing));
         }
         else if (afterLine is { } l)
         {
@@ -205,15 +216,15 @@ internal static class MethodAddEngine
 
     internal static string LeadingWhitespace(string line) => new string(line.TakeWhile(c => c == ' ' || c == '\t').ToArray());
 
-    private static async Task<IMethodSymbol?> FindNewMethodAsync(Solution edited, DocumentId id, int insertAt, MethodDeclarationSyntax parsed)
+    private static async Task<IMethodSymbol?> FindNewMethodAsync(Solution edited, DocumentId id, int insertAt, BaseMethodDeclarationSyntax parsed)
     {
         var document = edited.GetDocument(id)!;
         var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
         var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
-        var node = root?.DescendantNodes().OfType<MethodDeclarationSyntax>().FirstOrDefault(m =>
-            m.SpanStart >= insertAt && m.Identifier.ValueText == parsed.Identifier.ValueText
+        var node = root?.DescendantNodes().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault(m =>
+            m.SpanStart >= insertAt && NameOf(m) == NameOf(parsed)
             && m.ParameterList.ToString() == parsed.ParameterList.ToString());
-        return node is null || model is null ? null : model.GetDeclaredSymbol(node);
+        return node is null || model is null ? null : model.GetDeclaredSymbol(node) as IMethodSymbol;
     }
 
     // Adding an overload can move an existing call to the new method. Each call that used to bind to the original must still bind to it.

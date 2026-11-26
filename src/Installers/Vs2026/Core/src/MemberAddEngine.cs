@@ -65,7 +65,9 @@ internal static class MemberAddEngine
                 continue;
             }
 
-            foreach (var name in spec.Backing == "field" ? new[] { spec.Name, spec.BackingFieldName } : new[] { spec.Name })
+            var names = spec.Declaration is not null ? MemberRenderer.DeclaredNames(spec.Declaration)
+                : spec.Backing == "field" ? new[] { spec.Name, spec.BackingFieldName } : new[] { spec.Name };
+            foreach (var name in names)
             {
                 if (!existing.Add(name))
                 {
@@ -119,7 +121,7 @@ internal static class MemberAddEngine
         plan.InsertedAtLine = text.Lines.GetLineFromPosition(Math.Min(insertAt, text.Length)).LineNumber + 1 + MethodAddEngine.CountLines(before);
         plan.InsertedLines = MethodAddEngine.CountLines(inserted);
         plan.InsertedAfterLine = text.Lines.GetLineFromPosition(Math.Min(insertAt, text.Length)).LineNumber + 1;
-        plan.NewSignature = string.Join(", ", specs.Select(s => s.Accessibility + " " + s.Type + " " + s.Name));
+        plan.NewSignature = string.Join(", ", specs.Select(s => s.Declaration is not null ? s.Declaration.Trim() : s.Accessibility + " " + s.Type + " " + s.Name));
 
         if (finalize)
         {

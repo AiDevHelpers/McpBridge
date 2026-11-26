@@ -156,8 +156,52 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="CallSiteKeptParameterMissing" xml:space="preserve"><value>a kept parameter has no argument here (it relies on a default)</value></data>
   <data name="CallSiteNewParameterNoValue" xml:space="preserve"><value>a new parameter has no valueForCallers</value></data>
   <data name="CallSiteRemovedArgumentSideEffects" xml:space="preserve"><value>a removed parameter's argument could have side effects</value></data>
+  <data name="CallSiteReceiverMoved" xml:space="preserve"><value>an extension method's receiver (its first parameter) must stay first</value></data>
+  <data name="CallSiteNoArgumentList" xml:space="preserve"><value>a call without parentheses cannot take arguments; the new parameter needs a call written with them</value></data>
+  <data name="ChangeSignatureRelatedOutside" xml:space="preserve"><value>a member that must change with this one is outside the solution or has no declaration here, so the change is refused: {0}</value></data>
+  <data name="ChangeSignatureFamily" xml:space="preserve"><value>the signature change also applies to: {0}</value></data>
+  <data name="ChangeSignatureFamilyDocs" xml:space="preserve"><value>doc comments on the related members were not updated; check their param tags</value></data>
+  <data name="ThreadParameterDepth" xml:space="preserve"><value>depth must be zero or more</value></data>
+  <data name="ThreadParameterParams" xml:space="preserve"><value>{0} takes params, so a parameter cannot be added after them</value></data>
+  <data name="ThreadParameterFamily" xml:space="preserve"><value>{0} overrides, implements or is overridden; threading a parameter through it is not done</value></data>
+  <data name="ThreadParameterChanged" xml:space="preserve"><value>also changed: {0}</value></data>
+  <data name="ThreadParameterDocs" xml:space="preserve"><value>doc comments on the changed methods were not updated; add the new parameter to their param tags</value></data>
+  <data name="MemberDeclarationNotSupported" xml:space="preserve"><value>declaration must be exactly one indexer, event, event field or delegate: {0}</value></data>
   <data name="MemberEditDeclarationKind" xml:space="preserve"><value>the new declaration must be exactly one member of the same kind as the one at the line</value></data>
   <data name="MemberEditShapeChanged" xml:space="preserve"><value>the kind, access, type or parameters changed and {0} references use it; only its body or accessors can change while it is used</value></data>
-
+  <data name="ChangeSignatureBadHeader" xml:space="preserve"><value>not a return type or accessibility this tool sets: {0}</value></data>
+  <data name="EnumNotAnEnum" xml:space="preserve"><value>the line is not inside an enum</value></data>
+  <data name="EnumNotAMember" xml:space="preserve"><value>the line is not an enum member</value></data>
+  <data name="EnumBadValue" xml:space="preserve"><value>not a constant expression: {0}</value></data>
+  <data name="EnumValueFlags" xml:space="preserve"><value>a [Flags] enum's values are bits; changing one needs allowValueChange</value></data>
+  <data name="EnumValuePersisted" xml:space="preserve"><value>this enum looks persisted (it has attributes or is public); changing a value needs allowValueChange</value></data>
+  <data name="InterfaceNotAnInterface" xml:space="preserve"><value>the line is not inside an interface</value></data>
+  <data name="InterfaceBadMember" xml:space="preserve"><value>declaration must be one method, property, event or indexer: {0}</value></data>
+  <data name="InterfaceImplementers" xml:space="preserve"><value>implemented by {0}; adding a member would leave each of them without it, so the change is refused</value></data>
+  <data name="AddTypeBadDeclaration" xml:space="preserve"><value>declaration must be one type or delegate declaration: {0}</value></data>
+  <data name="AddTypeExists" xml:space="preserve"><value>a type named {0} already exists in the project</value></data>
+  <data name="AddTypeFileExists" xml:space="preserve"><value>a file already exists at {0}</value></data>
+  <data name="AddTypeFileNew" xml:space="preserve"><value>the type is written to a new file beside the anchor file; check its namespace and project membership</value></data>
+  <data name="AddTypeNoTestProject" xml:space="preserve"><value>no test project refers to the anchor's project, or its test framework is not xUnit, NUnit or MSTest</value></data>
+  <data name="ImplementNotAType" xml:space="preserve"><value>the line is not inside a class, struct or record</value></data>
+  <data name="ImplementUnsupported" xml:space="preserve"><value>{0} has a shape this tool does not stub (generic methods, for example)</value></data>
+  <data name="ImplementNoVirtual" xml:space="preserve"><value>no virtual or abstract member named {0} in the base classes</value></data>
+  <data name="ImplementBadMode" xml:space="preserve"><value>mode must be interface or override, not {0}</value></data>
+  <data name="ImplementNothingToDo" xml:space="preserve"><value>nothing to implement: every interface member is already implemented, or no names were given</value></data>
+  <data name="ImplementStubs" xml:space="preserve"><value>stubs throw NotImplementedException: {0}</value></data>
+  <data name="EditTypeNotAType" xml:space="preserve"><value>the line is not inside a class, struct or record</value></data>
+  <data name="EditTypeBadModifier" xml:space="preserve"><value>not a modifier this tool sets: {0}</value></data>
+  <data name="EditTypePartialNeedsPartial" xml:space="preserve"><value>the type has several parts, so the modifiers must include partial</value></data>
+  <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
+  <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
+  <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="GenerateCtorNoMembers" xml:space="preserve"><value>give at least one field or property to assign</value></data>
+  <data name="GenerateCtorNoMember" xml:space="preserve"><value>no field or property named {0} in this type</value></data>
+  <data name="GenerateCtorNoSetter" xml:space="preserve"><value>{0} has no setter, so a constructor cannot assign it</value></data>
+  <data name="GenerateCtorExists" xml:space="preserve"><value>a constructor with the parameter types of {0}({1}) already exists</value></data>
+  <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
+  <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
+  <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>
+  <data name="RewriteCallersNeedsChangeSignature" xml:space="preserve"><value>rewriteCallers only removes or reorders parameters; to add, rename or retype one, use ide_change_signature</value></data>
 </root>
 
