@@ -3,6 +3,9 @@ using AiDevHelpers.MCP.Core.Tools;
 using ModelContextProtocol.Protocol;
 using Xunit;
 
+// MCP9005: the tests build ClientCapabilities.Sampling to exercise the sampling check (see SamplingTranslator).
+#pragma warning disable MCP9005
+
 namespace AiDevHelpers.MCP.Core.Tests.Tools;
 
 public sealed class LocalizationToolsTests : IDisposable
@@ -215,3 +218,4 @@ public sealed class LocalizationToolsTests : IDisposable
         }
     }
 }
+#pragma warning restore MCP9005
