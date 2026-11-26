@@ -193,6 +193,7 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeBadModifier" xml:space="preserve"><value>not a modifier this tool sets: {0}</value></data>
   <data name="EditTypePartialNeedsPartial" xml:space="preserve"><value>the type has several parts, so the modifiers must include partial</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
+  <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>

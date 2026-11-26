@@ -188,6 +188,10 @@ public sealed class IdeActions(DTE2 dte)
             RequireInt(args, "line"),
             OptionalString(args, "modifiers"),
             args.ValueKind == JsonValueKind.Object && args.TryGetProperty("baseList", out _) ? StringList(args, "baseList").ToList() : null,
+            StringList(args, "attributesAdd").ToList(),
+            StringList(args, "attributesRemove").ToList(),
+            OptionalString(args, "typeParameters"),
+            OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "implementMembers" => CodeModelActions.ImplementMembers(
             RequireString(args, "file"),

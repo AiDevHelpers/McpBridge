@@ -22,8 +22,12 @@ internal static class EditTypeEngine
         "public", "internal", "private", "protected", "static", "abstract", "sealed", "partial", "readonly", "unsafe", "ref",
     };
 
-    public static async Task<MethodEditPlan> PlanAsync(Solution solution, string file, int line, string? modifiers, IReadOnlyList<string>? baseList)
+    public static async Task<MethodEditPlan> PlanAsync(
+        Solution solution, string file, int line, string? modifiers, IReadOnlyList<string>? baseList,
+        IReadOnlyList<string>? attributesAdd = null, IReadOnlyList<string>? attributesRemove = null, string? typeParameters = null, string? constraints = null)
     {
+        attributesAdd ??= Array.Empty<string>();
+        attributesRemove ??= Array.Empty<string>();
         var plan = new MethodEditPlan();
         var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
         var document = documentId is null ? null : solution.GetDocument(documentId);
@@ -90,7 +94,10 @@ internal static class EditTypeEngine
             }
 
             var bases = ReferenceEquals(declaration, part) && baseList is not null ? baseList : null;
-            if (newModifiers is null && bases is null)
+            var attributePrefix = ReferenceEquals(declaration, part)
+                ? string.Concat(attributesAdd.Where(a => a.Trim().Length > 0).Select(a => MemberRenderer.NormalizeAttribute(a) + " "))
+                : "";
+            if (newModifiers is null && bases is null && typeParameters is null && constraints is null && attributePrefix.Length == 0)
             {
                 continue;
             }
@@ -100,7 +107,38 @@ internal static class EditTypeEngine
                 changes[declarationDocument] = list = new List<TextChange>();
             }
 
-            list.Add(HeaderChange(declaration, newModifiers ?? declaration.Modifiers.Select(m => m.ValueText), bases));
+            list.Add(HeaderChange(declaration, newModifiers ?? declaration.Modifiers.Select(m => m.ValueText), bases, typeParameters, constraints, attributePrefix));
+        }
+
+        // Attributes to remove sit before the header, so they are their own changes. A list that mixes removed and kept attributes is refused.
+        var removeNames = attributesRemove.Select(SimpleName).ToList();
+        var removedLists = new List<AttributeListSyntax>();
+        foreach (var attributeList in part.AttributeLists)
+        {
+            var matches = attributeList.Attributes.Count(a => removeNames.Contains(SimpleName(a.Name.ToString())));
+            if (matches == 0)
+            {
+                continue;
+            }
+
+            if (matches != attributeList.Attributes.Count)
+            {
+                plan.Reasons.Add(Strings.Get("EditTypeAttributeMixed"));
+                return plan;
+            }
+
+            removedLists.Add(attributeList);
+        }
+
+        if (removedLists.Count > 0)
+        {
+            var partDocument = solution.GetDocumentId(part.SyntaxTree)!;
+            if (!changes.TryGetValue(partDocument, out var removals))
+            {
+                changes[partDocument] = removals = new List<TextChange>();
+            }
+
+            removals.AddRange(removedLists.Select(l => new TextChange(TextSpan.FromBounds(l.SpanStart, l.Span.End), "")));
         }
 
         if (changes.Count == 0)
@@ -132,18 +170,28 @@ internal static class EditTypeEngine
     }
 
     // The part's header rewritten: modifiers, keyword, name, type parameters, base list and constraints. Attributes and the body are kept.
-    private static TextChange HeaderChange(TypeDeclarationSyntax declaration, IEnumerable<string> modifiers, IReadOnlyList<string>? bases)
+    // An attribute name without its "Attribute" suffix, so "Serializable" and "SerializableAttribute" match.
+    private static string SimpleName(string name)
+    {
+        var last = name.Split('.').Last();
+        return last.EndsWith("Attribute", StringComparison.Ordinal) ? last.Substring(0, last.Length - "Attribute".Length) : last;
+    }
+
+    private static TextChange HeaderChange(
+        TypeDeclarationSyntax declaration, IEnumerable<string> modifiers, IReadOnlyList<string>? bases, string? typeParameters, string? constraints, string attributePrefix)
     {
         var start = declaration.Modifiers.Count > 0 ? declaration.Modifiers[0].SpanStart : declaration.Keyword.SpanStart;
         var end = declaration.OpenBraceToken.SpanStart;
         var baseText = bases is not null
             ? (bases.Count > 0 ? " : " + string.Join(", ", bases) : "")
             : declaration.BaseList is { } list ? " " + list.ToString() : "";
-        var constraints = string.Concat(declaration.ConstraintClauses.Select(c => " " + c.ToString()));
-        var header = string.Join(" ", modifiers.Append(declaration.Keyword.ValueText))
+        var constraintText = constraints is null
+            ? string.Concat(declaration.ConstraintClauses.Select(c => " " + c.ToString()))
+            : constraints.Trim().Length == 0 ? "" : " " + constraints.Trim();
+        var header = attributePrefix + string.Join(" ", modifiers.Append(declaration.Keyword.ValueText))
             + " " + declaration.Identifier.ValueText
-            + (declaration.TypeParameterList?.ToString() ?? "")
-            + baseText + constraints + " ";
+            + (typeParameters ?? declaration.TypeParameterList?.ToString() ?? "")
+            + baseText + constraintText + " ";
         return new TextChange(TextSpan.FromBounds(start, end), header);
     }
 }

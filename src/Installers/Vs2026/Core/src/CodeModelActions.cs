@@ -210,10 +210,12 @@ internal static class CodeModelActions
     }
 
     // Changes a class, struct or record's modifiers and base list (EditTypeEngine). Same plan, refuse and apply behaviour as EditMethod.
-    public static object EditType(string file, int line, string? modifiers, IReadOnlyList<string>? baseList, bool confirm, string? planHash = null)
+    public static object EditType(
+        string file, int line, string? modifiers, IReadOnlyList<string>? baseList, IReadOnlyList<string> attributesAdd, IReadOnlyList<string> attributesRemove,
+        string? typeParameters, string? constraints, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList), confirm, planHash);
+        return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
     // Adds stubs to a class, struct or record: its interface members, or overrides of named members (ImplementMembersEngine).

@@ -918,6 +918,10 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("1-based line inside the type")] int line,
         [Description("Optional: the full new set of modifiers, space separated")] string? modifiers = null,
         [Description("Optional: the new base class and interfaces of the part at the line. An empty array removes them.")] string[]? baseList = null,
+        [Description("Optional: attributes to add to the type at the line, such as \"Serializable\"")] string[]? attributesAdd = null,
+        [Description("Optional: attributes to remove from the type at the line, by name, such as \"Serializable\"")] string[]? attributesRemove = null,
+        [Description("Optional: the new type parameter list, such as \"<T, U>\". An empty string removes it. Partial parts must match.")] string? typeParameters = null,
+        [Description("Optional: the new constraint clauses, such as \"where T : class, new()\". An empty string removes them.")] string? constraints = null,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -925,7 +929,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("editType", new { file, line, modifiers, baseList, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("editType", new { file, line, modifiers, baseList, attributesAdd = attributesAdd ?? [], attributesRemove = attributesRemove ?? [], typeParameters, constraints, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return reply;
     }
 
