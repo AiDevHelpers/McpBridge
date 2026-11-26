@@ -125,3 +125,10 @@ Vs2026.Core|protected internal
 Vs2026.Core|private protected
 # Task List provider name: an identifier the IDE shows as the source, not prose.
 Vs2026.Core|AiDevHelpers bridge
+# ide_generate_members writes these C# member declarations and body lines into the user's type; they are code, not user-facing text.
+Vs2026.Core|public override bool Equals(object? obj)
+Vs2026.Core|    return obj is
+Vs2026.Core|public override int GetHashCode()
+Vs2026.Core|        int hash = 17;
+Vs2026.Core|        return hash;
+Vs2026.Core|public override string ToString()

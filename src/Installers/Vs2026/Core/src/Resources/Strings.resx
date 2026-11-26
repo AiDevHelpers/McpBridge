@@ -195,6 +195,9 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="GenerateMembersBadKind" xml:space="preserve"><value>kind must be equals, hashcode or tostring, not {0}</value></data>
+  <data name="GenerateMembersNoMembers" xml:space="preserve"><value>give at least one field or property</value></data>
+  <data name="GenerateMembersExists" xml:space="preserve"><value>the type already has {0}</value></data>
   <data name="GenerateCtorNoMembers" xml:space="preserve"><value>give at least one field or property to assign</value></data>
   <data name="GenerateCtorNoMember" xml:space="preserve"><value>no field or property named {0} in this type</value></data>
   <data name="GenerateCtorNoSetter" xml:space="preserve"><value>{0} has no setter, so a constructor cannot assign it</value></data>

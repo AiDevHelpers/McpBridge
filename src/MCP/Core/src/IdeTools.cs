@@ -912,6 +912,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add Equals, GetHashCode or ToString to the class, struct or record that contains a line, using Roslyn, with checks. kind is \"equals\", \"hashcode\" or \"tostring\"; members names the fields and properties it uses. Refused when the type already declares that member. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeGenerateMembers(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("\"equals\", \"hashcode\" or \"tostring\"")] string kind,
+        [Description("Field and property names the member uses")] string[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("generateMembers", new { file, line, kind, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add a constructor to the class, struct or record that contains a line, using Roslyn, with checks. members names the fields and properties it takes and assigns (in order); each parameter is the member name with the first letter lower-cased. accessibility defaults to public. Refused for a member with no setter, an unknown member, or a constructor that already takes the same parameter types. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeGenerateConstructor(
         [Description("Full path of the source file")] string file,
