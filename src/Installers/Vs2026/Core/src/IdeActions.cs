@@ -193,6 +193,11 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "organizeFile" => CodeModelActions.OrganizeFile(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "action"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "moveMember" => CodeModelActions.MoveMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),

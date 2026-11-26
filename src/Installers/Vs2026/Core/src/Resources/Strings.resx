@@ -195,6 +195,14 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="OrganizeNoTypes" xml:space="preserve"><value>the file declares no type</value></data>
+  <data name="OrganizeBadAction" xml:space="preserve"><value>action must be split or rename, not {0}</value></data>
+  <data name="OrganizeNotATopLevelType" xml:space="preserve"><value>the line is not inside a top-level type of this file</value></data>
+  <data name="OrganizeNothingToSplit" xml:space="preserve"><value>the file holds one type, so there is nothing to split</value></data>
+  <data name="OrganizeRenameOneType" xml:space="preserve"><value>rename needs a file that holds exactly one type</value></data>
+  <data name="OrganizeAlreadyNamed" xml:space="preserve"><value>the file is already named after its type</value></data>
+  <data name="OrganizeSplitDone" xml:space="preserve"><value>{0} moves to {1}; its usings and namespace are copied</value></data>
+  <data name="OrganizeRenamed" xml:space="preserve"><value>renamed {0} to {1}</value></data>
   <data name="MovePullUpNoBase" xml:space="preserve"><value>pull up needs a base class that is declared in the solution (not object or a type from another assembly)</value></data>
   <data name="MoveInstanceState" xml:space="preserve"><value>{0} uses instance state; a static member has none, so the move is refused (passing that state as a parameter is not written yet)</value></data>
   <data name="MoveSameType" xml:space="preserve"><value>the member is already in the destination type</value></data>

@@ -912,6 +912,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Change a file's layout, using Roslyn, with checks. action \"split\" moves the top-level type at line out of a file that holds several types into its own file named after it, beside the original, with the original's usings and namespace. action \"rename\" renames a file that holds exactly one type to that type's name. Refused when the target file exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeOrganizeFile(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the type (for split); any line for rename")] int line,
+        [Description("\"split\" or \"rename\"")] string action,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("organizeFile", new { file, line, action, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Move a method, property or field to another type in the solution, using Roslyn, with checks. toType is the destination type's name (or its full display name when the simple name is ambiguous). The member's text and doc comment move to the end of the destination. References qualified by the source type's name are renamed to the destination; other references need a callerEdits entry each. Refused for an override, implementation or implemented member, and for a move that stops compiling in its new place. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeMoveMember(
         [Description("Full path of the source file")] string file,

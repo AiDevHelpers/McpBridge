@@ -218,6 +218,13 @@ internal static class CodeModelActions
         return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
+    // Splits a top-level type into its own file, or renames a one-type file to its type (OrganizeFileEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object OrganizeFile(string file, int line, string action, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => OrganizeFileEngine.PlanAsync(solution, file, line, action), confirm, planHash);
+    }
+
     // Moves a method, property or field to another type in the solution (MoveMemberEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object MoveMember(
         string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic, bool pullUp, bool confirm, string? planHash = null)
