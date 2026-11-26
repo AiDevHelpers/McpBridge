@@ -78,8 +78,14 @@ internal static class ExtractMethodEngine
             return plan;
         }
 
-        var flow = model!.AnalyzeDataFlow(first, last);
-        if (!flow.Succeeded)
+        if (model is null)
+        {
+            plan.Reasons.Add(Strings.Get("ExtractNoFlow"));
+            return plan;
+        }
+
+        var flow = model.AnalyzeDataFlow(first, last);
+        if (flow is null || !flow.Succeeded)
         {
             plan.Reasons.Add(Strings.Get("ExtractNoFlow"));
             return plan;

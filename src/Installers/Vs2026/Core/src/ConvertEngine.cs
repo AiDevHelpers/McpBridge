@@ -431,7 +431,8 @@ internal static class ConvertEngine
                 return plan;
             }
 
-            var getter = declaration.ExpressionBody?.Expression.ToString() ?? declaration.AccessorList?.Accessors.FirstOrDefault()?.Body?.Statements.OfType<ReturnStatementSyntax>().FirstOrDefault()?.Expression.ToString();
+            var getter = declaration.ExpressionBody?.Expression.ToString()
+                ?? declaration.AccessorList?.Accessors.FirstOrDefault()?.Body?.Statements.OfType<ReturnStatementSyntax>().FirstOrDefault()?.Expression?.ToString();
             if (getter is null)
             {
                 plan.Reasons.Add(Strings.Get("ConvertPropertyShape"));

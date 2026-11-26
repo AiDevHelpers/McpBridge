@@ -72,7 +72,7 @@ internal static class AsyncEngine
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var queue = new Queue<(IMethodSymbol Symbol, MethodDeclarationSyntax Declaration, DocumentId Document, int Level)>();
-        queue.Enqueue((symbol, target, documentId, 0));
+        queue.Enqueue((symbol, target, documentId!, 0));
         var newName = symbol.Name.EndsWith("Async", StringComparison.Ordinal) ? symbol.Name : symbol.Name + "Async";
         while (queue.Count > 0)
         {
