@@ -34,6 +34,7 @@ public sealed class BridgeServer : IDisposable
     private DateTime? _lastRequestUtc;
     private long _requestsHandled;
 
+    /// <summary>Creates a server for one instance's request pipe. <paramref name="invoke"/> runs each action; <paramref name="solutionPath"/> reports the open solution for health.</summary>
     public BridgeServer(
         string pipeName,
         Func<string, JsonElement, Task<object>> invoke,
@@ -49,6 +50,7 @@ public sealed class BridgeServer : IDisposable
     /// <summary>True while the listen loop is running (it is not faulted, cancelled, or never started).</summary>
     public bool IsRunning => _loop is { IsCompleted: false } && !_cts.IsCancellationRequested;
 
+    /// <summary>Starts the listen loop on a background task. Does nothing when it is already running.</summary>
     public void Start()
     {
         if (IsRunning)
@@ -170,7 +172,7 @@ public sealed class BridgeServer : IDisposable
     }
 
     // Answered without touching Visual Studio, so it reports even when the UI thread is busy.
-    // True while the UI thread answers the watchdog's ping. Set by the host; defaults to true when no host sets it.
+    /// <summary>True while the UI thread answers the watchdog's ping. Set by the host; defaults to true when no host sets it.</summary>
     public Func<bool>? UiResponsive { get; set; }
 
     private object Health() => new
@@ -186,6 +188,7 @@ public sealed class BridgeServer : IDisposable
 
     private static TimeSpan Min(TimeSpan a, TimeSpan b) => a <= b ? a : b;
 
+    /// <summary>Cancels the listen loop and releases its cancellation source.</summary>
     public void Dispose()
     {
         _cts.Cancel();

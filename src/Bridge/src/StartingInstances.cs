@@ -15,6 +15,7 @@ public static class StartingInstances
 
     private static string FileFor(int pid) => Path.Combine(Folder, $"starting-{pid}.json");
 
+    /// <summary>Writes a starting marker for a launch whose bridge has not registered yet.</summary>
     public static void Write(int pid, string solutionPath)
     {
         try
@@ -30,6 +31,7 @@ public static class StartingInstances
         }
     }
 
+    /// <summary>Removes the starting marker for the process id. A missing or locked file is ignored.</summary>
     public static void Clear(int pid)
     {
         try

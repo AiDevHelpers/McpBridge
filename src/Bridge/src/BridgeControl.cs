@@ -27,6 +27,7 @@ public static class BridgeControl
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
     }
 
+    /// <summary>The status line for the Services tab: not attached, running with its pipe, stopped by the user, or stopped unexpectedly.</summary>
     public static string Describe()
     {
         if (_bridge is null)
@@ -42,6 +43,7 @@ public static class BridgeControl
         return _userStopped ? "Stopped" : "Stopped unexpectedly; the watchdog will restart it";
     }
 
+    /// <summary>Starts the bridge listener and writes this instance's registry entry. Returns a message for the user.</summary>
     public static string Start()
     {
         if (_bridge is null)
@@ -55,6 +57,7 @@ public static class BridgeControl
         return "IDE bridge started.";
     }
 
+    /// <summary>Stops the bridge listener and removes this instance's registry entry. Returns a message for the user.</summary>
     public static string Stop()
     {
         if (_bridge is null)
