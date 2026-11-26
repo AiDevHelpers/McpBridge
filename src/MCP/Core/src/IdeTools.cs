@@ -912,6 +912,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add a method, property, event or indexer to an interface, using Roslyn, with checks. declaration is its full C# text. Every type that implements the interface would lack the member, so the reply lists each implementer and the change is refused while there are any. Without confirm it only returns the checks. Visual Studio only.")]
+    public async Task<string> IdeAddInterfaceMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the interface")] int line,
+        [Description("The member's full C# text, such as \"void Save(int id);\"")] string declaration,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addInterfaceMember", new { file, line, declaration, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add a member to an enum, using Roslyn, with checks. name is the member's name and value an optional constant expression. The member goes after the last member, in the enum's own comma layout. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeAddEnumMember(
         [Description("Full path of the source file")] string file,

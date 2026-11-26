@@ -183,6 +183,11 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "value"),
             OptionalBool(args, "allowValueChange") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addInterfaceMember" => CodeModelActions.AddInterfaceMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "declaration"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "changeSignature" => CodeModelActions.ChangeSignature(
             RequireString(args, "file"),
             RequireInt(args, "line"),

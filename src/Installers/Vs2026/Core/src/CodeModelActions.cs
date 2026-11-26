@@ -209,6 +209,14 @@ internal static class CodeModelActions
         return RunPlan(solution => EnumMemberEngine.EditValueAsync(solution, file, line, value, allowValueChange), confirm, planHash);
     }
 
+    // Adds a method, property, event or indexer to the interface at a line (InterfaceMemberEngine). Same plan, refuse and apply
+    // behaviour as EditMethod.
+    public static object AddInterfaceMember(string file, int line, string declaration, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => InterfaceMemberEngine.AddAsync(solution, file, line, declaration), confirm, planHash);
+    }
+
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
     // the inserted lines. The method plan checks diagnostics against the original solution, so members' own warnings are reported too.
     internal static async Task<MethodEditPlan> WithMembersAsync(

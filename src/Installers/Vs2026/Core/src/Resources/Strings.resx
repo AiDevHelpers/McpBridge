@@ -175,6 +175,9 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EnumBadValue" xml:space="preserve"><value>not a constant expression: {0}</value></data>
   <data name="EnumValueFlags" xml:space="preserve"><value>a [Flags] enum's values are bits; changing one needs allowValueChange</value></data>
   <data name="EnumValuePersisted" xml:space="preserve"><value>this enum looks persisted (it has attributes or is public); changing a value needs allowValueChange</value></data>
+  <data name="InterfaceNotAnInterface" xml:space="preserve"><value>the line is not inside an interface</value></data>
+  <data name="InterfaceBadMember" xml:space="preserve"><value>declaration must be one method, property, event or indexer: {0}</value></data>
+  <data name="InterfaceImplementers" xml:space="preserve"><value>implemented by {0}; adding a member would leave each of them without it, so the change is refused</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>
