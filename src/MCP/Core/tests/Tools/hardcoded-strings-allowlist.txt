@@ -4,6 +4,10 @@
 # RoslynHelper protocol errors returned to the bridge caller; developer-facing, not UI text.
 RoslynHelper|Unknown or incomplete argument: {args[i]}
 RoslynHelper|Unknown action: {action}.
+RoslynHelper|loadSolution needs a solutionPath.
+RoslynHelper|Solution not found: {solutionPath}.
+RoslynHelper|No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.
+RoslynHelper|Project did not load and MSBuild reported no diagnostic.
 ConfigHelper|Remote Debugger
 ExtensionsHelper|Microsoft Visual Studio
 
