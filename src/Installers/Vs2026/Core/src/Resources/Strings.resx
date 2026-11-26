@@ -189,6 +189,11 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="ImplementBadMode" xml:space="preserve"><value>mode must be interface or override, not {0}</value></data>
   <data name="ImplementNothingToDo" xml:space="preserve"><value>nothing to implement: every interface member is already implemented, or no names were given</value></data>
   <data name="ImplementStubs" xml:space="preserve"><value>stubs throw NotImplementedException: {0}</value></data>
+  <data name="EditTypeNotAType" xml:space="preserve"><value>the line is not inside a class, struct or record</value></data>
+  <data name="EditTypeBadModifier" xml:space="preserve"><value>not a modifier this tool sets: {0}</value></data>
+  <data name="EditTypePartialNeedsPartial" xml:space="preserve"><value>the type has several parts, so the modifiers must include partial</value></data>
+  <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
+  <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>

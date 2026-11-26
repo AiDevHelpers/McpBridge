@@ -912,6 +912,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Change the modifiers and base list of the class, struct or record at a line, using Roslyn, with checks. modifiers replaces the whole set, such as \"public sealed\" or \"internal static partial\"; for a partial type it must include partial and applies to every part. baseList replaces the base class and interfaces of the part at the line, such as [\"Base\", \"IDisposable\"]. Adding abstract or static is refused while the type is used. Narrowing access and other breaking uses are refused by the checks. Attributes, type parameters and constraints are not changed. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeEditType(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the type")] int line,
+        [Description("Optional: the full new set of modifiers, space separated")] string? modifiers = null,
+        [Description("Optional: the new base class and interfaces of the part at the line. An empty array removes them.")] string[]? baseList = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editType", new { file, line, modifiers, baseList, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add stubs to the class, struct or record that contains a line, using Roslyn, with checks. mode \"interface\" stubs every member of its interfaces that nothing implements yet; mode \"override\" overrides the members named in members (virtual or abstract members of its base classes). explicit true writes the interface stubs as explicit implementations. Each stub throws System.NotImplementedException. The stubs go at the end of the type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeImplementMembers(
         [Description("Full path of the source file")] string file,

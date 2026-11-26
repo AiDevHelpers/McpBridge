@@ -183,6 +183,12 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "value"),
             OptionalBool(args, "allowValueChange") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editType" => CodeModelActions.EditType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "modifiers"),
+            args.ValueKind == JsonValueKind.Object && args.TryGetProperty("baseList", out _) ? StringList(args, "baseList").ToList() : null,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "implementMembers" => CodeModelActions.ImplementMembers(
             RequireString(args, "file"),
             RequireInt(args, "line"),

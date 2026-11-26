@@ -209,6 +209,13 @@ internal static class CodeModelActions
         return RunPlan(solution => EnumMemberEngine.EditValueAsync(solution, file, line, value, allowValueChange), confirm, planHash);
     }
 
+    // Changes a class, struct or record's modifiers and base list (EditTypeEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object EditType(string file, int line, string? modifiers, IReadOnlyList<string>? baseList, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList), confirm, planHash);
+    }
+
     // Adds stubs to a class, struct or record: its interface members, or overrides of named members (ImplementMembersEngine).
     public static object ImplementMembers(
         string file, int line, string mode, IReadOnlyList<string> names, bool explicitImplementation, bool confirm, string? planHash = null)
