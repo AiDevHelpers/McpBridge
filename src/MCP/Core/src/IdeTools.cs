@@ -912,6 +912,37 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("List the code actions offered at a line, using Roslyn. Only the fix for a missing type name is computed: adding a using directive for a type in a namespace the file does not import. Each result has an id to pass to ide_apply_code_action. The IDE's own fixes are not listed. Read only. Visual Studio only.")]
+    public async Task<string> IdeListCodeActions(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line with the missing name")] int line,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("listCodeActions", new { file, line }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Apply a code action listed by ide_list_code_actions at a line, with the standard checks. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeApplyCodeAction(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line the action was listed for")] int line,
+        [Description("The id from ide_list_code_actions")] string id,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("applyCodeAction", new { file, line, id, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Move the named members of a partial class, struct or record's part at a line into a new part in a new file named Type.<suffix>.cs beside the part's file, using Roslyn, with checks. The new part repeats the type's access modifiers, keyword and name, and copies the file's usings and namespace. Refused for a member name that is not in the part, or a file that already exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractPartial(
         [Description("Full path of the file holding the part")] string file,
