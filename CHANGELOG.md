@@ -1,5 +1,13 @@
 # Changelog
 
+## Instance check and event filter limits (unreleased)
+
+- `ide_list_instances` takes `solutionPath`, `expectedBranch` and `expectedWorktree`, and adds a `check`: whether the solution is open, and whether an instance is open on the expected branch and worktree.
+- Instances list their git branch and worktree.
+- `.claude/aidevhelpers.json` takes an `eventFilter` object (`waitSeconds`, `maxEvents`, `maxEventTextChars`, `maxSummaryMessageChars`, `maxReplyChars`). A bad value falls back to its default and is listed in `settings_warnings`.
+- `ide_build` reads the router's `instance_pid`, so it no longer fails with "An error occurred".
+- Replies over `maxReplyChars` are cut to fit and marked `reply_truncated`.
+
 ## Project scaffolding tools (unreleased)
 
 - New ProjectHelper: `project_types_list`, `project_audit`, `project_fix_plan`/`project_fix_confirm`, `project_add_plan`/`project_add_confirm`, `project_add_test_plan`/`project_add_test_confirm`.
