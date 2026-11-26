@@ -166,6 +166,7 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="ThreadParameterFamily" xml:space="preserve"><value>{0} overrides, implements or is overridden; threading a parameter through it is not done</value></data>
   <data name="ThreadParameterChanged" xml:space="preserve"><value>also changed: {0}</value></data>
   <data name="ThreadParameterDocs" xml:space="preserve"><value>doc comments on the changed methods were not updated; add the new parameter to their param tags</value></data>
+  <data name="MemberDeclarationNotSupported" xml:space="preserve"><value>declaration must be exactly one indexer, event, event field or delegate: {0}</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>

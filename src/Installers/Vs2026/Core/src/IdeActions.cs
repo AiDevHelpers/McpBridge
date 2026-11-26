@@ -1572,10 +1572,12 @@ public sealed class IdeActions(DTE2 dte)
         {
             foreach (var e in array.EnumerateArray())
             {
+                var declaration = OptionalString(e, "declaration");
                 var spec = new MemberSpec
                 {
-                    Name = RequireString(e, "name"),
-                    Type = RequireString(e, "type"),
+                    Name = declaration is null ? RequireString(e, "name") : OptionalString(e, "name") ?? "",
+                    Type = declaration is null ? RequireString(e, "type") : OptionalString(e, "type") ?? "",
+                    Declaration = declaration,
                     Accessibility = OptionalString(e, "accessibility") ?? "",
                     Backing = OptionalString(e, "backing") ?? "auto",
                     Setter = OptionalString(e, "setter") ?? "set",

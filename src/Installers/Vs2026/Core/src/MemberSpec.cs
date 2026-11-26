@@ -41,6 +41,12 @@ internal sealed class MemberSpec
 
     public string? Summary { get; set; }
 
+    /// <summary>
+    /// The full C# text of an indexer, an event, an event field or a delegate. When set, the other fields are not used except
+    /// <see cref="Summary"/> and <see cref="Attributes"/>; the text is checked to be exactly one such member.
+    /// </summary>
+    public string? Declaration { get; set; }
+
     /// <summary>The name of the private backing field made for the "field" backing.</summary>
     public string BackingFieldName => "_" + (Name.Length > 0 ? char.ToLowerInvariant(Name[0]) + Name.Substring(1) : Name);
 }
@@ -52,6 +58,11 @@ internal static class MemberRenderer
     /// <summary>Why a spec cannot be rendered, or null when it can.</summary>
     public static string? Validate(MemberSpec spec)
     {
+        if (spec.Declaration is not null)
+        {
+            return ValidateDeclaration(spec.Declaration);
+        }
+
         if (!SyntaxFacts.IsValidIdentifier(spec.Name))
         {
             return Strings.Format("MemberBadName", spec.Name);
@@ -85,6 +96,13 @@ internal static class MemberRenderer
     public static List<string> Render(MemberSpec spec)
     {
         var lines = new List<string>();
+        if (spec.Declaration is not null)
+        {
+            lines.AddRange(AttributeLines(spec));
+            lines.AddRange(spec.Declaration.Trim().Replace("\r\n", "\n").Split('\n').Select(l => l.TrimEnd()));
+            return lines;
+        }
+
         var required = spec.Required ? "required " : "";
         var init = string.IsNullOrWhiteSpace(spec.Initializer) ? "" : " = " + spec.Initializer!.Trim();
         switch (spec.Backing)
@@ -125,6 +143,28 @@ internal static class MemberRenderer
 
         return lines;
     }
+
+    // An indexer, event, event field or delegate given as text: exactly one such member, and nothing else.
+    private static string? ValidateDeclaration(string declaration)
+    {
+        var parsed = SyntaxFactory.ParseMemberDeclaration(declaration.Trim());
+        if (parsed is not (IndexerDeclarationSyntax or EventDeclarationSyntax or EventFieldDeclarationSyntax or DelegateDeclarationSyntax)
+            || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        {
+            return Strings.Format("MemberDeclarationNotSupported", declaration.Trim());
+        }
+
+        return null;
+    }
+
+    /// <summary>The names a declared indexer, event, event field or delegate adds to its type. An indexer has none (its name is this[]).</summary>
+    public static IEnumerable<string> DeclaredNames(string declaration) => SyntaxFactory.ParseMemberDeclaration(declaration.Trim()) switch
+    {
+        EventDeclarationSyntax e => new[] { e.Identifier.ValueText },
+        EventFieldDeclarationSyntax f => f.Declaration.Variables.Select(v => v.Identifier.ValueText),
+        DelegateDeclarationSyntax d => new[] { d.Identifier.ValueText },
+        _ => Array.Empty<string>(),
+    };
 
     // "set;", "init;", "private set;", or null when the property has no setter.
     private static string? SetterText(MemberSpec spec)
