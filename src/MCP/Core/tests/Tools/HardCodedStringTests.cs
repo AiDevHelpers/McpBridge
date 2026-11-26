@@ -1,4 +1,4 @@
-using AiDevHelpers.Helpers.LintHelper;
+using AiDevHelpers.Helpers.LocalizationHelper;
 using Xunit;
 
 namespace AiDevHelpers.MCP.Core.Tests.Tools;

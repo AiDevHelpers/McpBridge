@@ -19,6 +19,10 @@
     <Project Path="src/Helpers/ErrorHelper/src/AiDevHelpers.Helpers.ErrorHelper.csproj" />
     <Project Path="src/Helpers/ErrorHelper/tests/AiDevHelpers.Helpers.ErrorHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/LocalizationHelper/">
+    <Project Path="src/Helpers/LocalizationHelper/src/AiDevHelpers.Helpers.LocalizationHelper.csproj" />
+    <Project Path="src/Helpers/LocalizationHelper/tests/AiDevHelpers.Helpers.LocalizationHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/LintHelper/">
     <Project Path="src/Helpers/LintHelper/src/AiDevHelpers.Helpers.LintHelper.csproj" />
     <Project Path="src/Helpers/LintHelper/tests/AiDevHelpers.Helpers.LintHelper.Tests.csproj" />

@@ -149,6 +149,8 @@ jobs:
           dotnet pack src/Helpers/ExtensionsHelper/src/AiDevHelpers.Helpers.ExtensionsHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/TestingHelper/src/AiDevHelpers.Helpers.TestingHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
+          # LintHelper depends on LocalizationHelper, so LocalizationHelper packs first.
+          dotnet pack src/Helpers/LocalizationHelper/src/AiDevHelpers.Helpers.LocalizationHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/LintHelper/src/AiDevHelpers.Helpers.LintHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/SourceControlHelper/src/AiDevHelpers.Helpers.SourceControlHelper.csproj -c Release -o artifacts -p:Version="$VERSION"
           dotnet pack src/Helpers/OutputHelper/src/AiDevHelpers.Helpers.OutputHelper.csproj -c Release -o artifacts -p:Version="$VERSION"

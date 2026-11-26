@@ -1,5 +1,9 @@
 # Changelog
 
+## LocalizationHelper (unreleased)
+
+- New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
+
 ## Instance check and event filter limits (unreleased)
 
 - `ide_list_instances` takes `solutionPath`, `expectedBranch` and `expectedWorktree`, and adds a `check`: whether the solution is open, and whether an instance is open on the expected branch and worktree.

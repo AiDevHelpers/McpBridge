@@ -91,6 +91,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
             .WithTools<LintTools>()
+            .WithTools<LocalizationTools>()
             .WithTools<PreferredIdeTools>()
             .WithTools<SourceControlTools>()
             .WithTools<IdeResetTools>()
