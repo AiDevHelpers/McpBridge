@@ -119,6 +119,8 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `lint_check` | Check a folder's lint setup for mismatches: .editorconfig vs csproj NoWarn, tsconfig strict, ESLint flat config for TypeScript, deprecated TSLint, duplicate resource names. Set runDotnetFormat to also run 'dotnet format --verify-no-changes' on the root solution. |
 | `resx_check` | Check each Resources/Strings.resx under a folder against the Strings.Get and Strings.Format calls beside it: duplicate names, keys used in code but missing from the resx, and keys never used. |
 | `string_scan` | List multi-word string literals in C# source that should be in Resources/Strings.resx. Takes a .cs file or a folder. Comments, attributes, logger calls, Strings.cs and bin or obj folders are skipped. resxKey names the resource when the text is already in one. |
+| `localization_sync_check` | Compare each Strings.<culture>.resx under a folder with the neutral Strings.resx: missing, extra, untranslated (same text as neutral or comment needs-translation; same-in-culture suppresses), placeholder-mismatch and invalid-culture. |
+| `localization_sync` | Add missing keys to culture resx files as stubs, create a culture file, and with removeExtra drop extra keys. Plan without confirm; apply with confirm set to the returned token. |
 
 ## Tests
 

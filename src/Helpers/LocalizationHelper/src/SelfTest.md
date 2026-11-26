@@ -1,6 +1,6 @@
 # LocalizationHelper self test
 
-Tools: `StringScan`, `ResxCheck`.
+Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`.
 
 ## StringScan and ResxCheck
 
@@ -10,5 +10,16 @@ Fixture: a scratch folder with `A.cs` holding `var a = "Could not read the file.
 - `StringScan` (path = a folder that does not exist): PASS when `ok` is false and `error` names the folder.
 - `ResxCheck` (root = fixture folder): PASS when `ok` is true and `findings` includes a `duplicate` for `One`.
 - `ResxCheck` (root = a folder that does not exist): PASS when `ok` is false and `error` names the folder.
+
+
+## Culture sync
+
+Fixture: a scratch folder with `P/Resources/Strings.resx` holding keys `A` ("One") and `B` ("Two"), and `P/Resources/Strings.de.resx` holding `A` ("One") and an extra key `C`.
+
+- `LocalizationSyncCheck` (root = fixture folder): PASS when `findings` has `missing` for `B`, `extra` for `C` and `untranslated` for `A`, all with culture `de`.
+- `LocalizationSync` (root = fixture folder, no confirm): PASS when the reply has `plan` true, a 32-character `token` and one `add-stub` change for `B`, and `Strings.de.resx` is unchanged.
+- `LocalizationSync` (confirm = that token): PASS when `applied` is true and `Strings.de.resx` now holds `B` with the neutral text and the comment `needs-translation`.
+- `LocalizationSync` (same token again): PASS when `ok` is false.
+- `LocalizationSyncCheck` (root = fixture folder, after the confirm): PASS when `missing` no longer lists `B`.
 
 Record each as PASS or FAIL with the exact arguments and reply.

@@ -130,3 +130,7 @@ Vs2026.Core|protected internal
 Vs2026.Core|private protected
 # Task List provider name: an identifier the IDE shows as the source, not prose.
 Vs2026.Core|AiDevHelpers bridge
+
+# Resx XML markup written by ResxFile, not user-facing text.
+LocalizationHelper|<data name=\"{System.Security.SecurityElement.Escape(name)}\" xml:space=\"preserve\"><value>{new XText(value)}</value>
+LocalizationHelper|<comment>{new XText(comment)}</comment>

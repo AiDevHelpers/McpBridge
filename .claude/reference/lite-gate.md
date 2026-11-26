@@ -14,6 +14,8 @@ prose on purpose: `GatePlanner` reads only the `gate` block in `full-gate.md`, s
 3. **Lint and resources.** Call `mcp__aidevtools__lint_check` and `mcp__aidevtools__resx_check` with the repo root. Stop on
    any `error` finding or any `duplicate` or `missing` resx key. For each changed `.cs` file, call `mcp__aidevtools__string_scan`
    and move any new user-facing literal to a `Strings.resx`.
+   Then call `mcp__aidevtools__localization_sync_check` with the repo root. Stop on any `missing` or `placeholder-mismatch` finding;
+   report `untranslated` without blocking.
    Then call `mcp__aidevtools__project_audit` with `root` set to the repo root. Stop on any finding with `severity` `error`
    (framework, property, analyzer, test SDK); `info` and `warning` findings are reported, not blocking.
 4. **Build.** Call `mcp__aidevtools__ide_build` with `solutionPath` set to `AiDevHelpers.slnx`. If it fails, call
