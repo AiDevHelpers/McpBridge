@@ -20,5 +20,11 @@
   "unknownHitCountType": "Unknown hitCountType '{0}'. Use always, equal, multiple, or greaterOrEqual.",
   "hitCountNeedsCount": "hitCount is required for hitCountType {0}.",
   "hitCountNeedsType": "hitCount needs a hitCountType of equal, multiple, or greaterOrEqual.",
-  "hitCountTypeUnreadable": "The current hit condition is not one this bridge can read; pass hitCountType with hitCount."
+  "hitCountTypeUnreadable": "The current hit condition is not one this bridge can read; pass hitCountType with hitCount.",
+  "noLocalProcess": "No local process with pid {0} to attach to.",
+  "attachDidNotStart": "The debugger did not start an attach to pid {0}.",
+  "noExceptionFilters": "No exception filters: the active debug session has not reported any.",
+  "noExceptionNamed": "No exception named '{1}' in group '{0}'.",
+  "exceptionFlagRequired": "setExceptionBreak needs breakWhenThrown or breakWhenUserUnhandled.",
+  "exceptionPartialNote": "Reduced model: only the debug adapter's exception filters are listed and changed. Visual Studio exception groups are not available in VS Code. breakWhenUserUnhandled has no adapter filter, so it is not sent."
 }

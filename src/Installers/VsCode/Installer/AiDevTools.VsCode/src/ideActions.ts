@@ -8,6 +8,8 @@ import { isGitAction, runGitAction } from "./gitActions.js";
 import { parseHitCountType, setBreakpointCondition, setBreakpointEnabled, type ConditionChange } from "./breakpointActions.js";
 import { debuggerMode, isAttached, shapeDetachAll, shapeProcesses, shapeStackFrames, shapeThreads, type SessionInfo } from "./debugInspect.js";
 import { liveDebugSessions } from "./debugOutputTracker.js";
+import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./processList.js";
+import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -61,6 +63,11 @@ function optionalString(args: Args, key: string): string | undefined {
 function optionalInt(args: Args, key: string): number | undefined {
     const value = args[key];
     return typeof value === "number" ? value : undefined;
+}
+
+function optionalBool(args: Args, key: string): boolean | undefined {
+    const value = args[key];
+    return typeof value === "boolean" ? value : undefined;
 }
 
 function requireInt(args: Args, key: string): number {
@@ -441,6 +448,46 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                 ? await vscode.debug.activeDebugSession.customRequest("stackTrace", { threadId })
                 : undefined;
             return shapeStackFrames(mode, reply);
+        }
+
+        case "listProcesses":
+            return { processes: await listLocalProcesses() };
+
+        case "attachProcess": {
+            // The pid must be in the local process list, with or without confirm. Only confirm starts the attach.
+            const pid = requireInt(args, "pid");
+            const target = findLocalProcess(await listLocalProcesses(), pid);
+            if (args.confirm !== true) {
+                return { planned: true, would: { pid, name: target.name } };
+            }
+            const started = await vscode.debug.startDebugging(undefined, attachConfiguration(pid, target.name));
+            if (!started) {
+                throw new Error(t("attachDidNotStart", pid));
+            }
+            return { planned: false, applied: { pid, name: target.name } };
+        }
+
+        case "listExceptions":
+            return shapeExceptions(vscode.debug.activeDebugSession?.id, optionalString(args, "group"));
+
+        case "setExceptionBreak": {
+            const session = vscode.debug.activeDebugSession;
+            if (!session) throw new Error(t("noExceptionFilters"));
+            const change: ExceptionChange = {
+                group: optionalString(args, "group"),
+                name: requireString(args, "name"),
+                breakWhenThrown: optionalBool(args, "breakWhenThrown"),
+                breakWhenUserUnhandled: optionalBool(args, "breakWhenUserUnhandled"),
+            };
+            const plan = planExceptionChange(session.id, change);
+            // Reduced model: partial is true in both replies, and note says what the bridge does not cover.
+            const partial = { partial: true, note: t("exceptionPartialNote") };
+            if (args.confirm !== true) {
+                return { planned: true, would: plan.reply, ...partial };
+            }
+            await session.customRequest("setExceptionBreakpoints", { filters: plan.filters });
+            commitExceptionChange(session.id, plan.enabledAfter);
+            return { planned: false, applied: plan.reply, ...partial };
         }
 
         case "detachAll": {
