@@ -14,6 +14,7 @@ public sealed class EventHub
     private readonly object _lock = new();
     private readonly List<EventSubscriber> _subscribers = new();
 
+    /// <summary>Adds a subscriber for the given event names; null or empty means all events.</summary>
     public EventSubscriber Subscribe(IReadOnlyCollection<string>? names)
     {
         var subscriber = new EventSubscriber(names);
@@ -25,6 +26,7 @@ public sealed class EventHub
         return subscriber;
     }
 
+    /// <summary>Closes the subscriber with the reason and removes it from the hub.</summary>
     public void Unsubscribe(EventSubscriber subscriber, string reason)
     {
         subscriber.Close(reason);
@@ -34,6 +36,7 @@ public sealed class EventHub
         }
     }
 
+    /// <summary>Offers one event to every subscriber that wants its name.</summary>
     public void Publish(string name, object? data)
     {
         lock (_lock)
@@ -45,6 +48,7 @@ public sealed class EventHub
         }
     }
 
+    /// <summary>Closes every subscriber with the reason and clears the list.</summary>
     public void CloseAll(string reason)
     {
         List<EventSubscriber> snapshot;
@@ -60,6 +64,7 @@ public sealed class EventHub
         }
     }
 
+    /// <summary>The number of current subscribers.</summary>
     public int Count
     {
         get
@@ -86,16 +91,20 @@ public sealed class EventSubscriber
     private long _seq;
     private bool _closed;
 
+    /// <summary>Creates a subscriber with a new id. Null or empty <paramref name="names"/> means all events.</summary>
     public EventSubscriber(IReadOnlyCollection<string>? names)
     {
         Id = Guid.NewGuid().ToString("N");
         _names = names is null || names.Count == 0 ? null : new HashSet<string>(names, StringComparer.Ordinal);
     }
 
+    /// <summary>The subscription id sent to the client.</summary>
     public string Id { get; }
 
+    /// <summary>Why the subscriber was closed, or null while it is open.</summary>
     public string? CloseReason { get; private set; }
 
+    /// <summary>True once the subscriber has been closed.</summary>
     public bool IsClosed
     {
         get
@@ -135,6 +144,7 @@ public sealed class EventSubscriber
         }
     }
 
+    /// <summary>Queues one event for this subscriber, dropping the oldest when the queue is full. Ignored when closed or filtered out.</summary>
     public void Offer(string name, object? data)
     {
         if (_names is not null && !_names.Contains(name))
@@ -161,6 +171,7 @@ public sealed class EventSubscriber
         _signal.Release();
     }
 
+    /// <summary>Marks the subscriber closed with the reason and wakes its writer. A second close does nothing.</summary>
     public void Close(string reason)
     {
         lock (_lock)

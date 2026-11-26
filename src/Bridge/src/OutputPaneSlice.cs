@@ -17,8 +17,10 @@ public sealed record OutputSliceResult(string Text, int NextOffset, string Ancho
 /// </summary>
 public static class OutputPaneSlice
 {
+    /// <summary>How many characters before the offset feed the anchor hash.</summary>
     public const int AnchorChars = 64;
 
+    /// <summary>Returns up to <paramref name="maxChars"/> characters from <paramref name="fromOffset"/>, resetting to 0 when the anchor no longer matches.</summary>
     public static OutputSliceResult Slice(string text, int fromOffset, int maxChars, string? anchor)
     {
         bool reset = fromOffset < 0
