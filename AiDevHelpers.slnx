@@ -64,6 +64,10 @@
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/RoslynHelper/">
+    <Project Path="src/Helpers/RoslynHelper/src/AiDevHelpers.Helpers.RoslynHelper.csproj" />
+    <Project Path="src/Helpers/RoslynHelper/tests/AiDevHelpers.Helpers.RoslynHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/WindowsSession/">
     <Project Path="src/Helpers/WindowsSession/src/AiDevHelpers.Helpers.WindowsSession.csproj" />
     <Project Path="src/Helpers/WindowsSession/tests/AiDevHelpers.Helpers.WindowsSession.Tests.csproj" />
