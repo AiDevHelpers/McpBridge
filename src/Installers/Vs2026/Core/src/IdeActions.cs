@@ -1598,6 +1598,7 @@ public sealed class IdeActions(DTE2 dte)
     {
         var edit = new MemberEdit
         {
+            NewDeclaration = OptionalString(args, "declaration"),
             NewName = OptionalString(args, "newName"),
             NewType = OptionalString(args, "newType"),
             Accessibility = OptionalString(args, "accessibility"),

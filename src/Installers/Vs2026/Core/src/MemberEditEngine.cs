@@ -30,6 +30,9 @@ internal sealed class MemberEdit
     public List<string> RemoveAttributes { get; } = new();
 
     public string? NewSummary { get; set; }
+
+    /// <summary>The full new text of an indexer, event, event field or delegate. When set, no other part of the edit applies.</summary>
+    public string? NewDeclaration { get; set; }
 }
 
 /// <summary>
@@ -41,6 +44,11 @@ internal static class MemberEditEngine
 {
     public static async Task<MethodEditPlan> PlanAsync(Solution solution, string file, int line, MemberEdit edit, IReadOnlyList<CallerEdit> callerEdits)
     {
+        if (edit.NewDeclaration is not null)
+        {
+            return await PlanDeclarationAsync(solution, file, line, edit, callerEdits).ConfigureAwait(false);
+        }
+
         var plan = new MethodEditPlan();
         var located = await LocateAsync(solution, file, line, plan).ConfigureAwait(false);
         if (located is null)
@@ -163,6 +171,87 @@ internal static class MemberEditEngine
     }
 
     // Changes other code can feel. Attributes, the summary and the backing of a property are invisible to its users.
+    // An indexer, event, event field or delegate replaced by its full new text. Its shape (kind, access, type, parameters or name) must
+    // stay the same while anything refers to it; the body and accessors may change freely.
+    private static async Task<MethodEditPlan> PlanDeclarationAsync(
+        Solution solution, string file, int line, MemberEdit edit, IReadOnlyList<CallerEdit> callerEdits)
+    {
+        var plan = new MethodEditPlan();
+        var target = await EditTarget.LocateAsync(solution, file, line, 0,
+            new[] { typeof(IndexerDeclarationSyntax), typeof(EventDeclarationSyntax), typeof(EventFieldDeclarationSyntax), typeof(DelegateDeclarationSyntax) },
+            reason => plan.Reasons.Add(reason)).ConfigureAwait(false);
+        if (target is null)
+        {
+            return plan;
+        }
+
+        var node = (MemberDeclarationSyntax)target.Declaration;
+        var parsed = SyntaxFactory.ParseMemberDeclaration(edit.NewDeclaration!.Trim());
+        if (parsed is null || parsed.GetType() != node.GetType() || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        {
+            plan.Reasons.Add(Strings.Get("MemberEditDeclarationKind"));
+            return plan;
+        }
+
+        if (parsed.GetLeadingTrivia().Any(t => t.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) || t.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia)))
+        {
+            plan.Reasons.Add(Strings.Get("MethodEditNewTextHasDocs"));
+            return plan;
+        }
+
+        var references = await MethodEditEngine.CollectReferencesAsync(solution, target.Symbol).ConfigureAwait(false);
+        references.RemoveAll(r => r.DocumentId == target.DocumentId && node.Span.Contains(r.Span));
+        plan.ReferenceCount = references.Count;
+        var changed = Shape(parsed) != Shape(node);
+        if (changed && references.Count > 0)
+        {
+            plan.Reasons.Add(Strings.Format("MemberEditShapeChanged", references.Count));
+            return plan;
+        }
+
+        var changes = new Dictionary<DocumentId, List<TextChange>>
+        {
+            [target.DocumentId] = new List<TextChange> { new TextChange(node.Span, parsed.ToString()) },
+        };
+        if (!await MethodEditEngine.AddCallerEditsAsync(solution, references, callerEdits, changes, plan).ConfigureAwait(false))
+        {
+            return plan;
+        }
+
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, target.DocumentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys.Concat(references.Select(r => r.DocumentId)), plan).ConfigureAwait(false);
+        foreach (var id in changes.Keys)
+        {
+            plan.Files.Add(solution.GetDocument(id)!.FilePath ?? id.ToString());
+        }
+
+        plan.SignatureChanged = changed;
+        plan.Tests.AddRange(await TestDiscovery.FindDirectAsync(solution, references).ConfigureAwait(false));
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
+    // What users of an indexer, event, event field or delegate depend on: its kind, access, type and parameters or name.
+    private static string Shape(MemberDeclarationSyntax member)
+    {
+        var access = string.Join(" ", member.Modifiers.Select(m => m.ValueText).Where(v => v is "public" or "internal" or "protected" or "private"));
+        return member switch
+        {
+            IndexerDeclarationSyntax i => "indexer|" + access + "|" + i.Type.WithoutTrivia() + "|" + i.ParameterList.WithoutTrivia(),
+            EventDeclarationSyntax e => "event|" + access + "|" + e.Type.WithoutTrivia() + "|" + e.Identifier.ValueText,
+            EventFieldDeclarationSyntax f => "eventfield|" + access + "|" + f.Declaration.Type.WithoutTrivia() + "|"
+                + string.Join(",", f.Declaration.Variables.Select(v => v.Identifier.ValueText)),
+            DelegateDeclarationSyntax d => "delegate|" + access + "|" + d.ReturnType.WithoutTrivia() + "|" + d.Identifier.ValueText + "|" + d.ParameterList.WithoutTrivia(),
+            _ => member.ToString(),
+        };
+    }
+
     private static bool IsBreaking(MemberEdit edit) =>
         edit.NewType is not null || edit.Accessibility is not null || edit.Setter is not null || edit.Required is not null;
 

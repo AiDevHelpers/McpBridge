@@ -57,6 +57,32 @@ public sealed class MemberDeclarationAddTests
         Assert.True(plan.Refused);
     }
 
+    // ide_edit_member with a declaration: an indexer body may change; a change of shape is refused while code uses the member.
+    [Fact]
+    public async Task AnIndexerBodyEditIsAccepted()
+    {
+        const string indexer = "class C\n{\n    public int this[int i] { get => 0; }\n}\n";
+        var solution = TestSolutions.Single([(File, indexer)]);
+
+        var plan = await MemberEditEngine.PlanAsync(solution, File, 3, new MemberEdit { NewDeclaration = "public int this[int i] { get => 1; }" }, []);
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("get => 1;", (await plan.Result!.Projects.Single().Documents.Single().GetTextAsync()).ToString());
+    }
+
+    [Fact]
+    public async Task AShapeChangeWhileUsedIsRefused()
+    {
+        const string evented = "class C\n{\n    public event System.EventHandler E;\n    void M() { E += null; }\n}\n";
+        var solution = TestSolutions.Single([(File, evented)]);
+
+        var plan = await MemberEditEngine.PlanAsync(solution, File, 3,
+            new MemberEdit { NewDeclaration = "public event System.EventHandler<System.EventArgs> E;" }, []);
+
+        Assert.True(plan.Refused);
+        Assert.Contains(plan.Reasons, r => r.Contains("references", System.StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task APropertyDeclarationIsRefused()
     {
