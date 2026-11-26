@@ -58,6 +58,7 @@ public sealed class BridgeHost : IDisposable
 
     public void Dispose()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         if (_disposed)
         {
             return;
@@ -103,6 +104,7 @@ public sealed class BridgeHost : IDisposable
     // Named so Dispose can unhook them. Lambdas could not be removed.
     private void OnSolutionOpened()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         UpdateSolutionPath(_dte.Solution?.FullName);
         _events.Publish("solutionOpened", new { solution = _solutionPath });
     }
@@ -221,6 +223,7 @@ public sealed class BridgeHost : IDisposable
         answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
         return Task.WhenAny(answer, Task.Delay(UiPingTimeout)).ContinueWith(done =>
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
             if (ReferenceEquals(done.Result, answer))
             {
                 if (!_uiResponsive)
@@ -240,6 +243,7 @@ public sealed class BridgeHost : IDisposable
 
     private void MarkHungIfOverdue()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         if (_uiResponsive && DateTime.UtcNow - _lastUiAnswerUtc > UiHungAfter)
         {
             _uiResponsive = false;
