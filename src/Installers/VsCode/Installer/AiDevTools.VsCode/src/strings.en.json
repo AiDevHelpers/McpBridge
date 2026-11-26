@@ -30,5 +30,9 @@
   "noOpenDocument": "No open document for '{0}'.",
   "documentDirty": "'{0}' has unsaved changes. Pass discardChanges to close it anyway.",
   "solutionHasDirtyDocuments": "Unsaved documents: {0}. Pass saveFirst to save them, or close them first.",
-  "saveFailed": "VS Code did not save '{0}'."
+  "saveFailed": "VS Code did not save '{0}'.",
+  "openWithUnsavedChanges": "open with unsaved changes",
+  "projectScopeNeedsName": "The project scope needs a project name.",
+  "noProjectNamed": "No project named '{0}' in the workspace.",
+  "unknownScope": "Unknown scope '{0}'. Use solution, project, or openDocuments."
 }
