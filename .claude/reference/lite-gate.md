@@ -18,6 +18,9 @@ prose on purpose: `GatePlanner` reads only the `gate` block in `full-gate.md`, s
    (framework, property, analyzer, test SDK); `info` and `warning` findings are reported, not blocking.
 4. **Build.** Call `mcp__aidevtools__ide_build` with `solutionPath` set to `AiDevHelpers.slnx`. If it fails, call
    `mcp__aidevtools__ide_get_build_diagnostics` with `severity` set to `error` and stop.
+   If `ide_build` itself errors, build with Visual Studio's Framework MSBuild instead:
+   `"C:\Program Files\Microsoft Visual Studio\18\Community\MSBuild\Current\Bin\MSBuild.exe" AiDevHelpers.slnx -restore -p:Configuration=Release`.
+   Do not use `dotnet build` for the solution: it fails on `src/Installers/Vs2026/Installer` (MSB4018, the VSSDK task needs the Framework MSBuild).
 5. **Test.** If step 2 listed no test project, skip this step. Otherwise call `mcp__aidevtools__ide_run_tests` with
    `solutionPath` set to `AiDevHelpers.slnx`, then `mcp__aidevtools__ide_get_test_results` with the same `solutionPath`.
    In Test Explorer mode, `mcp__aidevtools__ide_get_test_summary` gives the counts and the failing test names. Stop if any test failed.
