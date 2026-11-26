@@ -239,6 +239,19 @@ internal static class CodeModelActions
         return RunPlan(solution => UpdateDocsEngine.PlanAsync(solution, file, line, summary, items), confirm, planHash);
     }
 
+    // Read only: lists the code actions offered at a line (CodeActionEngine). Runs on the UI thread against the current solution.
+    public static object ListCodeActions(string file, int line)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            return (object)await CodeActionEngine.ListAsync(workspace.CurrentSolution, file, line).ConfigureAwait(true);
+        });
+    }
+
     // Read only: reports doc comments that disagree with their method (DocCheckEngine). Runs on the UI thread against the current solution.
     public static object CheckDocs(string file)
     {

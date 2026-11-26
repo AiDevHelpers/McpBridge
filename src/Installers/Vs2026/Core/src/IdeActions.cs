@@ -194,6 +194,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "checkDocs" => CodeModelActions.CheckDocs(RequireString(args, "file")),
+        "listCodeActions" => CodeModelActions.ListCodeActions(RequireString(args, "file"), RequireInt(args, "line")),
         "removeUnused" => CodeModelActions.RemoveUnused(ParseUnusedItems(args), OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "updateDocs" => CodeModelActions.UpdateDocs(
             RequireString(args, "file"),
