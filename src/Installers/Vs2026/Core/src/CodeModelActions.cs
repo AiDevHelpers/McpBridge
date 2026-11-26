@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Replaces every call of a one-expression method with its body and deletes the method (InlineMethodEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object InlineMethod(string file, int line, int column, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => InlineMethodEngine.PlanAsync(solution, file, line, column), confirm, planHash);
+    }
+
     // Extracts statements into a new method (ExtractMethodEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object ExtractMethod(string file, int startLine, int endLine, string name, string accessibility, bool confirm, string? planHash = null)
     {

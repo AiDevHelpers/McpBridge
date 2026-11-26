@@ -912,6 +912,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Inline a method, using Roslyn, with checks: each call is replaced by the method's body with the arguments substituted, and the method is deleted. Only a value-returning, non-async method whose body is one return expression or an expression body is inlined. Refused for a recursive method, a method that overrides, implements or is overridden, an interface member, params, ref or out parameters, a reference that is not a plain call, and an argument that is not a literal or name where its parameter is used twice. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeInlineMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method to inline")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("inlineMethod", new { file, line, column = column ?? 1, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Extract a run of whole statements in one block into a new private method, using Roslyn, with checks. The parameters are the variables the run reads from outside it; the return value is the one variable it writes that is used after it. The statements are replaced by a call and the new method goes after the enclosing method. Refused for more than one value used after the run, for return, yield, break or continue in it, for a range that is not whole statements of one block, or for a name already taken. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractMethod(
         [Description("Full path of the source file")] string file,

@@ -193,6 +193,11 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "inlineMethod" => CodeModelActions.InlineMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "extractMethod" => CodeModelActions.ExtractMethod(
             RequireString(args, "file"),
             RequireInt(args, "startLine"),
