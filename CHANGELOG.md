@@ -3,6 +3,7 @@
 ## LocalizationHelper (unreleased)
 
 - New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
+- New `localization_sync_check` and `localization_sync` (plan, then confirm with a token): compare culture resx files with the neutral one and add stubs, create a culture file or remove extra keys. The resx comment `same-in-culture` marks a value that is meant to equal the neutral text.
 
 ## Instance check and event filter limits (unreleased)
 
