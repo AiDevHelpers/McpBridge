@@ -16,10 +16,27 @@ Parent plan: `docs/plans/archived/2026-11-26-vscode-parity.md` (answer 1: a sepa
 
 1. Helper project: `src/Helpers/RoslynHelper`.
 2. Engines: move the Solution-only engines into a shared project now (unit 3).
-3. Unsaved VS Code buffers: sent as an overlay (unit 13).
+3. Unsaved VS Code buffers: the helper returns the planned edits; the extension applies them in the editor. Disk is not written while a buffer is dirty. (Replaces the overlay decision.)
 4. One helper process per solution.
 5. `listUnused` and `renameSymbol` are in this plan (units 12 and 14 parity).
 6. A Visual Studio or Build Tools install is a hard requirement. VS Code users without it get a clear error.
+7. Two helpers: a net10.0 helper for SDK-style projects, and a net48 helper for net48 and VSSDK projects. The extension routes each request to the helper that loads the project.
+
+## Review changes (Sonnet review, read-only)
+
+The review found the plan not ready. These changes are required before unit 1:
+- **Shared project (unit 3):** must carry `Strings.resx` (Strings uses a ResourceManager bound to the Core assembly) and every type the engines use: MethodEditPlan, MemberSpec, EditTarget, CallerEdit, FileMove, MethodDocUpdater, TestDiscovery, CallerPropagator, CallSiteRewriter, ChangeSignatureFamily, ChangeSignatureHeader, CoverageOfReferences, UnusedFinder. Split unit 3 into types, then resx, then references.
+- **InternalsVisibleTo:** the shared project grants it to Core, Core.Tests and both helper test projects.
+- **New unit before 4: extract RunPlan.** Move the orchestration out of `CodeModelActions.cs` (RunPlan, lines 324-394): refusal on logical documents, diffs, hash check, planned/applied replies, and the moves and deletes after apply. Test first: a plan reply has the same shape as before.
+- **New unit: fixture solution.** Before unit 2: an SDK project, a second project referencing it, and a broken project under `src/Helpers/RoslynHelper/tests/Fixtures`. Unit 2's test uses it.
+- **Parser unit (5) tests:** real parser fixtures, not the empty `addMember` and `changeSignature` cases in `conformance/fixtures.json`. Move RequireString, OptionalInt, RequireInt and OptionalBool with the parsers. Unit 5 needs only unit 3, so it can run earlier.
+- **New unit: action dispatcher.** Map each action name to its engine and reply shape. Units 6 to 11 each use it.
+- **Dirty buffers (unit 4 and 13):** apply writes only clean files. Dirty files return edits. The plan hash covers the buffer text.
+- **Semantic tools:** listCodeElements, semanticReferences and semanticDefinition stay unsupported in v1 (they use ResolvePositionAsync). Add a unit only if the user asks.
+- **Manifests (unit 17):** check the process is alive before using a manifest. Set the folder ACL. Define the manifest format in unit 1.
+- **Unit 1:** run the Bridge conformance fixtures against the helper, rather than duplicating its tests.
+- **Unit 2:** a broken project returns a per-project diagnostic with `{project, ok, error}`.
+- **Roslyn version:** the helper pins the same Roslyn as Core, 5.12.0-1.26573.119 (from `Core.csproj`), unless a unit shows it must differ.
 
 ## Architecture
 
