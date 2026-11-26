@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Deletes the confirmed unused members and types in one change (RemoveUnusedEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object RemoveUnused(IReadOnlyList<(string File, int Line, string Kind)> items, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => RemoveUnusedEngine.PlanAsync(solution, items), confirm, planHash);
+    }
+
     // Edits the doc comment of the method at a line, with no code change (UpdateDocsEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object UpdateDocs(string file, int line, string? summary, IReadOnlyList<DocItem> items, bool confirm, string? planHash = null)
     {

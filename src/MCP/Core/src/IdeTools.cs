@@ -929,6 +929,21 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Delete the unused members and types that ide_find_unused reported and a person confirmed, in one change, using Roslyn, with checks. items is an array of {file, line, kind}, kind \"member\" (default) or \"type\". Each item is deleted with the checked delete rules (no references left, tests that call it refused unless named). The first refusal stops the whole change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeRemoveUnused(
+        [Description("The items to delete: array of {file, line, kind}")] object[] items,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("removeUnused", new { items, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Edit the XML doc comment of the method at a line, using Roslyn, with no code change. summary replaces the summary text; docs gives {tag, name, text} entries for param, typeparam or returns tags, each replacing that tag's text in the comment's own layout. Text is never invented: a tag not given keeps its text. Refused when the method has no doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeUpdateDocs(
         [Description("Full path of the source file")] string file,

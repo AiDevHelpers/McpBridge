@@ -194,6 +194,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "checkDocs" => CodeModelActions.CheckDocs(RequireString(args, "file")),
+        "removeUnused" => CodeModelActions.RemoveUnused(ParseUnusedItems(args), OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "updateDocs" => CodeModelActions.UpdateDocs(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -1653,6 +1654,21 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return edits;
+    }
+
+    // The items array of removeUnused: each {file, line, kind} where kind is "member" (the default) or "type".
+    private static List<(string File, int Line, string Kind)> ParseUnusedItems(JsonElement args)
+    {
+        var items = new List<(string File, int Line, string Kind)>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("items", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                items.Add((RequireString(e, "file"), RequireInt(e, "line"), OptionalString(e, "kind") ?? "member"));
+            }
+        }
+
+        return items;
     }
 
     // The parameters array of changeSignature, in the new order: each item is a declaration, the old index it keeps (absent for a new

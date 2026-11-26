@@ -204,6 +204,9 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="ConvertPropertyShape" xml:space="preserve"><value>the property must have a getter only and a declaration in source</value></data>
   <data name="ConvertPropertyUseUnknown" xml:space="preserve"><value>a use of the property is not a plain name; it is refused</value></data>
   <data name="ConvertPropertyToMethodDone" xml:space="preserve"><value>{0} is now method Get{0}(); {1} uses redirected</value></data>
+  <data name="RemoveUnusedNone" xml:space="preserve"><value>no items to remove: pass the members and types ide_find_unused reported and you confirmed</value></data>
+  <data name="RemoveUnusedStepRefused" xml:space="preserve"><value>removing the item at {0}:{1} is refused; nothing was changed</value></data>
+  <data name="RemoveUnusedDone" xml:space="preserve"><value>removed {0} unused item(s) in one change</value></data>
   <data name="UpdateDocsNothing" xml:space="preserve"><value>give a line and at least one of summary or docs</value></data>
   <data name="UpdateDocsNoComment" xml:space="preserve"><value>the method has no doc comment to update; add one with ide_add_method or ide_edit_method first</value></data>
   <data name="UpdateDocsDone" xml:space="preserve"><value>doc comment updated; no code changed</value></data>
