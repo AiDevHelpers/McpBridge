@@ -91,7 +91,7 @@ Visual Studio only and says so in its description.
       background and its result is dropped; a token through the engines is follow-up work. 87 VS Core tests pass.) Planning off the UI thread: `RunPlan` plans on a workspace snapshot with a timeout (default 60 s,
       `timeoutSeconds`) and a cancellation token, then applies on the UI thread. A search that does not finish refuses with
       `incomplete: true` (`SymbolFinder` gives no partial result). A test shows the UI thread stays free during a plan.
-- [x] **0.5** Done for `ide_edit_method`: the reply carries `plan_hash`, and confirm refuses with `PlanHashChanged` when a `planHash`
+- [x] **0.5** Done for every confirm-tool (`planHash` argument and `plan_hash` reply field; 127 VS Core tests pass). Earlier note: done for `ide_edit_method`: the reply carries `plan_hash`, and confirm refuses with `PlanHashChanged` when a `planHash`
       argument differs from the re-plan. Other tools get the same wiring as each is touched (one `RunPlan` parameter each). Earlier
       note: partly done: `PlanHash.cs` fingerprints a plan by its changed paths and full new text (4 tests, 91 VS Core tests pass).
       Not yet: `plan_hash` in the reply, and the `planHash` argument that confirm checks against. Those need the reply and each

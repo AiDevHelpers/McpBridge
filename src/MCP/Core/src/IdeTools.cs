@@ -920,6 +920,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary text for the new method's doc comment.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -927,7 +928,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -940,6 +941,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary text for the overload's doc comment. Without it the original's summary is kept.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags that differ from the original.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -947,7 +949,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -963,6 +965,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary for the method's doc comment, when its neighbours have one.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for the method's param, typeparam and returns doc tags.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the new test with coverage after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -970,7 +973,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddRed).ConfigureAwait(false);
     }
 
@@ -982,6 +985,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("New body: a { block } or its statements")] string newBody,
         [Description("Optional: full path of the file with the method under test, for coverage.")] string? targetFile = null,
         [Description("Optional: 1-based line inside the method under test, for coverage.")] int? targetLine = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the test with coverage after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -989,7 +993,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddUpdate).ConfigureAwait(false);
     }
 
@@ -1052,6 +1056,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("The new name, such as Company.Product.New")] string newNamespace,
         [Description("Move files so their folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
         [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1059,7 +1064,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -1071,6 +1076,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("The namespace to move it to")] string newNamespace,
         [Description("Move the file so its folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
         [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1078,7 +1084,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -1088,12 +1094,13 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the target type")] int line,
         [Description("Array of {name, type, accessibility, backing, setter, required, initializer, attributes, summary}")] object[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
 
     [McpServerTool]
     [Description("Change an existing field or property, whatever its accessibility, using Roslyn, with checks. Set only what changes: newType, accessibility, setter (set, init, none, \"private set\" style), required, backing (auto or field: swap between an auto property and a property over a private field), addAttributes, removeAttributes, newSummary, or newName. Every reference is checked: a change to the type, accessibility, setter or required needs a callerEdits entry (file, line, column from ide_semantic_references, and newText for the invocation or name) for each reference, or it is refused; a rename updates its references itself and must be a call of its own; attribute, backing and summary changes touch no reference. A change on a property that overrides or implements another member is refused. A new compile error refuses the change. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the member, with coverage. Visual Studio only.")]
@@ -1110,6 +1117,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: names of attributes to remove, such as \"Required\"")] string[]? removeAttributes = null,
         [Description("Optional: new summary for the member's existing doc comment")] string? newSummary = null,
         [Description("Optional: array of {file, line, column, newText} for references, when the change affects what other code sees.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the member, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1119,7 +1127,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     {
         var reply = await IdeInstanceRouter.CallAsync(
             "editMember",
-            new { file, line, newName, newType, accessibility, setter, required, backing, addAttributes = addAttributes ?? [], removeAttributes = removeAttributes ?? [], newSummary, callerEdits = callerEdits ?? [], confirm },
+            new { file, line, newName, newType, accessibility, setter, required, backing, addAttributes = addAttributes ?? [], removeAttributes = removeAttributes ?? [], newSummary, callerEdits = callerEdits ?? [], confirm, planHash },
             solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
