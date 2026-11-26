@@ -15,18 +15,15 @@
   <data name="NoOpenDocument" xml:space="preserve"><value>No open document for '{0}'.</value></data>
   <data name="DocumentDirty" xml:space="preserve"><value>'{0}' has unsaved changes. Pass discardChanges to close it anyway.</value></data>
   <data name="NoProjectItemFor" xml:space="preserve"><value>No project item for '{0}'.</value></data>
-  <data name="NoCodeModelFor" xml:space="preserve"><value>No code model for '{0}'.</value></data>
   <data name="TemplateRequiredForNew" xml:space="preserve"><value>Mode fromNew needs a template path.</value></data>
   <data name="UnknownItemMode" xml:space="preserve"><value>Unknown mode '{0}'. Use fromFile or fromNew.</value></data>
   <data name="SolutionHasDirtyDocuments" xml:space="preserve"><value>Unsaved documents: {0}. Pass saveFirst to save them, or close them first.</value></data>
   <data name="StatusBarUnavailable" xml:space="preserve"><value>The status bar service is not available.</value></data>
   <data name="ActivityLogUnavailable" xml:space="preserve"><value>The activity log service is not available.</value></data>
-  <data name="SettingsReaderUnavailable" xml:space="preserve"><value>The settings reader service is not available.</value></data>
   <data name="UnknownLogLevel" xml:space="preserve"><value>Unknown level '{0}'. Use Error, Warning, or Information.</value></data>
   <data name="ShellUnavailable" xml:space="preserve"><value>The Visual Studio shell service is not available.</value></data>
   <data name="InfoBarHostUnavailable" xml:space="preserve"><value>The main window has no info bar host.</value></data>
   <data name="InfoBarUnavailable" xml:space="preserve"><value>The info bar UI factory is not available.</value></data>
-  <data name="CodeModelUnavailable" xml:space="preserve"><value>The IDE's code model is unavailable for '{0}': {1}</value></data>
   <data name="SettingKeyNeedsCollection" xml:space="preserve"><value>Setting key '{0}' needs a collection path and a property name, separated by a backslash.</value></data>
   <data name="ComponentModelUnavailable" xml:space="preserve"><value>The Visual Studio component model is not available.</value></data>
   <data name="NoRoslynDocumentFor" xml:space="preserve"><value>No Roslyn document for '{0}' in the open solution.</value></data>
