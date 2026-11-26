@@ -59,6 +59,9 @@ internal static class ConvertEngine
                 return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "record", plan).ConfigureAwait(false);
             case "class-to-struct":
                 return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "struct", plan).ConfigureAwait(false);
+            case "var-to-explicit-file":
+            case "string-to-interpolation-file":
+                return await FileWideAsync(solution, documentId!, document, text, model!, root!, kind, plan).ConfigureAwait(false);
             case "auto-to-expression":
             case "expression-to-auto":
                 return await PropertyBodyAsync(solution, documentId!, document, text, model!, node, kind == "auto-to-expression", plan).ConfigureAwait(false);
@@ -472,6 +475,100 @@ internal static class ConvertEngine
         }
 
         return await MethodToPropertyAsync(solution, documentId, document, model, node, plan).ConfigureAwait(false);
+    }
+
+    // Every var local in the file whose type is nameable becomes that type, or every top-level string concatenation becomes an
+    // interpolation. A site that cannot be converted is left as it is and counted in the reply, so one odd line does not block the rest.
+    private static async Task<MethodEditPlan> FileWideAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode root, string kind, MethodEditPlan plan)
+    {
+        var changes = new List<TextChange>();
+        var skipped = 0;
+        if (kind == "var-to-explicit-file")
+        {
+            foreach (var declaration in root.DescendantNodes().OfType<VariableDeclarationSyntax>().Where(d => d.Type.IsVar))
+            {
+                var initializer = declaration.Variables.FirstOrDefault()?.Initializer?.Value;
+                var type = initializer is null ? null : model.GetTypeInfo(initializer).Type;
+                if (type is null || type.IsAnonymousType || type.TypeKind == TypeKind.Error || declaration.Variables.Count != 1)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                changes.Add(new TextChange(declaration.Type.Span, type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)));
+            }
+        }
+        else
+        {
+            foreach (var chain in root.DescendantNodes().OfType<BinaryExpressionSyntax>()
+                .Where(b => b.IsKind(SyntaxKind.AddExpression) && model.GetTypeInfo(b).Type?.SpecialType == SpecialType.System_String
+                    && b.Parent is not BinaryExpressionSyntax { RawKind: (int)SyntaxKind.AddExpression }))
+            {
+                var operands = new List<ExpressionSyntax>();
+                void Flatten(ExpressionSyntax e)
+                {
+                    if (e is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.AddExpression } b && model.GetTypeInfo(b).Type?.SpecialType == SpecialType.System_String)
+                    {
+                        Flatten(b.Left);
+                        Flatten(b.Right);
+                    }
+                    else
+                    {
+                        operands.Add(e);
+                    }
+                }
+
+                Flatten(chain);
+                var ok = true;
+                var pieces = new System.Text.StringBuilder("$\"");
+                foreach (var operand in operands)
+                {
+                    if (operand is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression } literal)
+                    {
+                        pieces.Append(literal.Token.ValueText.Replace("{", "{{").Replace("}", "}}").Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t"));
+                    }
+                    else if (model.GetTypeInfo(operand).Type?.SpecialType == SpecialType.System_String)
+                    {
+                        pieces.Append("{" + operand.WithoutTrivia() + "}");
+                    }
+                    else
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (!ok)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                pieces.Append('"');
+                changes.Add(new TextChange(chain.Span, pieces.ToString()));
+            }
+        }
+
+        if (changes.Count == 0)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertFileNothing"));
+            return plan;
+        }
+
+        var edits = new Dictionary<DocumentId, List<TextChange>> { [documentId] = changes };
+        var edited = await MethodEditEngine.ApplyAsync(solution, edits, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, documentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? "");
+        plan.Warnings.Add(Strings.Format("ConvertFileDone", changes.Count, skipped));
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
     }
 
     // "{ get; } = literal;" becomes "=> literal;": only a constant initializer, since an expression body re-evaluates on every read and
