@@ -203,7 +203,7 @@ Standards come from `.aidevhelpers/project-standards.json` (base framework, allo
 | `project_audit` | Check projects against the standards: framework (exceptions are info), properties, analyzers, test SDK, differing package versions. Read only; `ok` is false on any error. |
 | `project_fix_plan` / `project_fix_confirm` | Plan, then apply, the edits that bring projects to the standards. Confirm re-audits and builds; any failure restores every file. |
 | `project_add_plan` / `project_add_confirm` | Plan, then add a project from a template to a `.slnx`, set up to the standards. A failed build removes it and restores the solution. |
-| `project_add_test_plan` / `project_add_test_confirm` | Plan, then add `<Source>.Tests` beside a source project, referencing it, with the repo's test runner. `seedTest` adds one failing test. |
+| `project_add_test_plan` / `project_add_test_confirm` | Plan, then add `<Source>.Tests` beside a source project, referencing it, with the repo's test runner. `seedTest` adds one failing test. The Test SDK and runner versions come from existing projects in the repo; if none pins one, the plan stops and asks the user in chat for the version. |
 
 Tokens from the plan tools are single use and expire after 15 minutes. Plan tools write nothing.
 

@@ -23,6 +23,8 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 
 - Script Helper broker (`elev`): runs scripts from a repo's approved `.elevated.json` allowlist, with fingerprint and approval checks, through `run_elevated_script`.
 - Repo setup scan for projects and scripts that need administrator rights.
+- Chat-first approvals: `elev setup tools` is refused before UAC unless the yes was given in chat; `repo-setup`, terminals and rules refuse console questions and say to ask in chat.
+- Workloads: `workload_list`, `workload_check`, and `workload_install_plan`/`workload_install_confirm`, installed through the elevated helper from a pinned table (`scripts/workload-install.sha256`).
 
 ## Source control and CI
 
@@ -39,7 +41,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - Errors: `error_ingest`, `error_list`, `error_snapshot`, `error_changes` with suppression.
 - Diagnostics: `dotnet_diag` wraps dotnet-dump, stack, counters, gcdump, trace and symbol.
 - Build environment: `build_env` lists Visual Studio installs with MSBuild and VSSDK targets.
-- Projects: `project_types_list`, `project_audit`, `project_fix_plan`/`confirm`, `project_add_plan`/`confirm`, `project_add_test_plan`/`confirm`. Standards in `.aidevhelpers/project-standards.json`.
+- Projects: `project_types_list`, `project_audit`, `project_fix_plan`/`confirm`, `project_add_plan`/`confirm`, `project_add_test_plan`/`confirm`. Standards in `.aidevhelpers/project-standards.json`. With no pinned Test SDK or runner, the test-project plan asks the user in chat for the version.
 
 ## Configuration and extensions
 
