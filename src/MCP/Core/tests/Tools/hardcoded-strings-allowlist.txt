@@ -132,3 +132,5 @@ Vs2026.Core|public override int GetHashCode()
 Vs2026.Core|        int hash = 17;
 Vs2026.Core|        return hash;
 Vs2026.Core|public override string ToString()
+# ide_extract_interface writes this declaration into a new file; it is code, not a user-facing message.
+Vs2026.Core|public interface I

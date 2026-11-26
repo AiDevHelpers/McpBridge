@@ -912,6 +912,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Extract an interface from the class or struct at a line, using Roslyn, with checks. members names its public, non-static methods and properties, which become the interface's members as signatures. The interface is written to I<interfaceName>.cs beside the type's file and the type adds it to its base list. Refused for a member that is not public and non-static, a name already taken, or an interface already implemented. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractInterface(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class or struct")] int line,
+        [Description("The interface's name without the I prefix, such as Store for IStore")] string interfaceName,
+        [Description("The public method and property names to put on the interface")] string[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractInterface", new { file, line, interfaceName, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Extract an expression into a named local or constant, using Roslyn, with checks. expression is its exact text, which must occur once on the line. kind \"variable\" declares var name = expression; before the statement that uses it and uses the name; kind \"constant\" declares const with the expression's type, and needs an expression the compiler folds to a constant. Refused for an expression inside a lambda or anonymous method, one not in a block statement, or a text that occurs more than once. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractValue(
         [Description("Full path of the source file")] string file,

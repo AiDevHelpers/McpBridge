@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Extracts an interface from a class or struct, in a new file beside it (ExtractInterfaceEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ExtractInterface(string file, int line, string interfaceName, IReadOnlyList<string> members, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ExtractInterfaceEngine.PlanAsync(solution, file, line, interfaceName, members), confirm, planHash);
+    }
+
     // Extracts an expression into a local or a constant declared before its statement (ExtractValueEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object ExtractValue(string file, int line, string expression, string name, string kind, bool confirm, string? planHash = null)
     {

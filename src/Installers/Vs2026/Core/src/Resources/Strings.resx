@@ -196,6 +196,10 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="CodeActionStale" xml:space="preserve"><value>no code action with that id is offered at this line any more; list them again</value></data>
+  <data name="ExtractInterfaceBadInput" xml:space="preserve"><value>give a line, a valid interface name, and at least one member name</value></data>
+  <data name="ExtractInterfaceExists" xml:space="preserve"><value>an interface named I{0} already exists beside the type or is already implemented</value></data>
+  <data name="ExtractInterfaceBadMember" xml:space="preserve"><value>{0} is not a public, non-static method or property of the type</value></data>
+  <data name="ExtractInterfaceDone" xml:space="preserve"><value>extracted {0} from {1} with {2}; the type now implements it</value></data>
   <data name="ExtractValueBadInput" xml:space="preserve"><value>give a line, a non-empty expression text, a valid name, and kind variable or constant</value></data>
   <data name="ExtractValueNotOnce" xml:space="preserve"><value>the expression must occur exactly once on the line; it occurs {1} times for {0}</value></data>
   <data name="ExtractValueNoStatement" xml:space="preserve"><value>the expression is not inside a statement of a block</value></data>
