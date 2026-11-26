@@ -553,4 +553,5 @@ public sealed class RequestHandlerTests : IDisposable
 
         Assert.False(r.Ok);
         Assert.Empty(_runner.Runs);
-    }}
+    }
+}

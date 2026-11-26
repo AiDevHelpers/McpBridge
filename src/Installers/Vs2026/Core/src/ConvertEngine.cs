@@ -46,7 +46,7 @@ internal static class ConvertEngine
             case "field-to-property":
                 return await FieldToPropertyAsync(solution, documentId!, document, text, root, model!, node, eol, plan).ConfigureAwait(false);
             case "null-guards":
-                return await NullGuards(solution, documentId!, document, text, node, eol, plan).ConfigureAwait(false);
+                return await NullGuardsAsync(solution, documentId!, document, text, node, eol, plan).ConfigureAwait(false);
             case "expression-to-block":
             case "block-to-expression":
                 return await BodyShapeAsync(solution, documentId!, document, text, model!, node, kind == "block-to-expression", plan).ConfigureAwait(false);
@@ -154,7 +154,7 @@ internal static class ConvertEngine
         return plan;
     }
 
-    private static async Task<MethodEditPlan> NullGuards(Solution solution, DocumentId documentId, Document document, SourceText text, SyntaxNode? node, string eol, MethodEditPlan plan)
+    private static async Task<MethodEditPlan> NullGuardsAsync(Solution solution, DocumentId documentId, Document document, SourceText text, SyntaxNode? node, string eol, MethodEditPlan plan)
     {
         var method = node?.AncestorsAndSelf().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
         if (method is null)

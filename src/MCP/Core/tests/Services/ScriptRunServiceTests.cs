@@ -298,4 +298,5 @@ public sealed class ScriptRunServiceTests : IDisposable
 
         Assert.Contains("PowerShell", shell.Error);
         Assert.Contains("not available", none.Error);
-    }}
+    }
+}
