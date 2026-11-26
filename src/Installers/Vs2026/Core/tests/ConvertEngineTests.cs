@@ -111,6 +111,45 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task AMethodWithNoCallersBecomesAsync()
+    {
+        const string code = "class C\n{\n    public int Get() => 3;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "make-async");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("async", text);
+        Assert.Contains("Task<int> Get()", text);
+    }
+
+    [Fact]
+    public async Task AMethodWithCallersIsRefusedForAsync()
+    {
+        const string code = "class C\n{\n    public int Get() => 3;\n    int Use() => Get();\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "make-async");
+
+        Assert.True(plan.Refused);
+    }
+
+    [Fact]
+    public async Task AMethodToPropertyDropsTheCallParentheses()
+    {
+        const string code = "class C\n{\n    public int Size() => 3;\n    int Use() => Size();\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "method-to-property");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("public int Size => 3;", text);
+        Assert.Contains("int Use() => Size;", text);
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";
