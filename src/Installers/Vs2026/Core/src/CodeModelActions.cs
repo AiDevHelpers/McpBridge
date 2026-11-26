@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.LanguageServices;
 using Microsoft.VisualStudio.Shell;
+using static AiDevHelpers.Installers.Vs2026.Core.MemberPlanning;
 
 namespace AiDevHelpers.Installers.Vs2026.Core;
 
@@ -366,34 +367,6 @@ internal static class CodeModelActions
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(solution => InterfaceMemberEngine.AddAsync(solution, file, line, declaration), confirm, planHash);
-    }
-
-    // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
-    // the inserted lines. The method plan checks diagnostics against the original solution, so members' own warnings are reported too.
-    internal static async Task<MethodEditPlan> WithMembersAsync(
-        Solution solution, string file, int line, IReadOnlyList<MemberSpec> members,
-        Func<Solution, Func<int, int>, Solution, Task<MethodEditPlan>> plan)
-    {
-        if (members.Count == 0)
-        {
-            return await plan(solution, l => l, solution).ConfigureAwait(false);
-        }
-
-        var added = await MemberAddEngine.PlanAsync(solution, file, line, members, finalize: false).ConfigureAwait(false);
-        if (added.Refused)
-        {
-            return added;
-        }
-
-        var result = await plan(added.Result!, l => l > added.InsertedAfterLine ? l + added.InsertedLines : l, solution).ConfigureAwait(false);
-        result.MembersAdded.AddRange(members.Select(m => m.Name));
-        result.Warnings.AddRange(added.Warnings);
-        foreach (var f in added.Files.Where(f => !result.Files.Contains(f)))
-        {
-            result.Files.Add(f);
-        }
-
-        return result;
     }
 
     // Adds fields and properties to the type at a line, or changes an existing one, with the checks of the method tools.

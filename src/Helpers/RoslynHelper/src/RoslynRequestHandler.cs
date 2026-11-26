@@ -12,6 +12,7 @@ public sealed class RoslynRequestHandler
     private readonly Func<string?> _solutionPath;
     private readonly SolutionLoader _loader;
     private readonly ActionDispatcher _dispatcher = new();
+    private Microsoft.CodeAnalysis.Solution? _solution;
 
     public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null)
     {
@@ -24,6 +25,7 @@ public sealed class RoslynRequestHandler
             solutionPath = _solutionPath(),
         }));
         _dispatcher.Register("loadSolution", LoadSolutionAsync);
+        PlanActions.Register(_dispatcher, () => _solution, s => _solution = s);
     }
 
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
@@ -34,6 +36,7 @@ public sealed class RoslynRequestHandler
         var solutionPath = args.GetProperty("solutionPath").GetString()
             ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
         var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
+        _solution = loaded.Solution;
         return new
         {
             ok = true,
