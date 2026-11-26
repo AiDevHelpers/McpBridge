@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AiDevHelpers.MCP.Core.Tools;
+using ModelContextProtocol.Protocol;
 using Xunit;
 
 namespace AiDevHelpers.MCP.Core.Tests.Tools;
@@ -148,6 +149,57 @@ public sealed class LocalizationToolsTests : IDisposable
 
         Assert.True(applied.RootElement.GetProperty("applied").GetBoolean());
         Assert.True(File.Exists(pseudoPath));
+    }
+
+    [Fact]
+    public void IsAvailableFalseWhenCapabilitiesNull() => Assert.False(SamplingTranslator.IsAvailable(null));
+
+    [Fact]
+    public void IsAvailableFalseWhenSamplingNull() => Assert.False(SamplingTranslator.IsAvailable(new ClientCapabilities()));
+
+    [Fact]
+    public void IsAvailableTrueWhenSamplingSet() =>
+        Assert.True(SamplingTranslator.IsAvailable(new ClientCapabilities { Sampling = new SamplingCapability() }));
+
+    private void Stubs()
+    {
+        Write("P/Resources/Strings.resx", TwoKeys);
+        Write("P/Resources/Strings.de.resx",
+            "<root><data name=\"A\" xml:space=\"preserve\"><value>One</value><comment>needs-translation</comment></data>\n</root>\n");
+    }
+
+    [Fact]
+    public async Task Translate_PlanWorksWithoutSampling()
+    {
+        Stubs();
+
+        var reply = await LocalizationTools.Translate(null, () => throw new InvalidOperationException("must not be called"), _root, "de", null, null, default);
+
+        using var doc = JsonDocument.Parse(reply);
+        Assert.True(doc.RootElement.GetProperty("plan").GetBoolean());
+        Assert.False(doc.RootElement.GetProperty("sampling_available").GetBoolean());
+        Assert.Equal(1, doc.RootElement.GetProperty("batches").GetInt32());
+    }
+
+    [Fact]
+    public async Task Translate_ConfirmRefusedWithoutSamplingAndTokenKept()
+    {
+        Stubs();
+        using var plan = JsonDocument.Parse(await LocalizationTools.Translate(null, () => throw new InvalidOperationException(), _root, "de", null, null, default));
+        var token = plan.RootElement.GetProperty("token").GetString();
+
+        using var refused = JsonDocument.Parse(await LocalizationTools.Translate(null, () => throw new InvalidOperationException(), _root, "de", null, token, default));
+        using var again = JsonDocument.Parse(await LocalizationTools.Translate(new ClientCapabilities { Sampling = new SamplingCapability() },
+            () => new FixedTranslator("{\"A\":\"Eins\"}"), _root, "de", null, token, default));
+
+        Assert.False(refused.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Contains("sampling", refused.RootElement.GetProperty("error").GetString());
+        Assert.True(again.RootElement.GetProperty("applied").GetBoolean());
+    }
+
+    private sealed class FixedTranslator(string reply) : AiDevHelpers.Helpers.LocalizationHelper.ITranslator
+    {
+        public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken ct) => Task.FromResult(reply);
     }
 
     [Fact]

@@ -7,6 +7,7 @@
 - New `localization_extract` (plan, then confirm with a token): moves hardcoded literals into the project's `Strings.resx` and rewrites them as `Strings.Get` or `Strings.Format`; literals it cannot rewrite safely are listed as skipped with a reason. `string_scan` findings now carry `Column` and `Interpolated`.
 - New `localization_culture_check`: lists culture-sensitive calls with no culture argument, using Roslyn (`Microsoft.CodeAnalysis.CSharp` 5.12.0, new package in LocalizationHelper). Report only.
 - New `localization_pseudo` (plan, then confirm with a token): writes a pseudo-localized `Strings.qps-ploc.resx` to find unlocalized text and layout limits.
+- New `localization_translate` (plan, then confirm with a token): translates culture stubs through the client's model with MCP sampling, checks placeholders, and marks results `machine-translated`. It needs a client that supports sampling.
 
 ## Instance check and event filter limits (unreleased)
 
