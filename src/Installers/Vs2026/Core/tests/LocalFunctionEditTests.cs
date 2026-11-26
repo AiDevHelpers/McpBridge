@@ -31,6 +31,20 @@ public sealed class LocalFunctionEditTests
     }
 
     [Fact]
+    public async Task AddInsideABodyAddsALocalFunctionAfterTheStatement()
+    {
+        var solution = TestSolutions.Single([(File, Code)]);
+
+        var plan = await MethodAddEngine.PlanAsync(solution, File, 5, "int Helper2(int z) => z * 3;", null, false, new DocUpdates());
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("int Helper2(int z) => z * 3;", text);
+        Assert.Contains("int Outer(int a)", text);
+        Assert.True(text.IndexOf("int x = a + 1;", System.StringComparison.Ordinal) < text.IndexOf("int Helper2", System.StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ASignatureChangeWithACallerIsRefusedWithoutACallerEdit()
     {
         var solution = TestSolutions.Single([(File, Code)]);

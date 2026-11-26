@@ -32,7 +32,11 @@ internal static class FileMover
         // An open copy is saved first so the move does not lose unsaved text.
         if (File.Exists(move.From))
         {
-            dte?.Documents.Cast<Document>().FirstOrDefault(d => string.Equals(d.FullName, move.From, StringComparison.OrdinalIgnoreCase))?.Save();
+            dte?.Documents.Cast<Document>().FirstOrDefault(d =>
+            {
+                Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
+                return string.Equals(d.FullName, move.From, StringComparison.OrdinalIgnoreCase);
+            })?.Save();
         }
 
         return FileOperations.Move(move.From, move.To, move.Project);

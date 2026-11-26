@@ -939,6 +939,265 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Convert a member's shape, using Roslyn, with checks. kind \"field-to-property\" turns the private field at a line into an auto property of the same accessibility, with the name's first letter upper-cased and underscores dropped, and redirects its uses to the property; refused for a static, readonly, const or multi-variable field, a name clash, or a use passed by ref or out. kind \"null-guards\" adds an if (p == null) throw ArgumentNullException check for each reference-typed parameter at the top of the method's block body. kind \"expression-to-block\" and \"block-to-expression\" convert a method's body between => e; and a block of one return. kind \"var-to-explicit\" and \"explicit-to-var\" change a local declaration's type when the initializer has exactly that type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeConvert(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line of the field, or inside the method for null-guards")] int line,
+        [Description("\"field-to-property\" or \"null-guards\"")] string kind,
+        [Description("Optional: for make-async, how many caller levels are made async and awaited. Default 0 (the method only, with no callers allowed).")] int? depth = null,
+        [Description("Optional: for make-async, rename the method and its call sites to end in Async. Default false.")] bool suffix = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("convert", new { file, line, kind, depth = depth ?? 0, suffix, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Delete the unused members and types that ide_find_unused reported and a person confirmed, in one change, using Roslyn, with checks. items is an array of {file, line, kind}, kind \"member\" (default) or \"type\". Each item is deleted with the checked delete rules (no references left, tests that call it refused unless named). The first refusal stops the whole change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeRemoveUnused(
+        [Description("The items to delete: array of {file, line, kind}")] object[] items,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("removeUnused", new { items, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Edit the XML doc comment of the method at a line, using Roslyn, with no code change. summary replaces the summary text; docs gives {tag, name, text} entries for param, typeparam or returns tags, each replacing that tag's text in the comment's own layout. Text is never invented: a tag not given keeps its text. Refused when the method has no doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeUpdateDocs(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method")] int line,
+        [Description("Optional: the new summary text")] string? summary = null,
+        [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags")] object[]? docs = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("updateDocs", new { file, line, summary, docs = docs ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Check the XML doc comments of the methods in a file against their signatures, using Roslyn. Reports a parameter or type parameter with no tag, a param or typeparam tag that names nothing, and a non-void method with no returns tag, with the line of each doc comment. Read only. Visual Studio only.")]
+    public async Task<string> IdeCheckDocs(
+        [Description("Full path of the source file")] string file,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("checkDocs", new { file }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Extract an interface from the class or struct at a line, using Roslyn, with checks. members names its public, non-static methods and properties, which become the interface's members as signatures. The interface is written to I<interfaceName>.cs beside the type's file and the type adds it to its base list. Refused for a member that is not public and non-static, a name already taken, or an interface already implemented. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractInterface(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class or struct")] int line,
+        [Description("The interface's name without the I prefix, such as Store for IStore")] string interfaceName,
+        [Description("The public method and property names to put on the interface")] string[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractInterface", new { file, line, interfaceName, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Extract an expression into a named local or constant, using Roslyn, with checks. expression is its exact text, which must occur once on the line. kind \"variable\" declares var name = expression; before the statement that uses it and uses the name; kind \"constant\" declares const with the expression's type, and needs an expression the compiler folds to a constant. Refused for an expression inside a lambda or anonymous method, one not in a block statement, or a text that occurs more than once. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractValue(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line holding the expression")] int line,
+        [Description("The expression's exact text on that line")] string expression,
+        [Description("The new local or constant's name")] string name,
+        [Description("\"variable\" or \"constant\"")] string kind,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractValue", new { file, line, expression, name, kind, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Inline a method, using Roslyn, with checks: each call is replaced by the method's body with the arguments substituted, and the method is deleted. Only a value-returning, non-async method whose body is one return expression or an expression body is inlined. Refused for a recursive method, a method that overrides, implements or is overridden, an interface member, params, ref or out parameters, a reference that is not a plain call, and an argument that is not a literal or name where its parameter is used twice. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeInlineMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method to inline")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("inlineMethod", new { file, line, column = column ?? 1, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Extract a run of whole statements in one block into a new private method, using Roslyn, with checks. The parameters are the variables the run reads from outside it; the return value is the one variable it writes that is used after it. The statements are replaced by a call and the new method goes after the enclosing method. Refused for more than one value used after the run, for return, yield, break or continue in it, for a range that is not whole statements of one block, or for a name already taken. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based first line of the statements")] int startLine,
+        [Description("1-based last line of the statements")] int endLine,
+        [Description("The new method's name")] string name,
+        [Description("Optional: accessibility of the new method. Default private.")] string? accessibility = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractMethod", new { file, startLine, endLine, name, accessibility = accessibility ?? "private", confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("List the code actions offered at a line, using Roslyn. Only the fix for a missing type name is computed: adding a using directive for a type in a namespace the file does not import. Each result has an id to pass to ide_apply_code_action. The IDE's own fixes are not listed. Read only. Visual Studio only.")]
+    public async Task<string> IdeListCodeActions(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line with the missing name")] int line,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("listCodeActions", new { file, line }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Apply a code action listed by ide_list_code_actions at a line, with the standard checks. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeApplyCodeAction(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line the action was listed for")] int line,
+        [Description("The id from ide_list_code_actions")] string id,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("applyCodeAction", new { file, line, id, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Move the named members of a partial class, struct or record's part at a line into a new part in a new file named Type.<suffix>.cs beside the part's file, using Roslyn, with checks. The new part repeats the type's access modifiers, keyword and name, and copies the file's usings and namespace. Refused for a member name that is not in the part, or a file that already exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractPartial(
+        [Description("Full path of the file holding the part")] string file,
+        [Description("1-based line inside the part")] int line,
+        [Description("The member names to move")] string[] members,
+        [Description("The new file's suffix: the new file is Type.<suffix>.cs")] string suffix,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractPartial", new { file, line, members, suffix, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Merge the parts of a partial class, struct or record into the part at a line, using Roslyn, with checks. The other parts' members move to the end of that part, their usings the part's file lacks are added, and their declarations are removed; a part that was alone in its file takes the file with it. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeMergePartial(
+        [Description("Full path of a file holding one part of the type")] string file,
+        [Description("1-based line inside the part to merge into")] int line,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("mergePartial", new { file, line, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Change a file's layout, using Roslyn, with checks. action \"split\" moves the top-level type at line out of a file that holds several types into its own file named after it, beside the original, with the original's usings and namespace. action \"rename\" renames a file that holds exactly one type to that type's name. Refused when the target file exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeOrganizeFile(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the type (for split); any line for rename")] int line,
+        [Description("\"split\" or \"rename\"")] string action,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("organizeFile", new { file, line, action, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Move a method, property or field to another type in the solution, using Roslyn, with checks. toType is the destination type's name (or its full display name when the simple name is ambiguous). The member's text and doc comment move to the end of the destination. References qualified by the source type's name are renamed to the destination; other references need a callerEdits entry each. Refused for an override, implementation or implemented member, and for a move that stops compiling in its new place. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeMoveMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the member to move")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("The destination type's name, or its full display name")] string toType = "",
+        [Description("Optional: array of {file, line, column, newText} for references that are not qualified by the source type's name.")] object[]? callerEdits = null,
+        [Description("Optional: true pulls the member up to its base class (toType is then ignored). The base class must be declared in the solution. Default false.")] bool pullUp = false,
+        [Description("Optional: true moves an instance method as a static member: \"static\" is added, unqualified and this. calls in the source type become Dest.M(). Refused when the body uses instance state. Default false.")] bool toStatic = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("moveMember", new { file, line, column = column ?? 1, toType, callerEdits = callerEdits ?? [], toStatic, pullUp, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Add Equals, GetHashCode or ToString to the class, struct or record that contains a line, using Roslyn, with checks. kind is \"equals\", \"hashcode\" or \"tostring\"; members names the fields and properties it uses. Refused when the type already declares that member. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeGenerateMembers(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("\"equals\", \"hashcode\" or \"tostring\"")] string kind,
+        [Description("Field and property names the member uses")] string[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("generateMembers", new { file, line, kind, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add a constructor to the class, struct or record that contains a line, using Roslyn, with checks. members names the fields and properties it takes and assigns (in order); each parameter is the member name with the first letter lower-cased. accessibility defaults to public. Refused for a member with no setter, an unknown member, or a constructor that already takes the same parameter types. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeGenerateConstructor(
         [Description("Full path of the source file")] string file,
