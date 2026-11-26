@@ -926,6 +926,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Optional: true rewrites the call sites to match a clean removal or reorder of parameters (matched by name). Adds, renames and retypes are refused: use ide_change_signature. Cannot be combined with callerEdits. Default false.")] bool rewriteCallers = false,
         [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -933,7 +934,183 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], rewriteCallers, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Add a constructor to the class, struct or record that contains a line, using Roslyn, with checks. members names the fields and properties it takes and assigns (in order); each parameter is the member name with the first letter lower-cased. accessibility defaults to public. Refused for a member with no setter, an unknown member, or a constructor that already takes the same parameter types. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeGenerateConstructor(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("Field and property names to take and assign, in parameter order")] string[] members,
+        [Description("Optional: public, internal, protected or private. Default public.")] string? accessibility = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("generateConstructor", new { file, line, members, accessibility = accessibility ?? "public", confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Change the modifiers and base list of the class, struct or record at a line, using Roslyn, with checks. modifiers replaces the whole set, such as \"public sealed\" or \"internal static partial\"; for a partial type it must include partial and applies to every part. baseList replaces the base class and interfaces of the part at the line, such as [\"Base\", \"IDisposable\"]. Adding abstract or static is refused while the type is used. Narrowing access and other breaking uses are refused by the checks. Attributes, type parameters and constraints are not changed. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeEditType(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the type")] int line,
+        [Description("Optional: the full new set of modifiers, space separated")] string? modifiers = null,
+        [Description("Optional: the new base class and interfaces of the part at the line. An empty array removes them.")] string[]? baseList = null,
+        [Description("Optional: attributes to add to the type at the line, such as \"Serializable\"")] string[]? attributesAdd = null,
+        [Description("Optional: attributes to remove from the type at the line, by name, such as \"Serializable\"")] string[]? attributesRemove = null,
+        [Description("Optional: the new type parameter list, such as \"<T, U>\". An empty string removes it. Partial parts must match.")] string? typeParameters = null,
+        [Description("Optional: the new constraint clauses, such as \"where T : class, new()\". An empty string removes them.")] string? constraints = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editType", new { file, line, modifiers, baseList, attributesAdd = attributesAdd ?? [], attributesRemove = attributesRemove ?? [], typeParameters, constraints, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Add stubs to the class, struct or record that contains a line, using Roslyn, with checks. mode \"interface\" stubs every member of its interfaces that nothing implements yet; mode \"override\" overrides the members named in members (virtual or abstract members of its base classes). explicit true writes the interface stubs as explicit implementations. Each stub throws System.NotImplementedException. The stubs go at the end of the type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeImplementMembers(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("\"interface\" or \"override\"")] string mode,
+        [Description("For mode override: the member names to override")] string[]? members = null,
+        [Description("Optional: true writes interface stubs as explicit implementations. Default false.")] bool @explicit = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("implementMembers", new { file, line, mode, members = members ?? [], @explicit, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Add a new type (class, struct, record, interface, enum or delegate) in its own file beside anchorFile, using Roslyn, with checks. declaration is the type's full C# text without a doc comment or usings. The file takes the anchor's project and namespace unless namespace is given. usings, summary and attributes are written around the declaration in the file's own layout. Refused when a type of the same name exists or a file is already at the path. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeAddType(
+        [Description("Full path of an existing source file in the target project; the new file goes beside it")] string anchorFile,
+        [Description("The type's full C# text, such as \"public sealed class Widget { }\"")] string declaration,
+        [Description("Optional: usings the new file needs, such as \"System.Text\"")] string[]? usings = null,
+        [Description("Optional: namespace for the new type. Default is the anchor file's namespace.")] string? @namespace = null,
+        [Description("Optional: summary text for the type's doc comment")] string? summary = null,
+        [Description("Optional: attributes for the type, such as \"Serializable\" or \"[Serializable]\"")] string[]? attributes = null,
+        [Description("Optional: also add a test class beside the type in the test project that refers to anchorFile's project. It asserts failure until written. Default false.")] bool withTests = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addType", new { anchorFile, declaration, usings = usings ?? [], namespaceName = @namespace, summary, attributes = attributes ?? [], withTests, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Add a method, property, event or indexer to an interface, using Roslyn, with checks. declaration is its full C# text. Every type that implements the interface would lack the member, so the reply lists each implementer and the change is refused while there are any. Without confirm it only returns the checks. Visual Studio only.")]
+    public async Task<string> IdeAddInterfaceMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the interface")] int line,
+        [Description("The member's full C# text, such as \"void Save(int id);\"")] string declaration,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addInterfaceMember", new { file, line, declaration, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Add a member to an enum, using Roslyn, with checks. name is the member's name and value an optional constant expression. The member goes after the last member, in the enum's own comma layout. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeAddEnumMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the enum")] int line,
+        [Description("The new member's name")] string name,
+        [Description("Optional: the member's constant value, such as 4 or 1 << 3")] string? value = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("addEnumMember", new { file, line, name, value, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Change the value of the enum member at a line, using Roslyn, with checks. A [Flags] enum's values are bits, and an enum that looks persisted (it has attributes, or is public) may be stored by number, so those refuse a value change unless allowValueChange is true. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeEditEnumMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line of the enum member")] int line,
+        [Description("The new constant value, such as 4 or 1 << 3")] string value,
+        [Description("Optional: true allows the value change for a [Flags] or persisted enum. Default false.")] bool allowValueChange = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("editEnumMember", new { file, line, value, allowValueChange, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
+    [Description("Change a method's parameter list with Roslyn, and rewrite every call site to match, with checks. parameters is the new list in order, each {declaration, fromOld, valueForCallers}: declaration is the parameter as written in the new signature (such as \"int b\" or \"CancellationToken ct = default\"); fromOld is the index of the old parameter it keeps (omit it for a new parameter); valueForCallers is the argument every existing call gets for a new parameter (an expression, or default). A new parameter without a default needs valueForCallers. A removed parameter's argument is dropped only when it has no side effects. Calls it cannot rewrite (method groups, delegates, constructors, attributes, params) refuse the change and are listed as uncovered. A method that overrides, implements or is overridden is refused. The doc comment's param tags follow, as in ide_edit_method, and docs needs an entry for each new parameter when the method has a doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeChangeSignature(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method (its name line is best)")] int line,
+        [Description("The new parameter list in order: array of {declaration, fromOld, valueForCallers}.")] object[] parameters,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
+        [Description("Optional: new return type, such as \"long\" or \"Task<int>\". Callers that no longer compile are refused.")] string? returnType = null,
+        [Description("Optional: new accessibility: public, internal, protected, private, protected internal or private protected. Other modifiers are kept.")] string? accessibility = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("changeSignature", new { file, line, column = column ?? 1, parameters, docs = docs ?? [], returnType, accessibility, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Add one parameter to a method and thread it up its callers, using Roslyn, with checks. declaration is the parameter as written (for example \"CancellationToken ct = default\"). Each call passes the caller's own parameter of the same type when it has one; a caller within depth levels gets the parameter too and passes it on; any call above that passes valueAtTop (a literal or expression such as CancellationToken.None). depth defaults to 1 (the direct callers). Every method it changes is listed in the reply. Overrides, implementations, params methods and calls that cannot be rewritten refuse the change. Doc comments are not updated (the reply warns). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeThreadParameter(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method to add the parameter to (its name line is best)")] int line,
+        [Description("The parameter as written, such as \"CancellationToken ct = default\"")] string declaration,
+        [Description("The argument a call passes at the top of the threading, such as CancellationToken.None")] string valueAtTop,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: how many caller levels above the method get the parameter. Default 1.")] int? depth = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("threadParameter", new { file, line, column = column ?? 1, declaration, valueAtTop, depth = depth ?? 1, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -947,6 +1124,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary text for the new method's doc comment.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -954,7 +1132,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("addMethod", new { file, line, newMethodText, afterLine, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -967,6 +1145,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary text for the overload's doc comment. Without it the original's summary is kept.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for param, typeparam and returns tags that differ from the original.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -974,7 +1153,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("addOverload", new { file, line, newMethodText, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -990,6 +1169,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: summary for the method's doc comment, when its neighbours have one.")] string? newSummary = null,
         [Description("Optional: array of {tag, name, text} for the method's param, typeparam and returns doc tags.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the new test with coverage after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -997,7 +1177,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], members = members ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("tddAddTest", new { testFile, testLine, testMethodText, methodFile, methodLine, methodText, newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddRed).ConfigureAwait(false);
     }
 
@@ -1009,6 +1189,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("New body: a { block } or its statements")] string newBody,
         [Description("Optional: full path of the file with the method under test, for coverage.")] string? targetFile = null,
         [Description("Optional: 1-based line inside the method under test, for coverage.")] int? targetLine = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the test with coverage after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1016,7 +1197,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("tddUpdateTest", new { file, line, newBody, targetFile, targetLine, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct, MethodTestRunner.TddUpdate).ConfigureAwait(false);
     }
 
@@ -1079,6 +1260,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("The new name, such as Company.Product.New")] string newNamespace,
         [Description("Move files so their folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
         [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1086,7 +1268,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("renameNamespace", new { oldNamespace, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
@@ -1098,6 +1280,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("The namespace to move it to")] string newNamespace,
         [Description("Move the file so its folder matches the new namespace (SDK-style projects whose folders already follow namespaces). Default false: only warn.")] bool moveFiles = false,
         [Description("Optional: array of {file, line, column, newText} for references written relative to an enclosing namespace.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the affected test projects after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1105,22 +1288,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("moveType", new { file, line, newNamespace, moveFiles, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 
     [McpServerTool]
-    [Description("Add one or more fields or properties to the type that contains a line, using Roslyn, with checks. For each member you give its name, type, accessibility (always required: public, internal, protected, private, protected internal or private protected) and how it is backed: auto ({ get; set; }), field (a private backing field and a property over it), readonly-field, field-only (a plain field) or expression (a get-only property computed from initializer). Also setter (set, init, none, or \"private set\" style), required, initializer, attributes (for example \"Required\" or \"JsonProperty(\\\"x\\\")\") and summary. They go after the type's last field or property, in its layout, with doc comments in the neighbours' style when they have them. The file is formatted, a new compile error refuses the change, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the type's members, if any. Visual Studio only.")]
+    [Description("Add one or more fields or properties to the type that contains a line, using Roslyn, with checks. For an indexer, an event, an event field or a delegate, give its full C# text as declaration (only that one member; name and type are optional and unused). For each field or property you give its name, type, accessibility (always required: public, internal, protected, private, protected internal or private protected) and how it is backed: auto ({ get; set; }), field (a private backing field and a property over it), readonly-field, field-only (a plain field) or expression (a get-only property computed from initializer). Also setter (set, init, none, or \"private set\" style), required, initializer, attributes (for example \"Required\" or \"JsonProperty(\\\"x\\\")\") and summary. They go after the type's last field or property, in its layout, with doc comments in the neighbours' style when they have them. The file is formatted, a new compile error refuses the change, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the type's members, if any. Visual Studio only.")]
     public async Task<string> IdeAddMember(
         [Description("Full path of the source file")] string file,
         [Description("1-based line inside the target type")] int line,
         [Description("Array of {name, type, accessibility, backing, setter, required, initializer, attributes, summary}")] object[] members,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
         [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default) =>
-        await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
 
     [McpServerTool]
     [Description("Change an existing field or property, whatever its accessibility, using Roslyn, with checks. Set only what changes: newType, accessibility, setter (set, init, none, \"private set\" style), required, backing (auto or field: swap between an auto property and a property over a private field), addAttributes, removeAttributes, newSummary, or newName. Every reference is checked: a change to the type, accessibility, setter or required needs a callerEdits entry (file, line, column from ide_semantic_references, and newText for the invocation or name) for each reference, or it is refused; a rename updates its references itself and must be a call of its own; attribute, backing and summary changes touch no reference. A change on a property that overrides or implements another member is refused. A new compile error refuses the change. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the member, with coverage. Visual Studio only.")]
@@ -1138,6 +1322,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: names of attributes to remove, such as \"Required\"")] string[]? removeAttributes = null,
         [Description("Optional: new summary for the member's existing doc comment")] string? newSummary = null,
         [Description("Optional: array of {file, line, column, newText} for references, when the change affects what other code sees.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the member, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1147,7 +1332,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     {
         var reply = await IdeInstanceRouter.CallAsync(
             "editMember",
-            new { file, line, newName, newType, accessibility, setter, required, backing, addAttributes = addAttributes ?? [], removeAttributes = removeAttributes ?? [], newSummary, callerEdits = callerEdits ?? [], confirm },
+            new { file, line, declaration, newName, newType, accessibility, setter, required, backing, addAttributes = addAttributes ?? [], removeAttributes = removeAttributes ?? [], newSummary, callerEdits = callerEdits ?? [], confirm, planHash },
             solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }

@@ -190,16 +190,22 @@ internal static class MethodEditEngine
         var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
         var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
         var position = Math.Min(text.Lines[line - 1].Start + Math.Max(0, column - 1), text.Length);
-        var methodNode = root?.FindToken(position).Parent?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        var symbol = methodNode is null || model is null ? null : model.GetDeclaredSymbol(methodNode);
+        // The innermost method or local function at the line. A local function is edited on its own, not its enclosing method.
+        SyntaxNode? methodNode = root?.FindToken(position).Parent?.AncestorsAndSelf()
+            .FirstOrDefault(n => n is BaseMethodDeclarationSyntax or LocalFunctionStatementSyntax);
+        var symbol = methodNode is null || model is null ? null : SymbolOf(model, methodNode);
         if (methodNode is null || symbol is null)
         {
             plan.Reasons.Add(Strings.Get("MethodEditNotAMethod"));
             return plan;
         }
 
-        var parsed = SyntaxFactory.ParseMemberDeclaration(newMethodText);
-        if (parsed is not MethodDeclarationSyntax || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        SyntaxNode parsed = methodNode is LocalFunctionStatementSyntax
+            ? SyntaxFactory.ParseStatement(newMethodText)
+            : SyntaxFactory.ParseMemberDeclaration(newMethodText)!;
+        var wantsLocal = methodNode is LocalFunctionStatementSyntax;
+        if (parsed is null || parsed is LocalFunctionStatementSyntax != wantsLocal || (!wantsLocal && parsed is not BaseMethodDeclarationSyntax)
+            || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
         {
             plan.Reasons.Add(Strings.Get("MethodEditNewTextNotOneMethod"));
             return plan;
@@ -323,6 +329,14 @@ internal static class MethodEditEngine
         public bool IsCandidate { get; set; }
     }
 
+    // The method symbol a method declaration or local function declares.
+    internal static IMethodSymbol? SymbolOf(SemanticModel model, SyntaxNode node) => node switch
+    {
+        BaseMethodDeclarationSyntax method => model.GetDeclaredSymbol(method) as IMethodSymbol,
+        LocalFunctionStatementSyntax local => model.GetDeclaredSymbol(local) as IMethodSymbol,
+        _ => null,
+    };
+
     internal static async Task<List<Reference>> CollectReferencesAsync(Solution solution, ISymbol symbol)
     {
         var found = new List<Reference>();
@@ -370,15 +384,8 @@ internal static class MethodEditEngine
             var document = solution.GetDocument(reference.DocumentId)!;
             var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
             var token = root!.FindToken(reference.Span.Start);
-            var span = token.Span;
-            for (var node = token.Parent; node is not null && node is not StatementSyntax && node is not MemberDeclarationSyntax; node = node.Parent)
-            {
-                if (node is InvocationExpressionSyntax invocation && invocation.Expression.Span.End == token.Span.End)
-                {
-                    span = invocation.Span;
-                    break;
-                }
-            }
+            // The whole call the reference names (an invocation, object creation, initializer or attribute), else the bare token.
+            var span = CallSiteRewriter.CallOf(token)?.Span ?? token.Span;
 
             if (!changes.TryGetValue(reference.DocumentId, out var list))
             {
@@ -405,8 +412,8 @@ internal static class MethodEditEngine
         var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
         var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
         var node = root?.FindToken(Math.Min(oldStart + shift, root.FullSpan.End)).Parent?.AncestorsAndSelf()
-            .OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        return node is null || model is null ? null : model.GetDeclaredSymbol(node);
+            .FirstOrDefault(n => n is BaseMethodDeclarationSyntax or LocalFunctionStatementSyntax);
+        return node is null || model is null ? null : SymbolOf(model, node);
     }
 
     // A signature change with callers needs every reference covered. Overrides and implementations are not edited by this tool,

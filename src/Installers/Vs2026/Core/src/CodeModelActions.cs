@@ -168,13 +168,86 @@ internal static class CodeModelActions
     // Replaces the method at a position with new text, after the checks in MethodEditEngine. Plan-only returns the checks; a
     // refused plan is a reply with refused true, never an applied change. Applied writes through the VS workspace as one change set.
     public static object EditMethod(
-        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
+        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members,
+        bool rewriteCallers, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(
-            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
-                MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
+            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) => rewriteCallers
+                ? ChangeSignatureEngine.PlanEditAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)
+                : MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
             confirm, planHash);
+    }
+
+    // Changes a method's parameters and rewrites its call sites (ChangeSignatureEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ChangeSignature(
+        string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates docs, HeaderChange header, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ChangeSignatureEngine.PlanAsync(solution, file, line, column, newParameters, docs, header), confirm, planHash);
+    }
+
+    // Adds a parameter to a method and threads it up its callers to a depth (ThreadParameterEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ThreadParameter(
+        string file, int line, int column, string declaration, string valueAtTop, int depth, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ThreadParameterEngine.PlanAsync(solution, file, line, column, declaration, valueAtTop, depth), confirm, planHash);
+    }
+
+    // Adds a member to the enum at a line, or changes the value of the enum member at a line (EnumMemberEngine). Same plan, refuse and
+    // apply behaviour as EditMethod.
+    public static object AddEnumMember(string file, int line, string name, string? value, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EnumMemberEngine.AddAsync(solution, file, line, name, value), confirm, planHash);
+    }
+
+    public static object EditEnumMember(string file, int line, string value, bool allowValueChange, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EnumMemberEngine.EditValueAsync(solution, file, line, value, allowValueChange), confirm, planHash);
+    }
+
+    // Changes a class, struct or record's modifiers and base list (EditTypeEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object EditType(
+        string file, int line, string? modifiers, IReadOnlyList<string>? baseList, IReadOnlyList<string> attributesAdd, IReadOnlyList<string> attributesRemove,
+        string? typeParameters, string? constraints, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
+    }
+
+    // Adds a constructor that assigns the chosen fields and properties (GenerateConstructorEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object GenerateConstructor(string file, int line, IReadOnlyList<string> members, string accessibility, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => GenerateConstructorEngine.PlanAsync(solution, file, line, members, accessibility), confirm, planHash);
+    }
+
+    // Adds stubs to a class, struct or record: its interface members, or overrides of named members (ImplementMembersEngine).
+    public static object ImplementMembers(
+        string file, int line, string mode, IReadOnlyList<string> names, bool explicitImplementation, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ImplementMembersEngine.PlanAsync(solution, file, line, mode, names, explicitImplementation), confirm, planHash);
+    }
+
+    // Adds a new type in its own file beside the anchor file (AddTypeEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object AddType(
+        string anchorFile, string declaration, IReadOnlyList<string> usings, string? namespaceName, string? summary, IReadOnlyList<string> attributes,
+        bool withTests, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => AddTypeEngine.AddAsync(solution, anchorFile, declaration, usings, namespaceName, summary, attributes, withTests), confirm, planHash);
+    }
+
+    // Adds a method, property, event or indexer to the interface at a line (InterfaceMemberEngine). Same plan, refuse and apply
+    // behaviour as EditMethod.
+    public static object AddInterfaceMember(string file, int line, string declaration, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => InterfaceMemberEngine.AddAsync(solution, file, line, declaration), confirm, planHash);
     }
 
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
@@ -206,46 +279,46 @@ internal static class CodeModelActions
     }
 
     // Adds fields and properties to the type at a line, or changes an existing one, with the checks of the method tools.
-    public static object AddMember(string file, int line, IReadOnlyList<MemberSpec> members, bool confirm)
+    public static object AddMember(string file, int line, IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => MemberAddEngine.PlanAsync(solution, file, line, members, finalize: true), confirm);
+        return RunPlan(solution => MemberAddEngine.PlanAsync(solution, file, line, members, finalize: true), confirm, planHash);
     }
 
-    public static object EditMember(string file, int line, MemberEdit edit, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    public static object EditMember(string file, int line, MemberEdit edit, IReadOnlyList<CallerEdit> callerEdits, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => MemberEditEngine.PlanAsync(solution, file, line, edit, callerEdits), confirm);
+        return RunPlan(solution => MemberEditEngine.PlanAsync(solution, file, line, edit, callerEdits), confirm, planHash);
     }
 
     // Adds a method to the type at a line, or an overload of the method at that line, after the checks in MethodAddEngine. Same
     // plan, refuse and apply behaviour as EditMethod.
     public static object AddMethod(
-        string file, int line, string newMethodText, int? afterLine, DocUpdates docs, bool overload, IReadOnlyList<MemberSpec> members, bool confirm)
+        string file, int line, string newMethodText, int? afterLine, DocUpdates docs, bool overload, IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(
             solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
                 MethodAddEngine.PlanAsync(s, file, shift(line), newMethodText, afterLine is { } a ? shift(a) : (int?)null, overload, docs, baseline)),
-            confirm);
+            confirm, planHash);
     }
 
     // The TDD steps: add a test with its method, or replace a test's body. Same plan, refuse and apply behaviour as EditMethod.
     public static object TddAddTest(
         string testFile, int testLine, string testMethodText, string methodFile, int methodLine, string methodText, DocUpdates docs,
-        IReadOnlyList<MemberSpec> members, bool confirm)
+        IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(
             solution => WithMembersAsync(solution, methodFile, methodLine, members, (s, shift, baseline) =>
                 TddEngine.StartAsync(s, testFile, testLine, testMethodText, methodFile, shift(methodLine), methodText, docs, baseline)),
-            confirm);
+            confirm, planHash);
     }
 
-    public static object TddUpdateTest(string file, int line, string newBody, string? targetFile, int? targetLine, bool confirm)
+    public static object TddUpdateTest(string file, int line, string newBody, string? targetFile, int? targetLine, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => TddEngine.UpdateTestAsync(solution, file, line, newBody, targetFile, targetLine), confirm);
+        return RunPlan(solution => TddEngine.UpdateTestAsync(solution, file, line, newBody, targetFile, targetLine), confirm, planHash);
     }
 
     private static object RunPlan(Func<Solution, Task<MethodEditPlan>> plan, bool confirm, string? expectedHash = null)
@@ -318,16 +391,16 @@ internal static class CodeModelActions
     }
 
     // Renames a namespace across the solution, or moves one type to another namespace.
-    public static object RenameNamespace(string oldName, string newName, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    public static object RenameNamespace(string oldName, string newName, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => NamespaceEngine.RenameAsync(solution, oldName, newName, moveFiles, callerEdits), confirm);
+        return RunPlan(solution => NamespaceEngine.RenameAsync(solution, oldName, newName, moveFiles, callerEdits), confirm, planHash);
     }
 
-    public static object MoveType(string file, int line, string newNamespace, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm)
+    public static object MoveType(string file, int line, string newNamespace, bool moveFiles, IReadOnlyList<CallerEdit> callerEdits, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => TypeMoveEngine.MoveAsync(solution, file, line, newNamespace, moveFiles, callerEdits), confirm);
+        return RunPlan(solution => TypeMoveEngine.MoveAsync(solution, file, line, newNamespace, moveFiles, callerEdits), confirm, planHash);
     }
 
     // Deletes a member after the checks in DeleteEngine. Plan-only returns the checks; applied writes through the workspace.
