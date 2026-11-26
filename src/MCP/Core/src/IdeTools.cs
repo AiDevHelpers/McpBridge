@@ -912,6 +912,25 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Extract an expression into a named local or constant, using Roslyn, with checks. expression is its exact text, which must occur once on the line. kind \"variable\" declares var name = expression; before the statement that uses it and uses the name; kind \"constant\" declares const with the expression's type, and needs an expression the compiler folds to a constant. Refused for an expression inside a lambda or anonymous method, one not in a block statement, or a text that occurs more than once. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractValue(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line holding the expression")] int line,
+        [Description("The expression's exact text on that line")] string expression,
+        [Description("The new local or constant's name")] string name,
+        [Description("\"variable\" or \"constant\"")] string kind,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractValue", new { file, line, expression, name, kind, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Inline a method, using Roslyn, with checks: each call is replaced by the method's body with the arguments substituted, and the method is deleted. Only a value-returning, non-async method whose body is one return expression or an expression body is inlined. Refused for a recursive method, a method that overrides, implements or is overridden, an interface member, params, ref or out parameters, a reference that is not a plain call, and an argument that is not a literal or name where its parameter is used twice. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeInlineMethod(
         [Description("Full path of the source file")] string file,
