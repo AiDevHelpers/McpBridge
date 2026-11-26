@@ -27,19 +27,21 @@ Each unit starts with a failing test and ends with the lite gate steps for the V
 7. **Project and shell services.** Project properties, add and remove project item, get setting, status bar, info bar, activity log. Test csproj parsing and the item XML edit in Core.
 8. **Task List approximation.** Only if question 4 says yes.
 9. **Sync.** Update the "VS only" wording in `mcp-tools.md` and `IdeTools.cs`, and `fixtures.json`.
-10. **Roslyn edit tools.** A separate plan, depending on question 1.
+10. **Roslyn edit tools.** A separate helper plan (answer 1). Not part of this plan.
+11. **Events pipe.** Add the VS Code side of the events pipe and update `protocol.md` (answer 6). The VS side already exists. Plan the VS Code side in detail before starting this unit.
+12. **Git routing.** Route the `git_*` MCP tools to the VS Code git actions (answer 7). Plan the routing and its tests in detail before starting this unit.
 
 ## Decisions
 
-Recorded answers. Each was the recommended option; the user has not confirmed them individually.
+Answers from the user:
 
-1. **Roslyn edit tools:** stay VS only. Unit 10 is a separate plan.
+1. **Roslyn edit tools:** a separate helper plan (out-of-process MSBuildWorkspace). Unit 10 is that plan, not part of this one.
 2. **Language services:** `semantic*`, `listCodeElements` and `renameSymbol` need C# Dev Kit or C#. With neither installed, return a clear error.
 3. **Exceptions:** reduced model (DAP filters only) for `listExceptions` and `setExceptionBreak`. Document it as partial.
 4. **Task List:** `unsupported` in v1. Unit 8 is dropped.
 5. **Bookmarks:** `unsupported` in v1.
-6. **Events pipe:** out of scope. `protocol.md` stays as it is.
-7. **`git_*` routing:** out of scope. A separate task.
+6. **Events pipe:** in scope now. Unit 11 covers it, and `protocol.md` changes with it.
+7. **`git_*` routing:** in scope now. Unit 12 covers it.
 
 ## Risks
 
