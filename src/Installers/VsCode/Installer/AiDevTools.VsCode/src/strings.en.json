@@ -39,5 +39,15 @@
   "noSymbolAtPosition": "No symbol at {0}:{1}:{2}.",
   "renameNotApplied": "VS Code did not apply the rename.",
   "noEditGroupToUndo": "This bridge has not applied an edit group to undo.",
-  "undoGroupApproximate": "VS Code's undo is global and not grouped by name. This reverses the last edit group this bridge applied."
+  "templateRequiredForNew": "A template is required when mode is fromNew.",
+  "unknownItemMode": "Unknown item mode '{0}'. Use fromFile or fromNew.",
+  "noProjectItemFor": "No project item for file '{0}'.",
+  "removeItemNotApplied": "Removing '{0}' from an SDK-style project needs a .csproj edit, which the bridge does not make. Nothing was changed.",
+  "addItemNotApplied": "Adding '{0}' to a project that is not SDK-style needs a .csproj edit, which the bridge does not make. Nothing was changed.",
+  "itemOutsideProjectFolder": "File '{0}' is outside the project folder, so it would not be included. Nothing was changed.",
+  "fileAlreadyExists": "File already exists: {0}",
+  "templateNotFound": "Template not found: {0}",
+  "sdkGlobNote": "SDK-style project: the file is included by globbing, so the .csproj was not edited.",
+  "unknownLogLevel": "Unknown log level '{0}'. Use Error, Warning or Information.",
+  "undoGroupApproximate":"VS Code's undo is global and not grouped by name. This reverses the last edit group this bridge applied."
 }

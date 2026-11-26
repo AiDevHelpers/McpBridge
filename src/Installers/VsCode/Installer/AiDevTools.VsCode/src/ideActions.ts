@@ -27,6 +27,17 @@ import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./pro
 import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
 import { applyReplace, buildSearchPattern, findInFiles, findProjectDirectory, planReplace, walkFiles } from "./textSearch.js";
 import {
+    addItemChange,
+    formatLogLine,
+    infoBarLabels,
+    isInsideDir,
+    isSdkStyle,
+    logLevel,
+    readProjectProperties,
+    removeItemChange,
+    settingReply,
+} from "./projectShell.js";
+import {
     changedFiles,
     dedupeLocations,
     forgetLastEditGroup,
@@ -65,6 +76,8 @@ const watches: string[] = [];
 let selectedConfiguration: string | undefined;
 // Named channels written by outputWrite. VS Code cannot read channels back, so each is created once and only appended to.
 const namedChannels = new Map<string, vscode.OutputChannel>();
+// The activity log channel, created on the first writeActivityLog that is confirmed.
+let logChannel: vscode.OutputChannel | undefined;
 
 function writeNamedChannel(name: string, text: string): void {
     let channel = namedChannels.get(name);
@@ -375,6 +388,92 @@ async function undoLastGroup(name: string, confirm: boolean): Promise<unknown> {
     return { planned: false, applied: reply };
 }
 
+function requireStringArray(args: Args, key: string): string[] {
+    const value = args[key];
+    if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+        throw new Error(t("missingArgument", key));
+    }
+    return value as string[];
+}
+
+// The .csproj a project argument names: a path ending in .csproj, or a project name found in the workspace.
+function resolveProjectFile(project: string): string {
+    if (project.toLowerCase().endsWith(".csproj")) {
+        const file = resolveFile(project).fsPath;
+        if (!fs.existsSync(file)) {
+            throw new Error(t("noProjectNamed", project));
+        }
+        return file;
+    }
+    const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+    if (roots.length === 0) {
+        throw new Error(t("needsWorkspace"));
+    }
+    const wanted = `${project}.csproj`.toLowerCase();
+    const found = walkFiles(roots).find((file) => path.basename(file).toLowerCase() === wanted);
+    if (found === undefined) {
+        throw new Error(t("noProjectNamed", project));
+    }
+    return found;
+}
+
+// A file argument as a path: absolute as given, otherwise relative to the project folder.
+function projectItemPath(projectFile: string, file: string): string {
+    return path.isAbsolute(file) ? file : path.join(path.dirname(projectFile), file);
+}
+
+// SDK-style projects include files by globbing, so a fromFile add needs no csproj edit: the file just has to be in the
+// project folder. fromNew copies the template to the file. Legacy (non-SDK) projects would need a csproj edit, which is refused.
+function addProjectItem(args: Args, confirm: boolean): unknown {
+    const project = requireString(args, "project");
+    const file = requireString(args, "file");
+    const change = addItemChange(project, file, requireString(args, "mode"), optionalString(args, "template"));
+    const projectFile = resolveProjectFile(project);
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    if (!isSdkStyle(fs.readFileSync(projectFile, "utf8"))) {
+        throw new Error(t("addItemNotApplied", file));
+    }
+    const target = projectItemPath(projectFile, file);
+    if (!isInsideDir(path.dirname(projectFile), target)) {
+        throw new Error(t("itemOutsideProjectFolder", file));
+    }
+    if (change.mode === "fromFile") {
+        if (!fs.existsSync(target)) {
+            throw new Error(t("fileNotFound", target));
+        }
+        return { planned: false, applied: change, note: t("sdkGlobNote") };
+    }
+    const templatePath = resolveFile(change.template ?? "").fsPath;
+    if (!fs.existsSync(templatePath)) {
+        throw new Error(t("templateNotFound", templatePath));
+    }
+    if (fs.existsSync(target)) {
+        throw new Error(t("fileAlreadyExists", target));
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(templatePath, target);
+    return { planned: false, applied: change, note: t("sdkGlobNote") };
+}
+
+// Matches the C# version for the item: it is removed from the project and the file stays on disk. For an SDK-style
+// project that removal means excluding the file in the csproj, which this bridge does not edit, so a confirmed
+// remove changes nothing and throws. The plan is still returned without confirm.
+function removeProjectItem(args: Args, confirm: boolean): unknown {
+    const project = requireString(args, "project");
+    const file = requireString(args, "file");
+    const projectFile = resolveProjectFile(project);
+    if (!isInsideDir(path.dirname(projectFile), projectItemPath(projectFile, file))) {
+        throw new Error(t("noProjectItemFor", file));
+    }
+    const change = removeItemChange(project, file);
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    throw new Error(t("removeItemNotApplied", file));
+}
+
 export async function runIdeAction(action: string, args: Args): Promise<unknown> {
     switch (action) {
         case "status":
@@ -606,6 +705,59 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             }
             const result = applyReplace(plan.planned, regex, args.replacement, useRegex);
             return { planned: false, applied: { files: result.applied, skipped }, failed: result.failed };
+        }
+
+        case "projectProperties": {
+            // Read-only. An unknown property name gives null, as in the Visual Studio version.
+            const project = requireString(args, "project");
+            const projectFile = resolveProjectFile(project);
+            return { project, values: readProjectProperties(fs.readFileSync(projectFile, "utf8"), requireStringArray(args, "names")) };
+        }
+
+        case "addProjectItem":
+            return addProjectItem(args, optionalBool(args, "confirm") === true);
+
+        case "removeProjectItem":
+            return removeProjectItem(args, optionalBool(args, "confirm") === true);
+
+        case "getSetting":
+            // Read-only. The key is a dotted VS Code setting name, such as editor.tabSize.
+            return settingReply(requireString(args, "key"), vscode.workspace.getConfiguration().get(requireString(args, "key")));
+
+        case "setStatus": {
+            const text = optionalString(args, "text") ?? "";
+            const change = { text };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            // VS Code clears a status bar message after a timeout; the Visual Studio status bar text stays until replaced.
+            vscode.window.setStatusBarMessage(text);
+            return { planned: false, applied: change };
+        }
+
+        case "showInfoBar": {
+            const text = requireString(args, "text");
+            const actions = infoBarLabels(args.actions);
+            const change = { text, actions };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            // The button choice is not awaited: the notification waits for the user, and the Visual Studio version does not return a choice either.
+            void vscode.window.showInformationMessage(text, ...actions);
+            return { planned: false, applied: change };
+        }
+
+        case "writeActivityLog": {
+            const level = logLevel(requireString(args, "level"));
+            const source = optionalString(args, "source") ?? "AiDevHelpers";
+            const message = requireString(args, "message");
+            const change = { level, source, message };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            logChannel ??= vscode.window.createOutputChannel("AiDevHelpers");
+            logChannel.appendLine(formatLogLine(new Date(), level, source, message));
+            return { planned: false, applied: change, written: true };
         }
 
         case "listDocuments":
