@@ -196,7 +196,13 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="CodeActionStale" xml:space="preserve"><value>no code action with that id is offered at this line any more; list them again</value></data>
-  <data name="ConvertBadKind" xml:space="preserve"><value>kind must be field-to-property or null-guards, not {0}</value></data>
+  <data name="ConvertBadKind" xml:space="preserve"><value>kind must be field-to-property, null-guards, expression-to-block, block-to-expression, var-to-explicit or explicit-to-var, not {0}</value></data>
+  <data name="ConvertNotOneReturn" xml:space="preserve"><value>the method's block is not exactly one return of an expression</value></data>
+  <data name="ConvertNotExpressionBody" xml:space="preserve"><value>the method is not expression-bodied with a semicolon</value></data>
+  <data name="ConvertNotALocal" xml:space="preserve"><value>the line is not a local declaration with an initializer</value></data>
+  <data name="ConvertNoNameableType" xml:space="preserve"><value>the type cannot be written out (anonymous or unresolved)</value></data>
+  <data name="ConvertNotSameType" xml:space="preserve"><value>the declared type is not the initializer's type, or the declaration is not explicit</value></data>
+  <data name="ConvertAlreadyExplicit" xml:space="preserve"><value>the declaration already has an explicit type</value></data>
   <data name="ConvertNotAField" xml:space="preserve"><value>the line is not on a field declaration</value></data>
   <data name="ConvertFieldShape" xml:space="preserve"><value>the field must be non-static, non-readonly, non-const, declare one variable, and have a name that is not only underscores</value></data>
   <data name="ConvertFieldRefUse" xml:space="preserve"><value>the field is passed by ref or out; a property cannot be, so the conversion is refused</value></data>

@@ -38,6 +38,42 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task AnExpressionBodyBecomesABlock()
+    {
+        const string code = "class C\n{\n    int Get() => 4;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "expression-to-block");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("{ return 4; }", await TextOfAsync(plan));
+    }
+
+    [Fact]
+    public async Task ASingleReturnBlockBecomesAnExpressionBody()
+    {
+        const string code = "class C\n{\n    int Get()\n    {\n        return 4;\n    }\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "block-to-expression");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("=> 4;", await TextOfAsync(plan));
+    }
+
+    [Fact]
+    public async Task AVarBecomesItsExplicitType()
+    {
+        const string code = "class C\n{\n    void M()\n    {\n        var n = 4;\n    }\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 5, "var-to-explicit");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("int n = 4;", await TextOfAsync(plan));
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";

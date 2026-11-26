@@ -47,6 +47,12 @@ internal static class ConvertEngine
                 return await FieldToPropertyAsync(solution, documentId!, document, text, root, model!, node, eol, plan).ConfigureAwait(false);
             case "null-guards":
                 return await NullGuards(solution, documentId!, document, text, node, eol, plan).ConfigureAwait(false);
+            case "expression-to-block":
+            case "block-to-expression":
+                return await BodyShapeAsync(solution, documentId!, document, text, model!, node, kind == "block-to-expression", plan).ConfigureAwait(false);
+            case "var-to-explicit":
+            case "explicit-to-var":
+                return await LocalTypeAsync(solution, documentId!, document, text, model!, node, kind == "explicit-to-var", plan).ConfigureAwait(false);
             default:
                 plan.Reasons.Add(Strings.Format("ConvertBadKind", kind));
                 return plan;
@@ -172,6 +178,114 @@ internal static class ConvertEngine
         await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
         plan.Files.Add(document.FilePath ?? "");
         plan.Warnings.Add(Strings.Format("ConvertGuardsDone", string.Join(", ", guards)));
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
+    // A method between an expression body and a block: "=> e;" becomes "{ return e; }" (or "{ e; }" when void), and a block of one return
+    // statement becomes "=> e;". Anything else is refused.
+    private static async Task<MethodEditPlan> BodyShapeAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, bool toExpression, MethodEditPlan plan)
+    {
+        var method = node?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        if (method is null || model.GetDeclaredSymbol(method) is not IMethodSymbol symbol)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNotAMethod"));
+            return plan;
+        }
+
+        TextChange change;
+        if (toExpression)
+        {
+            if (method.Body is not { Statements.Count: 1 } block || block.Statements[0] is not ReturnStatementSyntax { Expression: { } value } || symbol.ReturnsVoid)
+            {
+                plan.Reasons.Add(Strings.Get("ConvertNotOneReturn"));
+                return plan;
+            }
+
+            change = new TextChange(method.Body!.Span, "=> " + value.WithoutTrivia() + ";");
+        }
+        else
+        {
+            if (method.ExpressionBody is null || method.SemicolonToken.IsKind(SyntaxKind.None))
+            {
+                plan.Reasons.Add(Strings.Get("ConvertNotExpressionBody"));
+                return plan;
+            }
+
+            var expression = method.ExpressionBody.Expression.WithoutTrivia().ToString();
+            var statement = symbol.ReturnsVoid ? expression + ";" : "return " + expression + ";";
+            change = new TextChange(TextSpan.FromBounds(method.ExpressionBody.SpanStart, method.SemicolonToken.Span.End), "{ " + statement + " }");
+        }
+
+        var changes = new Dictionary<DocumentId, List<TextChange>> { [documentId] = new List<TextChange> { change } };
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, documentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? "");
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
+    // "var x = e;" becomes the explicit type of e, or an explicit type whose initializer has exactly that type becomes "var". Anything
+    // else (anonymous types, no initializer, a different type) is refused.
+    private static async Task<MethodEditPlan> LocalTypeAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, bool toVar, MethodEditPlan plan)
+    {
+        var declaration = node?.AncestorsAndSelf().OfType<LocalDeclarationStatementSyntax>().FirstOrDefault()?.Declaration;
+        var variable = declaration?.Variables.FirstOrDefault();
+        if (declaration is null || variable?.Initializer is null)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNotALocal"));
+            return plan;
+        }
+
+        var initializer = variable.Initializer.Value;
+        var initType = model.GetTypeInfo(initializer).Type;
+        if (initType is null || initType.IsAnonymousType || initType.TypeKind == TypeKind.Error)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNoNameableType"));
+            return plan;
+        }
+
+        TextChange change;
+        if (toVar)
+        {
+            var declared = model.GetTypeInfo(declaration.Type).Type;
+            if (declaration.Type.IsVar || declared is null || !SymbolEqualityComparer.Default.Equals(declared, initType))
+            {
+                plan.Reasons.Add(Strings.Get("ConvertNotSameType"));
+                return plan;
+            }
+
+            change = new TextChange(declaration.Type.Span, "var");
+        }
+        else
+        {
+            if (!declaration.Type.IsVar)
+            {
+                plan.Reasons.Add(Strings.Get("ConvertAlreadyExplicit"));
+                return plan;
+            }
+
+            change = new TextChange(declaration.Type.Span, initType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat));
+        }
+
+        var changes = new Dictionary<DocumentId, List<TextChange>> { [documentId] = new List<TextChange> { change } };
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, documentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? "");
         plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
         if (!plan.Refused)
         {
