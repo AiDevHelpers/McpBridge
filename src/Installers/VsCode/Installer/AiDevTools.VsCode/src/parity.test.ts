@@ -20,7 +20,6 @@ const vsCodeActions = new Set([...vsCodeSource.matchAll(/case "([A-Za-z]+)"/g)].
 const planned: Record<string, string> = {
     // Unit 1: breakpoint control
     // Unit 4: documents and close solution
-    listDocuments: "4", saveDocument: "4", closeDocument: "4", closeSolution: "4",
     // Unit 5: text search
     findInFiles: "5", replaceInFiles: "5",
     // Unit 6: language services and undo group
