@@ -912,6 +912,22 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Merge the parts of a partial class, struct or record into the part at a line, using Roslyn, with checks. The other parts' members move to the end of that part, their usings the part's file lacks are added, and their declarations are removed; a part that was alone in its file takes the file with it. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeMergePartial(
+        [Description("Full path of a file holding one part of the type")] string file,
+        [Description("1-based line inside the part to merge into")] int line,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("mergePartial", new { file, line, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Change a file's layout, using Roslyn, with checks. action \"split\" moves the top-level type at line out of a file that holds several types into its own file named after it, beside the original, with the original's usings and namespace. action \"rename\" renames a file that holds exactly one type to that type's name. Refused when the target file exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeOrganizeFile(
         [Description("Full path of the source file")] string file,

@@ -193,6 +193,10 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "mergePartial" => CodeModelActions.MergePartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "organizeFile" => CodeModelActions.OrganizeFile(
             RequireString(args, "file"),
             RequireInt(args, "line"),

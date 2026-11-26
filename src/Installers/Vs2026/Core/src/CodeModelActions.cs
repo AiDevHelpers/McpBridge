@@ -218,6 +218,13 @@ internal static class CodeModelActions
         return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
+    // Merges the parts of a partial type into the part at the line (PartialEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object MergePartial(string file, int line, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => PartialEngine.MergeAsync(solution, file, line), confirm, planHash);
+    }
+
     // Splits a top-level type into its own file, or renames a one-type file to its type (OrganizeFileEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object OrganizeFile(string file, int line, string action, bool confirm, string? planHash = null)
     {

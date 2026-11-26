@@ -195,6 +195,8 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="PartialNothingToMerge" xml:space="preserve"><value>the type is not partial, or has only one part</value></data>
+  <data name="PartialMerged" xml:space="preserve"><value>merged {1} other part(s) of {0} into the part at the line</value></data>
   <data name="OrganizeNoTypes" xml:space="preserve"><value>the file declares no type</value></data>
   <data name="OrganizeBadAction" xml:space="preserve"><value>action must be split or rename, not {0}</value></data>
   <data name="OrganizeNotATopLevelType" xml:space="preserve"><value>the line is not inside a top-level type of this file</value></data>
