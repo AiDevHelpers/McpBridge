@@ -16,7 +16,7 @@ $Core = Join-Path $RepoRoot "src\Installers\VsCode\Core\AiDevTools.VsCode.Core"
 $Extension = Join-Path $RepoRoot "src\Installers\VsCode\Installer\AiDevTools.VsCode"
 $Vsix = Join-Path $Extension "aidevhelpers-vscode.vsix"
 
-$code = Get-Command code -CommandType Application -ErrorAction SilentlyContinue
+$code = Get-Command code -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
 if (-not $code) {
     throw "The VS Code command line ('code') is not on PATH. Install VS Code or add its bin folder to PATH."
 }
