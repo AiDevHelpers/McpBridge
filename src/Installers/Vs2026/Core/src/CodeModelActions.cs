@@ -218,6 +218,13 @@ internal static class CodeModelActions
         return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
+    // Moves a method, property or field to another type in the solution (MoveMemberEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object MoveMember(string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => MoveMemberEngine.PlanAsync(solution, file, line, column, toType, callerEdits), confirm, planHash);
+    }
+
     // Adds Equals, GetHashCode or ToString over the chosen fields and properties (GenerateMembersEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object GenerateMembers(string file, int line, string kind, IReadOnlyList<string> members, bool confirm, string? planHash = null)
     {

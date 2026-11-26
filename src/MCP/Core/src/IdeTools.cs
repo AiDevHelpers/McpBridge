@@ -912,6 +912,25 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Move a method, property or field to another type in the solution, using Roslyn, with checks. toType is the destination type's name (or its full display name when the simple name is ambiguous). The member's text and doc comment move to the end of the destination. References qualified by the source type's name are renamed to the destination; other references need a callerEdits entry each. Refused for an override, implementation or implemented member, and for a move that stops compiling in its new place. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeMoveMember(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the member to move")] int line,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("The destination type's name, or its full display name")] string toType = "",
+        [Description("Optional: array of {file, line, column, newText} for references that are not qualified by the source type's name.")] object[]? callerEdits = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("moveMember", new { file, line, column = column ?? 1, toType, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add Equals, GetHashCode or ToString to the class, struct or record that contains a line, using Roslyn, with checks. kind is \"equals\", \"hashcode\" or \"tostring\"; members names the fields and properties it uses. Refused when the type already declares that member. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeGenerateMembers(
         [Description("Full path of the source file")] string file,

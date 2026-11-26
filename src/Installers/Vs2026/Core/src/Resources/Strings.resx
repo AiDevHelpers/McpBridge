@@ -195,6 +195,12 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="MoveSameType" xml:space="preserve"><value>the member is already in the destination type</value></data>
+  <data name="MoveRelated" xml:space="preserve"><value>the member overrides, implements or is overridden: {0}; moving it would break that contract</value></data>
+  <data name="MoveNoDestination" xml:space="preserve"><value>no type named {0} in the solution</value></data>
+  <data name="MoveAmbiguous" xml:space="preserve"><value>several types are named {0}; give the full name with its namespace</value></data>
+  <data name="MoveUncovered" xml:space="preserve"><value>{0} references use the member in a way the move cannot rewrite; give callerEdits for them</value></data>
+  <data name="MoveDone" xml:space="preserve"><value>moved {0} from {1} to {2}; qualified references were renamed to {2}</value></data>
   <data name="GenerateMembersBadKind" xml:space="preserve"><value>kind must be equals, hashcode or tostring, not {0}</value></data>
   <data name="GenerateMembersNoMembers" xml:space="preserve"><value>give at least one field or property</value></data>
   <data name="GenerateMembersExists" xml:space="preserve"><value>the type already has {0}</value></data>

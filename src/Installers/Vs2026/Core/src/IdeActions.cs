@@ -193,6 +193,13 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "moveMember" => CodeModelActions.MoveMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "toType"),
+            ParseCallerEdits(args),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "generateMembers" => CodeModelActions.GenerateMembers(
             RequireString(args, "file"),
             RequireInt(args, "line"),
