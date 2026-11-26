@@ -21,9 +21,6 @@ const planned: Record<string, string> = {
     // Unit 1: breakpoint control
     // Unit 4: documents and close solution
     // Unit 5: text search
-    // Unit 7: project and shell services
-    projectProperties: "7", addProjectItem: "7", removeProjectItem: "7", getSetting: "7",
-    setStatus: "7", showInfoBar: "7", writeActivityLog: "7",
     // Separate helper plan (answer 1): Roslyn edit tools, C# engines VS Code cannot host
     editMethod: "helper", threadParameter: "helper", addEnumMember: "helper", editEnumMember: "helper",
     editType: "helper", generateConstructor: "helper", implementMembers: "helper", addType: "helper",
