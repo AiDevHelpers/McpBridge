@@ -183,6 +183,12 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="AddTypeFileExists" xml:space="preserve"><value>a file already exists at {0}</value></data>
   <data name="AddTypeFileNew" xml:space="preserve"><value>the type is written to a new file beside the anchor file; check its namespace and project membership</value></data>
   <data name="AddTypeNoTestProject" xml:space="preserve"><value>no test project refers to the anchor's project, or its test framework is not xUnit, NUnit or MSTest</value></data>
+  <data name="ImplementNotAType" xml:space="preserve"><value>the line is not inside a class, struct or record</value></data>
+  <data name="ImplementUnsupported" xml:space="preserve"><value>{0} has a shape this tool does not stub (generic methods, for example)</value></data>
+  <data name="ImplementNoVirtual" xml:space="preserve"><value>no virtual or abstract member named {0} in the base classes</value></data>
+  <data name="ImplementBadMode" xml:space="preserve"><value>mode must be interface or override, not {0}</value></data>
+  <data name="ImplementNothingToDo" xml:space="preserve"><value>nothing to implement: every interface member is already implemented, or no names were given</value></data>
+  <data name="ImplementStubs" xml:space="preserve"><value>stubs throw NotImplementedException: {0}</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>

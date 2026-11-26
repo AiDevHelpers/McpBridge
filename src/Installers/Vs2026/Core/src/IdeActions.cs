@@ -183,6 +183,13 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "value"),
             OptionalBool(args, "allowValueChange") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "implementMembers" => CodeModelActions.ImplementMembers(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "mode"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "explicit") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addType" => CodeModelActions.AddType(
             RequireString(args, "anchorFile"),
             RequireString(args, "declaration"),

@@ -912,6 +912,25 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add stubs to the class, struct or record that contains a line, using Roslyn, with checks. mode \"interface\" stubs every member of its interfaces that nothing implements yet; mode \"override\" overrides the members named in members (virtual or abstract members of its base classes). explicit true writes the interface stubs as explicit implementations. Each stub throws System.NotImplementedException. The stubs go at the end of the type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeImplementMembers(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("\"interface\" or \"override\"")] string mode,
+        [Description("For mode override: the member names to override")] string[]? members = null,
+        [Description("Optional: true writes interface stubs as explicit implementations. Default false.")] bool @explicit = false,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("implementMembers", new { file, line, mode, members = members ?? [], explicit = @explicit, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Add a new type (class, struct, record, interface, enum or delegate) in its own file beside anchorFile, using Roslyn, with checks. declaration is the type's full C# text without a doc comment or usings. The file takes the anchor's project and namespace unless namespace is given. usings, summary and attributes are written around the declaration in the file's own layout. Refused when a type of the same name exists or a file is already at the path. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeAddType(
         [Description("Full path of an existing source file in the target project; the new file goes beside it")] string anchorFile,
