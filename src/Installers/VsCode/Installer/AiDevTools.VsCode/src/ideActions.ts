@@ -25,6 +25,7 @@ import { debuggerMode, isAttached, shapeDetachAll, shapeProcesses, shapeStackFra
 import { liveDebugSessions } from "./debugOutputTracker.js";
 import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./processList.js";
 import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
+import { applyReplace, buildSearchPattern, findInFiles, findProjectDirectory, planReplace, walkFiles } from "./textSearch.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -115,6 +116,37 @@ function workspaceRoot(): string {
         throw new Error(t("needsWorkspace"));
     }
     return root;
+}
+
+// The files a findInFiles or replaceInFiles scope names. The Visual Studio "solution" is the workspace here, and
+// "project" is the folder holding the named .csproj. "openDocuments" is the open documents that exist on disk.
+function searchScopeFiles(scope: string, project: string | undefined): string[] {
+    switch (scope) {
+        case "solution": {
+            const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+            if (roots.length === 0) {
+                throw new Error(t("needsWorkspace"));
+            }
+            return walkFiles(roots);
+        }
+        case "project": {
+            if (!project) {
+                throw new Error(t("projectScopeNeedsName"));
+            }
+            const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+            const dir = findProjectDirectory(roots, project);
+            if (dir === undefined) {
+                throw new Error(t("noProjectNamed", project));
+            }
+            return walkFiles([dir]);
+        }
+        case "openDocuments":
+            return vscode.workspace.textDocuments
+                .filter((d) => d.uri.scheme === "file" && fs.existsSync(d.uri.fsPath))
+                .map((d) => d.uri.fsPath);
+        default:
+            throw new Error(t("unknownScope", scope));
+    }
 }
 
 // Session facts the inspection actions need. request "attach" marks a session the debugger attached to.
@@ -413,6 +445,31 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                 editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
             }
             return { file: uri.fsPath, line: line ?? null, opened: true };
+        }
+
+        case "findInFiles": {
+            // Read-only. The Visual Studio names are pattern, matchCase, useRegex, scope and project.
+            const regex = buildSearchPattern(requireString(args, "pattern"), optionalBool(args, "matchCase") === true, optionalBool(args, "useRegex") === true);
+            return findInFiles(searchScopeFiles(optionalString(args, "scope") ?? "solution", optionalString(args, "project")), regex);
+        }
+
+        case "replaceInFiles": {
+            // Without confirm, only the per-file match counts are returned. An empty replacement is valid, so only its type is checked.
+            const pattern = requireString(args, "pattern");
+            if (typeof args.replacement !== "string") {
+                throw new Error(t("missingArgument", "replacement"));
+            }
+            const useRegex = optionalBool(args, "useRegex") === true;
+            const regex = buildSearchPattern(pattern, optionalBool(args, "matchCase") === true, useRegex);
+            const files = searchScopeFiles(optionalString(args, "scope") ?? "solution", optionalString(args, "project"));
+            const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty).map((d) => d.uri.fsPath);
+            const plan = planReplace(files, regex, dirty);
+            const skipped = plan.skipped.map((file) => ({ file, reason: t("openWithUnsavedChanges") }));
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: { files: plan.planned, skipped } };
+            }
+            const result = applyReplace(plan.planned, regex, args.replacement, useRegex);
+            return { planned: false, applied: { files: result.applied, skipped }, failed: result.failed };
         }
 
         case "listDocuments":
