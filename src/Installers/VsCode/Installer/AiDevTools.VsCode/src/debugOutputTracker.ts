@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { DebugOutputStore, type DapMessage } from "./vendor/core/index.js";
+import { forgetSession, recordDapMessage } from "./exceptionFilters.js";
 
 /** Program output of debug sessions, shared with the bridge's getDebugOutput and listDebugSessions actions. */
 export const debugOutputStore = new DebugOutputStore();
@@ -16,12 +17,16 @@ export function liveDebugSessions(): vscode.DebugSession[] {
 export function registerDebugOutputTracker(context: vscode.ExtensionContext): void {
     context.subscriptions.push(
         vscode.debug.onDidStartDebugSession((session) => liveSessions.set(session.id, session)),
-        vscode.debug.onDidTerminateDebugSession((session) => liveSessions.delete(session.id)),
+        vscode.debug.onDidTerminateDebugSession((session) => {
+            liveSessions.delete(session.id);
+            forgetSession(session.id);
+        }),
         vscode.debug.registerDebugAdapterTrackerFactory("*", {
             createDebugAdapterTracker(session: vscode.DebugSession) {
                 return {
                     onDidSendMessage(message: unknown) {
                         debugOutputStore.handle(session.id, message as DapMessage);
+                        recordDapMessage(session.id, message);
                     },
                 };
             },
