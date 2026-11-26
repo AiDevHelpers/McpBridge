@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { isAbsolute, join } from "node:path";
 import { t } from "./strings.js";
 
 // Source control through VS Code's built-in git extension (its exports API, version 1). The MCP side approves every
@@ -85,7 +86,9 @@ export async function runGitAction(action: GitAction, args: Args): Promise<unkno
                 ],
             };
         case "gitStage":
-            await repo.add(requireStrings(args, "paths"));
+            // The approved paths are relative to the repository. The git API resolves relative paths from the
+            // process folder, so they are joined to the repository root first.
+            await repo.add(requireStrings(args, "paths").map((p) => (isAbsolute(p) ? p : join(repo.rootUri.fsPath, p))));
             return { staged: true };
         case "gitCommit":
             await repo.commit(requireString(args, "message"));

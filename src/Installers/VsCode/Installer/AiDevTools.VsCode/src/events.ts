@@ -16,10 +16,11 @@ export function startEvents(context: vscode.ExtensionContext): void {
 
 function mapEvents(hub: EventHub): vscode.Disposable[] {
     return [
-        vscode.workspace.onDidSaveTextDocument((doc) => hub.publish("documentSaved", { path: doc.uri.fsPath })),
-        vscode.workspace.onDidOpenTextDocument((doc) => hub.publish("documentOpened", { path: doc.uri.fsPath })),
+        // Only files on disk are documents here. Virtual documents (for example the git diff view) use other schemes.
+        vscode.workspace.onDidSaveTextDocument((doc) => doc.uri.scheme === "file" && hub.publish("documentSaved", { path: doc.uri.fsPath })),
+        vscode.workspace.onDidOpenTextDocument((doc) => doc.uri.scheme === "file" && hub.publish("documentOpened", { path: doc.uri.fsPath })),
         // Approximate: VS Code reports the close after the document has gone, Visual Studio before it.
-        vscode.workspace.onDidCloseTextDocument((doc) => hub.publish("documentClosing", { path: doc.uri.fsPath })),
+        vscode.workspace.onDidCloseTextDocument((doc) => doc.uri.scheme === "file" && hub.publish("documentClosing", { path: doc.uri.fsPath })),
         // Approximate: the active stack item (thread or frame) stands in for Visual Studio's context change.
         vscode.debug.onDidChangeActiveStackItem((item) =>
             hub.publish(
