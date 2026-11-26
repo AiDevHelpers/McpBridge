@@ -162,6 +162,35 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task AsyncThreadsTheCallerAndAwaitsTheCall()
+    {
+        const string code = "class C\n{\n    public int Get() => 3;\n    int Use() => Get();\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await AsyncEngine.PlanAsync(solution, File, 3, 1, false);
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("Task<int> Get()", text);
+        Assert.Contains("await Get()", text);
+        Assert.Contains("Task<int> Use()", text);
+    }
+
+    [Fact]
+    public async Task AsyncWithSuffixRenamesTheMethodAndItsCalls()
+    {
+        const string code = "class C\n{\n    public int Get() => 3;\n    int Use() => Get();\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await AsyncEngine.PlanAsync(solution, File, 3, 1, true);
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("Task<int> GetAsync()", text);
+        Assert.Contains("await GetAsync()", text);
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";

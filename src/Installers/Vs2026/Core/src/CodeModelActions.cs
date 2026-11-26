@@ -266,10 +266,10 @@ internal static class CodeModelActions
     }
 
     // Converts one member's shape: field to property, or null guards (ConvertEngine). Same plan, refuse and apply behaviour as EditMethod.
-    public static object Convert(string file, int line, string kind, bool confirm, string? planHash = null)
+    public static object Convert(string file, int line, string kind, int depth, bool suffix, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => ConvertEngine.PlanAsync(solution, file, line, kind), confirm, planHash);
+        return RunPlan(solution => ConvertEngine.PlanAsync(solution, file, line, kind, depth, suffix), confirm, planHash);
     }
 
     // Extracts an interface from a class or struct, in a new file beside it (ExtractInterfaceEngine). Same plan, refuse and apply behaviour as EditMethod.

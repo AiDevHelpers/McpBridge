@@ -17,7 +17,7 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 /// </summary>
 internal static class ConvertEngine
 {
-    public static async Task<MethodEditPlan> PlanAsync(Solution solution, string file, int line, string kind)
+    public static async Task<MethodEditPlan> PlanAsync(Solution solution, string file, int line, string kind, int depth = 0, bool suffix = false)
     {
         var plan = new MethodEditPlan();
         var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
@@ -60,7 +60,7 @@ internal static class ConvertEngine
             case "class-to-struct":
                 return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "struct", plan).ConfigureAwait(false);
             case "make-async":
-                return await MakeAsyncAsync(solution, documentId!, document, model!, node, plan).ConfigureAwait(false);
+                return await AsyncEngine.PlanAsync(solution, file, line, depth, suffix).ConfigureAwait(false);
             case "property-to-method":
             case "method-to-property":
                 return await PropertyMethodAsync(solution, documentId!, document, text, model!, node, kind == "property-to-method", plan).ConfigureAwait(false);
@@ -469,39 +469,6 @@ internal static class ConvertEngine
         }
 
         return await MethodToPropertyAsync(solution, documentId, document, model, node, plan).ConfigureAwait(false);
-    }
-
-    // A method becomes async: "async" goes before its modifiers and its return type becomes Task or Task<T>. The body is unchanged. A method
-    // that has callers is refused, since each caller would need an await; caller threading is not written yet.
-    private static async Task<MethodEditPlan> MakeAsyncAsync(
-        Solution solution, DocumentId documentId, Document document, SemanticModel model, SyntaxNode? node, MethodEditPlan plan)
-    {
-        var declaration = node?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        if (declaration is null || model.GetDeclaredSymbol(declaration) is not IMethodSymbol symbol)
-        {
-            plan.Reasons.Add(Strings.Get("ConvertNotAMethod"));
-            return plan;
-        }
-
-        if (symbol.IsAsync || symbol.IsOverride || symbol.ContainingType.TypeKind == TypeKind.Interface || symbol.ExplicitInterfaceImplementations.Length > 0)
-        {
-            plan.Reasons.Add(Strings.Get("ConvertAsyncShape"));
-            return plan;
-        }
-
-        var references = await MethodEditEngine.CollectReferencesAsync(solution, symbol).ConfigureAwait(false);
-        references.RemoveAll(r => r.DocumentId == documentId && declaration.Span.Contains(r.Span));
-        if (references.Count > 0)
-        {
-            plan.Reasons.Add(Strings.Format("ConvertAsyncCallers", references.Count));
-            return plan;
-        }
-
-        var returnType = symbol.ReturnsVoid ? "System.Threading.Tasks.Task" : "System.Threading.Tasks.Task<" + symbol.ReturnType.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) + ">";
-        var start = declaration.Modifiers.Count > 0 ? declaration.Modifiers[0].SpanStart : declaration.ReturnType.SpanStart;
-        var modifiers = string.Concat(declaration.Modifiers.Select(m => m.ValueText + " "));
-        var change = new TextChange(TextSpan.FromBounds(start, declaration.ReturnType.Span.End), "async " + modifiers + returnType);
-        return await ApplyAndCheckAsync(solution, documentId, document, change, plan).ConfigureAwait(false);
     }
 
     // A method with no parameters, one return of an expression, and a non-void return becomes "Type Name => expr;"; calls "Name()" become "Name".

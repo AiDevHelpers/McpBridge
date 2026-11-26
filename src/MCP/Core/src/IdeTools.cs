@@ -917,6 +917,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Full path of the source file")] string file,
         [Description("1-based line of the field, or inside the method for null-guards")] int line,
         [Description("\"field-to-property\" or \"null-guards\"")] string kind,
+        [Description("Optional: for make-async, how many caller levels are made async and awaited. Default 0 (the method only, with no callers allowed).")] int? depth = null,
+        [Description("Optional: for make-async, rename the method and its call sites to end in Async. Default false.")] bool suffix = false,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -924,7 +926,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("convert", new { file, line, kind, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("convert", new { file, line, kind, depth = depth ?? 0, suffix, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return reply;
     }
 

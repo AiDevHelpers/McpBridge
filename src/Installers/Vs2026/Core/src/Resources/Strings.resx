@@ -212,6 +212,10 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="UpdateDocsNoComment" xml:space="preserve"><value>the method has no doc comment to update; add one with ide_add_method or ide_edit_method first</value></data>
   <data name="UpdateDocsDone" xml:space="preserve"><value>doc comment updated; no code changed</value></data>
   <data name="ConvertStructCheckCopies" xml:space="preserve"><value>a struct is copied by value; check that no code relies on shared instances or a null value</value></data>
+  <data name="AsyncDepthNegative" xml:space="preserve"><value>depth must be zero or more</value></data>
+  <data name="AsyncNotPlainCall" xml:space="preserve"><value>a use of the method is not a plain call (a method group, a lambda, or nameof); it is refused</value></data>
+  <data name="AsyncDepthReached" xml:space="preserve"><value>a call above depth {0} would need an await in a method that is not async; raise depth</value></data>
+  <data name="AsyncDone" xml:space="preserve"><value>made {0} and {1} method(s) async; name is {2}</value></data>
   <data name="ConvertAsyncShape" xml:space="preserve"><value>the method is already async, overrides, implements an interface, or is an explicit implementation</value></data>
   <data name="ConvertAsyncCallers" xml:space="preserve"><value>the method has {0} references; each caller would need an await, which is not written yet, so it is refused</value></data>
   <data name="ConvertMethodShape" xml:space="preserve"><value>the method must have no parameters, return a value from one expression, and not be async, generic, virtual, override, an interface member or an explicit implementation</value></data>

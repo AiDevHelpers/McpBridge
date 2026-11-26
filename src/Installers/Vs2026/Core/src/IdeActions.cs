@@ -206,6 +206,8 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "file"),
             RequireInt(args, "line"),
             RequireString(args, "kind"),
+            OptionalInt(args, "depth") ?? 0,
+            OptionalBool(args, "suffix") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "extractInterface" => CodeModelActions.ExtractInterface(
             RequireString(args, "file"),
