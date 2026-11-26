@@ -370,15 +370,8 @@ internal static class MethodEditEngine
             var document = solution.GetDocument(reference.DocumentId)!;
             var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
             var token = root!.FindToken(reference.Span.Start);
-            var span = token.Span;
-            for (var node = token.Parent; node is not null && node is not StatementSyntax && node is not MemberDeclarationSyntax; node = node.Parent)
-            {
-                if (node is InvocationExpressionSyntax invocation && invocation.Expression.Span.End == token.Span.End)
-                {
-                    span = invocation.Span;
-                    break;
-                }
-            }
+            // The whole call the reference names (an invocation, object creation, initializer or attribute), else the bare token.
+            var span = CallSiteRewriter.CallOf(token)?.Span ?? token.Span;
 
             if (!changes.TryGetValue(reference.DocumentId, out var list))
             {
