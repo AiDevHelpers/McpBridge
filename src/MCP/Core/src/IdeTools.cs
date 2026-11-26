@@ -1353,7 +1353,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         }
 
         var pid = health.RootElement.GetProperty("instance_pid").GetInt32();
-        var created = await EventSubscriptions.EnsureSubscribedAsync(pid, ct).ConfigureAwait(false);
+        var ideOfPid = VsInstanceRegistry.ListRunning().FirstOrDefault(i => i.Pid == pid)?.Ide ?? "VisualStudio";
+        var created = await EventSubscriptions.EnsureSubscribedAsync(pid, ct, ideOfPid).ConfigureAwait(false);
         return JsonSerializer.Serialize(new { ok = true, pid, created });
     }
 

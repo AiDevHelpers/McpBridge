@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using AiDevHelpers.Bridge;
 
 namespace AiDevHelpers.MCP.Core.Services;
 
@@ -24,7 +25,8 @@ public static class EventSubscriptions
     private static readonly Dictionary<int, Subscription> ByPid = new();
 
     /// <summary>Connects to the instance's events pipe if this server has no open subscription to it.</summary>
-    public static async Task<bool> EnsureSubscribedAsync(int pid, CancellationToken ct)
+    /// <param name="ide">"VisualStudio" (the default) or "VsCode". Picks the pipe name, see <see cref="EventPipeNameFor"/>.</param>
+    public static async Task<bool> EnsureSubscribedAsync(int pid, CancellationToken ct, string ide = "VisualStudio")
     {
         lock (Lock)
         {
@@ -34,7 +36,7 @@ public static class EventSubscriptions
             }
         }
 
-        var client = new NamedPipeClientStream(".", $"AiDevHelpers.VS.{pid}.events", PipeDirection.InOut, PipeOptions.Asynchronous);
+        var client = new NamedPipeClientStream(".", EventPipeNameFor(pid, ide), PipeDirection.InOut, PipeOptions.Asynchronous);
         try
         {
             await client.ConnectAsync(5000, ct).ConfigureAwait(false);
@@ -68,6 +70,12 @@ public static class EventSubscriptions
         subscription.Reader = Task.Run(() => ReadLoopAsync(subscription, reader));
         return true;
     }
+
+    /// <summary>The events pipe name for an instance: VS Code serves its own name, every other IDE uses the Visual Studio name.</summary>
+    internal static string EventPipeNameFor(int pid, string ide = "VisualStudio") =>
+        string.Equals(ide, "VsCode", StringComparison.OrdinalIgnoreCase)
+            ? InstanceRegistry.VsCodeEventPipeNameFor(pid)
+            : InstanceRegistry.EventPipeNameFor(pid);
 
     /// <summary>Instances this server is subscribed to and still connected to.</summary>
     public static IReadOnlyList<int> ActivePids()

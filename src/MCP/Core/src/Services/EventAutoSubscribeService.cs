@@ -21,14 +21,9 @@ public sealed class EventAutoSubscribeService : BackgroundService
         {
             foreach (var instance in VsInstanceRegistry.ListRunning())
             {
-                if (!string.Equals(instance.Ide, "VisualStudio", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
                 try
                 {
-                    await EventSubscriptions.EnsureSubscribedAsync(instance.Pid, stoppingToken).ConfigureAwait(false);
+                    await EventSubscriptions.EnsureSubscribedAsync(instance.Pid, stoppingToken, instance.Ide).ConfigureAwait(false);
                 }
                 catch (Exception)
                 {
