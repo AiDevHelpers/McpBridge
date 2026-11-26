@@ -169,6 +169,7 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="MemberDeclarationNotSupported" xml:space="preserve"><value>declaration must be exactly one indexer, event, event field or delegate: {0}</value></data>
   <data name="MemberEditDeclarationKind" xml:space="preserve"><value>the new declaration must be exactly one member of the same kind as the one at the line</value></data>
   <data name="MemberEditShapeChanged" xml:space="preserve"><value>the kind, access, type or parameters changed and {0} references use it; only its body or accessors can change while it is used</value></data>
+  <data name="ChangeSignatureBadHeader" xml:space="preserve"><value>not a return type or accessibility this tool sets: {0}</value></data>
   <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
   <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>

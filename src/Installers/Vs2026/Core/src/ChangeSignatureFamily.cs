@@ -69,7 +69,8 @@ internal static class ChangeSignatureFamily
     }
 
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, int column, IReadOnlyList<NewParameter> newParameters, IReadOnlyList<IMethodSymbol> family, DocUpdates? docs)
+        Solution solution, string file, int line, int column, IReadOnlyList<NewParameter> newParameters, IReadOnlyList<IMethodSymbol> family, DocUpdates? docs,
+        HeaderChange header)
     {
         var plan = new MethodEditPlan();
         var declarations = new List<(IMethodSymbol Member, MethodDeclarationSyntax Declaration)>();
@@ -105,6 +106,10 @@ internal static class ChangeSignatureFamily
             }
 
             list.Add(new TextChange(declaration.ParameterList.Span, parameterList));
+            if (ChangeSignatureHeader.TextChangeFor(declaration, header) is { } headerChange)
+            {
+                list.Add(headerChange);
+            }
 
             var all = await MethodEditEngine.CollectReferencesAsync(solution, member).ConfigureAwait(false);
             var fresh = all.Where(r => seen.Add((r.DocumentId, r.Span.Start))).ToList();

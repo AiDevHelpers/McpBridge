@@ -181,10 +181,10 @@ internal static class CodeModelActions
 
     // Changes a method's parameters and rewrites its call sites (ChangeSignatureEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object ChangeSignature(
-        string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates docs, bool confirm, string? planHash = null)
+        string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates docs, HeaderChange header, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => ChangeSignatureEngine.PlanAsync(solution, file, line, column, newParameters, docs), confirm, planHash);
+        return RunPlan(solution => ChangeSignatureEngine.PlanAsync(solution, file, line, column, newParameters, docs, header), confirm, planHash);
     }
 
     // Adds a parameter to a method and threads it up its callers to a depth (ThreadParameterEngine). Same plan, refuse and apply behaviour as EditMethod.

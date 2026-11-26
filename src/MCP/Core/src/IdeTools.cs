@@ -919,6 +919,8 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("The new parameter list in order: array of {declaration, fromOld, valueForCallers}.")] object[] parameters,
         [Description("Optional: 1-based column. Default 1.")] int? column = null,
         [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
+        [Description("Optional: new return type, such as \"long\" or \"Task<int>\". Callers that no longer compile are refused.")] string? returnType = null,
+        [Description("Optional: new accessibility: public, internal, protected, private, protected internal or private protected. Other modifiers are kept.")] string? accessibility = null,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
@@ -927,7 +929,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("changeSignature", new { file, line, column = column ?? 1, parameters, docs = docs ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("changeSignature", new { file, line, column = column ?? 1, parameters, docs = docs ?? [], returnType, accessibility, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 

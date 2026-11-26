@@ -177,6 +177,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalInt(args, "column") ?? 1,
             ParseNewParameters(args),
             ParseDocUpdates(args),
+            new HeaderChange { ReturnType = OptionalString(args, "returnType"), Accessibility = OptionalString(args, "accessibility") },
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),

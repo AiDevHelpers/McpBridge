@@ -16,9 +16,15 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 internal static class ChangeSignatureEngine
 {
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates? docs = null)
+        Solution solution, string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates? docs = null, HeaderChange? header = null)
     {
         var plan = new MethodEditPlan();
+        header ??= new HeaderChange();
+        if (ChangeSignatureHeader.Validate(header) is { } badHeader)
+        {
+            plan.Reasons.Add(badHeader);
+            return plan;
+        }
 
         var target = await EditTarget.LocateAsync(solution, file, line, column, EditTarget.AllMemberKinds, reason => plan.Reasons.Add(reason))
             .ConfigureAwait(false);
@@ -52,11 +58,11 @@ internal static class ChangeSignatureEngine
         var family = await ChangeSignatureFamily.FindAsync(solution, method).ConfigureAwait(false);
         if (family.Count > 1)
         {
-            return await ChangeSignatureFamily.PlanAsync(solution, file, line, column, newParameters, family, docs).ConfigureAwait(false);
+            return await ChangeSignatureFamily.PlanAsync(solution, file, line, column, newParameters, family, docs, header).ConfigureAwait(false);
         }
 
         var list = SyntaxFactory.ParseParameterList("(" + string.Join(", ", newParameters.Select(p => p.Declaration)) + ")");
-        var newMethodText = declaration.WithParameterList(list).ToString();
+        var newMethodText = ChangeSignatureHeader.NewText(declaration, list.ToString(), header);
 
         // Call sites are rewritten before the method is planned. References inside the method itself are covered by its new text.
         var references = await MethodEditEngine.CollectReferencesAsync(solution, method).ConfigureAwait(false);
