@@ -23,6 +23,9 @@ public static class InstanceRegistry
     /// <summary>Events pipe for the instance: pushes events to subscribed clients (see conformance/protocol.md).</summary>
     public static string EventPipeNameFor(int pid) => $"AiDevHelpers.VS.{pid}.events";
 
+    /// <summary>Events pipe for a VS Code extension host, the same protocol as <see cref="EventPipeNameFor"/>.</summary>
+    public static string VsCodeEventPipeNameFor(int pid) => $"AiDevHelpers.VsCode.{pid}.events";
+
     /// <summary>Writes this instance's manifest, atomically, with its open solution path.</summary>
     public static void Write(int pid, string? solutionPath)
     {
