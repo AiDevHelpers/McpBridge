@@ -68,7 +68,7 @@ internal static class MethodDocUpdater
     }
 
     public static DocUpdateResult Update(
-        MethodDeclarationSyntax oldNode, IMethodSymbol oldSymbol, IMethodSymbol newSymbol, DocUpdates updates, bool signatureChanged, string eol)
+        BaseMethodDeclarationSyntax oldNode, IMethodSymbol oldSymbol, IMethodSymbol newSymbol, DocUpdates updates, bool signatureChanged, string eol)
     {
         var result = new DocUpdateResult();
         var leading = oldNode.GetLeadingTrivia();

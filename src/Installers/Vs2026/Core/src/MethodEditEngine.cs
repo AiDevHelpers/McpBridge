@@ -190,8 +190,8 @@ internal static class MethodEditEngine
         var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
         var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
         var position = Math.Min(text.Lines[line - 1].Start + Math.Max(0, column - 1), text.Length);
-        var methodNode = root?.FindToken(position).Parent?.AncestorsAndSelf().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        var symbol = methodNode is null || model is null ? null : model.GetDeclaredSymbol(methodNode);
+        var methodNode = root?.FindToken(position).Parent?.AncestorsAndSelf().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
+        var symbol = methodNode is null || model is null ? null : model.GetDeclaredSymbol(methodNode) as IMethodSymbol;
         if (methodNode is null || symbol is null)
         {
             plan.Reasons.Add(Strings.Get("MethodEditNotAMethod"));
@@ -199,7 +199,7 @@ internal static class MethodEditEngine
         }
 
         var parsed = SyntaxFactory.ParseMemberDeclaration(newMethodText);
-        if (parsed is not MethodDeclarationSyntax || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        if (parsed is not BaseMethodDeclarationSyntax || parsed.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
         {
             plan.Reasons.Add(Strings.Get("MethodEditNewTextNotOneMethod"));
             return plan;
@@ -398,8 +398,8 @@ internal static class MethodEditEngine
         var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
         var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
         var node = root?.FindToken(Math.Min(oldStart + shift, root.FullSpan.End)).Parent?.AncestorsAndSelf()
-            .OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        return node is null || model is null ? null : model.GetDeclaredSymbol(node);
+            .OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
+        return node is null || model is null ? null : model.GetDeclaredSymbol(node) as IMethodSymbol;
     }
 
     // A signature change with callers needs every reference covered. Overrides and implementations are not edited by this tool,
