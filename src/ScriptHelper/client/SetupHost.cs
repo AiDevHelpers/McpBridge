@@ -50,7 +50,7 @@ internal static class SetupHost
             new FileSystemPathInspector(),
             new PwshInterpreterInfo(),
             signer,
-            new ConsoleConfirmer(),
+            ElevatedConfirmer(setupArgs),
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
             AdminOnlyDirectory.Ensure);
 
@@ -61,6 +61,27 @@ internal static class SetupHost
             return 1;
         }
 
-        return SetupCli.Run(setupArgs, commands, Console.Out, commands, new ConsoleConfirmer(), commands, commands);
+        return SetupCli.Run(setupArgs, commands, Console.Out, commands, ElevatedConfirmer(setupArgs), commands, commands);
+    }
+
+    /// <summary>
+    /// The elevated copy never asks a question on its console. <c>setup tools</c> is approved by the person's request to run it, so its
+    /// confirmations are given; any other step is refused with a message to get the yes in chat first.
+    /// </summary>
+    private static AiDevHelpers.Common.Contracts.IConfirmer ElevatedConfirmer(string[] setupArgs) =>
+        setupArgs is ["tools"] ? new GivenConfirmer() : new RefusingConfirmer();
+
+    private sealed class GivenConfirmer : AiDevHelpers.Common.Contracts.IConfirmer
+    {
+        public bool Confirm(string prompt) => true;
+    }
+
+    private sealed class RefusingConfirmer : AiDevHelpers.Common.Contracts.IConfirmer
+    {
+        public bool Confirm(string prompt)
+        {
+            Console.Error.WriteLine("refused: this step needs a yes in chat first; ask the person, then run it again.");
+            return false;
+        }
     }
 }

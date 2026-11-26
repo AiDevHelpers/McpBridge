@@ -42,9 +42,9 @@ internal sealed class RunHost(string repo, string script, string[] scriptArgs, b
             return false;
         }
 
-        Console.Error.Write($"{question} [y/N] ");
-        var answer = Console.ReadLine()?.Trim().ToLowerInvariant();
-        return answer is "y" or "yes";
+        // The helper never asks on its own console. The yes is given in chat, and the step runs again after it.
+        Console.Error.WriteLine($"needs a yes in chat first: {question}");
+        return false;
     }
 
     public SetupResult ElevatedStep(RunStep step)
