@@ -130,11 +130,13 @@ public sealed class BridgeHost : IDisposable
     private void OnContextChanged(EnvDTE.Process newProcess, EnvDTE.Program newProgram, EnvDTE.Thread newThread, EnvDTE.StackFrame newStackFrame) =>
         _events.Publish("contextChanged", new { process = newProcess?.Name, function = newStackFrame?.FunctionName });
 
+#pragma warning disable VSTHRD010 // DTE document events are raised on the UI thread.
     private void OnDocumentSaved(Document document) => _events.Publish("documentSaved", new { file = document.FullName });
 
     private void OnDocumentOpened(Document document) => _events.Publish("documentOpened", new { file = document.FullName });
 
     private void OnDocumentClosing(Document document) => _events.Publish("documentClosing", new { file = document.FullName });
+#pragma warning restore VSTHRD010
 
     private void Initialize()
     {
@@ -220,7 +222,7 @@ public sealed class BridgeHost : IDisposable
         }
 
         var answer = _runOnMainThread(() => (object)DateTime.UtcNow);
-        answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
+        _ = answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
         return Task.WhenAny(answer, Task.Delay(UiPingTimeout)).ContinueWith(done =>
         {
             Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
