@@ -6,6 +6,8 @@ import { debugOutputStore } from "./debugOutputTracker.js";
 import { t } from "./strings.js";
 import { isGitAction, runGitAction } from "./gitActions.js";
 import { parseHitCountType, setBreakpointCondition, setBreakpointEnabled, type ConditionChange } from "./breakpointActions.js";
+import { debuggerMode, isAttached, shapeDetachAll, shapeProcesses, shapeStackFrames, shapeThreads, type SessionInfo } from "./debugInspect.js";
+import { liveDebugSessions } from "./debugOutputTracker.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -91,6 +93,22 @@ function workspaceRoot(): string {
         throw new Error(t("needsWorkspace"));
     }
     return root;
+}
+
+// Session facts the inspection actions need. request "attach" marks a session the debugger attached to.
+function sessionInfo(session: vscode.DebugSession): SessionInfo {
+    const processId = session.configuration.processId;
+    return { name: session.name, request: String(session.configuration.request ?? ""), processId: typeof processId === "number" ? processId : undefined };
+}
+
+// Debugger mode from the active session and its stopped stack item, named as the Visual Studio bridge names it.
+function currentDebuggerMode(): ReturnType<typeof debuggerMode> {
+    return debuggerMode(vscode.debug.activeDebugSession !== undefined, vscode.debug.activeStackItem !== undefined);
+}
+
+function currentThreadId(): number | undefined {
+    const item = vscode.debug.activeStackItem;
+    return item && "threadId" in item ? item.threadId : undefined;
 }
 
 function appendOutput(text: string): void {
@@ -402,6 +420,41 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                 hitCount: optionalInt(args, "hitCount"),
             };
             return setBreakpointCondition(uri.fsPath, line, change, args.confirm === true);
+        }
+
+        case "listDebuggedProcesses":
+            return shapeProcesses(liveDebugSessions().map(sessionInfo));
+
+        case "listThreads": {
+            const mode = currentDebuggerMode();
+            // Outside break mode the list is not read at all; shapeThreads returns the empty reply.
+            const reply = mode === "dbgBreakMode" && vscode.debug.activeDebugSession
+                ? await vscode.debug.activeDebugSession.customRequest("threads", {})
+                : undefined;
+            return shapeThreads(mode, currentThreadId(), reply);
+        }
+
+        case "listStackFrames": {
+            const mode = currentDebuggerMode();
+            const threadId = currentThreadId();
+            const reply = mode === "dbgBreakMode" && vscode.debug.activeDebugSession && threadId !== undefined
+                ? await vscode.debug.activeDebugSession.customRequest("stackTrace", { threadId })
+                : undefined;
+            return shapeStackFrames(mode, reply);
+        }
+
+        case "detachAll": {
+            // Only attached sessions are detached; sessions the debugger launched are left running.
+            const sessions = liveDebugSessions();
+            const attached = sessions.filter((s) => isAttached(sessionInfo(s)));
+            const reply = shapeDetachAll(args.confirm === true, attached.map(sessionInfo));
+            if (args.confirm !== true) {
+                return reply;
+            }
+            for (const session of attached) {
+                await vscode.debug.stopDebugging(session);
+            }
+            return reply;
         }
 
         case "step": {
