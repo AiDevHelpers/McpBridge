@@ -144,7 +144,7 @@ internal static class MethodDocUpdater
     /// Doc lines for a method that has none yet, in the layout of a documented neighbour (<paramref name="donor"/>, may be null).
     /// Summary, every parameter, every type parameter and a non-void return need text from the caller; nothing is invented.
     /// </summary>
-    public static DocUpdateResult BuildNew(MethodDeclarationSyntax? donor, IMethodSymbol symbol, DocUpdates updates)
+    public static DocUpdateResult BuildNew(BaseMethodDeclarationSyntax? donor, IMethodSymbol symbol, DocUpdates updates)
     {
         var result = new DocUpdateResult();
         var prefix = "/// ";
