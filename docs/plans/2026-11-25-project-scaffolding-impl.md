@@ -1,6 +1,6 @@
 # Project scaffolding tools: implementation plan, 2026-11-25
 
-Status: draft, not approved. Source: `2026-11-25-project-scaffolding-tools.md` (revised). Checked against `RepoSettings.cs`,
+Status: PR1 (U1–U10) and PR2 (U11–U14) merged to `wip` (PRs #10–#13). Follow-ups merged in #16 and #17. Source: `2026-11-25-project-scaffolding-tools.md` (revised). Checked against `RepoSettings.cs`,
 `ElevationFiles.cs`, `RepoSettingsFile.cs`, `SolutionProjects.cs`, `ToolInstallService.cs`, `ScriptHelperTools.cs`
 (`IElevInstaller`), `InstallToolFiles.cs`, `ExtensionTools.cs`, `PackageUpdates.cs`, `AffectedTests.cs`, `GatePlanner.cs`,
 `SelfTestCoverageTests.cs`, `DocsMatchCodeTests.cs`, `scripts/gate-tpm.ps1`.
@@ -235,6 +235,16 @@ Findings (verified 2026-11-25 on this machine, SDK 11.0.100, VS 18.12 Community;
 - Edit: `mcp-tools.md`, `docs/dogfood.md`, `CHANGELOG.md`, helper `SelfTest.md`, `docs/prereqs.md` (VS Installer, elevation).
 - Run: full gate including the new pin check; open the PR per `pr-promotion`.
 - Commit: `Docs: workload tools, changelog and dogfood`
+
+## Follow-ups (open)
+
+- Live workload install (U13 "done when"): needs `setup tools` run elevated with the chat yes, the UAC prompt, then `workload_install_confirm`.
+- Approval status of the elevated scripts: `elev verify` needs the broker running, which needs the elevated `setup tools` run.
+- `scripts/workload-install.ps1 -WritePin`: not written. The pin matches the table and is checked by `InstallableWorkloadsTests`; add the script only when the table changes.
+- VS-running refusal for `vs_installer modify`: not needed while `vs` installs are not offered.
+- `ServerControlTests.ResumeClearsThePause`: failed once in 14 runs, not reproduced in 3. Suspect a live MCP server rewriting the shared state file.
+- Chat-first prompts in `repo-setup`, terminals and rules: built, not run end to end. The client has no tests.
+- Pre-existing, not from this work: 56 `-warnaserror` errors (CS1591 in `src/Bridge`) and a VSSDK crash in `Vs2026/Installer`.
 
 ## After merge (outside this repo)
 

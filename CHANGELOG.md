@@ -6,6 +6,9 @@
 - Repo standards in `.aidevhelpers/project-standards.json`, read through repo settings and validated. The repo's own exceptions (net48 for the VS installer and bridge) are seeded.
 - Every write is plan, then confirm, with a single-use token. A failed build restores the files byte for byte.
 - `AiDevTools.VsCode.csproj` now sets `Nullable` and `ImplicitUsings`, as the standards require.
+- Workloads: `workload_list`, `workload_check`, and `workload_install_plan`/`workload_install_confirm`. The install runs through the elevated helper with a pinned workload table (`scripts/workload-install.sha256`).
+- Chat-first approvals: `elev setup tools` is refused before UAC unless `--approved-in-chat` is given. `repo-setup`, terminals, rules and allow-all-preview no longer prompt on the console; they refuse the question and say to ask in chat.
+- Test project planning: with no pinned Test SDK or runner, `project_add_test_plan` asks the user in chat for the version instead of failing.
 
 ## Settings folder renamed
 
