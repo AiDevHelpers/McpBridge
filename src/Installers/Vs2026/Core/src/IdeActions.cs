@@ -193,6 +193,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "checkDocs" => CodeModelActions.CheckDocs(RequireString(args, "file")),
         "convert" => CodeModelActions.Convert(
             RequireString(args, "file"),
             RequireInt(args, "line"),

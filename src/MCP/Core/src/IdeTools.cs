@@ -929,6 +929,19 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Check the XML doc comments of the methods in a file against their signatures, using Roslyn. Reports a parameter or type parameter with no tag, a param or typeparam tag that names nothing, and a non-void method with no returns tag, with the line of each doc comment. Read only. Visual Studio only.")]
+    public async Task<string> IdeCheckDocs(
+        [Description("Full path of the source file")] string file,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("checkDocs", new { file }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Extract an interface from the class or struct at a line, using Roslyn, with checks. members names its public, non-static methods and properties, which become the interface's members as signatures. The interface is written to I<interfaceName>.cs beside the type's file and the type adds it to its base list. Refused for a member that is not public and non-static, a name already taken, or an interface already implemented. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractInterface(
         [Description("Full path of the source file")] string file,

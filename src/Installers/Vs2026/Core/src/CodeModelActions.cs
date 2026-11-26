@@ -225,6 +225,19 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Read only: reports doc comments that disagree with their method (DocCheckEngine). Runs on the UI thread against the current solution.
+    public static object CheckDocs(string file)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            return (object)await DocCheckEngine.CheckAsync(workspace.CurrentSolution, file).ConfigureAwait(true);
+        });
+    }
+
     // Converts one member's shape: field to property, or null guards (ConvertEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object Convert(string file, int line, string kind, bool confirm, string? planHash = null)
     {
