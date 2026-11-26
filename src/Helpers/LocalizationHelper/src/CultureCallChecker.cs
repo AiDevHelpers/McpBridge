@@ -63,8 +63,8 @@ public static class CultureCallChecker
                     continue;
                 }
 
-                var kind = Classify(method);
-                if (kind is null)
+                var ordinal = Classify(method);
+                if (ordinal is null)
                 {
                     continue;
                 }
@@ -81,15 +81,18 @@ public static class CultureCallChecker
                     line.LineNumber + 1,
                     "culture-call",
                     oneLine.Length > MaxCallLength ? oneLine[..MaxCallLength] + "..." : oneLine,
-                    Strings.Get(kind)));
+                    ordinal.Value ? Strings.Get("CultureSuggestOrdinal") : Strings.Get("CultureSuggestInvariant")));
             }
         }
 
         return findings;
     }
 
-    /// <summary>The resx key of the suggestion when <paramref name="method"/> is a culture-sensitive call without a culture argument, else null.</summary>
-    private static string? Classify(IMethodSymbol method)
+    /// <summary>
+    /// Null when <paramref name="method"/> is not a culture-sensitive call without a culture argument; otherwise true when the fix is an ordinal
+    /// comparison and false when it is a culture for formatting or parsing.
+    /// </summary>
+    private static bool? Classify(IMethodSymbol method)
     {
         var type = method.ContainingType;
         var isString = type.SpecialType == SpecialType.System_String;
@@ -98,13 +101,13 @@ public static class CultureCallChecker
 
         return method.Name switch
         {
-            "Format" when isString && !hasProvider => "CultureSuggestInvariant",
-            "Parse" or "TryParse" when IsNumberOrDate(type) && !hasProvider => "CultureSuggestInvariant",
-            "ToUpper" or "ToLower" when isString && method.Parameters.Length == 0 => "CultureSuggestInvariant",
-            "ToString" when IsNumberOrDate(type) && method.Parameters.Length == 0 => "CultureSuggestInvariant",
-            "Compare" when isString && !hasCulture => "CultureSuggestOrdinal",
+            "Format" when isString && !hasProvider => false,
+            "Parse" or "TryParse" when IsNumberOrDate(type) && !hasProvider => false,
+            "ToUpper" or "ToLower" when isString && method.Parameters.Length == 0 => false,
+            "ToString" when IsNumberOrDate(type) && method.Parameters.Length == 0 => false,
+            "Compare" when isString && !hasCulture => true,
             "StartsWith" or "EndsWith" or "IndexOf" or "LastIndexOf"
-                when isString && method.Parameters.Length > 0 && method.Parameters[0].Type.SpecialType == SpecialType.System_String && !hasCulture => "CultureSuggestOrdinal",
+                when isString && method.Parameters.Length > 0 && method.Parameters[0].Type.SpecialType == SpecialType.System_String && !hasCulture => true,
             _ => null,
         };
     }
