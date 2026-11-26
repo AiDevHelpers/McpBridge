@@ -187,6 +187,14 @@ internal static class CodeModelActions
         return RunPlan(solution => ChangeSignatureEngine.PlanAsync(solution, file, line, column, newParameters, docs), confirm, planHash);
     }
 
+    // Adds a parameter to a method and threads it up its callers to a depth (ThreadParameterEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ThreadParameter(
+        string file, int line, int column, string declaration, string valueAtTop, int depth, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ThreadParameterEngine.PlanAsync(solution, file, line, column, declaration, valueAtTop, depth), confirm, planHash);
+    }
+
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past
     // the inserted lines. The method plan checks diagnostics against the original solution, so members' own warnings are reported too.
     internal static async Task<MethodEditPlan> WithMembersAsync(

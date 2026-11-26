@@ -163,6 +163,14 @@ public sealed class IdeActions(DTE2 dte)
             ParseMemberSpecs(args),
             OptionalBool(args, "rewriteCallers") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "threadParameter" => CodeModelActions.ThreadParameter(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "declaration"),
+            RequireString(args, "valueAtTop"),
+            OptionalInt(args, "depth") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "changeSignature" => CodeModelActions.ChangeSignature(
             RequireString(args, "file"),
             RequireInt(args, "line"),

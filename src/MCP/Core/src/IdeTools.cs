@@ -932,6 +932,27 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add one parameter to a method and thread it up its callers, using Roslyn, with checks. declaration is the parameter as written (for example \"CancellationToken ct = default\"). Each call passes the caller's own parameter of the same type when it has one; a caller within depth levels gets the parameter too and passes it on; any call above that passes valueAtTop (a literal or expression such as CancellationToken.None). depth defaults to 1 (the direct callers). Every method it changes is listed in the reply. Overrides, implementations, params methods and calls that cannot be rewritten refuse the change. Doc comments are not updated (the reply warns). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeThreadParameter(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method to add the parameter to (its name line is best)")] int line,
+        [Description("The parameter as written, such as \"CancellationToken ct = default\"")] string declaration,
+        [Description("The argument a call passes at the top of the threading, such as CancellationToken.None")] string valueAtTop,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: how many caller levels above the method get the parameter. Default 1.")] int? depth = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("threadParameter", new { file, line, column = column ?? 1, declaration, valueAtTop, depth = depth ?? 1, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
     [Description("Add one C# method to the type that contains a line, using Roslyn, with checks. The new method goes at the end of the type, or after the member at afterLine. If neighbouring methods have /// doc comments, the new one gets a doc comment in the same layout from newSummary and docs (a {tag, name, text} entry for each parameter, type parameter and a non-void return); the tool never invents text and warns when it is missing. The file is formatted, a new compile error refuses the edit, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeAddMethod(
         [Description("Full path of the source file")] string file,
