@@ -132,7 +132,7 @@ public sealed class MemberEngineTests
         var (line, column) = MethodEditEngineTests.Locate(code, "Add(int");
         var solution = MethodEditEngineTests.Create(code);
 
-        var plan = await CodeModelActions.WithMembersAsync(solution, File, line, [Spec("_calls", "int", "private", "field-only")],
+        var plan = await MemberPlanning.WithMembersAsync(solution, File, line, [Spec("_calls", "int", "private", "field-only")],
             (s, shift, baseline) => MethodEditEngine.PlanAsync(
                 s, File, shift(line), column, "public int Add(int a, int b) { _calls++; return a + b; }", Array.Empty<CallerEdit>(), null, baseline));
 
