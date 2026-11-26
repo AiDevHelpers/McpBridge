@@ -1,6 +1,21 @@
 import { spawn, type ChildProcess } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import {
+    appliedCloseReply,
+    appliedCloseSolutionReply,
+    appliedSaveReply,
+    dirtyPaths,
+    planCloseReply,
+    planCloseSolutionReply,
+    planSaveReply,
+    refuseDirtyClose,
+    refuseDirtySolution,
+    requireOpenDocument,
+    sameFile,
+    shapeDocumentList,
+} from "./documentActions.js";
 import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
 import { t } from "./strings.js";
@@ -162,6 +177,29 @@ function killTracked(pid: number): Promise<unknown> {
             resolve({ killed: code === 0, pid, exit_code: code });
         });
     });
+}
+
+// VS Code's API has no read-only flag on a document. The closest reading is the file's write permission on disk.
+function isReadOnlyOnDisk(uri: vscode.Uri): boolean {
+    if (uri.scheme !== "file" || !fs.existsSync(uri.fsPath)) {
+        return false;
+    }
+    try {
+        fs.accessSync(uri.fsPath, fs.constants.W_OK);
+        return false;
+    } catch {
+        return true;
+    }
+}
+
+// Closes the editor tabs showing a file. A document with no tab is not on screen, so there is no tab to close.
+async function closeTabsFor(fsPath: string): Promise<void> {
+    const tabs = vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .filter((tab) => tab.input instanceof vscode.TabInputText && sameFile(tab.input.uri.fsPath, fsPath));
+    for (const tab of tabs) {
+        await vscode.window.tabGroups.close(tab);
+    }
 }
 
 async function evaluateWatches(): Promise<Array<Record<string, unknown>>> {
@@ -375,6 +413,61 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                 editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);
             }
             return { file: uri.fsPath, line: line ?? null, opened: true };
+        }
+
+        case "listDocuments":
+            return shapeDocumentList(
+                vscode.workspace.textDocuments.map((d) => ({ fullName: d.uri.fsPath, saved: !d.isDirty, readOnly: isReadOnlyOnDisk(d.uri) })),
+            );
+
+        case "saveDocument": {
+            const file = requireString(args, "file");
+            const document = requireOpenDocument(vscode.workspace.textDocuments, resolveFile(file).fsPath, file);
+            if (optionalBool(args, "confirm") !== true) {
+                return planSaveReply(document.uri.fsPath, document.isDirty);
+            }
+            if (!(await document.save())) {
+                throw new Error(t("saveFailed", document.uri.fsPath));
+            }
+            return appliedSaveReply(document.uri.fsPath);
+        }
+
+        case "closeDocument": {
+            const file = requireString(args, "file");
+            const discard = optionalBool(args, "discardChanges") === true;
+            const document = requireOpenDocument(vscode.workspace.textDocuments, resolveFile(file).fsPath, file);
+            refuseDirtyClose(file, document.isDirty, discard);
+            if (optionalBool(args, "confirm") !== true) {
+                return planCloseReply(document.uri.fsPath, document.isDirty, discard);
+            }
+            if (document.isDirty) {
+                // The extension API has no revert on a document, so the file is shown and the active-editor revert runs. save is never called.
+                await vscode.window.showTextDocument(document);
+                await vscode.commands.executeCommand("workbench.action.files.revert");
+            }
+            await closeTabsFor(document.uri.fsPath);
+            return appliedCloseReply(document.uri.fsPath);
+        }
+
+        case "closeSolution": {
+            const saveFirst = optionalBool(args, "saveFirst") === true;
+            const dirty = dirtyPaths(vscode.workspace.textDocuments);
+            if (optionalBool(args, "confirm") !== true) {
+                return planCloseSolutionReply(dirty, saveFirst);
+            }
+            refuseDirtySolution(dirty, saveFirst);
+            const savedDocuments: string[] = [];
+            if (saveFirst) {
+                for (const document of vscode.workspace.textDocuments.filter((d) => d.isDirty)) {
+                    if (!(await document.save())) {
+                        throw new Error(t("saveFailed", document.uri.fsPath));
+                    }
+                    savedDocuments.push(document.uri.fsPath);
+                }
+            }
+            // VS Code has no solution; the closest equivalent is closing the workspace folder.
+            await vscode.commands.executeCommand("workbench.action.closeFolder");
+            return appliedCloseSolutionReply(savedDocuments);
         }
 
         case "setBreakpoint": {
