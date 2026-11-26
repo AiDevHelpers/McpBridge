@@ -88,4 +88,5 @@ public class PathRulesTests
 
         Assert.False(r.Ok);
         Assert.Contains("not allowed", r.Reason);
-    }}
+    }
+}

@@ -297,7 +297,7 @@ internal static class MemberEditEngine
             return null;
         }
 
-        var node = location.SourceTree!.GetRoot().FindNode(location.SourceSpan).AncestorsAndSelf()
+        var node = (await location.SourceTree!.GetRootAsync()).FindNode(location.SourceSpan).AncestorsAndSelf()
             .OfType<MemberDeclarationSyntax>().First(m => m is PropertyDeclarationSyntax or FieldDeclarationSyntax);
         var span = node.SyntaxTree.GetLineSpan(node.Span);
         return new

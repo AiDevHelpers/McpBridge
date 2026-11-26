@@ -10,7 +10,7 @@ public sealed class CallSiteRewriterParamsTests
 {
     private const string File = @"C:\scratch\params.cs";
 
-    private static async Task<(List<CallerEdit> Edits, List<object> Uncovered)> RewriteAt(string code, string marker, params NewParameter[] parameters)
+    private static async Task<(List<CallerEdit> Edits, List<object> Uncovered)> RewriteAtAsync(string code, string marker, params NewParameter[] parameters)
     {
         var solution = TestSolutions.Single([(File, code)]);
         var (line, column) = MethodEditEngineTests.Locate(code, marker);
@@ -26,7 +26,7 @@ public sealed class CallSiteRewriterParamsTests
     {
         const string code = "class C\n{\n    int Sum(params int[] xs) => 0;\n    int Use() => Sum(1, 2, 3);\n}\n";
 
-        var result = await RewriteAt(code, "Sum(params", new NewParameter("params int[] xs", 0, null));
+        var result = await RewriteAtAsync(code, "Sum(params", new NewParameter("params int[] xs", 0, null));
 
         Assert.Empty(result.Uncovered);
         Assert.Equal("Sum(1, 2, 3)", Assert.Single(result.Edits).NewText);
@@ -37,7 +37,7 @@ public sealed class CallSiteRewriterParamsTests
     {
         const string code = "class C\n{\n    int Sum(params int[] xs) => 0;\n    int Use() => Sum(1, 2, 3);\n}\n";
 
-        var result = await RewriteAt(code, "Sum(params");
+        var result = await RewriteAtAsync(code, "Sum(params");
 
         Assert.Empty(result.Uncovered);
         Assert.Equal("Sum()", Assert.Single(result.Edits).NewText);
@@ -48,7 +48,7 @@ public sealed class CallSiteRewriterParamsTests
     {
         const string code = "class C\n{\n    int Sum(params int[] xs) => 0;\n    int Use(int[] a) => Sum(a);\n}\n";
 
-        var result = await RewriteAt(code, "Sum(params", new NewParameter("params int[] xs", 0, null));
+        var result = await RewriteAtAsync(code, "Sum(params", new NewParameter("params int[] xs", 0, null));
 
         Assert.Empty(result.Uncovered);
         Assert.Equal("Sum(a)", Assert.Single(result.Edits).NewText);
@@ -59,7 +59,7 @@ public sealed class CallSiteRewriterParamsTests
     {
         const string code = "class C\n{\n    int Sum(params int[] xs) => 0;\n    int Use() => Sum(1);\n}\n";
 
-        var result = await RewriteAt(code, "Sum(params", new NewParameter("params int[] xs", 0, null), new NewParameter("int y", null, "0"));
+        var result = await RewriteAtAsync(code, "Sum(params", new NewParameter("params int[] xs", 0, null), new NewParameter("int y", null, "0"));
 
         Assert.Empty(result.Edits);
         Assert.Single(result.Uncovered);

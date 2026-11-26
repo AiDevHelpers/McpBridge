@@ -85,7 +85,7 @@ internal static class TypeMoveEngine
             var declaration = (await reference.GetSyntaxAsync().ConfigureAwait(false)).Ancestors().OfType<BaseNamespaceDeclarationSyntax>().FirstOrDefault();
             if (declaration is null || declaration.Ancestors().OfType<BaseNamespaceDeclarationSyntax>().Any())
             {
-                plan.Reasons.Add(Strings.Format("NamespaceNestedBlock", declaringDocument.FilePath, reference.GetSyntax().GetLocation().GetLineSpan().StartLinePosition.Line + 1));
+                plan.Reasons.Add(Strings.Format("NamespaceNestedBlock", declaringDocument.FilePath, (await reference.GetSyntaxAsync()).GetLocation().GetLineSpan().StartLinePosition.Line + 1));
                 continue;
             }
 
