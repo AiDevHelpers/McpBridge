@@ -448,63 +448,26 @@ internal static class CodeModelActions
                 ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
             var workspace = model.GetService<VisualStudioWorkspace>();
             // The snapshot is taken on the UI thread; planning runs on a thread-pool thread with a time limit.
-            var outcome = await PlanRunner.RunAsync(workspace.CurrentSolution, plan, PlanRunner.DefaultTimeout).ConfigureAwait(true);
-            var planned = outcome.Plan ?? PlanRunner.Incomplete(PlanRunner.DefaultTimeout);
-            foreach (var path in planned.Files)
-            {
-                if (LogicalDocuments.RefusalFor(workspace.CurrentSolution, path) is { } refusal)
+            return await PlanFlow.RunAsync(
+                workspace.CurrentSolution,
+                plan,
+                confirm,
+                expectedHash,
+                apply: solution =>
                 {
-                    planned.Reasons.Add(refusal);
-                }
-            }
-
-            foreach (var path in planned.Divergent)
-            {
-                planned.Warnings.Add(Strings.Format("LogicalDivergent", path));
-            }
-
-            if (planned.Result is { } changed)
-            {
-                var current = workspace.CurrentSolution;
-                var count = 0;
-                foreach (var documentId in changed.GetChanges(current).GetProjectChanges().SelectMany(p => p.GetChangedDocuments()))
-                {
-                    if (count++ >= UnifiedDiff.MaxFiles)
+                    if (!workspace.TryApplyChanges(solution))
                     {
-                        planned.Diffs.Add(Strings.Format("DiffFilesTruncated", UnifiedDiff.MaxFiles));
-                        break;
+                        throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
                     }
 
-                    var before = await current.GetDocument(documentId)!.GetTextAsync().ConfigureAwait(true);
-                    var after = await changed.GetDocument(documentId)!.GetTextAsync().ConfigureAwait(true);
-                    var path = changed.GetDocument(documentId)!.FilePath ?? documentId.ToString();
-                    if (UnifiedDiff.Of(path, before.ToString(), after.ToString()) is { } diff)
-                    {
-                        planned.Diffs.Add(diff);
-                    }
-                }
-            }
-
-            planned.Hash = await PlanHash.ComputeAsync(workspace.CurrentSolution, planned.Result).ConfigureAwait(true);
-            if (confirm && expectedHash is not null && !PlanHash.Matches(expectedHash, planned.Hash))
-            {
-                planned.Reasons.Add(Strings.Get("PlanHashChanged"));
-            }
-
-            if (planned.Refused || !confirm)
-            {
-                return (object)new { planned = !planned.Refused, applied = false, check = planned.ToReply() };
-            }
-
-            if (!workspace.TryApplyChanges(planned.Result!))
-            {
-                throw new InvalidOperationException(Strings.Get("MethodEditNotApplied"));
-            }
-
-            // Files move on disk only after the text changes are in, and only when the plan asked for it.
-            var moved = planned.FileMoves.Count > 0 ? FileMover.Apply(planned.FileMoves) : new List<object>();
-            var deleted = planned.FileDeletes.Select(p => FileOperations.Delete(p, planned.DeleteProject)).ToList();
-            return (object)new { planned = false, applied = true, check = planned.ToReply(), moved, deleted };
+                    return Task.CompletedTask;
+                },
+                afterApply: planned =>
+                {
+                    var moved = planned.FileMoves.Count > 0 ? FileMover.Apply(planned.FileMoves) : new List<object>();
+                    var deleted = planned.FileDeletes.Select(p => FileOperations.Delete(p, planned.DeleteProject)).ToList();
+                    return (moved, deleted);
+                }).ConfigureAwait(true);
         });
     }
 
