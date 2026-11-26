@@ -123,6 +123,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `localization_sync` | Add missing keys to culture resx files as stubs, create a culture file, and with removeExtra drop extra keys. Plan without confirm; apply with confirm set to the returned token. |
 | `localization_extract` | Move hardcoded multi-word literals in a .cs file or folder into the project Strings.resx and rewrite them as Strings.Get or Strings.Format; skipped literals come back with a reason code. Plan without confirm; apply with confirm set to the returned token. |
 | `localization_culture_check` | List culture-sensitive C# calls that name no culture or comparison (string.Format, Parse, ToUpper, string.Compare, StartsWith, ToString() on numbers and dates). Uses the semantic model; unresolved calls are skipped; // culture-ok suppresses a line. Report only. |
+| `localization_pseudo` | Write a pseudo-localized Strings.qps-ploc.resx from a neutral Strings.resx (accented, longer, bracketed, placeholders kept) to expose unlocalized text and layout limits. Plan without confirm; write with confirm set to the returned token. |
 
 ## Tests
 

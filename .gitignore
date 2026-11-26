@@ -106,3 +106,4 @@ extension.vsixmanifest
 merged.source.extension.vsixmanifest
 
 .aidevhelpers/user.json
+**/Strings.qps-ploc.resx

@@ -1,6 +1,6 @@
 # LocalizationHelper self test
 
-Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`, `LocalizationCultureCheck`.
+Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`, `LocalizationCultureCheck`, `LocalizationPseudo`.
 
 ## StringScan and ResxCheck
 
@@ -37,5 +37,15 @@ Fixture: a scratch folder with `C.cs` holding `class C { string M(int i) => i.To
 
 - `LocalizationCultureCheck` (path = fixture folder): PASS when `ok` is true and `findings` has one entry for `C.cs` line 1 with kind `culture-call` and call `i.ToString()`, and none for `D.cs`.
 - `LocalizationCultureCheck` (path = a folder that does not exist): PASS when `ok` is false and `error` names the folder.
+
+
+## Pseudo
+
+Fixture: a scratch folder with `P/Resources/Strings.resx` holding `A` ("Hello {0}") and `B` ("Goodbye").
+
+- `LocalizationPseudo` (root = fixture folder, resx = `P/Resources/Strings.resx`, no confirm): PASS when `plan` is true, `count` is 2, `changes` keeps `{0}` in the pseudo text for `A`, and `Strings.qps-ploc.resx` does not exist.
+- `LocalizationPseudo` (same arguments plus confirm = the token): PASS when `applied` is true and `Strings.qps-ploc.resx` holds two entries with the comment `pseudo-localized`.
+- `LocalizationSyncCheck` (root = fixture folder): PASS when `findings` is empty (the pseudo culture is skipped).
+- Delete `Strings.qps-ploc.resx` afterwards; it is generated and not committed.
 
 Record each as PASS or FAIL with the exact arguments and reply.
