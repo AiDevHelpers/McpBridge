@@ -190,6 +190,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "namespaceName"),
             OptionalString(args, "summary"),
             StringList(args, "attributes").ToList(),
+            OptionalBool(args, "withTests") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addInterfaceMember" => CodeModelActions.AddInterfaceMember(
             RequireString(args, "file"),

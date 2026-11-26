@@ -920,6 +920,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: namespace for the new type. Default is the anchor file's namespace.")] string? @namespace = null,
         [Description("Optional: summary text for the type's doc comment")] string? summary = null,
         [Description("Optional: attributes for the type, such as \"Serializable\" or \"[Serializable]\"")] string[]? attributes = null,
+        [Description("Optional: also add a test class beside the type in the test project that refers to anchorFile's project. It asserts failure until written. Default false.")] bool withTests = false,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -927,7 +928,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("addType", new { anchorFile, declaration, usings = usings ?? [], namespaceName = @namespace, summary, attributes = attributes ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("addType", new { anchorFile, declaration, usings = usings ?? [], namespaceName = @namespace, summary, attributes = attributes ?? [], withTests, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return reply;
     }
 

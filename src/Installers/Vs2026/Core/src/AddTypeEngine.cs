@@ -16,8 +16,31 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 /// </summary>
 internal static class AddTypeEngine
 {
+    // The test framework a project references, with the attribute its test methods carry and the namespace it uses. Null when none is known.
+    private static (string Attribute, string Using)? FrameworkOf(Project project)
+    {
+        var references = project.MetadataReferences.Select(r => r.Display ?? "").ToList();
+        if (references.Any(r => r.Contains("xunit", System.StringComparison.OrdinalIgnoreCase)))
+        {
+            return ("Fact", "Xunit");
+        }
+
+        if (references.Any(r => r.Contains("nunit.framework", System.StringComparison.OrdinalIgnoreCase)))
+        {
+            return ("Test", "NUnit.Framework");
+        }
+
+        if (references.Any(r => r.Contains("Microsoft.VisualStudio.TestPlatform.TestFramework", System.StringComparison.OrdinalIgnoreCase)))
+        {
+            return ("TestMethod", "Microsoft.VisualStudio.TestTools.UnitTesting");
+        }
+
+        return null;
+    }
+
     public static async Task<MethodEditPlan> AddAsync(
-        Solution solution, string anchorFile, string declaration, IReadOnlyList<string> usings, string? namespaceName, string? summary, IReadOnlyList<string> attributes)
+        Solution solution, string anchorFile, string declaration, IReadOnlyList<string> usings, string? namespaceName, string? summary, IReadOnlyList<string> attributes,
+        bool withTests = false)
     {
         var plan = new MethodEditPlan();
         var anchorId = solution.GetDocumentIdsWithFilePath(anchorFile).FirstOrDefault();
@@ -92,9 +115,61 @@ internal static class AddTypeEngine
         var text = string.Join(eol, lines) + eol;
         var edited = solution.AddDocument(DocumentId.CreateNewId(anchor.Project.Id), Path.GetFileName(path), SourceText.From(text, System.Text.Encoding.UTF8), filePath: path);
         var newId = edited.GetDocumentIdsWithFilePath(path).Single();
-        edited = await EditChecks.FormatFileAsync(edited, newId, plan).ConfigureAwait(false);
-        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { newId }, plan).ConfigureAwait(false);
+        var added = new List<DocumentId> { newId };
         plan.Files.Add(path);
+        if (withTests)
+        {
+            var testProject = solution.Projects.FirstOrDefault(p => p.Id != anchor.Project.Id
+                && p.ProjectReferences.Any(r => r.ProjectId == anchor.Project.Id)
+                && (p.Name.EndsWith("Tests", System.StringComparison.Ordinal) || p.Name.EndsWith("Test", System.StringComparison.Ordinal)));
+            var framework = testProject is null ? null : FrameworkOf(testProject);
+            if (testProject is null || framework is null)
+            {
+                plan.Reasons.Add(Strings.Get("AddTypeNoTestProject"));
+                return plan;
+            }
+
+            var testPath = Path.Combine(Path.GetDirectoryName(testProject.FilePath ?? "") ?? "", name + "Tests.cs");
+            if (solution.GetDocumentIdsWithFilePath(testPath).Length > 0)
+            {
+                plan.Reasons.Add(Strings.Format("AddTypeFileExists", testPath));
+                return plan;
+            }
+
+            var testLines = new List<string> { "using " + framework.Value.Using + ";", "" };
+            var testBodyLines = new List<string>
+            {
+                "public sealed class " + name + "Tests",
+                "{",
+                "    [" + framework.Value.Attribute + "]",
+                "    public void NotWrittenYet() => Assert.Fail(\"test not written\");",
+                "}",
+            };
+            if (ns.Length > 0)
+            {
+                testLines.Add("namespace " + ns);
+                testLines.Add("{");
+                testLines.AddRange(testBodyLines.Select(l => "    " + l));
+                testLines.Add("}");
+            }
+            else
+            {
+                testLines.AddRange(testBodyLines);
+            }
+
+            var testText = string.Join(eol, testLines) + eol;
+            edited = edited.AddDocument(DocumentId.CreateNewId(testProject.Id), Path.GetFileName(testPath), SourceText.From(testText, System.Text.Encoding.UTF8), filePath: testPath);
+            var testId = edited.GetDocumentIdsWithFilePath(testPath).Single();
+            added.Add(testId);
+            plan.Files.Add(testPath);
+        }
+
+        foreach (var id in added)
+        {
+            edited = await EditChecks.FormatFileAsync(edited, id, plan).ConfigureAwait(false);
+        }
+
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, added, plan).ConfigureAwait(false);
         plan.Warnings.Add(Strings.Get("AddTypeFileNew"));
         if (!plan.Refused)
         {

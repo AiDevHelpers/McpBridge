@@ -212,10 +212,10 @@ internal static class CodeModelActions
     // Adds a new type in its own file beside the anchor file (AddTypeEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object AddType(
         string anchorFile, string declaration, IReadOnlyList<string> usings, string? namespaceName, string? summary, IReadOnlyList<string> attributes,
-        bool confirm, string? planHash = null)
+        bool withTests, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => AddTypeEngine.AddAsync(solution, anchorFile, declaration, usings, namespaceName, summary, attributes), confirm, planHash);
+        return RunPlan(solution => AddTypeEngine.AddAsync(solution, anchorFile, declaration, usings, namespaceName, summary, attributes, withTests), confirm, planHash);
     }
 
     // Adds a method, property, event or indexer to the interface at a line (InterfaceMemberEngine). Same plan, refuse and apply
