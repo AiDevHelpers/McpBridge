@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\src\AiDevHelpers.MCP.Core.csproj" />
+    <ProjectReference Include="..\..\..\Helpers\LocalizationHelper\src\AiDevHelpers.Helpers.LocalizationHelper.csproj" />
     <None Include="..\..\..\..\conformance\fixtures.json" Link="fixtures.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

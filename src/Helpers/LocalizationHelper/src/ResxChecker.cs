@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace AiDevHelpers.Helpers.LintHelper;
+namespace AiDevHelpers.Helpers.LocalizationHelper;
 
 /// <summary>A problem in a Strings.resx. <see cref="Kind"/> is "duplicate", "missing" (used in code, not in the resx) or "unused".</summary>
 public sealed record ResxFinding(string Resx, string Kind, string Key);

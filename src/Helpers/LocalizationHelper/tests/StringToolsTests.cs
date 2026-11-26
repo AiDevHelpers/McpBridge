@@ -1,7 +1,7 @@
-using AiDevHelpers.Helpers.LintHelper;
+using AiDevHelpers.Helpers.LocalizationHelper;
 using Xunit;
 
-namespace AiDevHelpers.Helpers.LintHelper.Tests;
+namespace AiDevHelpers.Helpers.LocalizationHelper.Tests;
 
 public sealed class StringScannerTests : IDisposable
 {

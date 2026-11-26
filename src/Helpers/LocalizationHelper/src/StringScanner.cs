@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
-namespace AiDevHelpers.Helpers.LintHelper;
+namespace AiDevHelpers.Helpers.LocalizationHelper;
 
 /// <summary>A multi-word string literal in C# source. <see cref="ResxKey"/> names the resource when the same text is already in a Strings.resx.</summary>
 public sealed record StringFinding(string File, int Line, string Literal, string? ResxKey);
