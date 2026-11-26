@@ -7,6 +7,7 @@
   <data name="UnknownControlState" xml:space="preserve"><value>Unknown state. Use one of: {0}.</value></data>
   <data name="PausedRefusal" xml:space="preserve"><value>aidevtools is paused for an update{0}. Do not call its tools until it resumes.</value></data>
   <data name="ClosingRefusal" xml:space="preserve"><value>aidevtools is closing for an update{0}. Wait for it to resume, then reconnect.</value></data>
+  <data name="TestExplorerRefusedTwice" xml:space="preserve"><value>Test Explorer refused the run twice (HRESULT 0x{0:X8}). It is probably still discovering or running tests; wait, then call ide_get_test_summary before retrying.</value></data>
   <data name="ResumedNotice" xml:space="preserve"><value>aidevtools has resumed. Its tools work again.</value></data>
   <data name="PausedNotice" xml:space="preserve"><value>aidevtools is pausing for an update{0}. Stop calling its tools and wait for the resume signal.</value></data>
   <data name="ClosingNotice" xml:space="preserve"><value>aidevtools is closing for an update{0}. Reconnect after the resume signal.</value></data>
