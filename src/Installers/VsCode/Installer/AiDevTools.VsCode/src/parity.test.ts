@@ -21,8 +21,6 @@ const planned: Record<string, string> = {
     // Unit 1: breakpoint control
     // Unit 4: documents and close solution
     // Unit 5: text search
-    // Unit 6: language services and undo group
-    listCodeElements: "6", semanticReferences: "6", semanticDefinition: "6", renameSymbol: "6", undoGroup: "6",
     // Unit 7: project and shell services
     projectProperties: "7", addProjectItem: "7", removeProjectItem: "7", getSetting: "7",
     setStatus: "7", showInfoBar: "7", writeActivityLog: "7",

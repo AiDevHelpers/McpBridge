@@ -34,5 +34,10 @@
   "openWithUnsavedChanges": "open with unsaved changes",
   "projectScopeNeedsName": "The project scope needs a project name.",
   "noProjectNamed": "No project named '{0}' in the workspace.",
-  "unknownScope": "Unknown scope '{0}'. Use solution, project, or openDocuments."
+  "unknownScope": "Unknown scope '{0}'. Use solution, project, or openDocuments.",
+  "csharpExtensionMissing": "This action needs the C# Dev Kit (ms-dotnettools.csdevkit) or the C# extension (ms-dotnettools.csharp). Install one and reload VS Code.",
+  "noSymbolAtPosition": "No symbol at {0}:{1}:{2}.",
+  "renameNotApplied": "VS Code did not apply the rename.",
+  "noEditGroupToUndo": "This bridge has not applied an edit group to undo.",
+  "undoGroupApproximate": "VS Code's undo is global and not grouped by name. This reverses the last edit group this bridge applied."
 }

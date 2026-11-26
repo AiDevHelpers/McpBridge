@@ -26,6 +26,18 @@ import { liveDebugSessions } from "./debugOutputTracker.js";
 import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./processList.js";
 import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
 import { applyReplace, buildSearchPattern, findInFiles, findProjectDirectory, planReplace, walkFiles } from "./textSearch.js";
+import {
+    changedFiles,
+    dedupeLocations,
+    forgetLastEditGroup,
+    lastEditGroup,
+    recordEditGroup,
+    requireCSharpExtension,
+    shapeCodeElements,
+    shapeLocation,
+    type SourceLocation,
+    type SymbolNode,
+} from "./languageActions.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -254,6 +266,115 @@ async function evaluateWatches(): Promise<Array<Record<string, unknown>>> {
     return results;
 }
 
+// Language actions. The C# Dev Kit or the C# extension provides the symbols, so one of them must be installed; without
+// it these throw rather than return empty results. Lines and columns are 1-based, as in the Visual Studio bridge.
+function requireCSharp(): void {
+    requireCSharpExtension((id) => vscode.extensions.getExtension(id));
+}
+
+function languagePosition(args: Args): { uri: vscode.Uri; position: vscode.Position; line: number; column: number } {
+    const uri = resolveFile(requireString(args, "file"));
+    const line = requireInt(args, "line");
+    const column = optionalInt(args, "column") ?? 1;
+    return { uri, position: new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1)), line, column };
+}
+
+// The name of the word under the caret, or null when there is no word there.
+async function symbolNameAt(uri: vscode.Uri, position: vscode.Position): Promise<string | null> {
+    const doc = await vscode.workspace.openTextDocument(uri);
+    const range = doc.getWordRangeAtPosition(position);
+    return range ? doc.getText(range) : null;
+}
+
+function requireSymbol(name: string | null, uri: vscode.Uri, position: vscode.Position): string {
+    if (name === null) {
+        throw new Error(t("noSymbolAtPosition", uri.fsPath, position.line + 1, position.character + 1));
+    }
+    return name;
+}
+
+function toSourceLocations(items: ReadonlyArray<vscode.Location | vscode.LocationLink>): SourceLocation[] {
+    return items.map((item) => {
+        const target = "targetUri" in item ? { uri: item.targetUri, range: item.targetRange } : { uri: item.uri, range: item.range };
+        return shapeLocation(target.uri.fsPath, target.range.start.line, target.range.start.character);
+    });
+}
+
+async function listCodeElements(args: Args): Promise<unknown> {
+    requireCSharp();
+    const uri = resolveFile(requireString(args, "file"));
+    const symbols = await vscode.commands.executeCommand<Array<vscode.DocumentSymbol | vscode.SymbolInformation> | undefined>(
+        "vscode.executeDocumentSymbolProvider",
+        uri,
+    );
+    // Only DocumentSymbol carries a range; a SymbolInformation list (no hierarchy) is skipped.
+    const documentSymbols = (symbols ?? []).filter((s): s is vscode.DocumentSymbol => "range" in s);
+    return { elements: shapeCodeElements(documentSymbols as unknown as SymbolNode[]) };
+}
+
+async function semanticLocations(action: "semanticDefinition" | "semanticReferences", args: Args): Promise<unknown> {
+    requireCSharp();
+    const { uri, position } = languagePosition(args);
+    const symbol = requireSymbol(await symbolNameAt(uri, position), uri, position);
+    if (action === "semanticDefinition") {
+        const links = await vscode.commands.executeCommand<Array<vscode.Location | vscode.LocationLink> | undefined>(
+            "vscode.executeDefinitionProvider",
+            uri,
+            position,
+        );
+        return { symbol, locations: toSourceLocations(links ?? []) };
+    }
+    // The reference command takes no includeDeclaration argument, so the declaration is reported when the provider includes it.
+    const refs = await vscode.commands.executeCommand<Array<vscode.Location | vscode.LocationLink> | undefined>(
+        "vscode.executeReferenceProvider",
+        uri,
+        position,
+    );
+    return { symbol, locations: dedupeLocations(toSourceLocations(refs ?? [])) };
+}
+
+async function renameSymbolAt(args: Args, confirm: boolean): Promise<unknown> {
+    requireCSharp();
+    const { uri, position, line, column } = languagePosition(args);
+    const newName = requireString(args, "newName");
+    const name = await symbolNameAt(uri, position);
+    const edit = await vscode.commands.executeCommand<vscode.WorkspaceEdit | undefined>(
+        "vscode.executeDocumentRenameProvider",
+        uri,
+        position,
+        newName,
+    );
+    if (name === null || edit === undefined) {
+        throw new Error(t("noSymbolAtPosition", uri.fsPath, line, column));
+    }
+    const files = changedFiles(edit.entries().map(([file]) => file));
+    const change = { symbol: name, new_name: newName, files };
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    if (!(await vscode.workspace.applyEdit(edit))) {
+        throw new Error(t("renameNotApplied"));
+    }
+    recordEditGroup({ name: "renameSymbol", files });
+    return { planned: false, applied: change };
+}
+
+// VS Code's undo is one global stack with no names, so this reverses the last edit group this bridge applied, not a group
+// picked by name. The note in the reply says so.
+async function undoLastGroup(name: string, confirm: boolean): Promise<unknown> {
+    const group = lastEditGroup();
+    if (group === undefined) {
+        throw new Error(t("noEditGroupToUndo"));
+    }
+    const reply = { name, undone: group.name, files: group.files, note: t("undoGroupApproximate") };
+    if (!confirm) {
+        return { planned: true, would: reply };
+    }
+    await vscode.commands.executeCommand("undo");
+    forgetLastEditGroup();
+    return { planned: false, applied: reply };
+}
+
 export async function runIdeAction(action: string, args: Args): Promise<unknown> {
     switch (action) {
         case "status":
@@ -399,6 +520,21 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             const value = vscode.workspace.getConfiguration("csharp.experimental.debug").get<boolean>("hotReload");
             return { ide: "VsCode", enabled: value ?? null, setting: "csharp.experimental.debug.hotReload" };
         }
+
+        case "listCodeElements":
+            return listCodeElements(args);
+
+        case "semanticDefinition":
+            return semanticLocations("semanticDefinition", args);
+
+        case "semanticReferences":
+            return semanticLocations("semanticReferences", args);
+
+        case "renameSymbol":
+            return renameSymbolAt(args, optionalBool(args, "confirm") === true);
+
+        case "undoGroup":
+            return undoLastGroup(requireString(args, "name"), optionalBool(args, "confirm") === true);
 
         case "goToDefinition":
         case "findAllReferences": {
