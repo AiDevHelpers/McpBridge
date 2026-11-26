@@ -912,6 +912,24 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Add a constructor to the class, struct or record that contains a line, using Roslyn, with checks. members names the fields and properties it takes and assigns (in order); each parameter is the member name with the first letter lower-cased. accessibility defaults to public. Refused for a member with no setter, an unknown member, or a constructor that already takes the same parameter types. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeGenerateConstructor(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the class, struct or record")] int line,
+        [Description("Field and property names to take and assign, in parameter order")] string[] members,
+        [Description("Optional: public, internal, protected or private. Default public.")] string? accessibility = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("generateConstructor", new { file, line, members, accessibility = accessibility ?? "public", confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Change the modifiers and base list of the class, struct or record at a line, using Roslyn, with checks. modifiers replaces the whole set, such as \"public sealed\" or \"internal static partial\"; for a partial type it must include partial and applies to every part. baseList replaces the base class and interfaces of the part at the line, such as [\"Base\", \"IDisposable\"]. Adding abstract or static is refused while the type is used. Narrowing access and other breaking uses are refused by the checks. Attributes, type parameters and constraints are not changed. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeEditType(
         [Description("Full path of the source file")] string file,
@@ -948,7 +966,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("implementMembers", new { file, line, mode, members = members ?? [], explicit = @explicit, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("implementMembers", new { file, line, mode, members = members ?? [], @explicit, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return reply;
     }
 

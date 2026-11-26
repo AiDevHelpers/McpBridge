@@ -193,6 +193,12 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "generateConstructor" => CodeModelActions.GenerateConstructor(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            OptionalString(args, "accessibility") ?? "public",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "implementMembers" => CodeModelActions.ImplementMembers(
             RequireString(args, "file"),
             RequireInt(args, "line"),

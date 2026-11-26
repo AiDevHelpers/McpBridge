@@ -218,6 +218,13 @@ internal static class CodeModelActions
         return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
+    // Adds a constructor that assigns the chosen fields and properties (GenerateConstructorEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object GenerateConstructor(string file, int line, IReadOnlyList<string> members, string accessibility, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => GenerateConstructorEngine.PlanAsync(solution, file, line, members, accessibility), confirm, planHash);
+    }
+
     // Adds stubs to a class, struct or record: its interface members, or overrides of named members (ImplementMembersEngine).
     public static object ImplementMembers(
         string file, int line, string mode, IReadOnlyList<string> names, bool explicitImplementation, bool confirm, string? planHash = null)
