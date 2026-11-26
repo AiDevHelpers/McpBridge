@@ -36,6 +36,22 @@ const unsupported: Record<string, string> = {
     clearTasks: "Task List is unsupported in v1 (plan answer 4)",
     listOutputPanes: "VS Code's API cannot enumerate output channels",
     testHotReloadState: "VS-only name; VS Code serves hotReloadState",
+    // Roslyn refactorings run on the C# engines, which VS Code cannot host (plan answer 1).
+    checkDocs: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    listCodeActions: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    removeUnused: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    updateDocs: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    convert: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    extractInterface: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    extractValue: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    inlineMethod: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    extractMethod: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    applyCodeAction: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    extractPartial: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    mergePartial: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    organizeFile: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    moveMember: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    generateMembers: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
 };
 
 describe("VS Code parity with the Visual Studio bridge", () => {
