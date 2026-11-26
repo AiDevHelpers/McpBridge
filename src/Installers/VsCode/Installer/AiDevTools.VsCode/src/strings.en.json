@@ -14,5 +14,11 @@
   "noLaunchConfigNamed": "No launch configuration named '{0}' in launch.json.",
   "unknownAction": "Unknown action '{0}'.",
   "gitUnavailable": "The VS Code git extension is not available.",
-  "noGitRepository": "No git repository is open in VS Code."
+  "noGitRepository": "No git repository is open in VS Code.",
+  "noBreakpointAt": "There is no breakpoint at {0}:{1}.",
+  "conditionNeedsField": "setBreakpointCondition needs condition, hitCountType or hitCount.",
+  "unknownHitCountType": "Unknown hitCountType '{0}'. Use always, equal, multiple, or greaterOrEqual.",
+  "hitCountNeedsCount": "hitCount is required for hitCountType {0}.",
+  "hitCountNeedsType": "hitCount needs a hitCountType of equal, multiple, or greaterOrEqual.",
+  "hitCountTypeUnreadable": "The current hit condition is not one this bridge can read; pass hitCountType with hitCount."
 }

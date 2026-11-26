@@ -5,6 +5,7 @@ import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
 import { t } from "./strings.js";
 import { isGitAction, runGitAction } from "./gitActions.js";
+import { parseHitCountType, setBreakpointCondition, setBreakpointEnabled, type ConditionChange } from "./breakpointActions.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -383,6 +384,25 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                         condition: b.condition ?? null,
                     })),
             };
+
+        case "enableBreakpoint":
+        case "disableBreakpoint": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = requireInt(args, "line");
+            return setBreakpointEnabled(uri.fsPath, line, action === "enableBreakpoint", args.confirm === true);
+        }
+
+        case "setBreakpointCondition": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = requireInt(args, "line");
+            // An empty condition clears it, so it is kept as "" rather than treated as absent.
+            const change: ConditionChange = {
+                condition: typeof args.condition === "string" ? args.condition : undefined,
+                hitCountType: parseHitCountType(optionalString(args, "hitCountType")),
+                hitCount: optionalInt(args, "hitCount"),
+            };
+            return setBreakpointCondition(uri.fsPath, line, change, args.confirm === true);
+        }
 
         case "step": {
             // The MCP ide_step tool sends "mode" (as the Visual Studio bridge expects); older callers sent "kind".
