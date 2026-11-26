@@ -4,6 +4,9 @@ using ModelContextProtocol.Server;
 
 namespace AiDevHelpers.MCP.Core.Tools;
 
+// MCP9005: sampling is deprecated by SEP-2577 (spec 2026-07-28) but still works, and the SDK offers no replacement that
+// gets a model completion without an API key on the server. Clients that do not advertise it are refused, not called.
+#pragma warning disable MCP9005
 /// <summary>Completes translation prompts through the connected client's model (MCP sampling), so the server holds no API key.</summary>
 internal sealed class SamplingTranslator(McpServer server) : ITranslator
 {
@@ -25,3 +28,4 @@ internal sealed class SamplingTranslator(McpServer server) : ITranslator
     /// <summary>True when the client said it can answer sampling requests.</summary>
     internal static bool IsAvailable(ClientCapabilities? capabilities) => capabilities?.Sampling is not null;
 }
+#pragma warning restore MCP9005
