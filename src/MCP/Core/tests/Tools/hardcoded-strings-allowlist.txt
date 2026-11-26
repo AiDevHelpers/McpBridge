@@ -115,6 +115,8 @@ Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSecon
 
 # dotnet new list column header, matched when parsing the CLI table.
 ProjectHelper|Template Name
+ProjectHelper|Installed Workload Id
+ProjectHelper|Workload ID
 # Test runner arguments and process labels, and the body of a generated stub; none is shown to a user as text.
 TestingHelper|XPlat Code Coverage
 MCP.Core|method test run
