@@ -919,6 +919,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: 1-based column. Default 1.")] int? column = null,
         [Description("The destination type's name, or its full display name")] string toType = "",
         [Description("Optional: array of {file, line, column, newText} for references that are not qualified by the source type's name.")] object[]? callerEdits = null,
+        [Description("Optional: true moves an instance method as a static member: \"static\" is added, unqualified and this. calls in the source type become Dest.M(). Refused when the body uses instance state. Default false.")] bool toStatic = false,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
         [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -926,7 +927,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("moveMember", new { file, line, column = column ?? 1, toType, callerEdits = callerEdits ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("moveMember", new { file, line, column = column ?? 1, toType, callerEdits = callerEdits ?? [], toStatic, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return reply;
     }
 

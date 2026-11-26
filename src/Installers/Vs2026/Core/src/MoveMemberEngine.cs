@@ -18,7 +18,8 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 /// </summary>
 internal static class MoveMemberEngine
 {
-    public static async Task<MethodEditPlan> PlanAsync(Solution solution, string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits)
+    public static async Task<MethodEditPlan> PlanAsync(
+        Solution solution, string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic = false)
     {
         var plan = new MethodEditPlan();
         var target = await EditTarget.LocateAsync(solution, file, line, column,
@@ -48,6 +49,24 @@ internal static class MoveMemberEngine
         {
             plan.Reasons.Add(Strings.Format("MoveRelated", string.Join(", ", related)));
             return plan;
+        }
+
+        // Instance to static: the body may not use the source's instance state, since a static member has none.
+        if (toStatic && !symbol.IsStatic)
+        {
+            var sourceDocument = solution.GetDocument(target.DocumentId)!;
+            var sourceModel = await sourceDocument.GetSemanticModelAsync().ConfigureAwait(false);
+            var sourceDeclaration = (MemberDeclarationSyntax)target.Declaration;
+            var usesInstance = sourceDeclaration.DescendantNodes().Any(n => n is ThisExpressionSyntax or BaseExpressionSyntax)
+                || sourceDeclaration.DescendantNodes().OfType<IdentifierNameSyntax>().Any(id =>
+                    sourceModel!.GetSymbolInfo(id).Symbol is { IsStatic: false } used
+                    && !SymbolEqualityComparer.Default.Equals(used, symbol)
+                    && SymbolEqualityComparer.Default.Equals(used.ContainingType, source));
+            if (usesInstance)
+            {
+                plan.Reasons.Add(Strings.Format("MoveInstanceState", symbol.Name));
+                return plan;
+            }
         }
 
         var destinationDeclaration = destination.DeclaringSyntaxReferences.Select(r => r.GetSyntax()).OfType<TypeDeclarationSyntax>().FirstOrDefault();
@@ -87,6 +106,16 @@ internal static class MoveMemberEngine
             {
                 Add(reference.DocumentId, new TextChange(qualifier.Span, destination.Name));
             }
+            else if (toStatic && access is { Expression: ThisExpressionSyntax self })
+            {
+                // this.M() in the source type becomes Dest.M() once M is static.
+                Add(reference.DocumentId, new TextChange(self.Span, destination.Name));
+            }
+            else if (toStatic && token?.Parent is IdentifierNameSyntax bare && bare.Parent is not MemberAccessExpressionSyntax)
+            {
+                // An unqualified call in the source type becomes Dest.M().
+                Add(reference.DocumentId, new TextChange(bare.Span, destination.Name + "." + bare.Identifier.ValueText));
+            }
             else
             {
                 unqualified.Add(reference);
@@ -107,7 +136,14 @@ internal static class MoveMemberEngine
         }
 
         // The member's text, doc comment and attributes included, written at the end of the destination with its indentation.
-        var movedText = declaration.ToFullString().Trim().Replace("\r\n", "\n").Split('\n').Select(l => l.TrimEnd()).ToList();
+        var fullText = declaration.ToFullString();
+        if (toStatic && !symbol.IsStatic)
+        {
+            // "static" goes in front of the first token; modifier order is free in C#.
+            fullText = fullText.Insert(declaration.GetFirstToken().SpanStart - declaration.FullSpan.Start, "static ");
+        }
+
+        var movedText = fullText.Trim().Replace("\r\n", "\n").Split('\n').Select(l => l.TrimEnd()).ToList();
         var destinationText = await solution.GetDocument(destinationId)!.GetTextAsync().ConfigureAwait(false);
         var eol = destinationText.ToString().Contains("\r\n") ? "\r\n" : "\n";
         var destinationType = destinationDeclaration;

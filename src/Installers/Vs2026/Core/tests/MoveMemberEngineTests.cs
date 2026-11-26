@@ -32,6 +32,37 @@ public sealed class MoveMemberEngineTests
     }
 
     [Fact]
+    public async Task AnInstanceMethodMovesAsStaticAndItsUnqualifiedCallIsRenamed()
+    {
+        const string code =
+            "class Source\n{\n    public int Helper() => 1;\n    int M() => Helper();\n}\n" +
+            "class Dest\n{\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+        var (line, column) = MethodEditEngineTests.Locate(code, "Helper() =>");
+
+        var plan = await MoveMemberEngine.PlanAsync(solution, File, line, column, "Dest", [], toStatic: true);
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("static public int Helper() => 1;", text);
+        Assert.Contains("Dest.Helper()", text);
+    }
+
+    [Fact]
+    public async Task AnInstanceMethodThatUsesFieldsIsNotMadeStatic()
+    {
+        const string code =
+            "class Source\n{\n    int _n;\n    public int Helper() => _n;\n}\n" +
+            "class Dest\n{\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+        var (line, column) = MethodEditEngineTests.Locate(code, "Helper() =>");
+
+        var plan = await MoveMemberEngine.PlanAsync(solution, File, line, column, "Dest", [], toStatic: true);
+
+        Assert.True(plan.Refused);
+    }
+
+    [Fact]
     public async Task AMissingDestinationIsRefused()
     {
         const string code = "class Source\n{\n    public static int Helper() => 1;\n}\n";
