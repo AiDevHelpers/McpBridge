@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Converts one member's shape: field to property, or null guards (ConvertEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object Convert(string file, int line, string kind, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ConvertEngine.PlanAsync(solution, file, line, kind), confirm, planHash);
+    }
+
     // Extracts an interface from a class or struct, in a new file beside it (ExtractInterfaceEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object ExtractInterface(string file, int line, string interfaceName, IReadOnlyList<string> members, bool confirm, string? planHash = null)
     {

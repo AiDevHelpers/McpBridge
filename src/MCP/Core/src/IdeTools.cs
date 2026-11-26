@@ -912,6 +912,23 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Convert a member's shape, using Roslyn, with checks. kind \"field-to-property\" turns the private field at a line into an auto property of the same accessibility, with the name's first letter upper-cased and underscores dropped, and redirects its uses to the property; refused for a static, readonly, const or multi-variable field, a name clash, or a use passed by ref or out. kind \"null-guards\" adds an if (p == null) throw ArgumentNullException check for each reference-typed parameter at the top of the method's block body. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeConvert(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line of the field, or inside the method for null-guards")] int line,
+        [Description("\"field-to-property\" or \"null-guards\"")] string kind,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("convert", new { file, line, kind, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("Extract an interface from the class or struct at a line, using Roslyn, with checks. members names its public, non-static methods and properties, which become the interface's members as signatures. The interface is written to I<interfaceName>.cs beside the type's file and the type adds it to its base list. Refused for a member that is not public and non-static, a name already taken, or an interface already implemented. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractInterface(
         [Description("Full path of the source file")] string file,
