@@ -109,4 +109,33 @@ describe("git actions", () => {
         await expect(runIdeAction("gitStage", { paths: [] })).rejects.toThrow("Missing required argument 'paths'.");
         expect(calls).toEqual([]);
     });
+
+    it("stages the approved paths exactly, in the repository named by repoPath", async () => {
+        repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
+
+        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: ["src/a.cs", "b.txt"] });
+
+        expect(calls).toEqual([["add", [["src/a.cs", "b.txt"]]]]);
+    });
+
+    it("commits the approved message exactly, multi-line included", async () => {
+        const message = "fix: parse\n\nBody line";
+
+        await runIdeAction("gitCommit", { repoPath: "F:/work/app", message });
+
+        expect(calls).toEqual([["commit", [message]]]);
+    });
+
+    it("runs a routed stash push with no message, as git stash push does", async () => {
+        await runIdeAction("gitStashPush", {});
+
+        expect(calls).toEqual([["createStash", [undefined]]]);
+    });
+
+    it("routes a switch and a branch delete to the same git operations as the approved command", async () => {
+        await runIdeAction("gitSwitch", { branch: "feature/y" });
+        await runIdeAction("gitDeleteBranch", { branch: "old" });
+
+        expect(calls).toEqual([["checkout", ["feature/y"]], ["deleteBranch", ["old", false]]]);
+    });
 });
