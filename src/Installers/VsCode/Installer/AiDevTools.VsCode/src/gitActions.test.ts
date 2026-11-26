@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // A fake VS Code git extension, recording every call the actions make.
@@ -59,7 +60,7 @@ describe("git actions", () => {
     it("stages the given paths", async () => {
         await runIdeAction("gitStage", { paths: ["a.cs", "b.cs"] });
 
-        expect(calls).toEqual([["add", [["a.cs", "b.cs"]]]]);
+        expect(calls).toEqual([["add", [[join("F:/work/app", "a.cs"), join("F:/work/app", "b.cs")]]]]);
     });
 
     it("commits with the message", async () => {
@@ -110,12 +111,21 @@ describe("git actions", () => {
         expect(calls).toEqual([]);
     });
 
-    it("stages the approved paths exactly, in the repository named by repoPath", async () => {
+    it("stages the approved paths, resolved against the repository named by repoPath", async () => {
         repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
 
         await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: ["src/a.cs", "b.txt"] });
 
-        expect(calls).toEqual([["add", [["src/a.cs", "b.txt"]]]]);
+        expect(calls).toEqual([["add", [[join("F:/work/app", "src/a.cs"), join("F:/work/app", "b.txt")]]]]);
+    });
+
+    it("keeps an absolute path as given when staging", async () => {
+        repos = [fakeRepo("F:/work/app")];
+        const absolute = join("F:/work/app", "c.txt");
+
+        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: [absolute] });
+
+        expect(calls).toEqual([["add", [[absolute]]]]);
     });
 
     it("commits the approved message exactly, multi-line included", async () => {
