@@ -83,6 +83,9 @@
   </Folder>
   <Folder Name="/Installers/" />
   <Folder Name="/Installers/Vs2026/" />
+  <Folder Name="/Installers/Vs2026/Engines/">
+    <Project Path="src/Installers/Vs2026/Engines/src/AiDevHelpers.Installers.Vs2026.Engines.csproj" />
+  </Folder>
   <Folder Name="/Installers/Vs2026/Core/">
     <Project Path="src/Installers/Vs2026/Core/src/AiDevHelpers.Installers.Vs2026.Core.csproj" />
     <Project Path="src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj" />

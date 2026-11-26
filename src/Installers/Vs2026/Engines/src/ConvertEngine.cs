@@ -132,7 +132,7 @@ internal static class ConvertEngine
             var refRoot = refDocument is null ? null : await refDocument.GetSyntaxRootAsync().ConfigureAwait(false);
             var token = refRoot?.FindToken(reference.Span.Start);
             var refArgument = token?.Parent?.Ancestors().OfType<ArgumentSyntax>().FirstOrDefault();
-            if (refArgument is not null && refArgument.RefOrOutKeyword.Kind() != SyntaxKind.None)
+            if (refArgument is not null && !refArgument.RefOrOutKeyword.IsKind(SyntaxKind.None))
             {
                 plan.Reasons.Add(Strings.Get("ConvertFieldRefUse"));
                 return plan;
