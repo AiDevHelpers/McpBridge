@@ -47,8 +47,14 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
 
     [McpServerTool]
-    [Description("List running IDE instances (currently Visual Studio) with their process id and the solution each has open.")]
-    public string IdeListInstances() => IdeInstanceRouter.ListInstances();
+    [Description("List running IDE instances (currently Visual Studio) with their process id, solution, git branch and worktree. " +
+                 "Pass solutionPath to add a check: whether the solution is open, and whether an instance is open on the expected branch and worktree " +
+                 "(default: the branch and worktree the solution's files are on). The check's ok is true when a matching instance is open.")]
+    public string IdeListInstances(
+        [Description("Optional: solution to check for an open instance")] string? solutionPath = null,
+        [Description("Optional: branch the open instance must be on. Default: the branch of solutionPath's checkout.")] string? expectedBranch = null,
+        [Description("Optional: worktree folder the open instance must be in. Default: the worktree of solutionPath.")] string? expectedWorktree = null) =>
+        InstanceCheck.Apply(IdeInstanceRouter.ListInstances(), solutionPath, expectedBranch, expectedWorktree);
 
     [McpServerTool]
     [Description("Set the startup project of the solution in an IDE instance. " +
