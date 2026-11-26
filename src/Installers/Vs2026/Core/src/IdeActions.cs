@@ -193,6 +193,12 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractPartial" => CodeModelActions.ExtractPartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            RequireString(args, "suffix"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "mergePartial" => CodeModelActions.MergePartial(
             RequireString(args, "file"),
             RequireInt(args, "line"),

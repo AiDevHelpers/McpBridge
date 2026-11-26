@@ -195,6 +195,9 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="PartialExtractNeedsNames" xml:space="preserve"><value>give the file's partial type, at least one member name, and a non-empty suffix for the new file</value></data>
+  <data name="PartialNoSuchMember" xml:space="preserve"><value>no member named {0} in the part at the line</value></data>
+  <data name="PartialExtracted" xml:space="preserve"><value>moved {0} to a new part in {1}</value></data>
   <data name="PartialNothingToMerge" xml:space="preserve"><value>the type is not partial, or has only one part</value></data>
   <data name="PartialMerged" xml:space="preserve"><value>merged {1} other part(s) of {0} into the part at the line</value></data>
   <data name="OrganizeNoTypes" xml:space="preserve"><value>the file declares no type</value></data>

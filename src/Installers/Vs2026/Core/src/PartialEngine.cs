@@ -17,6 +17,116 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 /// </summary>
 internal static class PartialEngine
 {
+    /// <summary>
+    /// Moves the named members out of the partial type's part at the line into a new part in <c>Type.suffix.cs</c>, beside the file.
+    /// The new part repeats the type's access modifiers, its keyword and its name, and copies the file's usings and namespace.
+    /// </summary>
+    public static async Task<MethodEditPlan> ExtractAsync(Solution solution, string file, int line, IReadOnlyList<string> memberNames, string suffix)
+    {
+        var plan = new MethodEditPlan();
+        var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
+        var document = documentId is null ? null : solution.GetDocument(documentId);
+        if (document is null || suffix.Trim().Length == 0 || memberNames.Count == 0)
+        {
+            plan.Reasons.Add(Strings.Get("PartialExtractNeedsNames"));
+            return plan;
+        }
+
+        var text = await document.GetTextAsync().ConfigureAwait(false);
+        if (line < 1 || line > text.Lines.Count)
+        {
+            plan.Reasons.Add(Strings.Format("LineOutOfRange", line, file));
+            return plan;
+        }
+
+        var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
+        var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
+        var lineText = text.Lines[line - 1].ToString();
+        var position = text.Lines[line - 1].Start + (lineText.Length - lineText.TrimStart().Length);
+        var primary = root!.FindToken(Math.Min(position, root.FullSpan.End)).Parent?.AncestorsAndSelf().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+        if (primary is null || model!.GetDeclaredSymbol(primary) is not INamedTypeSymbol)
+        {
+            plan.Reasons.Add(Strings.Get("EditTypeNotAType"));
+            return plan;
+        }
+
+        if (!primary.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword)))
+        {
+            plan.Reasons.Add(Strings.Get("PartialNothingToMerge"));
+            return plan;
+        }
+
+        var chosen = primary.Members.Where(m => MemberAddEngine.NamesOf(m).Any(n => memberNames.Contains(n, StringComparer.Ordinal))).ToList();
+        var found = chosen.SelectMany(MemberAddEngine.NamesOf).Distinct(StringComparer.Ordinal).ToList();
+        var missing = memberNames.Where(n => !found.Contains(n, StringComparer.Ordinal)).ToList();
+        if (missing.Count > 0)
+        {
+            plan.Reasons.Add(Strings.Format("PartialNoSuchMember", string.Join(", ", missing)));
+            return plan;
+        }
+
+        var directory = Path.GetDirectoryName(document.FilePath ?? "") ?? "";
+        var name = primary.Identifier.ValueText;
+        var path = Path.Combine(directory, name + "." + suffix.Trim() + ".cs");
+        if (solution.GetDocumentIdsWithFilePath(path).Length > 0)
+        {
+            plan.Reasons.Add(Strings.Format("AddTypeFileExists", path));
+            return plan;
+        }
+
+        var eol = text.ToString().Contains("\r\n") ? "\r\n" : "\n";
+        var usings = root.DescendantNodes().OfType<UsingDirectiveSyntax>().Select(u => u.WithoutTrivia().ToString()).Distinct().ToList();
+        var ns = primary.Parent is BaseNamespaceDeclarationSyntax nsDecl ? nsDecl.Name.ToString() : "";
+        var access = primary.Modifiers.Select(m => m.ValueText).Where(v => v is "public" or "internal" or "private" or "protected");
+        var header = string.Join(" ", access.Append("partial").Append(primary.Keyword.ValueText)) + " " + name + (primary.TypeParameterList?.ToString() ?? "");
+        var body = new List<string> { header, "{" };
+        foreach (var member in chosen)
+        {
+            body.AddRange(member.ToFullString().Trim().Replace("\r\n", "\n").Split('\n').Select(l => l.Length == 0 ? "" : "    " + l.TrimEnd()));
+            body.Add("");
+        }
+
+        body.Add("}");
+        var lines = new List<string>(usings);
+        if (usings.Count > 0)
+        {
+            lines.Add("");
+        }
+
+        if (ns.Length > 0)
+        {
+            lines.Add("namespace " + ns);
+            lines.Add("{");
+            lines.AddRange(body.Select(l => l.Length == 0 ? "" : "    " + l));
+            lines.Add("}");
+        }
+        else
+        {
+            lines.AddRange(body);
+        }
+
+        var changes = new Dictionary<DocumentId, List<TextChange>>
+        {
+            [documentId!] = chosen.Select(m => new TextChange(m.FullSpan, "")).ToList(),
+        };
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = edited.AddDocument(DocumentId.CreateNewId(document.Project.Id), Path.GetFileName(path), SourceText.From(string.Join(eol, lines) + eol, System.Text.Encoding.UTF8), filePath: path);
+        var newId = edited.GetDocumentIdsWithFilePath(path).Single();
+        edited = await EditChecks.FormatFileAsync(edited, documentId!, plan).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, newId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId!, newId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? "");
+        plan.Files.Add(path);
+        plan.Warnings.Add(Strings.Format("PartialExtracted", string.Join(", ", found), Path.GetFileName(path)));
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
     public static async Task<MethodEditPlan> MergeAsync(Solution solution, string file, int line)
     {
         var plan = new MethodEditPlan();
