@@ -49,6 +49,12 @@ internal static class ChangeSignatureEngine
             }
         }
 
+        var family = await ChangeSignatureFamily.FindAsync(solution, method).ConfigureAwait(false);
+        if (family.Count > 1)
+        {
+            return await ChangeSignatureFamily.PlanAsync(solution, file, line, column, newParameters, family, docs).ConfigureAwait(false);
+        }
+
         var list = SyntaxFactory.ParseParameterList("(" + string.Join(", ", newParameters.Select(p => p.Declaration)) + ")");
         var newMethodText = declaration.WithParameterList(list).ToString();
 
