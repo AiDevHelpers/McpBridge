@@ -19,7 +19,6 @@ const vsCodeActions = new Set([...vsCodeSource.matchAll(/case "([A-Za-z]+)"/g)].
 // Name -> plan unit that adds it.
 const planned: Record<string, string> = {
     // Unit 1: breakpoint control
-    setBreakpointCondition: "1", enableBreakpoint: "1", disableBreakpoint: "1",
     // Unit 2: debugger inspection
     listThreads: "2", listStackFrames: "2", listDebuggedProcesses: "2", detachAll: "2",
     // Unit 3: processes and attach
