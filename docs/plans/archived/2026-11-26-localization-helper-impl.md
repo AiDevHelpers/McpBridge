@@ -1,6 +1,6 @@
 # LocalizationHelper: implementation plan, 2026-11-26
 
-Status: not started. Open questions answered (last section). Source: `2026-11-26-localization-helper.md` (revision 2, includes the Sonnet review in its section 7).
+Status: done (units 1 to 8 merged into wip as PRs 46 to 51 and this one). Open questions answered (last section). Source: `2026-11-26-localization-helper.md` (revision 2, includes the Sonnet review in its section 7).
 Checked against `src/Helpers/LintHelper/src/{LintService,ResxChecker,StringScanner,Strings}.cs`, its csproj and `SelfTest.md`,
 `src/MCP/Core/src/{LintTools,SelfTestTools,McpServiceCollectionExtensions}.cs`, `src/MCP/Core/tests/Tools/{SelfTestCoverageTests,
 HardCodedStringTests,DocsMatchCodeTests}.cs`, `hardcoded-strings-allowlist.txt`, `.github/workflows/ci.yml`, `AiDevHelpers.slnx`,
@@ -317,3 +317,11 @@ diff of each touched file before building. A Haiku result that fails review is r
 2. The resx comment `same-in-culture` suppresses `untranslated` for that key (user, 2026-11-26).
 3. Dogfood log: tool-use rows and gaps go in `~/.claude/docs/dogfood.md`, as the repo `CLAUDE.md` and the global rules say (not asked; both rules name it).
 4. PR flow: one PR per unit, merged into `wip` without asking, as the repo `CLAUDE.md` says for an approved plan (not asked; the rule decides it).
+
+## As built (differences from this plan)
+
+- `ITranslator` is `Task<string> CompleteAsync(systemPrompt, userPrompt, ct)`; the service builds the prompts and parses and validates the reply (the plan had the translator return a dictionary).
+- `localization_translate` plan reply lists `{file, key, source}` per key with one top-level `prompt`, not a prompt per key. The `SamplingNotSupported` message lives in MCP Core's resx because the helper's `Strings` is internal.
+- `StringScanner.InBuildFolder` stayed `internal`. `localization_pseudo` takes `root`, `resx`, `output`, `confirm`; `Strings.qps-ploc.resx` is git-ignored.
+- Verified SDK members (ModelContextProtocol 2.4.0): `McpServer.SampleAsync(CreateMessageRequestParams, CancellationToken)`, `McpServer.ClientCapabilities.Sampling`.
+- Not verified: the new tools through the running MCP server (the installed server predates them); the full gate's VSIX build, Tpm tests and npm steps were not run, only `dotnet format`, and `dotnet test` of LocalizationHelper, LintHelper and MCP.Core.

@@ -1,6 +1,6 @@
 # LocalizationHelper: implementation plan, 2026-11-26
 
-Status: revision 2, after the Sonnet review of revision 1 (section 7). Not started. Each unit is one commit with its tests written first.
+Status: done. Implemented by the impl plan (revision 2, after the Sonnet review of revision 1, section 7). Each unit is one commit with its tests written first.
 
 ## 1. Scope
 
