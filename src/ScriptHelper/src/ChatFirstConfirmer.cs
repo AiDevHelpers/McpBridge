@@ -14,3 +14,11 @@ public sealed class ChatFirstConfirmer : IConfirmer
         return false;
     }
 }
+
+/// <summary>Decides whether <c>setup tools</c> may run. It installs the elevated scripts, so it needs the person's yes in chat first.</summary>
+public static class SetupApproval
+{
+    /// <summary>The refusal text when the yes was not given; null when the command may run.</summary>
+    public static string? ToolsRefusal(bool approvedInChat) =>
+        approvedInChat ? null : "refused: setup tools needs the person's yes in chat first (--approved-in-chat).";
+}
