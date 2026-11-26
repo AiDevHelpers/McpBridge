@@ -150,6 +150,18 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task APlainClassBecomesAStruct()
+    {
+        const string code = "class P\n{\n    public int X { get; set; }\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 1, "class-to-struct");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("struct P", await TextOfAsync(plan));
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";

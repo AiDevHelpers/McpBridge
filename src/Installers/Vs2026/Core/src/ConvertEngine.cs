@@ -56,7 +56,9 @@ internal static class ConvertEngine
             case "string-to-interpolation":
                 return await StringToInterpolationAsync(solution, documentId!, document, text, model!, root!, line, plan).ConfigureAwait(false);
             case "class-to-record":
-                return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, plan).ConfigureAwait(false);
+                return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "record", plan).ConfigureAwait(false);
+            case "class-to-struct":
+                return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "struct", plan).ConfigureAwait(false);
             case "make-async":
                 return await MakeAsyncAsync(solution, documentId!, document, model!, node, plan).ConfigureAwait(false);
             case "property-to-method":
@@ -377,7 +379,7 @@ internal static class ConvertEngine
     // no base class other than object. Reference equality of instances would change, so a class that is compared by reference is not
     // checked here; the reply says so.
     private static async Task<MethodEditPlan> ClassToRecordAsync(
-        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, MethodEditPlan plan)
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, string keyword, MethodEditPlan plan)
     {
         var type = node?.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().FirstOrDefault();
         if (type is null || model.GetDeclaredSymbol(type) is not INamedTypeSymbol symbol)
@@ -389,14 +391,16 @@ internal static class ConvertEngine
         var overrides = type.Members.OfType<MethodDeclarationSyntax>().Any(m => m.Identifier.ValueText is "Equals" or "GetHashCode" or "ToString")
             || type.Members.OfType<OperatorDeclarationSyntax>().Any();
         var baseNotObject = symbol.BaseType is not null && symbol.BaseType.SpecialType != SpecialType.System_Object;
-        if (overrides || baseNotObject || type.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        var finalizer = type.Members.OfType<DestructorDeclarationSyntax>().Any();
+        var virtualMember = type.Members.Any(m => m.Modifiers.Any(x => x.IsKind(SyntaxKind.VirtualKeyword) || x.IsKind(SyntaxKind.AbstractKeyword) || x.IsKind(SyntaxKind.SealedKeyword)));
+        if (overrides || baseNotObject || type.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)) || (keyword == "struct" && (finalizer || virtualMember || type.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword) || m.IsKind(SyntaxKind.SealedKeyword)))))
         {
             plan.Reasons.Add(Strings.Get("ConvertNotLosslessRecord"));
             return plan;
         }
 
-        var change = new TextChange(type.Keyword.Span, "record");
-        plan.Warnings.Add(Strings.Get("ConvertRecordCheckEquality"));
+        var change = new TextChange(type.Keyword.Span, keyword);
+        plan.Warnings.Add(keyword == "struct" ? Strings.Get("ConvertStructCheckCopies") : Strings.Get("ConvertRecordCheckEquality"));
         return await ApplyAndCheckAsync(solution, documentId, document, change, plan).ConfigureAwait(false);
     }
 
