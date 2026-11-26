@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Extracts statements into a new method (ExtractMethodEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ExtractMethod(string file, int startLine, int endLine, string name, string accessibility, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ExtractMethodEngine.PlanAsync(solution, file, startLine, endLine, name, accessibility), confirm, planHash);
+    }
+
     // Applies a code action chosen from ide_list_code_actions (CodeActionEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object ApplyCodeAction(string file, int line, string id, bool confirm, string? planHash = null)
     {

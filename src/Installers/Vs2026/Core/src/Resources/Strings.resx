@@ -196,6 +196,14 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="CodeActionStale" xml:space="preserve"><value>no code action with that id is offered at this line any more; list them again</value></data>
+  <data name="ExtractBadRange" xml:space="preserve"><value>give a valid line range (startLine not after endLine) and a valid method name</value></data>
+  <data name="ExtractNoStatements" xml:space="preserve"><value>the lines hold no statement of a block</value></data>
+  <data name="ExtractNotWholeStatements" xml:space="preserve"><value>the lines must hold whole statements of one block, not part of one</value></data>
+  <data name="ExtractJumps" xml:space="preserve"><value>the range contains return, yield, break or continue; those are not extracted yet</value></data>
+  <data name="ExtractNoMethod" xml:space="preserve"><value>the statements are not inside a method</value></data>
+  <data name="ExtractNoFlow" xml:space="preserve"><value>the data flow of the range could not be analysed</value></data>
+  <data name="ExtractManyOutputs" xml:space="preserve"><value>more than one value is used after the range ({0}); extract a range that produces one</value></data>
+  <data name="ExtractDone" xml:space="preserve"><value>extracted {0}; parameters: {1}</value></data>
   <data name="CodeActionTitle" xml:space="preserve"><value>Add using {0} for {1}</value></data>
   <data name="CodeActionAdded" xml:space="preserve"><value>added using {0} for {1}</value></data>
   <data name="PartialExtractNeedsNames" xml:space="preserve"><value>give the file's partial type, at least one member name, and a non-empty suffix for the new file</value></data>

@@ -193,6 +193,13 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractMethod" => CodeModelActions.ExtractMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "startLine"),
+            RequireInt(args, "endLine"),
+            RequireString(args, "name"),
+            OptionalString(args, "accessibility") ?? "private",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "applyCodeAction" => CodeModelActions.ApplyCodeAction(
             RequireString(args, "file"),
             RequireInt(args, "line"),

@@ -912,6 +912,25 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [Description("Extract a run of whole statements in one block into a new private method, using Roslyn, with checks. The parameters are the variables the run reads from outside it; the return value is the one variable it writes that is used after it. The statements are replaced by a call and the new method goes after the enclosing method. Refused for more than one value used after the run, for return, yield, break or continue in it, for a range that is not whole statements of one block, or for a name already taken. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
+    public async Task<string> IdeExtractMethod(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based first line of the statements")] int startLine,
+        [Description("1-based last line of the statements")] int endLine,
+        [Description("The new method's name")] string name,
+        [Description("Optional: accessibility of the new method. Default private.")] string? accessibility = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("extractMethod", new { file, startLine, endLine, name, accessibility = accessibility ?? "private", confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return reply;
+    }
+
+    [McpServerTool]
     [Description("List the code actions offered at a line, using Roslyn. Only the fix for a missing type name is computed: adding a using directive for a type in a namespace the file does not import. Each result has an id to pass to ide_apply_code_action. The IDE's own fixes are not listed. Read only. Visual Studio only.")]
     public async Task<string> IdeListCodeActions(
         [Description("Full path of the source file")] string file,
