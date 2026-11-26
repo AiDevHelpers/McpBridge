@@ -225,6 +225,13 @@ internal static class CodeModelActions
         return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
     }
 
+    // Edits the doc comment of the method at a line, with no code change (UpdateDocsEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object UpdateDocs(string file, int line, string? summary, IReadOnlyList<DocItem> items, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => UpdateDocsEngine.PlanAsync(solution, file, line, summary, items), confirm, planHash);
+    }
+
     // Read only: reports doc comments that disagree with their method (DocCheckEngine). Runs on the UI thread against the current solution.
     public static object CheckDocs(string file)
     {
