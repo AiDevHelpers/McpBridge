@@ -94,7 +94,9 @@ public sealed class InstallToolFilesTests : IDisposable
         var root = InstallToolFiles.ToolsRoot(_config);
         Assert.Equal(InstallToolFiles.Script(), File.ReadAllText(Path.Combine(root, InstallToolFiles.ScriptName)));
         Assert.Equal(InstallToolFiles.Manifest(), File.ReadAllText(Path.Combine(root, InstallToolFiles.ManifestName)));
-        Assert.Contains(InstallToolFiles.ScriptName, Assert.Single(confirmer.Prompts));
+        Assert.Equal(2, confirmer.Prompts.Count);
+        Assert.Contains(InstallToolFiles.ScriptName, confirmer.Prompts[0]);
+        Assert.Contains(InstallWorkloadFiles.ScriptName, confirmer.Prompts[1]);
         Assert.True(File.Exists(_config.RegistryPath));
     }
 

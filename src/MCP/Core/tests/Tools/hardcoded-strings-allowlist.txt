@@ -114,6 +114,7 @@ Vs2026.Core|Visual Studio UI thread answers again (pid {_pid}).
 Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSeconds} s (pid {_pid}).
 
 # dotnet new list column header, matched when parsing the CLI table.
+MCP.Core|dotnet workload install {entry.Name}
 ProjectHelper|Template Name
 ProjectHelper|Installed Workload Id
 ProjectHelper|Workload ID

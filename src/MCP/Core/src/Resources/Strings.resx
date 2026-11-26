@@ -164,4 +164,11 @@
   <data name="NoSubscribedInstance" xml:space="preserve"><value>No Visual Studio instance is subscribed for events.</value></data>
   <data name="MultipleSubscribedInstances" xml:space="preserve"><value>More than one instance is subscribed. Pass instancePid.</value></data>
   <data name="SubscribeFirst" xml:space="preserve"><value>No events subscription to instance {0}. Subscribe first.</value></data>
+  <data name="WorkloadUnknown" xml:space="preserve"><value>'{0}' is not a workload this helper installs. Allowed: {1}.</value></data>
+  <data name="WorkloadAlreadyInstalled" xml:space="preserve"><value>{0} is already installed; nothing to do.</value></data>
+  <data name="WorkloadPlanned" xml:space="preserve"><value>Ready to install the {0} workload with dotnet workload install. Confirm to run it.</value></data>
+  <data name="WorkloadNeedsAdmin" xml:space="preserve"><value>This runs elevated and will show a UAC prompt.</value></data>
+  <data name="WorkloadUnknownToken" xml:space="preserve"><value>The token is unknown, already used, or expired. Plan again.</value></data>
+  <data name="WorkloadDone" xml:space="preserve"><value>Installed the {0} workload.</value></data>
+  <data name="WorkloadFailed" xml:space="preserve"><value>The workload install failed (exit {0}): {1}</value></data>
 </root>

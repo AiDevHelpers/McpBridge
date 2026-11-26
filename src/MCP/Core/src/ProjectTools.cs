@@ -242,6 +242,48 @@ internal sealed class ProjectTools
         return Json(new { ok = gap.Count == 0, kind = "dotnet", required = required.Distinct(StringComparer.OrdinalIgnoreCase), missing = gap });
     }
 
+    private static readonly AiDevHelpers.MCP.Core.Services.WorkloadInstallService Installs = new(new ProcessElevRunner());
+
+    [McpServerTool]
+    [Description("Plan installing a .NET workload from the helper's table (maui, android, ios, wasm-tools) with dotnet workload install. Runs elevated (UAC). Writes nothing; returns a token for workload_install_confirm after the user says yes in chat.")]
+    public static async Task<string> WorkloadInstallPlan(
+        [Description("A workload name from the table, e.g. maui")] string workload,
+        CancellationToken ct = default)
+    {
+        var list = await CommandSeam.Default(new CommandRequest { FileName = "dotnet", Arguments = ["workload", "list"], Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!list.Success)
+        {
+            return Json(new { ok = false, error = list.LaunchError ?? (string.IsNullOrWhiteSpace(list.StdErr) ? list.StdOut : list.StdErr).Trim() });
+        }
+
+        var installed = DotnetWorkloadParser.ParseInstalled(list.StdOut);
+        if (!installed.Ok)
+        {
+            return Json(new { ok = false, error = installed.Error });
+        }
+
+        var outcome = Installs.Plan(workload, installed.Items.Select(w => w.Id).ToList());
+        return Json(new
+        {
+            ok = outcome.Ok,
+            message = outcome.Message,
+            error = outcome.Error,
+            token = outcome.Plan?.Token,
+            command = outcome.Plan?.Command,
+            expiresUtc = outcome.Plan?.ExpiresUtc,
+        });
+    }
+
+    [McpServerTool]
+    [Description("Run a workload install planned by workload_install_plan, through the elevated helper. Single use; expires after 15 minutes.")]
+    public static async Task<string> WorkloadInstallConfirm(
+        [Description("Token returned by workload_install_plan")] string token,
+        CancellationToken ct = default)
+    {
+        var outcome = await Installs.ConfirmAsync(token, ct);
+        return Json(new { ok = outcome.Ok, message = outcome.Message, error = outcome.Error, exitCode = outcome.ExitCode, output = outcome.Output });
+    }
+
     /// <summary>Runs vswhere from the Visual Studio Installer folder and parses its JSON.</summary>
     private static async Task<(bool ok, List<VsInstance>? items, string? error)> RunVswhere(string[] arguments, CancellationToken ct)
     {

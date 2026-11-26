@@ -68,6 +68,28 @@ var installTool = Verb("install-tool", "Install an allowed tool through the brok
 });
 installTool.Add(tool);
 
+var installWorkload = Verb("install-workload", "Install an allowed .NET workload through the broker.", async (pr, ct) =>
+{
+    var name = pr.GetRequiredValue(tool);
+    if (InstallableWorkloads.TryGet(name) is not { } found)
+    {
+        Console.Error.WriteLine($"refused: '{name}' is not a workload this helper installs");
+        return 2;
+    }
+
+    var link = Broker.Link();
+    var ensured = await Broker.EnsureAsync(link, ct);
+    if (!ensured.Ok)
+    {
+        Console.Error.WriteLine($"refused: {ensured.Reason}");
+        return 1;
+    }
+
+    var result = await link.Client.RunAsync(InstallToolFiles.ToolsRoot(link.Config), InstallWorkloadFiles.ScriptName, [found.Name], TimeSpan.FromMinutes(30));
+    return Broker.Print(result);
+});
+installWorkload.Add(tool);
+
 var repoScan = Verb("repo-scan", "Print the repo scan as JSON. Local; needs no broker.", Sync(pr => Local(["--repo-scan", pr.GetRequiredValue(repo)])));
 repoScan.Add(repo);
 
@@ -179,6 +201,7 @@ elevatedStep.Hidden = true;
 root.Add(run);
 root.Add(verify);
 root.Add(installTool);
+root.Add(installWorkload);
 root.Add(repoScan);
 root.Add(repoSetup);
 root.Add(repoApply);

@@ -16,6 +16,7 @@ public sealed class ToolCommands(SetupDeps deps) : SetupStepBase(deps)
         {
             _ensureDirectory(root);
             InstallToolFiles.Write(root);
+            InstallWorkloadFiles.Write(root);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -23,7 +24,11 @@ public sealed class ToolCommands(SetupDeps deps) : SetupStepBase(deps)
         }
 
         var registered = new RegistrationCommands(Deps).Register(root);
-        return registered.Ok ? new ApprovalCommands(Deps).Approve(root, InstallToolFiles.ScriptName) : registered;
+        if (!registered.Ok)
+            return registered;
+
+        var approvedTools = new ApprovalCommands(Deps).Approve(root, InstallToolFiles.ScriptName);
+        return approvedTools.Ok ? new ApprovalCommands(Deps).Approve(root, InstallWorkloadFiles.ScriptName) : approvedTools;
     }
 }
 

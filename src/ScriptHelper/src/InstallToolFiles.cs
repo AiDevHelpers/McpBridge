@@ -61,7 +61,9 @@ public static class InstallToolFiles
     /// <summary>One allowlist entry per tool, each with exactly that tool's name as its only argument.</summary>
     public static string Manifest()
     {
-        var scripts = InstallableTools.All.Select(t => new { path = ScriptName, args = new[] { t.Name } });
+        var tools = InstallableTools.All.Select(t => new { path = ScriptName, args = new[] { t.Name } });
+        var workloads = InstallableWorkloads.All.Select(w => new { path = InstallWorkloadFiles.ScriptName, args = new[] { w.Name } });
+        var scripts = tools.Concat(workloads);
         return JsonSerializer.Serialize(new { scripts }, new JsonSerializerOptions { WriteIndented = true }) + "\n";
     }
 
