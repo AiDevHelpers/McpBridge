@@ -11,6 +11,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
+    <ProjectReference Include="..\..\..\Installers\Vs2026\Engines\src\AiDevHelpers.Installers.Vs2026.Engines.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />

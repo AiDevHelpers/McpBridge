@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" SetTargetFramework="TargetFramework=net48" />
+    <ProjectReference Include="..\..\Engines\src\AiDevHelpers.Installers.Vs2026.Engines.csproj" SetTargetFramework="TargetFramework=net48" />
   </ItemGroup>
 
   <ItemGroup>

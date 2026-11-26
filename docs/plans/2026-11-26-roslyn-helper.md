@@ -50,7 +50,7 @@ The review found the plan not ready. These changes are required before unit 1:
 
 1. **Skeleton and protocol.** Exe, BridgeServer reuse, `health`, refusal of unknown actions, manifest writer. Test first: a pipe round trip returns health, and an error for an unknown action.
 2. **Solution load.** MSBuildLocator, `MSBuildWorkspace.OpenSolutionAsync`, cached Solution, per-project diagnostics instead of a failed load. Test first: a fixture solution with an SDK project and a broken project lists both.
-3. **Shared engine library.** Move the engines listed above. Test first: the existing Core tests pass unchanged after the move.
+3. **Shared engine library.** Move the engines listed above. Test first: the existing Core tests pass unchanged after the move. *Done: `src/Installers/Vs2026/Engines/src` (net48 and net10.0-windows). Namespaces and the Strings resource name are unchanged. FileOperations moved too (plain IO, needed by unit 10). Core tests 247/247; RoslynHelper tests 11/11; VSIX installer builds with the VS MSBuild. Roslyn 5.12.0-1.26573.119 for net48, 5.12.0 for net10 (as unit 1). ConvertEngine RS1034 fixed with IsKind, no behavior change.*
 4. **Apply path.** Write changed documents to disk; refuse on PlanHash mismatch; no TryApplyChanges, no DTE save. Test first: a plan applied to a temp copy changes disk text; a changed file is refused.
 5. **Argument parsing.** Move the Parse* helpers out of IdeActions.cs. Test first: parser fixtures from `conformance/fixtures.json`.
 6. **Group A: editMethod, editMember, addMember.** Test first: confirm false returns `planned`; confirm true applies; a stale planHash is refused.
