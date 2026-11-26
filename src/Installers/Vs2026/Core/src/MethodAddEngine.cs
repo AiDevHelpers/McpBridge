@@ -21,6 +21,11 @@ internal static class MethodAddEngine
         Solution solution, string file, int line, string newMethodText, int? afterLine, bool overload, DocUpdates docs, Solution? baseline = null)
     {
         var plan = new MethodEditPlan();
+        if (!overload && afterLine is null && await IsInsideMethodBodyAsync(solution, file, line).ConfigureAwait(false))
+        {
+            return await AddLocalFunctionAsync(solution, file, line, newMethodText, baseline, plan).ConfigureAwait(false);
+        }
+
         var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
         var document = documentId is null ? null : solution.GetDocument(documentId);
         if (document is null)
@@ -142,6 +147,80 @@ internal static class MethodAddEngine
             .ConfigureAwait(false);
         plan.Added = TestDiscovery.TargetFor(newSymbol, document, plan.InsertedAtLine);
 
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
+    // A line inside a method or local function body: the new text is a local function, added after the statement on that line.
+    private static async Task<bool> IsInsideMethodBodyAsync(Solution solution, string file, int line)
+    {
+        var documentId = solution.GetDocumentIdsWithFilePath(file).FirstOrDefault();
+        var document = documentId is null ? null : solution.GetDocument(documentId);
+        if (document is null)
+        {
+            return false;
+        }
+
+        var text = await document.GetTextAsync().ConfigureAwait(false);
+        var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
+        if (line < 1 || line > text.Lines.Count || root is null)
+        {
+            return false;
+        }
+
+        var lineText = text.Lines[line - 1].ToString();
+        var position = text.Lines[line - 1].Start + (lineText.Length - lineText.TrimStart().Length);
+        return root.FindToken(Math.Min(position, root.FullSpan.End)).Parent?.AncestorsAndSelf().OfType<BlockSyntax>()
+            .Any(b => b.Parent is BaseMethodDeclarationSyntax or LocalFunctionStatementSyntax) == true;
+    }
+
+    private static async Task<MethodEditPlan> AddLocalFunctionAsync(
+        Solution solution, string file, int line, string newMethodText, Solution? baseline, MethodEditPlan plan)
+    {
+        var documentId = solution.GetDocumentIdsWithFilePath(file).First();
+        var document = solution.GetDocument(documentId)!;
+        var text = await document.GetTextAsync().ConfigureAwait(false);
+        var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
+        var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
+        var lineText = text.Lines[line - 1].ToString();
+        var position = text.Lines[line - 1].Start + (lineText.Length - lineText.TrimStart().Length);
+        var statement = root!.FindToken(position).Parent?.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault(s => s.Parent is BlockSyntax);
+        var method = statement?.Ancestors().OfType<BaseMethodDeclarationSyntax>().FirstOrDefault();
+        if (statement is null || method is null || model is null)
+        {
+            plan.Reasons.Add(Strings.Get("MethodAddNoType"));
+            return plan;
+        }
+
+        if (SyntaxFactory.ParseStatement(newMethodText) is not LocalFunctionStatementSyntax local
+            || local.GetDiagnostics().Any(d => d.Severity == DiagnosticSeverity.Error))
+        {
+            plan.Reasons.Add(Strings.Get("MethodEditNewTextNotOneMethod"));
+            return plan;
+        }
+
+        var name = local.Identifier.ValueText;
+        if (method.DescendantNodes().OfType<LocalFunctionStatementSyntax>().Any(l => l.Identifier.ValueText == name))
+        {
+            plan.Reasons.Add(Strings.Format("MemberExists", name));
+            return plan;
+        }
+
+        var eol = text.ToString().Contains("\r\n") ? "\r\n" : "\n";
+        var indent = LeadingWhitespace(text.Lines.GetLineFromPosition(statement.SpanStart).ToString());
+        var lines = newMethodText.Replace("\r\n", "\n").Trim().Split('\n').Select(l => l.Length == 0 ? "" : indent + l.TrimEnd());
+        var change = new TextChange(new TextSpan(text.Lines.GetLineFromPosition(statement.Span.End).End, 0), eol + string.Join(eol, lines));
+        var changes = new Dictionary<DocumentId, List<TextChange>> { [documentId] = new List<TextChange> { change } };
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, documentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(baseline ?? solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? file);
+        plan.Warnings.Add(Strings.Format("LocalFunctionAdded", name));
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
         if (!plan.Refused)
         {
             plan.Result = edited;

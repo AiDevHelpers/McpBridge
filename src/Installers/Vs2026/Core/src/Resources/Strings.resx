@@ -197,6 +197,7 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
   <data name="CodeActionStale" xml:space="preserve"><value>no code action with that id is offered at this line any more; list them again</value></data>
   <data name="ConvertBadKind" xml:space="preserve"><value>kind must be field-to-property, null-guards, expression-to-block, block-to-expression, var-to-explicit or explicit-to-var, not {0}</value></data>
+  <data name="LocalFunctionAdded" xml:space="preserve"><value>added local function {0} after the statement at the line</value></data>
   <data name="ConvertNotStringConcat" xml:space="preserve"><value>the line has no string concatenation with +</value></data>
   <data name="ConvertInterpolationOperand" xml:space="preserve"><value>an operand is neither a string literal nor of type string</value></data>
   <data name="ConvertNotLosslessRecord" xml:space="preserve"><value>the class declares Equals, GetHashCode, ToString or an operator, is static, or has a base class other than object; it is not converted to a record</value></data>
