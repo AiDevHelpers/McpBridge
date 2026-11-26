@@ -116,4 +116,23 @@ public class ConsoleConfirmerTests
         Assert.Equal(0, reader.Reads);
         Assert.Equal(string.Empty, output.ToString());
     }
+
+    [Fact]
+    public void ChatFirstConfirmerRefusesAndSaysToAskInChat()
+    {
+        var previous = Console.Error;
+        var output = new StringWriter();
+        Console.SetError(output);
+        try
+        {
+            var result = new ChatFirstConfirmer().Confirm("Register the repo?");
+
+            Assert.False(result);
+            Assert.Contains("needs a yes in chat first: Register the repo?", output.ToString(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            Console.SetError(previous);
+        }
+    }
 }
