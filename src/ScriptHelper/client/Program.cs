@@ -167,7 +167,12 @@ review.Add(repo);
 var scanLaunch = SetupVerb("scan-launch", "Scan a repo's launch and debug configurations (administrator).", pr => ["scan", pr.GetRequiredValue(repo)]);
 scanLaunch.Add(repo);
 
-var tools = SetupVerb("tools", "Install the Script Helper tools (administrator).", _ => ["tools"]);
+// Installing the tools changes what elevated scripts can run, so it needs the person's yes in chat before the UAC prompt.
+var tools = Verb("tools", "Install the Script Helper tools (administrator). Needs --approved-in-chat after the person agreed in chat.", Sync(pr =>
+    pr.GetValue(approvedInChat)
+        ? ElevatedSetup.Run(["tools", "--approved-in-chat"], pr.GetValue(allowNoTpm))
+        : Refuse("refused: setup tools needs the person's yes in chat first (--approved-in-chat).")));
+tools.Add(approvedInChat);
 
 var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated process. Launched by the client, not by hand.", Sync(pr =>
 {
@@ -239,10 +244,16 @@ static Command Verb(string name, string description, Func<ParseResult, Cancellat
     return command;
 }
 
+static int Refuse(string message)
+{
+    Console.Error.WriteLine(message);
+    return 1;
+}
+
 static Func<ParseResult, CancellationToken, Task<int>> Sync(Func<ParseResult, int> action) =>
     (pr, _) => Task.FromResult(action(pr));
 
 Command SetupVerb(string name, string description, Func<ParseResult, string[]> build) =>
     Verb(name, description, Sync(pr => ElevatedSetup.Run(build(pr), pr.GetValue(allowNoTpm))));
 
-static int Local(string[] args) => ElevLocalCommands.TryRun(args, Console.Out, new ConsoleConfirmer(), out var exit) ? exit : 2;
+static int Local(string[] args) => ElevLocalCommands.TryRun(args, Console.Out, new ChatFirstConfirmer(), out var exit) ? exit : 2;
