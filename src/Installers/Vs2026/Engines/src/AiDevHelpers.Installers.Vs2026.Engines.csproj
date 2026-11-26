@@ -21,6 +21,11 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />
   </ItemGroup>
 
+  <!-- .NET Framework 4.8 has no System.Text.Json. The VS bridge (Bridge) ships the runtime; this only compiles the argument parsers. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="System.Text.Json" Version="10.0.10" ExcludeAssets="runtime" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="AiDevHelpers.Installers.Vs2026.Core" />
     <InternalsVisibleTo Include="AiDevHelpers.Installers.Vs2026.Core.Tests" />
