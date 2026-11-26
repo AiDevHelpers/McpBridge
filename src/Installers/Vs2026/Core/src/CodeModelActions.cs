@@ -168,13 +168,23 @@ internal static class CodeModelActions
     // Replaces the method at a position with new text, after the checks in MethodEditEngine. Plan-only returns the checks; a
     // refused plan is a reply with refused true, never an applied change. Applied writes through the VS workspace as one change set.
     public static object EditMethod(
-        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members, bool confirm, string? planHash = null)
+        string file, int line, int column, string newMethodText, IReadOnlyList<CallerEdit> callerEdits, DocUpdates docs, IReadOnlyList<MemberSpec> members,
+        bool rewriteCallers, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
         return RunPlan(
-            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
-                MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
+            solution => WithMembersAsync(solution, file, line, members, (s, shift, baseline) => rewriteCallers
+                ? ChangeSignatureEngine.PlanEditAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)
+                : MethodEditEngine.PlanAsync(s, file, shift(line), column, newMethodText, callerEdits, docs, baseline)),
             confirm, planHash);
+    }
+
+    // Changes a method's parameters and rewrites its call sites (ChangeSignatureEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ChangeSignature(
+        string file, int line, int column, IReadOnlyList<NewParameter> newParameters, DocUpdates docs, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ChangeSignatureEngine.PlanAsync(solution, file, line, column, newParameters, docs), confirm, planHash);
     }
 
     // Adds the fields and properties a method needs to its type first, then plans the method on top, shifting its line numbers past

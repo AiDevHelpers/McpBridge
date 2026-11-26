@@ -899,6 +899,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter or type parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
         [Description("Optional: fields and properties the method needs, added to its type in the same checked change. Array of {name, type, accessibility (required: public, internal, protected, private, protected internal, private protected), backing (auto, field, readonly-field, field-only, expression), setter, required, initializer, attributes, summary}.")] object[]? members = null,
         [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Optional: true rewrites the call sites to match a clean removal or reorder of parameters (matched by name). Adds, renames and retypes are refused: use ide_change_signature. Cannot be combined with callerEdits. Default false.")] bool rewriteCallers = false,
         [Description("Set true to apply the edit. Default false returns the checks only.")] bool confirm = false,
         [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -906,7 +907,27 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
         CancellationToken ct = default)
     {
-        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        var reply = await IdeInstanceRouter.CallAsync("editMethod", new { file, line, column, newMethodText, callerEdits = callerEdits ?? [], newSummary, docs = docs ?? [], members = members ?? [], rewriteCallers, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
+        return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
+    }
+
+    [McpServerTool]
+    [Description("Change a method's parameter list with Roslyn, and rewrite every call site to match, with checks. parameters is the new list in order, each {declaration, fromOld, valueForCallers}: declaration is the parameter as written in the new signature (such as \"int b\" or \"CancellationToken ct = default\"); fromOld is the index of the old parameter it keeps (omit it for a new parameter); valueForCallers is the argument every existing call gets for a new parameter (an expression, or default). A new parameter without a default needs valueForCallers. A removed parameter's argument is dropped only when it has no side effects. Calls it cannot rewrite (method groups, delegates, constructors, attributes, params) refuse the change and are listed as uncovered. A method that overrides, implements or is overridden is refused. The doc comment's param tags follow, as in ide_edit_method, and docs needs an entry for each new parameter when the method has a doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
+    public async Task<string> IdeChangeSignature(
+        [Description("Full path of the source file")] string file,
+        [Description("1-based line inside the method (its name line is best)")] int line,
+        [Description("The new parameter list in order: array of {declaration, fromOld, valueForCallers}.")] object[] parameters,
+        [Description("Optional: 1-based column. Default 1.")] int? column = null,
+        [Description("Optional: array of {tag, name, text} for doc tags: tag is param, typeparam or returns. Needed for each new parameter when the method has a doc comment; the tool never invents text.")] object[]? docs = null,
+        [Description("Optional: the planHash the user was shown. Confirm refuses when the change re-plans to something else.")] string? planHash = null,
+        [Description("Set true to apply the change. Default false returns the checks only.")] bool confirm = false,
+        [Description("Run the tests that call the method, with coverage, after the change is applied. Default true.")] bool runTests = true,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default)
+    {
+        var reply = await IdeInstanceRouter.CallAsync("changeSignature", new { file, line, column = column ?? 1, parameters, docs = docs ?? [], confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
         return await MethodTestRunner.AttachAsync(reply, confirm && runTests, ct).ConfigureAwait(false);
     }
 

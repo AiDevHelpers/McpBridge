@@ -156,5 +156,9 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="CallSiteKeptParameterMissing" xml:space="preserve"><value>a kept parameter has no argument here (it relies on a default)</value></data>
   <data name="CallSiteNewParameterNoValue" xml:space="preserve"><value>a new parameter has no valueForCallers</value></data>
   <data name="CallSiteRemovedArgumentSideEffects" xml:space="preserve"><value>a removed parameter's argument could have side effects</value></data>
+  <data name="ChangeSignatureBadIndex" xml:space="preserve"><value>each fromOld must name an existing old parameter, and only once</value></data>
+  <data name="ChangeSignatureBadDeclaration" xml:space="preserve"><value>not a parameter declaration: {0}</value></data>
+  <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>
+  <data name="RewriteCallersNeedsChangeSignature" xml:space="preserve"><value>rewriteCallers only removes or reorders parameters; to add, rename or retype one, use ide_change_signature</value></data>
 </root>
 

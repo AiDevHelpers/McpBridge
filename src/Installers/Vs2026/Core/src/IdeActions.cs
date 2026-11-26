@@ -161,6 +161,14 @@ public sealed class IdeActions(DTE2 dte)
             ParseCallerEdits(args),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
+            OptionalBool(args, "rewriteCallers") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "changeSignature" => CodeModelActions.ChangeSignature(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseNewParameters(args),
+            ParseDocUpdates(args),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
@@ -1515,6 +1523,22 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return edits;
+    }
+
+    // The parameters array of changeSignature, in the new order: each item is a declaration, the old index it keeps (absent for a new
+    // parameter) and the argument existing calls get for a new parameter.
+    private static List<NewParameter> ParseNewParameters(JsonElement args)
+    {
+        var parameters = new List<NewParameter>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("parameters", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                parameters.Add(new NewParameter(RequireString(e, "declaration"), OptionalInt(e, "fromOld"), OptionalString(e, "valueForCallers")));
+            }
+        }
+
+        return parameters;
     }
 
     // The optional callerEdits array of editMethod: each item names a reference (file, line, column) and its replacement text.
