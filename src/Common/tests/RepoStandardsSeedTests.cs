@@ -20,7 +20,9 @@ public sealed class RepoStandardsSeedTests
     private static IEnumerable<(string Path, string[] Frameworks)> Projects(string root) =>
         Directory.EnumerateFiles(Path.Combine(root, "src"), "*.csproj", SearchOption.AllDirectories)
             .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
+                && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                // Test fixtures are sample inputs, not repo projects; one is deliberately malformed.
+                && !p.Contains($"{Path.DirectorySeparatorChar}tests{Path.DirectorySeparatorChar}Fixtures{Path.DirectorySeparatorChar}"))
             .Select(p =>
             {
                 var doc = XDocument.Load(p);
