@@ -192,6 +192,101 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="CodeActionStale" xml:space="preserve"><value>no code action with that id is offered at this line any more; list them again</value></data>
+  <data name="ConvertBadKind" xml:space="preserve"><value>kind must be field-to-property, null-guards, expression-to-block, block-to-expression, var-to-explicit or explicit-to-var, not {0}</value></data>
+  <data name="LocalFunctionAdded" xml:space="preserve"><value>added local function {0} after the statement at the line</value></data>
+  <data name="ConvertNotStringConcat" xml:space="preserve"><value>the line has no string concatenation with +</value></data>
+  <data name="ConvertInterpolationOperand" xml:space="preserve"><value>an operand is neither a string literal nor of type string</value></data>
+  <data name="ConvertNotLosslessRecord" xml:space="preserve"><value>the class declares Equals, GetHashCode, ToString or an operator, is static, or has a base class other than object; it is not converted to a record</value></data>
+  <data name="ConvertRecordCheckEquality" xml:space="preserve"><value>a record compares by value; check that no code compares instances by reference</value></data>
+  <data name="ConvertPropertyShape" xml:space="preserve"><value>the property must have a getter only and a declaration in source</value></data>
+  <data name="ConvertPropertyUseUnknown" xml:space="preserve"><value>a use of the property is not a plain name; it is refused</value></data>
+  <data name="ConvertPropertyToMethodDone" xml:space="preserve"><value>{0} is now method Get{0}(); {1} uses redirected</value></data>
+  <data name="RemoveUnusedNone" xml:space="preserve"><value>no items to remove: pass the members and types ide_find_unused reported and you confirmed</value></data>
+  <data name="RemoveUnusedStepRefused" xml:space="preserve"><value>removing the item at {0}:{1} is refused; nothing was changed</value></data>
+  <data name="RemoveUnusedDone" xml:space="preserve"><value>removed {0} unused item(s) in one change</value></data>
+  <data name="UpdateDocsNothing" xml:space="preserve"><value>give a line and at least one of summary or docs</value></data>
+  <data name="UpdateDocsNoComment" xml:space="preserve"><value>the method has no doc comment to update; add one with ide_add_method or ide_edit_method first</value></data>
+  <data name="UpdateDocsDone" xml:space="preserve"><value>doc comment updated; no code changed</value></data>
+  <data name="ConvertStructCheckCopies" xml:space="preserve"><value>a struct is copied by value; check that no code relies on shared instances or a null value</value></data>
+  <data name="ConvertFileNothing" xml:space="preserve"><value>nothing in the file can be converted this way</value></data>
+  <data name="ConvertFileDone" xml:space="preserve"><value>converted {0} site(s) in the file; {1} left as they were</value></data>
+  <data name="ConvertNotAProperty" xml:space="preserve"><value>the line is not on a property</value></data>
+  <data name="ConvertAutoShape" xml:space="preserve"><value>the property must have only a get; accessor with a literal initializer, since a constant is the only initializer an expression body can replace without changing behavior</value></data>
+  <data name="ConvertNotExpressionBodyProperty" xml:space="preserve"><value>the property is not expression-bodied with a semicolon</value></data>
+  <data name="AsyncDepthNegative" xml:space="preserve"><value>depth must be zero or more</value></data>
+  <data name="AsyncNotPlainCall" xml:space="preserve"><value>a use of the method is not a plain call (a method group, a lambda, or nameof); it is refused</value></data>
+  <data name="AsyncDepthReached" xml:space="preserve"><value>a call above depth {0} would need an await in a method that is not async; raise depth</value></data>
+  <data name="AsyncDone" xml:space="preserve"><value>made {0} and {1} method(s) async; name is {2}</value></data>
+  <data name="ConvertAsyncShape" xml:space="preserve"><value>the method is already async, overrides, implements an interface, or is an explicit implementation</value></data>
+  <data name="ConvertAsyncCallers" xml:space="preserve"><value>the method has {0} references; each caller would need an await, which is not written yet, so it is refused</value></data>
+  <data name="ConvertMethodShape" xml:space="preserve"><value>the method must have no parameters, return a value from one expression, and not be async, generic, virtual, override, an interface member or an explicit implementation</value></data>
+  <data name="ConvertMethodUseNotCall" xml:space="preserve"><value>a use of the method is not a call with no arguments; it is refused</value></data>
+  <data name="ConvertMethodToPropertyDone" xml:space="preserve"><value>{0} is now a property; {1} calls redirected</value></data>
+  <data name="ConvertNotOneReturn" xml:space="preserve"><value>the method's block is not exactly one return of an expression</value></data>
+  <data name="ConvertNotExpressionBody" xml:space="preserve"><value>the method is not expression-bodied with a semicolon</value></data>
+  <data name="ConvertNotALocal" xml:space="preserve"><value>the line is not a local declaration with an initializer</value></data>
+  <data name="ConvertNoNameableType" xml:space="preserve"><value>the type cannot be written out (anonymous or unresolved)</value></data>
+  <data name="ConvertNotSameType" xml:space="preserve"><value>the declared type is not the initializer's type, or the declaration is not explicit</value></data>
+  <data name="ConvertAlreadyExplicit" xml:space="preserve"><value>the declaration already has an explicit type</value></data>
+  <data name="ConvertNotAField" xml:space="preserve"><value>the line is not on a field declaration</value></data>
+  <data name="ConvertFieldShape" xml:space="preserve"><value>the field must be non-static, non-readonly, non-const, declare one variable, and have a name that is not only underscores</value></data>
+  <data name="ConvertFieldRefUse" xml:space="preserve"><value>the field is passed by ref or out; a property cannot be, so the conversion is refused</value></data>
+  <data name="ConvertFieldDone" xml:space="preserve"><value>{0} is now property {1}; {2} uses redirected</value></data>
+  <data name="ConvertNotAMethod" xml:space="preserve"><value>the line is not inside a method</value></data>
+  <data name="ConvertNoGuardsNeeded" xml:space="preserve"><value>no reference-typed parameter needs a null guard</value></data>
+  <data name="ConvertNoBody" xml:space="preserve"><value>the method has no block body to add guards to</value></data>
+  <data name="ConvertGuardsDone" xml:space="preserve"><value>added null guards for {0}</value></data>
+  <data name="ExtractInterfaceBadInput" xml:space="preserve"><value>give a line, a valid interface name, and at least one member name</value></data>
+  <data name="ExtractInterfaceExists" xml:space="preserve"><value>an interface named I{0} already exists beside the type or is already implemented</value></data>
+  <data name="ExtractInterfaceBadMember" xml:space="preserve"><value>{0} is not a public, non-static method or property of the type</value></data>
+  <data name="ExtractInterfaceDone" xml:space="preserve"><value>extracted {0} from {1} with {2}; the type now implements it</value></data>
+  <data name="ExtractValueBadInput" xml:space="preserve"><value>give a line, a non-empty expression text, a valid name, and kind variable or constant</value></data>
+  <data name="ExtractValueNotOnce" xml:space="preserve"><value>the expression must occur exactly once on the line; it occurs {1} times for {0}</value></data>
+  <data name="ExtractValueNoStatement" xml:space="preserve"><value>the expression is not inside a statement of a block</value></data>
+  <data name="ExtractValueLambda" xml:space="preserve"><value>the expression contains a lambda or anonymous method; it is not extracted</value></data>
+  <data name="ExtractValueNotConstant" xml:space="preserve"><value>a constant needs an expression the compiler folds to a constant value</value></data>
+  <data name="ExtractValueDone" xml:space="preserve"><value>extracted a {0} named {1}</value></data>
+  <data name="InlineUnsupportedMethod" xml:space="preserve"><value>only a value-returning, non-async method on a class, struct or record with plain parameters can be inlined</value></data>
+  <data name="InlineNotOneExpression" xml:space="preserve"><value>the method's body is not one return expression or an expression body</value></data>
+  <data name="InlineRecursive" xml:space="preserve"><value>the method calls itself; it cannot be inlined</value></data>
+  <data name="InlineNotPlainCall" xml:space="preserve"><value>a reference is not a plain call with the method's arguments</value></data>
+  <data name="InlineArgumentRepeated" xml:space="preserve"><value>the argument for {0} is not a literal or name and {0} is used more than once in the body</value></data>
+  <data name="InlineDone" xml:space="preserve"><value>inlined {0} at {1} call(s) and deleted it</value></data>
+  <data name="ExtractBadRange" xml:space="preserve"><value>give a valid line range (startLine not after endLine) and a valid method name</value></data>
+  <data name="ExtractNoStatements" xml:space="preserve"><value>the lines hold no statement of a block</value></data>
+  <data name="ExtractNotWholeStatements" xml:space="preserve"><value>the lines must hold whole statements of one block, not part of one</value></data>
+  <data name="ExtractJumps" xml:space="preserve"><value>the range contains return, yield, break or continue; those are not extracted yet</value></data>
+  <data name="ExtractNoMethod" xml:space="preserve"><value>the statements are not inside a method</value></data>
+  <data name="ExtractNoFlow" xml:space="preserve"><value>the data flow of the range could not be analysed</value></data>
+  <data name="ExtractManyOutputs" xml:space="preserve"><value>more than one value is used after the range ({0}); extract a range that produces one</value></data>
+  <data name="ExtractDone" xml:space="preserve"><value>extracted {0}; parameters: {1}</value></data>
+  <data name="CodeActionTitle" xml:space="preserve"><value>Add using {0} for {1}</value></data>
+  <data name="CodeActionAdded" xml:space="preserve"><value>added using {0} for {1}</value></data>
+  <data name="PartialExtractNeedsNames" xml:space="preserve"><value>give the file's partial type, at least one member name, and a non-empty suffix for the new file</value></data>
+  <data name="PartialNoSuchMember" xml:space="preserve"><value>no member named {0} in the part at the line</value></data>
+  <data name="PartialExtracted" xml:space="preserve"><value>moved {0} to a new part in {1}</value></data>
+  <data name="PartialNothingToMerge" xml:space="preserve"><value>the type is not partial, or has only one part</value></data>
+  <data name="PartialMerged" xml:space="preserve"><value>merged {1} other part(s) of {0} into the part at the line</value></data>
+  <data name="OrganizeNoTypes" xml:space="preserve"><value>the file declares no type</value></data>
+  <data name="OrganizeBadAction" xml:space="preserve"><value>action must be split or rename, not {0}</value></data>
+  <data name="OrganizeNotATopLevelType" xml:space="preserve"><value>the line is not inside a top-level type of this file</value></data>
+  <data name="OrganizeNothingToSplit" xml:space="preserve"><value>the file holds one type, so there is nothing to split</value></data>
+  <data name="OrganizeRenameOneType" xml:space="preserve"><value>rename needs a file that holds exactly one type</value></data>
+  <data name="OrganizeAlreadyNamed" xml:space="preserve"><value>the file is already named after its type</value></data>
+  <data name="OrganizeSplitDone" xml:space="preserve"><value>{0} moves to {1}; its usings and namespace are copied</value></data>
+  <data name="OrganizeRenamed" xml:space="preserve"><value>renamed {0} to {1}</value></data>
+  <data name="MovePullUpNoBase" xml:space="preserve"><value>pull up needs a base class that is declared in the solution (not object or a type from another assembly)</value></data>
+  <data name="MoveInstanceState" xml:space="preserve"><value>{0} uses instance state; a static member has none, so the move is refused (passing that state as a parameter is not written yet)</value></data>
+  <data name="MoveSameType" xml:space="preserve"><value>the member is already in the destination type</value></data>
+  <data name="MoveRelated" xml:space="preserve"><value>the member overrides, implements or is overridden: {0}; moving it would break that contract</value></data>
+  <data name="MoveNoDestination" xml:space="preserve"><value>no type named {0} in the solution</value></data>
+  <data name="MoveAmbiguous" xml:space="preserve"><value>several types are named {0}; give the full name with its namespace</value></data>
+  <data name="MoveUncovered" xml:space="preserve"><value>{0} references use the member in a way the move cannot rewrite; give callerEdits for them</value></data>
+  <data name="MoveDone" xml:space="preserve"><value>moved {0} from {1} to {2}; qualified references were renamed to {2}</value></data>
+  <data name="GenerateMembersBadKind" xml:space="preserve"><value>kind must be equals, hashcode or tostring, not {0}</value></data>
+  <data name="GenerateMembersNoMembers" xml:space="preserve"><value>give at least one field or property</value></data>
+  <data name="GenerateMembersExists" xml:space="preserve"><value>the type already has {0}</value></data>
   <data name="GenerateCtorNoMembers" xml:space="preserve"><value>give at least one field or property to assign</value></data>
   <data name="GenerateCtorNoMember" xml:space="preserve"><value>no field or property named {0} in this type</value></data>
   <data name="GenerateCtorNoSetter" xml:space="preserve"><value>{0} has no setter, so a constructor cannot assign it</value></data>

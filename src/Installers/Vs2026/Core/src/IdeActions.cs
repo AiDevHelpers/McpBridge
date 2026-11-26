@@ -193,6 +193,82 @@ public sealed class IdeActions(DTE2 dte)
             OptionalString(args, "typeParameters"),
             OptionalString(args, "constraints"),
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "checkDocs" => CodeModelActions.CheckDocs(RequireString(args, "file")),
+        "listCodeActions" => CodeModelActions.ListCodeActions(RequireString(args, "file"), RequireInt(args, "line")),
+        "removeUnused" => CodeModelActions.RemoveUnused(ParseUnusedItems(args), OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "updateDocs" => CodeModelActions.UpdateDocs(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "summary"),
+            ParseDocUpdates(args).Items,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "convert" => CodeModelActions.Convert(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "kind"),
+            OptionalInt(args, "depth") ?? 0,
+            OptionalBool(args, "suffix") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractInterface" => CodeModelActions.ExtractInterface(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "interfaceName"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractValue" => CodeModelActions.ExtractValue(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "expression"),
+            RequireString(args, "name"),
+            RequireString(args, "kind"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "inlineMethod" => CodeModelActions.InlineMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractMethod" => CodeModelActions.ExtractMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "startLine"),
+            RequireInt(args, "endLine"),
+            RequireString(args, "name"),
+            OptionalString(args, "accessibility") ?? "private",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "applyCodeAction" => CodeModelActions.ApplyCodeAction(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "id"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractPartial" => CodeModelActions.ExtractPartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            RequireString(args, "suffix"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "mergePartial" => CodeModelActions.MergePartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "organizeFile" => CodeModelActions.OrganizeFile(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "action"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "moveMember" => CodeModelActions.MoveMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "toType"),
+            ParseCallerEdits(args),
+            OptionalBool(args, "toStatic") == true,
+            OptionalBool(args, "pullUp") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "generateMembers" => CodeModelActions.GenerateMembers(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "kind"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "generateConstructor" => CodeModelActions.GenerateConstructor(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -1581,6 +1657,21 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return edits;
+    }
+
+    // The items array of removeUnused: each {file, line, kind} where kind is "member" (the default) or "type".
+    private static List<(string File, int Line, string Kind)> ParseUnusedItems(JsonElement args)
+    {
+        var items = new List<(string File, int Line, string Kind)>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("items", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                items.Add((RequireString(e, "file"), RequireInt(e, "line"), OptionalString(e, "kind") ?? "member"));
+            }
+        }
+
+        return items;
     }
 
     // The parameters array of changeSignature, in the new order: each item is a declaration, the old index it keeps (absent for a new

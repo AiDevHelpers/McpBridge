@@ -218,6 +218,124 @@ internal static class CodeModelActions
         return RunPlan(solution => EditTypeEngine.PlanAsync(solution, file, line, modifiers, baseList, attributesAdd, attributesRemove, typeParameters, constraints), confirm, planHash);
     }
 
+    // Moves the named members of a partial type's part into a new part in a new file (PartialEngine.ExtractAsync).
+    public static object ExtractPartial(string file, int line, IReadOnlyList<string> members, string suffix, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => PartialEngine.ExtractAsync(solution, file, line, members, suffix), confirm, planHash);
+    }
+
+    // Deletes the confirmed unused members and types in one change (RemoveUnusedEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object RemoveUnused(IReadOnlyList<(string File, int Line, string Kind)> items, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => RemoveUnusedEngine.PlanAsync(solution, items), confirm, planHash);
+    }
+
+    // Edits the doc comment of the method at a line, with no code change (UpdateDocsEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object UpdateDocs(string file, int line, string? summary, IReadOnlyList<DocItem> items, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => UpdateDocsEngine.PlanAsync(solution, file, line, summary, items), confirm, planHash);
+    }
+
+    // Read only: lists the code actions offered at a line (CodeActionEngine). Runs on the UI thread against the current solution.
+    public static object ListCodeActions(string file, int line)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            return (object)await CodeActionEngine.ListAsync(workspace.CurrentSolution, file, line).ConfigureAwait(true);
+        });
+    }
+
+    // Read only: reports doc comments that disagree with their method (DocCheckEngine). Runs on the UI thread against the current solution.
+    public static object CheckDocs(string file)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(async () =>
+        {
+            var model = ServiceProvider.GlobalProvider.GetService(typeof(SComponentModel)) as IComponentModel
+                ?? throw new InvalidOperationException(Strings.Get("ComponentModelUnavailable"));
+            var workspace = model.GetService<VisualStudioWorkspace>();
+            return (object)await DocCheckEngine.CheckAsync(workspace.CurrentSolution, file).ConfigureAwait(true);
+        });
+    }
+
+    // Converts one member's shape: field to property, or null guards (ConvertEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object Convert(string file, int line, string kind, int depth, bool suffix, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ConvertEngine.PlanAsync(solution, file, line, kind, depth, suffix), confirm, planHash);
+    }
+
+    // Extracts an interface from a class or struct, in a new file beside it (ExtractInterfaceEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ExtractInterface(string file, int line, string interfaceName, IReadOnlyList<string> members, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ExtractInterfaceEngine.PlanAsync(solution, file, line, interfaceName, members), confirm, planHash);
+    }
+
+    // Extracts an expression into a local or a constant declared before its statement (ExtractValueEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ExtractValue(string file, int line, string expression, string name, string kind, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ExtractValueEngine.PlanAsync(solution, file, line, expression, name, kind), confirm, planHash);
+    }
+
+    // Replaces every call of a one-expression method with its body and deletes the method (InlineMethodEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object InlineMethod(string file, int line, int column, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => InlineMethodEngine.PlanAsync(solution, file, line, column), confirm, planHash);
+    }
+
+    // Extracts statements into a new method (ExtractMethodEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ExtractMethod(string file, int startLine, int endLine, string name, string accessibility, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => ExtractMethodEngine.PlanAsync(solution, file, startLine, endLine, name, accessibility), confirm, planHash);
+    }
+
+    // Applies a code action chosen from ide_list_code_actions (CodeActionEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object ApplyCodeAction(string file, int line, string id, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => CodeActionEngine.ApplyAsync(solution, file, line, id), confirm, planHash);
+    }
+
+    // Merges the parts of a partial type into the part at the line (PartialEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object MergePartial(string file, int line, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => PartialEngine.MergeAsync(solution, file, line), confirm, planHash);
+    }
+
+    // Splits a top-level type into its own file, or renames a one-type file to its type (OrganizeFileEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object OrganizeFile(string file, int line, string action, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => OrganizeFileEngine.PlanAsync(solution, file, line, action), confirm, planHash);
+    }
+
+    // Moves a method, property or field to another type in the solution (MoveMemberEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object MoveMember(
+        string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic, bool pullUp, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => MoveMemberEngine.PlanAsync(solution, file, line, column, toType, callerEdits, toStatic, pullUp), confirm, planHash);
+    }
+
+    // Adds Equals, GetHashCode or ToString over the chosen fields and properties (GenerateMembersEngine). Same plan, refuse and apply behaviour as EditMethod.
+    public static object GenerateMembers(string file, int line, string kind, IReadOnlyList<string> members, bool confirm, string? planHash = null)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return RunPlan(solution => GenerateMembersEngine.PlanAsync(solution, file, line, kind, members), confirm, planHash);
+    }
+
     // Adds a constructor that assigns the chosen fields and properties (GenerateConstructorEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object GenerateConstructor(string file, int line, IReadOnlyList<string> members, string accessibility, bool confirm, string? planHash = null)
     {
