@@ -172,4 +172,5 @@
   <data name="WorkloadUnknownToken" xml:space="preserve"><value>The token is unknown, already used, or expired. Plan again.</value></data>
   <data name="WorkloadDone" xml:space="preserve"><value>Installed the {0} workload.</value></data>
   <data name="WorkloadFailed" xml:space="preserve"><value>The workload install failed (exit {0}): {1}</value></data>
+  <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
 </root>

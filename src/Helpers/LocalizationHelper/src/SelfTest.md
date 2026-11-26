@@ -1,6 +1,6 @@
 # LocalizationHelper self test
 
-Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`, `LocalizationCultureCheck`, `LocalizationPseudo`.
+Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`, `LocalizationCultureCheck`, `LocalizationPseudo`, `LocalizationTranslate`.
 
 ## StringScan and ResxCheck
 
@@ -48,4 +48,12 @@ Fixture: a scratch folder with `P/Resources/Strings.resx` holding `A` ("Hello {0
 - `LocalizationSyncCheck` (root = fixture folder): PASS when `findings` is empty (the pseudo culture is skipped).
 - Delete `Strings.qps-ploc.resx` afterwards; it is generated and not committed.
 
-Record each as PASS or FAIL with the exact arguments and reply.
+
+## Translate
+
+Fixture: a scratch folder with `P/Resources/Strings.resx` holding `A` ("Hello {0}") and `P/Resources/Strings.de.resx` holding `A` ("Hello {0}") with the comment `needs-translation`.
+
+- `LocalizationTranslate` (root = fixture folder, culture = `de`, no confirm): PASS when `plan` is true, `items` lists `A`, `batches` is 1, `sampling_available` says whether this client supports sampling, and `Strings.de.resx` is unchanged.
+- `LocalizationTranslate` (same arguments plus confirm = the token): PASS when the client supports sampling and `applied` is true with `A` written, comment `machine-translated`, and `{0}` kept. SKIPPED with the reason when the client has no sampling: PASS then means `ok` is false with an error naming sampling and the file unchanged.
+
+Record each as PASS, FAIL or SKIPPED with the exact arguments and reply.

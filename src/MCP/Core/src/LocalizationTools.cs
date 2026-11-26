@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using AiDevHelpers.Helpers.LocalizationHelper;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
 namespace AiDevHelpers.MCP.Core.Tools;
@@ -188,6 +189,72 @@ internal sealed class LocalizationTools
             return Json(new { ok = false, error = ex.Message });
         }
     }
+
+    [McpServerTool]
+    [Description("Translate the stubs (comment needs-translation) of one culture's Strings.<culture>.resx with the connected client's model, through MCP sampling. " +
+                 "The client must support sampling; otherwise confirm is refused. Two steps: without confirm it lists the keys, their neutral text, the batch count and the prompt, sends nothing and writes nothing; " +
+                 "call again with confirm set to the token to translate. Each reply is checked: placeholders such as {0} must match, the text must not be empty, and a line break is refused unless the source has one. " +
+                 "Valid translations are written with the comment machine-translated for human review; rejected keys stay stubs and come back with a reason.")]
+    public static async Task<string> LocalizationTranslate(
+        McpServer server,
+        [Description("Folder to work in, usually the repo root")] string root,
+        [Description("The culture to translate into, for example fr")] string culture,
+        [Description("Only these keys; each must be a stub. Omit for every stub")] string[]? keys = null,
+        [Description("The token from the plan call; sends the batches and writes the valid translations")] string? confirm = null,
+        CancellationToken ct = default) =>
+        await Translate(server.ClientCapabilities, () => new SamplingTranslator(server), root, culture, keys, confirm, ct);
+
+    internal static async Task<string> Translate(ClientCapabilities? capabilities, Func<ITranslator> translator, string root, string culture, string[]? keys, string? confirm, CancellationToken ct)
+    {
+        var sampling = SamplingTranslator.IsAvailable(capabilities);
+        try
+        {
+            var service = new TranslationService(new LazyTranslator(translator), TranslatePlans);
+            if (confirm is null)
+            {
+                var plan = service.Plan(root, culture, keys);
+                return Json(new
+                {
+                    ok = true,
+                    plan = true,
+                    token = plan.Token,
+                    expires_utc = plan.ExpiresUtc,
+                    count = plan.Items.Count,
+                    batches = plan.Batches,
+                    sampling_available = sampling,
+                    prompt = plan.SystemPrompt,
+                    items = plan.Items.Select(i => new { file = i.Resx, key = i.Key, source = i.Source }),
+                });
+            }
+
+            if (!sampling)
+            {
+                return Json(new { ok = false, error = Strings.Get("SamplingNotSupported") });
+            }
+
+            var result = await service.ApplyAsync(confirm, ct);
+            return Json(new
+            {
+                ok = true,
+                applied = true,
+                count = result.Written.Count,
+                files = result.Files,
+                rejected = result.Rejected.Select(r => new { key = r.Key, reason = r.Reason }),
+            });
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or ArgumentException or InvalidOperationException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
+    private sealed class LazyTranslator(Func<ITranslator> create) : ITranslator
+    {
+        public Task<string> CompleteAsync(string systemPrompt, string userPrompt, CancellationToken ct) =>
+            create().CompleteAsync(systemPrompt, userPrompt, ct);
+    }
+
+    private static readonly PlanStore<TranslatePlan> TranslatePlans = new();
 
     private const int PseudoPreviewLimit = 20;
 
