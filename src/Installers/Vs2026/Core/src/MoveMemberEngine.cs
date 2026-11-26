@@ -19,7 +19,7 @@ namespace AiDevHelpers.Installers.Vs2026.Core;
 internal static class MoveMemberEngine
 {
     public static async Task<MethodEditPlan> PlanAsync(
-        Solution solution, string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic = false)
+        Solution solution, string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic = false, bool pullUp = false)
     {
         var plan = new MethodEditPlan();
         var target = await EditTarget.LocateAsync(solution, file, line, column,
@@ -32,7 +32,14 @@ internal static class MoveMemberEngine
 
         var symbol = target.Symbol;
         var source = symbol.ContainingType;
-        var destination = await FindTypeAsync(solution, toType, plan).ConfigureAwait(false);
+        // Pull up moves the member to its base class, which must be a class in the solution.
+        var destination = pullUp ? source.BaseType : await FindTypeAsync(solution, toType, plan).ConfigureAwait(false);
+        if (pullUp && (destination is null || destination.SpecialType == SpecialType.System_Object || destination.Locations.All(l => !l.IsInSource)))
+        {
+            plan.Reasons.Add(Strings.Get("MovePullUpNoBase"));
+            return plan;
+        }
+
         if (destination is null)
         {
             return plan;

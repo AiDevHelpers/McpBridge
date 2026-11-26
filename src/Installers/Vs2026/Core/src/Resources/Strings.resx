@@ -195,6 +195,7 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="EditTypeInUse" xml:space="preserve"><value>adding {0} is refused while the type is used; {1} references use it</value></data>
   <data name="EditTypeAttributeMixed" xml:space="preserve"><value>an attribute list mixes an attribute to remove with one to keep; remove the list by hand or keep it</value></data>
   <data name="EditTypeNothingToDo" xml:space="preserve"><value>nothing to change: give modifiers or baseList</value></data>
+  <data name="MovePullUpNoBase" xml:space="preserve"><value>pull up needs a base class that is declared in the solution (not object or a type from another assembly)</value></data>
   <data name="MoveInstanceState" xml:space="preserve"><value>{0} uses instance state; a static member has none, so the move is refused (passing that state as a parameter is not written yet)</value></data>
   <data name="MoveSameType" xml:space="preserve"><value>the member is already in the destination type</value></data>
   <data name="MoveRelated" xml:space="preserve"><value>the member overrides, implements or is overridden: {0}; moving it would break that contract</value></data>

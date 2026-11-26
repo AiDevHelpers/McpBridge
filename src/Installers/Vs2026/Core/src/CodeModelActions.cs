@@ -220,10 +220,10 @@ internal static class CodeModelActions
 
     // Moves a method, property or field to another type in the solution (MoveMemberEngine). Same plan, refuse and apply behaviour as EditMethod.
     public static object MoveMember(
-        string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic, bool confirm, string? planHash = null)
+        string file, int line, int column, string toType, IReadOnlyList<CallerEdit> callerEdits, bool toStatic, bool pullUp, bool confirm, string? planHash = null)
     {
         ThreadHelper.ThrowIfNotOnUIThread();
-        return RunPlan(solution => MoveMemberEngine.PlanAsync(solution, file, line, column, toType, callerEdits, toStatic), confirm, planHash);
+        return RunPlan(solution => MoveMemberEngine.PlanAsync(solution, file, line, column, toType, callerEdits, toStatic, pullUp), confirm, planHash);
     }
 
     // Adds Equals, GetHashCode or ToString over the chosen fields and properties (GenerateMembersEngine). Same plan, refuse and apply behaviour as EditMethod.

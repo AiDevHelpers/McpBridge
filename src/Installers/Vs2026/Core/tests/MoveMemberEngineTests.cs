@@ -63,6 +63,35 @@ public sealed class MoveMemberEngineTests
     }
 
     [Fact]
+    public async Task APullUpMovesTheMemberToItsBaseClass()
+    {
+        const string code =
+            "class Base\n{\n}\n" +
+            "class Derived : Base\n{\n    public int Helper() => 1;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+        var (line, column) = MethodEditEngineTests.Locate(code, "Helper() =>");
+
+        var plan = await MoveMemberEngine.PlanAsync(solution, File, line, column, "", [], pullUp: true);
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("public int Helper() => 1;", text);
+        Assert.Contains("class Derived : Base", text);
+    }
+
+    [Fact]
+    public async Task APullUpWithNoSourceBaseIsRefused()
+    {
+        const string code = "class Solo\n{\n    public int Helper() => 1;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+        var (line, column) = MethodEditEngineTests.Locate(code, "Helper() =>");
+
+        var plan = await MoveMemberEngine.PlanAsync(solution, File, line, column, "", [], pullUp: true);
+
+        Assert.True(plan.Refused);
+    }
+
+    [Fact]
     public async Task AMissingDestinationIsRefused()
     {
         const string code = "class Source\n{\n    public static int Helper() => 1;\n}\n";

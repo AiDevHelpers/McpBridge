@@ -200,6 +200,7 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "toType"),
             ParseCallerEdits(args),
             OptionalBool(args, "toStatic") == true,
+            OptionalBool(args, "pullUp") == true,
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "generateMembers" => CodeModelActions.GenerateMembers(
             RequireString(args, "file"),
