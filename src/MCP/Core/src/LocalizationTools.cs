@@ -97,6 +97,45 @@ internal sealed class LocalizationTools
         }
     }
 
+    [McpServerTool]
+    [Description("Move hardcoded multi-word string literals in a .cs file or folder into the project's Resources/Strings.resx and rewrite them as Strings.Get(\"Key\") " +
+                 "or, for interpolated strings, Strings.Format(\"Key\", args). Two steps: without confirm it returns the items (file, line, literal, key, replacement) and the skipped literals " +
+                 "with a reason code, and writes nothing; call again with confirm set to the token to apply. Skipped reasons: no-strings-class, namespace-mismatch, const-context, case-label, " +
+                 "interpolation-format, verbatim-or-raw, unsupported-escape. keys maps a literal's text to the resource key you want.")]
+    public static string LocalizationExtract(
+        [Description("A .cs file or a folder")] string path,
+        [Description("Optional keys by literal text, for example {\"Could not read the file.\": \"ReadFailed\"}")] Dictionary<string, string>? keys = null,
+        [Description("The token from the plan call; applies that plan")] string? confirm = null)
+    {
+        try
+        {
+            var extractor = new StringExtractor(ExtractPlans);
+            if (confirm is null)
+            {
+                var plan = extractor.Plan(path, keys);
+                return Json(new
+                {
+                    ok = true,
+                    plan = true,
+                    token = plan.Token,
+                    expires_utc = plan.ExpiresUtc,
+                    count = plan.Items.Count,
+                    items = plan.Items.Select(i => new { file = i.File, line = i.Line, literal = i.Literal, key = i.Key, replacement = i.Replacement }),
+                    skipped = plan.Skipped.Select(s => new { file = s.File, line = s.Line, literal = s.Literal, reason = s.Reason }),
+                });
+            }
+
+            var files = extractor.Apply(confirm);
+            return Json(new { ok = true, applied = true, count = files.Count, files });
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or ArgumentException or InvalidOperationException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
+    private static readonly PlanStore<ExtractPlan> ExtractPlans = new();
+
     private static readonly PlanStore<SyncPlan> SyncPlans = new();
 
     private static string Json(object value) => JsonSerializer.Serialize(value);

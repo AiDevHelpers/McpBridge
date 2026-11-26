@@ -107,6 +107,21 @@ public sealed class LocalizationToolsTests : IDisposable
     }
 
     [Fact]
+    public void Extract_ReturnsItemsAndSkipped()
+    {
+        Write("P/Strings.cs", "namespace P;\ninternal static class Strings { }\n");
+        Write("P/Resources/Strings.resx", "<root></root>\n");
+        Write("P/A.cs", "namespace P;\nclass A\n{\n    const string C = \"Keep this text.\";\n    string M() => \"Could not read it.\";\n}\n");
+
+        using var doc = JsonDocument.Parse(LocalizationTools.LocalizationExtract(_root));
+
+        Assert.True(doc.RootElement.GetProperty("plan").GetBoolean());
+        var item = Assert.Single(doc.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("Strings.Get(\"CouldNotReadIt\")", item.GetProperty("replacement").GetString());
+        Assert.Equal("const-context", Assert.Single(doc.RootElement.GetProperty("skipped").EnumerateArray()).GetProperty("reason").GetString());
+    }
+
+    [Fact]
     public void BothToolsReturnOkFalseForAMissingFolder()
     {
         var missing = Path.Combine(_root, "nope");

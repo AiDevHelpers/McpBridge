@@ -8,4 +8,5 @@
   <data name="InvalidCulture" xml:space="preserve"><value>Not a valid culture name: {0}</value></data>
   <data name="TokenInvalid" xml:space="preserve"><value>The confirm token is unknown, already used or expired. Run the plan again.</value></data>
   <data name="FileChangedSincePlan" xml:space="preserve"><value>{0} changed after the plan was made. Run the plan again.</value></data>
+  <data name="KeyExists" xml:space="preserve"><value>Key {0} already exists with different text.</value></data>
 </root>

@@ -4,7 +4,8 @@ using System.Xml.Linq;
 namespace AiDevHelpers.Helpers.LocalizationHelper;
 
 /// <summary>A multi-word string literal in C# source. <see cref="ResxKey"/> names the resource when the same text is already in a Strings.resx.</summary>
-public sealed record StringFinding(string File, int Line, string Literal, string? ResxKey);
+/// <remarks><see cref="Column"/> is the 0-based index of the literal's opening quote (or its $) in the line.</remarks>
+public sealed record StringFinding(string File, int Line, int Column, string Literal, string? ResxKey, bool Interpolated);
 
 /// <summary>
 /// Finds user-facing text that is still a literal in code. Comments, attributes (tool and parameter descriptions are for the
@@ -64,7 +65,7 @@ public static partial class StringScanner
                         continue;
                     }
 
-                    findings.Add(new StringFinding(relative, i + 1, text, ResxKeyFor(file, text, resxCache)));
+                    findings.Add(new StringFinding(relative, i + 1, m.Index, text, ResxKeyFor(file, text, resxCache), m.Value.StartsWith('$')));
                 }
             }
         }

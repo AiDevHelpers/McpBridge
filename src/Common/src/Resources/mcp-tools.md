@@ -121,6 +121,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `string_scan` | List multi-word string literals in C# source that should be in Resources/Strings.resx. Takes a .cs file or a folder. Comments, attributes, logger calls, Strings.cs and bin or obj folders are skipped. resxKey names the resource when the text is already in one. |
 | `localization_sync_check` | Compare each Strings.<culture>.resx under a folder with the neutral Strings.resx: missing, extra, untranslated (same text as neutral or comment needs-translation; same-in-culture suppresses), placeholder-mismatch and invalid-culture. |
 | `localization_sync` | Add missing keys to culture resx files as stubs, create a culture file, and with removeExtra drop extra keys. Plan without confirm; apply with confirm set to the returned token. |
+| `localization_extract` | Move hardcoded multi-word literals in a .cs file or folder into the project Strings.resx and rewrite them as Strings.Get or Strings.Format; skipped literals come back with a reason code. Plan without confirm; apply with confirm set to the returned token. |
 
 ## Tests
 
