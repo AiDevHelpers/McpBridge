@@ -110,7 +110,14 @@ Visual Studio only. Separate from the request pipe, which is unchanged (one requ
 
 ## Actions added in phases 1 to 6
 
-Visual Studio bridge actions behind the tools in `docs/ide-bridge.md`. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+Bridge actions behind the tools in `docs/ide-bridge.md`. Visual Studio implements all of them. The VS Code bridge implements all except `listTasks`, `addTask` and `clearTasks`, which it refuses as unsupported. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+
+VS Code differences:
+- `undoGroup` reverses the last edit group this bridge applied. VS Code has one unnamed undo stack, so the group is not chosen by name.
+- `listExceptions` and `setExceptionBreak` cover only the debug adapter's exception filters. Their replies carry `partial: true`.
+- `semanticDefinition`, `semanticReferences` and `renameSymbol` use VS Code's language providers, not Roslyn.
+- `writeActivityLog` appends to an "AiDevHelpers" output channel, not ActivityLog.xml.
+- `setStatus` text clears after a VS Code timeout. Visual Studio keeps it until replaced.
 
 - Debugger: `listProcesses`, `listDebuggedProcesses`, `listThreads`, `listStackFrames`, `listExceptions`, `setExceptionBreak`, `setBreakpointCondition`, `enableBreakpoint`, `disableBreakpoint`, `attachProcess`, `detachAll`.
 - Editor and documents: `findInFiles`, `replaceInFiles`, `listDocuments`, `saveDocument`, `closeDocument`, `undoGroup`, `listCodeElements`.
