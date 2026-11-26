@@ -24,11 +24,12 @@ pwsh -NoProfile -File scripts/build-vs-extension-vsix.ps1 -Configuration Release
 dotnet test src/Helpers/LogHelper/tests/AiDevHelpers.Helpers.LogHelper.Tests.csproj -c Release
 dotnet test src/Bridge/tests/AiDevHelpers.Bridge.Tests.csproj -c Release
 dotnet test src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj -c Release
+dotnet test src/MCP/Core/tests/AiDevHelpers.MCP.Core.Tests.csproj -c Release
 dotnet test src/MCP/Server/tests/AiDevHelpers.MCP.Tests.csproj -c Release
 dotnet test src/Installers/Vs2026/Core/tests/AiDevHelpers.Installers.Vs2026.Core.Tests.csproj -c Release
 ```
 
-Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue; the MCP test project has one smoke test, so tool coverage comes from the inventory check in section 3; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
+Record exit status and reported test counts for each. The bridge test project covers the shared conformance fixtures (`conformance/fixtures.json`) and the event queue. The MCP Core project covers the tool services, the instance check, the reply size guard, and the self-test and docs-match gates (`SelfTestCoverageTests`, `DocsMatchCodeTests`). The MCP Server test project has one smoke test, so tool coverage also comes from the inventory check in section 3; TerminalControl covers session, pipe, and wrapper behavior; LogHelper covers log processing. Run the VS Code tests too (`npm run test` in `src/Installers/VsCode/Core/AiDevTools.VsCode.Core`, and build, lint and test in `src/Installers/VsCode/Installer/AiDevTools.VsCode`) after `npm ci`.
 
 ## 3. MCP protocol and inventory
 
@@ -58,6 +59,7 @@ When `ide_list_instances` reports an instance, choose one and pass its `solution
 - `ide_project_properties` takes the project's name as shown in Solution Explorer, for example `AiDevHelpers.Bridge`, not `Bridge`. `TargetFramework` comes back as a number (for example `262152`), not a framework name. A wrong project name must report "no project named", not a COM error; check that too.
 - `ide_list_code_elements` on a known source file and `ide_semantic_definition` on a known symbol return locations; `ide_semantic_references` returns a list.
 - `ide_read_events` returns events and `last_seq` for an instance the MCP server is subscribed to. Subscriptions are automatic; `ide_subscribe_events` only confirms one. An empty list right after launch is valid: no events have fired yet.
+- `ide_list_instances` with `solutionPath` returns a `check` block: `solution_open`, `expected_branch`, `expected_worktree` (taken from the solution's checkout unless passed), `matching_instance_pids`, and `ok`. `ok` is true only when an instance is open on the expected branch and worktree. For a solution that is not open, `solution_open` is false and `ok` is false. Without `solutionPath` there is no `check` block.
 - `ide_semantic_definition` can fail once with "No open Visual Studio instance" while the instance is registering. Retry once before recording it as a failure.
 
 Do not run `ide_run_tests`, `ide_build`, or other state-changing tools during this read-only section.
@@ -86,9 +88,10 @@ Every write takes `confirm` (default false). Without it the reply must be `plann
 - Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
 - Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.
 - Events, with a build or a breakpoint: `ide_read_events` shows `buildBegin`, `buildDone`, `enterBreakMode`, `documentSaved` in order.
-- Build summary: `ide_build` returns `summary` with `status: "finished"`, `succeeded`, `error_count`, and capped `errors` (20, messages 200 characters). A build with a compile error lists it.
-- Test summary: `ide_run_tests` returns `status: "finished"` with the capped summary, or `status: "running"` after `waitSeconds` (120). Confirm a run longer than the wait returns `running`, and that `ide_get_test_summary` then shows it finished.
+- Build summary: `ide_build` returns `summary` with `status: "finished"`, `succeeded`, `error_count`, and capped `errors` (20, messages 200 characters). A build with a compile error lists it. The reply carries `instance_pid`, the instance that built.
+- Test summary: `ide_run_tests` returns `status: "finished"` with the capped summary, or `status: "running"` after `waitSeconds` (default `eventFilter.waitSeconds` in `.claude/aidevhelpers.json`, 120). Confirm a run longer than the wait returns `running`, and that `ide_get_test_summary` then shows it finished.
 - Read options: `ide_read_events` with `minSeverity: "error"` and `limit: 2` returns at most two events, `omitted`, and `next_seq`. Passing `next_seq` as `sinceSeq` returns the rest.
+- Settings: with `.claude/aidevhelpers.json` holding an invalid `eventFilter` value (for example `"maxEvents": "ten"`), the reply lists it in `settings_warnings` and uses the default. With `eventFilter.maxReplyChars` set to 500 and a build with many errors, the `ide_build` reply fits the limit, carries `reply_truncated: true`, and counts each cut list in an `<name>_omitted` field.
 
 ### VSIX actions and launching a solution argument
 

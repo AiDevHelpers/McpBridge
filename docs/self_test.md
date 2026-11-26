@@ -4,7 +4,7 @@ Use this checklist to exercise the standalone `AiDevHelpers.MCP` server and a li
 
 ## Read-only checks
 
-- `IdeListInstances` — confirm the registered IDE kind, process ID, and solution path.
+- `IdeListInstances` — confirm the registered IDE kind, process ID, solution path, git branch, and worktree. Pass `solutionPath` to read the `check` block (`solution_open`, `expected_branch`, `expected_worktree`, `matching_instance_pids`, `ok`).
 - `IdeBridgeHealth` — check the listener and request counters; pass `solutionPath` when more than one IDE instance is open.
 - `IdeGetOutput` and `IdeSearchOutput` — inspect an existing Build or Debug output pane.
 - `IdeGetBuildDiagnostics` — read the current Error List.
