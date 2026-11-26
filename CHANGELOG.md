@@ -5,6 +5,7 @@
 - New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
 - New `localization_sync_check` and `localization_sync` (plan, then confirm with a token): compare culture resx files with the neutral one and add stubs, create a culture file or remove extra keys. The resx comment `same-in-culture` marks a value that is meant to equal the neutral text.
 - New `localization_extract` (plan, then confirm with a token): moves hardcoded literals into the project's `Strings.resx` and rewrites them as `Strings.Get` or `Strings.Format`; literals it cannot rewrite safely are listed as skipped with a reason. `string_scan` findings now carry `Column` and `Interpolated`.
+- New `localization_culture_check`: lists culture-sensitive calls with no culture argument, using Roslyn (`Microsoft.CodeAnalysis.CSharp` 5.12.0, new package in LocalizationHelper). Report only.
 
 ## Instance check and event filter limits (unreleased)
 

@@ -1,6 +1,6 @@
 # LocalizationHelper self test
 
-Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`.
+Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`, `LocalizationCultureCheck`.
 
 ## StringScan and ResxCheck
 
@@ -29,5 +29,13 @@ Fixture: a scratch folder with `P/Strings.cs` (`namespace P;` and an empty inter
 - `LocalizationExtract` (path = fixture folder, no confirm): PASS when `plan` is true, `items` has one entry with `replacement` `Strings.Get("CouldNotReadIt")`, `skipped` has one entry with reason `const-context`, and no file changed.
 - `LocalizationExtract` (confirm = that token): PASS when `A.cs` now holds the `Strings.Get` call and `Strings.resx` holds `CouldNotReadIt`.
 - `StringScan` (path = the `P` folder): PASS when only the `const` literal remains.
+
+
+## Culture check
+
+Fixture: a scratch folder with `C.cs` holding `class C { string M(int i) => i.ToString(); }` and `D.cs` holding `class D { string M(int i) => i.ToString(); } // culture-ok`.
+
+- `LocalizationCultureCheck` (path = fixture folder): PASS when `ok` is true and `findings` has one entry for `C.cs` line 1 with kind `culture-call` and call `i.ToString()`, and none for `D.cs`.
+- `LocalizationCultureCheck` (path = a folder that does not exist): PASS when `ok` is false and `error` names the folder.
 
 Record each as PASS or FAIL with the exact arguments and reply.
