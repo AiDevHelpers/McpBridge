@@ -179,12 +179,16 @@ public static class IdeInstanceRouter
             instances = instances.Select(Describe),
         });
 
+    // git_branch and git_worktree come from the solution's files (no git process). Null when the solution is not in a checkout
+    // or HEAD is detached.
     private static object Describe(VsInstance i) => new
     {
         ide = i.Ide,
         pid = i.Pid,
         solution_path = i.SolutionPath,
         updated_utc = i.UpdatedUtc,
+        git_branch = GitWorktree.BranchFor(i.SolutionPath ?? string.Empty),
+        git_worktree = GitWorktree.RootFor(i.SolutionPath ?? string.Empty),
     };
 
 }
