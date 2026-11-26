@@ -181,6 +181,17 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 
 ## U11. Phase 0 verification (no code)
 
+Findings (verified 2026-11-25 on this machine, SDK 11.0.100, VS 18.12 Community; Learn pages cited):
+
+- `dotnet workload list` prints a table: `Installed Workload Id`, `Manifest Version`, `Installation Source`. Parse the table, or use `--machine-readable` (JSON body only, no boundary lines; Learn "dotnet workload output change"). Use JSON.
+- `dotnet workload search [text]` prints `Workload ID` and `Description` columns. Learn: `dotnet workload search`.
+- `dotnet workload install <id>` installs a workload; Learn "dotnet workload install" applies. Manifests download first unless `--skip-manifest-update`.
+- `vswhere -products * -format json` lists instances with `installationPath`, `installationVersion`, `productId`, `isComplete`, `displayName`.
+- VS install and workload add: `vs_installer modify --installPath <path> --add <workload-id> --passive --norestart` (Learn "Command-line parameter examples": `setup.exe modify --installPath ... --config`). Elevation is required; standard users may not use `--passive` or `--quiet` (Learn "Modify Visual Studio workloads").
+- VS running during modify: not documented in Learn. Plan keeps the refusal: probe for `devenv.exe` and refuse while it runs.
+- `kind` argument fixed: `dotnet` and `vs`.
+
+
 - Check on Microsoft Learn: `dotnet workload list` and `search` output; `vswhere -products * -requires`; `vs_installer.exe
   modify --add <id>` flags and exit codes; whether the installer refuses or fails while VS runs. Record the answers in
   `docs/dogfood.md`. If the VS-running behavior cannot be confirmed, the plan refuses by probing for `devenv.exe` processes.
