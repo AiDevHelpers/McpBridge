@@ -349,4 +349,19 @@ public sealed class SetupCliTests
         Assert.Contains("usage", output, StringComparison.OrdinalIgnoreCase);
         Assert.Empty(setup.Calls);
     }
+
+    [Fact]
+    public void SetupToolsIsRefusedWithoutTheYesInChat()
+    {
+        var refusal = SetupApproval.ToolsRefusal(approvedInChat: false);
+
+        Assert.NotNull(refusal);
+        Assert.Contains("--approved-in-chat", refusal, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SetupToolsRunsWhenTheYesWasGivenInChat()
+    {
+        Assert.Null(SetupApproval.ToolsRefusal(approvedInChat: true));
+    }
 }

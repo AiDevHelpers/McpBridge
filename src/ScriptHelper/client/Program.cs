@@ -169,9 +169,12 @@ scanLaunch.Add(repo);
 
 // Installing the tools changes what elevated scripts can run, so it needs the person's yes in chat before the UAC prompt.
 var tools = Verb("tools", "Install the Script Helper tools (administrator). Needs --approved-in-chat after the person agreed in chat.", Sync(pr =>
-    pr.GetValue(approvedInChat)
+{
+    var refusal = SetupApproval.ToolsRefusal(pr.GetValue(approvedInChat));
+    return refusal is null
         ? ElevatedSetup.Run(["tools", "--approved-in-chat"], pr.GetValue(allowNoTpm))
-        : Refuse("refused: setup tools needs the person's yes in chat first (--approved-in-chat).")));
+        : Refuse(refusal);
+}));
 tools.Add(approvedInChat);
 
 var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated process. Launched by the client, not by hand.", Sync(pr =>
