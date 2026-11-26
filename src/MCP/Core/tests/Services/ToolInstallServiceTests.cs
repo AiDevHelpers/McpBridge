@@ -26,6 +26,9 @@ public sealed class ToolInstallServiceTests : IDisposable
             Installed.Add(toolName);
             return Task.FromResult(new ElevRunResult(exit, output));
         }
+
+        public Task<ElevRunResult> InstallWorkloadAsync(string workloadName, CancellationToken ct) =>
+            Task.FromResult(new ElevRunResult(exit, output));
     }
 
     private sealed class Probe(bool winget) : ITerminalProbe

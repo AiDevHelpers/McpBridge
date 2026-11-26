@@ -166,5 +166,138 @@ internal sealed class ProjectTools
         return Json(new { ok = result.Ok, error = result.Error, changed = result.Changed, buildOutput = result.BuildOutput });
     }
 
+    [McpServerTool]
+    [Description("List workloads. kind dotnet: installed .NET workloads from dotnet workload list. kind vs: Visual Studio instances from vswhere. Read only.")]
+    public static async Task<string> WorkloadList(
+        [Description("dotnet or vs")] string kind,
+        CancellationToken ct = default)
+    {
+        if (string.Equals(kind, "vs", StringComparison.OrdinalIgnoreCase))
+        {
+            var instances = await RunVswhere(["-products", "*"], ct);
+            return instances.ok
+                ? Json(new { ok = true, kind = "vs", count = instances.items!.Count, items = instances.items })
+                : Json(new { ok = false, kind = "vs", error = instances.error });
+        }
+
+        var list = await CommandSeam.Default(new CommandRequest { FileName = "dotnet", Arguments = ["workload", "list"], Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!list.Success)
+        {
+            return Json(new { ok = false, kind = "dotnet", error = list.LaunchError ?? (string.IsNullOrWhiteSpace(list.StdErr) ? list.StdOut : list.StdErr).Trim() });
+        }
+
+        var parsed = DotnetWorkloadParser.ParseInstalled(list.StdOut);
+        return parsed.Ok
+            ? Json(new { ok = true, kind = "dotnet", count = parsed.Items.Count, items = parsed.Items })
+            : Json(new { ok = false, kind = "dotnet", error = parsed.Error });
+    }
+
+    [McpServerTool]
+    [Description("Check required workloads are present. kind dotnet: give workloads or a projectType (dotnet new short name); missing ones are listed. kind vs: give workload ids; each is checked with vswhere -requires. Read only.")]
+    public static async Task<string> WorkloadCheck(
+        [Description("dotnet or vs")] string kind,
+        [Description("Workload ids to check")] string[]? workloads = null,
+        [Description("dotnet new short name; its workloads are added to the check (dotnet only)")] string? projectType = null,
+        CancellationToken ct = default)
+    {
+        var required = (workloads ?? []).ToList();
+        if (projectType is not null)
+        {
+            required.AddRange(AiDevHelpers.Helpers.ProjectHelper.WorkloadCheck.ForProjectType(projectType));
+        }
+
+        if (string.Equals(kind, "vs", StringComparison.OrdinalIgnoreCase))
+        {
+            var missing = new List<string>();
+            foreach (var id in required.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var found = await RunVswhere(["-products", "*", "-requires", id], ct);
+                if (!found.ok)
+                {
+                    return Json(new { ok = false, kind = "vs", error = found.error });
+                }
+
+                if (found.items!.Count == 0)
+                {
+                    missing.Add(id);
+                }
+            }
+
+            return Json(new { ok = missing.Count == 0, kind = "vs", required = required.Distinct(StringComparer.OrdinalIgnoreCase), missing });
+        }
+
+        var list = await CommandSeam.Default(new CommandRequest { FileName = "dotnet", Arguments = ["workload", "list"], Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!list.Success)
+        {
+            return Json(new { ok = false, kind = "dotnet", error = list.LaunchError ?? (string.IsNullOrWhiteSpace(list.StdErr) ? list.StdOut : list.StdErr).Trim() });
+        }
+
+        var parsed = DotnetWorkloadParser.ParseInstalled(list.StdOut);
+        if (!parsed.Ok)
+        {
+            return Json(new { ok = false, kind = "dotnet", error = parsed.Error });
+        }
+
+        var gap = AiDevHelpers.Helpers.ProjectHelper.WorkloadCheck.Missing(required, parsed.Items.Select(w => w.Id));
+        return Json(new { ok = gap.Count == 0, kind = "dotnet", required = required.Distinct(StringComparer.OrdinalIgnoreCase), missing = gap });
+    }
+
+    private static readonly AiDevHelpers.MCP.Core.Services.WorkloadInstallService Installs = new(new ProcessElevRunner());
+
+    [McpServerTool]
+    [Description("Plan installing a .NET workload from the helper's table (maui, android, ios, wasm-tools) with dotnet workload install. Runs elevated (UAC). Writes nothing; returns a token for workload_install_confirm after the user says yes in chat.")]
+    public static async Task<string> WorkloadInstallPlan(
+        [Description("A workload name from the table, e.g. maui")] string workload,
+        CancellationToken ct = default)
+    {
+        var list = await CommandSeam.Default(new CommandRequest { FileName = "dotnet", Arguments = ["workload", "list"], Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!list.Success)
+        {
+            return Json(new { ok = false, error = list.LaunchError ?? (string.IsNullOrWhiteSpace(list.StdErr) ? list.StdOut : list.StdErr).Trim() });
+        }
+
+        var installed = DotnetWorkloadParser.ParseInstalled(list.StdOut);
+        if (!installed.Ok)
+        {
+            return Json(new { ok = false, error = installed.Error });
+        }
+
+        var outcome = Installs.Plan(workload, installed.Items.Select(w => w.Id).ToList());
+        return Json(new
+        {
+            ok = outcome.Ok,
+            message = outcome.Message,
+            error = outcome.Error,
+            token = outcome.Plan?.Token,
+            command = outcome.Plan?.Command,
+            expiresUtc = outcome.Plan?.ExpiresUtc,
+        });
+    }
+
+    [McpServerTool]
+    [Description("Run a workload install planned by workload_install_plan, through the elevated helper. Single use; expires after 15 minutes.")]
+    public static async Task<string> WorkloadInstallConfirm(
+        [Description("Token returned by workload_install_plan")] string token,
+        CancellationToken ct = default)
+    {
+        var outcome = await Installs.ConfirmAsync(token, ct);
+        return Json(new { ok = outcome.Ok, message = outcome.Message, error = outcome.Error, exitCode = outcome.ExitCode, output = outcome.Output });
+    }
+
+    /// <summary>Runs vswhere from the Visual Studio Installer folder and parses its JSON.</summary>
+    private static async Task<(bool ok, List<VsInstance>? items, string? error)> RunVswhere(string[] arguments, CancellationToken ct)
+    {
+        var exe = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft Visual Studio", "Installer", "vswhere.exe");
+        var args = arguments.Concat(["-format", "json"]).ToList();
+        var run = await CommandSeam.Default(new CommandRequest { FileName = exe, Arguments = args, Timeout = TimeSpan.FromMinutes(2) }, ct);
+        if (!run.Success)
+        {
+            return (false, null, run.LaunchError ?? (string.IsNullOrWhiteSpace(run.StdErr) ? run.StdOut : run.StdErr).Trim());
+        }
+
+        var parsed = VswhereParser.Parse(run.StdOut.Length == 0 ? "[]" : run.StdOut);
+        return parsed.Ok ? (true, parsed.Items.ToList(), null) : (false, null, parsed.Error);
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

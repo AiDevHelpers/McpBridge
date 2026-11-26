@@ -1,6 +1,6 @@
 # ProjectHelper self test
 
-Tools: `ProjectTypesList`, `ProjectAudit`, `ProjectFixPlan`, `ProjectFixConfirm`, `ProjectAddPlan`, `ProjectAddConfirm`, `ProjectAddTestPlan`, `ProjectAddTestConfirm`.
+Tools: `ProjectTypesList`, `ProjectAudit`, `ProjectFixPlan`, `ProjectFixConfirm`, `ProjectAddPlan`, `ProjectAddConfirm`, `ProjectAddTestPlan`, `ProjectAddTestConfirm`, `WorkloadList`, `WorkloadCheck`, `WorkloadInstallPlan`, `WorkloadInstallConfirm`.
 
 ## Full self test
 
