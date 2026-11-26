@@ -29,15 +29,17 @@ Each unit starts with a failing test and ends with the lite gate steps for the V
 9. **Sync.** Update the "VS only" wording in `mcp-tools.md` and `IdeTools.cs`, and `fixtures.json`.
 10. **Roslyn edit tools.** A separate plan, depending on question 1.
 
-## Open questions
+## Decisions
 
-1. Should the Roslyn edit tools stay VS only, or get a separate plan for an out-of-process MSBuildWorkspace helper?
-2. Should `semantic*`, `listCodeElements` and `renameSymbol` depend on C# Dev Kit or C#, with a clear error when neither is installed?
-3. Is a reduced exception model (DAP filters only) acceptable for `listExceptions` and `setExceptionBreak`?
-4. Should the Task List be approximated with Problems entries, or kept `unsupported`?
-5. Should bookmarks use extension storage, or stay `unsupported`?
-6. Should the events pipe be added for VS Code? That changes `protocol.md`.
-7. Should the `git_*` MCP tools route to the VS Code git actions in this effort?
+Recorded answers. Each was the recommended option; the user has not confirmed them individually.
+
+1. **Roslyn edit tools:** stay VS only. Unit 10 is a separate plan.
+2. **Language services:** `semantic*`, `listCodeElements` and `renameSymbol` need C# Dev Kit or C#. With neither installed, return a clear error.
+3. **Exceptions:** reduced model (DAP filters only) for `listExceptions` and `setExceptionBreak`. Document it as partial.
+4. **Task List:** `unsupported` in v1. Unit 8 is dropped.
+5. **Bookmarks:** `unsupported` in v1.
+6. **Events pipe:** out of scope. `protocol.md` stays as it is.
+7. **`git_*` routing:** out of scope. A separate task.
 
 ## Risks
 
