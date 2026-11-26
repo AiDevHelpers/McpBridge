@@ -74,6 +74,43 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task AStringConcatenationBecomesAnInterpolation()
+    {
+        const string code = "class C\n{\n    string M(string who)\n    {\n        return \"hi \" + who + \"!\";\n    }\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 5, "string-to-interpolation");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("$\"hi {who}!\"", await TextOfAsync(plan));
+    }
+
+    [Fact]
+    public async Task AClassThatOverridesEqualsIsNotMadeARecord()
+    {
+        const string code = "class C\n{\n    public override bool Equals(object o) => false;\n    public override int GetHashCode() => 0;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 1, "class-to-record");
+
+        Assert.True(plan.Refused);
+    }
+
+    [Fact]
+    public async Task AGetterOnlyPropertyBecomesAMethod()
+    {
+        const string code = "class C\n{\n    public int Size => 3;\n    int Use() => Size;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "property-to-method");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        var text = await TextOfAsync(plan);
+        Assert.Contains("GetSize()", text);
+        Assert.Contains("Use() => GetSize();", text);
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";

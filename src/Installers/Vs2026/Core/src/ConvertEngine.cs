@@ -53,6 +53,13 @@ internal static class ConvertEngine
             case "var-to-explicit":
             case "explicit-to-var":
                 return await LocalTypeAsync(solution, documentId!, document, text, model!, node, kind == "explicit-to-var", plan).ConfigureAwait(false);
+            case "string-to-interpolation":
+                return await StringToInterpolationAsync(solution, documentId!, document, text, model!, root!, line, plan).ConfigureAwait(false);
+            case "class-to-record":
+                return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, plan).ConfigureAwait(false);
+            case "property-to-method":
+            case "method-to-property":
+                return await PropertyMethodAsync(solution, documentId!, document, text, model!, node, kind == "property-to-method", plan).ConfigureAwait(false);
             default:
                 plan.Reasons.Add(Strings.Format("ConvertBadKind", kind));
                 return plan;
@@ -292,6 +299,170 @@ internal static class ConvertEngine
             plan.Result = edited;
         }
 
+        return plan;
+    }
+
+    private static async Task<MethodEditPlan> ApplyAndCheckAsync(Solution solution, DocumentId documentId, Document document, TextChange change, MethodEditPlan plan)
+    {
+        var changes = new Dictionary<DocumentId, List<TextChange>> { [documentId] = new List<TextChange> { change } };
+        var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+        edited = await EditChecks.FormatFileAsync(edited, documentId, plan).ConfigureAwait(false);
+        await EditChecks.CheckNewDiagnosticsAsync(solution, edited, new[] { documentId }, plan).ConfigureAwait(false);
+        plan.Files.Add(document.FilePath ?? "");
+        plan.Warnings.Add(Strings.Get("MethodEditWarnUnseen"));
+        if (!plan.Refused)
+        {
+            plan.Result = edited;
+        }
+
+        return plan;
+    }
+
+    // "a" + x + "b" becomes $"a{x}b". Every operand must be a string literal or of type string; braces in literal text are doubled.
+    private static async Task<MethodEditPlan> StringToInterpolationAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode root, int line, MethodEditPlan plan)
+    {
+        var lineSpan = text.Lines[line - 1].Span;
+        var chain = root.DescendantNodes().OfType<BinaryExpressionSyntax>()
+            .Where(b => b.IsKind(SyntaxKind.AddExpression) && lineSpan.Contains(b.Span) && model.GetTypeInfo(b).Type?.SpecialType == SpecialType.System_String)
+            .OrderByDescending(b => b.Span.Length)
+            .FirstOrDefault();
+        if (chain is null)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNotStringConcat"));
+            return plan;
+        }
+
+        var operands = new List<ExpressionSyntax>();
+        void Flatten(ExpressionSyntax e)
+        {
+            if (e is BinaryExpressionSyntax { RawKind: (int)SyntaxKind.AddExpression } b && model.GetTypeInfo(b).Type?.SpecialType == SpecialType.System_String)
+            {
+                Flatten(b.Left);
+                Flatten(b.Right);
+            }
+            else
+            {
+                operands.Add(e);
+            }
+        }
+
+        Flatten(chain);
+        var pieces = new System.Text.StringBuilder("$\"");
+        foreach (var operand in operands)
+        {
+            if (operand is LiteralExpressionSyntax { RawKind: (int)SyntaxKind.StringLiteralExpression } literal)
+            {
+                var content = literal.Token.ValueText.Replace("{", "{{").Replace("}", "}}");
+                pieces.Append(content.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r").Replace("\t", "\\t"));
+            }
+            else if (model.GetTypeInfo(operand).Type?.SpecialType == SpecialType.System_String)
+            {
+                pieces.Append("{" + operand.WithoutTrivia() + "}");
+            }
+            else
+            {
+                plan.Reasons.Add(Strings.Get("ConvertInterpolationOperand"));
+                return plan;
+            }
+        }
+
+        pieces.Append('"');
+        return await ApplyAndCheckAsync(solution, documentId, document, new TextChange(chain.Span, pieces.ToString()), plan).ConfigureAwait(false);
+    }
+
+    // A class becomes a record only where that is lossless: it declares no Equals, GetHashCode or ToString of its own, no operators, and
+    // no base class other than object. Reference equality of instances would change, so a class that is compared by reference is not
+    // checked here; the reply says so.
+    private static async Task<MethodEditPlan> ClassToRecordAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, MethodEditPlan plan)
+    {
+        var type = node?.AncestorsAndSelf().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+        if (type is null || model.GetDeclaredSymbol(type) is not INamedTypeSymbol symbol)
+        {
+            plan.Reasons.Add(Strings.Get("EditTypeNotAType"));
+            return plan;
+        }
+
+        var overrides = type.Members.OfType<MethodDeclarationSyntax>().Any(m => m.Identifier.ValueText is "Equals" or "GetHashCode" or "ToString")
+            || type.Members.OfType<OperatorDeclarationSyntax>().Any();
+        var baseNotObject = symbol.BaseType is not null && symbol.BaseType.SpecialType != SpecialType.System_Object;
+        if (overrides || baseNotObject || type.Modifiers.Any(m => m.IsKind(SyntaxKind.StaticKeyword)))
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNotLosslessRecord"));
+            return plan;
+        }
+
+        var change = new TextChange(type.Keyword.Span, "record");
+        plan.Warnings.Add(Strings.Get("ConvertRecordCheckEquality"));
+        return await ApplyAndCheckAsync(solution, documentId, document, change, plan).ConfigureAwait(false);
+    }
+
+    // A property with only a getter and a method with no parameters: the uses are rewritten between Name and Name(). A property with a setter
+    // is refused, since a method cannot assign it.
+    private static async Task<MethodEditPlan> PropertyMethodAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, bool toMethod, MethodEditPlan plan)
+    {
+        var symbol = node?.AncestorsAndSelf().Select(n => model.GetDeclaredSymbol(n)).FirstOrDefault(s => s is IPropertySymbol or IMethodSymbol);
+        if (toMethod && symbol is IPropertySymbol property)
+        {
+            if (property.SetMethod is not null || property.IsIndexer || property.GetMethod is null)
+            {
+                plan.Reasons.Add(Strings.Get("ConvertPropertyShape"));
+                return plan;
+            }
+
+            var declaration = property.DeclaringSyntaxReferences.Select(r => r.GetSyntax()).OfType<PropertyDeclarationSyntax>().FirstOrDefault();
+            if (declaration is null)
+            {
+                plan.Reasons.Add(Strings.Get("ConvertPropertyShape"));
+                return plan;
+            }
+
+            var getter = declaration.ExpressionBody?.Expression.ToString() ?? declaration.AccessorList?.Accessors.FirstOrDefault()?.Body?.Statements.OfType<ReturnStatementSyntax>().FirstOrDefault()?.Expression.ToString();
+            if (getter is null)
+            {
+                plan.Reasons.Add(Strings.Get("ConvertPropertyShape"));
+                return plan;
+            }
+
+            var access = declaration.Modifiers.ToString();
+            var methodText = access + " " + property.Type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat) + " Get" + property.Name + "() => " + getter + ";";
+            var changes = new Dictionary<DocumentId, List<TextChange>> { [documentId] = new List<TextChange> { new TextChange(declaration.Span, methodText) } };
+            var refs = await MethodEditEngine.CollectReferencesAsync(solution, property).ConfigureAwait(false);
+            refs.RemoveAll(r => r.DocumentId == documentId && declaration.Span.Contains(r.Span));
+            foreach (var reference in refs)
+            {
+                var refDocument = solution.GetDocument(reference.DocumentId);
+                var refRoot = refDocument is null ? null : await refDocument.GetSyntaxRootAsync().ConfigureAwait(false);
+                var token = refRoot?.FindToken(reference.Span.Start);
+                if (token is null || token.Value.Text != property.Name)
+                {
+                    plan.Reasons.Add(Strings.Get("ConvertPropertyUseUnknown"));
+                    return plan;
+                }
+
+                if (!changes.TryGetValue(reference.DocumentId, out var list))
+                {
+                    changes[reference.DocumentId] = list = new List<TextChange>();
+                }
+
+                list.Add(new TextChange(reference.Span, "Get" + property.Name + "()"));
+            }
+
+            var edited = await MethodEditEngine.ApplyAsync(solution, changes, plan.Divergent).ConfigureAwait(false);
+            await EditChecks.CheckNewDiagnosticsAsync(solution, edited, changes.Keys, plan).ConfigureAwait(false);
+            plan.Files.AddRange(changes.Keys.Select(id => solution.GetDocument(id)!.FilePath ?? id.ToString()));
+            plan.Warnings.Add(Strings.Format("ConvertPropertyToMethodDone", property.Name, refs.Count));
+            if (!plan.Refused)
+            {
+                plan.Result = edited;
+            }
+
+            return plan;
+        }
+
+        plan.Reasons.Add(Strings.Get("ConvertMethodToPropertyNotYet"));
         return plan;
     }
 
