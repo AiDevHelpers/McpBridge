@@ -1,6 +1,6 @@
 # LocalizationHelper self test
 
-Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`.
+Tools: `StringScan`, `ResxCheck`, `LocalizationSyncCheck`, `LocalizationSync`, `LocalizationExtract`.
 
 ## StringScan and ResxCheck
 
@@ -21,5 +21,13 @@ Fixture: a scratch folder with `P/Resources/Strings.resx` holding keys `A` ("One
 - `LocalizationSync` (confirm = that token): PASS when `applied` is true and `Strings.de.resx` now holds `B` with the neutral text and the comment `needs-translation`.
 - `LocalizationSync` (same token again): PASS when `ok` is false.
 - `LocalizationSyncCheck` (root = fixture folder, after the confirm): PASS when `missing` no longer lists `B`.
+
+## Extract
+
+Fixture: a scratch folder with `P/Strings.cs` (`namespace P;` and an empty internal static class `Strings`), `P/Resources/Strings.resx` with no entries, and `P/A.cs` in `namespace P;` holding `const string C = "Keep this text.";` and `string M() => "Could not read it.";`.
+
+- `LocalizationExtract` (path = fixture folder, no confirm): PASS when `plan` is true, `items` has one entry with `replacement` `Strings.Get("CouldNotReadIt")`, `skipped` has one entry with reason `const-context`, and no file changed.
+- `LocalizationExtract` (confirm = that token): PASS when `A.cs` now holds the `Strings.Get` call and `Strings.resx` holds `CouldNotReadIt`.
+- `StringScan` (path = the `P` folder): PASS when only the `const` literal remains.
 
 Record each as PASS or FAIL with the exact arguments and reply.
