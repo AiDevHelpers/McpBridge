@@ -191,6 +191,30 @@ public sealed class ConvertEngineTests
     }
 
     [Fact]
+    public async Task AGetOnlyAutoPropertyWithAConstantBecomesAnExpressionBody()
+    {
+        const string code = "class C\n{\n    public int X { get; } = 3;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "auto-to-expression");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("public int X => 3;", await TextOfAsync(plan));
+    }
+
+    [Fact]
+    public async Task AnExpressionBodyPropertyBecomesAGetter()
+    {
+        const string code = "class C\n{\n    public int X => 3;\n}\n";
+        var solution = TestSolutions.Single([(File, code)]);
+
+        var plan = await ConvertEngine.PlanAsync(solution, File, 3, "expression-to-auto");
+
+        Assert.False(plan.Refused, string.Join("; ", plan.Reasons));
+        Assert.Contains("{ get { return 3; } }", await TextOfAsync(plan));
+    }
+
+    [Fact]
     public async Task AnUnknownKindIsRefused()
     {
         const string code = "class C\n{\n    int _x;\n}\n";

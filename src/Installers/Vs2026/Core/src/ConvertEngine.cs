@@ -59,6 +59,9 @@ internal static class ConvertEngine
                 return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "record", plan).ConfigureAwait(false);
             case "class-to-struct":
                 return await ClassToRecordAsync(solution, documentId!, document, text, model!, node, "struct", plan).ConfigureAwait(false);
+            case "auto-to-expression":
+            case "expression-to-auto":
+                return await PropertyBodyAsync(solution, documentId!, document, text, model!, node, kind == "auto-to-expression", plan).ConfigureAwait(false);
             case "make-async":
                 return await AsyncEngine.PlanAsync(solution, file, line, depth, suffix).ConfigureAwait(false);
             case "property-to-method":
@@ -469,6 +472,46 @@ internal static class ConvertEngine
         }
 
         return await MethodToPropertyAsync(solution, documentId, document, model, node, plan).ConfigureAwait(false);
+    }
+
+    // "{ get; } = literal;" becomes "=> literal;": only a constant initializer, since an expression body re-evaluates on every read and
+    // a constant does not change. "=> e;" becomes "{ get { return e; } }".
+    private static async Task<MethodEditPlan> PropertyBodyAsync(
+        Solution solution, DocumentId documentId, Document document, SourceText text, SemanticModel model, SyntaxNode? node, bool toExpression, MethodEditPlan plan)
+    {
+        var property = node?.AncestorsAndSelf().OfType<PropertyDeclarationSyntax>().FirstOrDefault();
+        if (property is null || model.GetDeclaredSymbol(property) is not IPropertySymbol)
+        {
+            plan.Reasons.Add(Strings.Get("ConvertNotAProperty"));
+            return plan;
+        }
+
+        TextChange change;
+        if (toExpression)
+        {
+            var accessors = property.AccessorList?.Accessors ?? default;
+            var autoGet = accessors.Count == 1 && accessors[0].Keyword.IsKind(SyntaxKind.GetKeyword) && accessors[0].Body is null && accessors[0].ExpressionBody is null;
+            if (!autoGet || property.Initializer?.Value is not LiteralExpressionSyntax literal || property.SemicolonToken.IsKind(SyntaxKind.None))
+            {
+                plan.Reasons.Add(Strings.Get("ConvertAutoShape"));
+                return plan;
+            }
+
+            change = new TextChange(TextSpan.FromBounds(property.AccessorList!.SpanStart, property.SemicolonToken.Span.End), "=> " + literal.WithoutTrivia() + ";");
+        }
+        else
+        {
+            if (property.ExpressionBody is null || property.SemicolonToken.IsKind(SyntaxKind.None))
+            {
+                plan.Reasons.Add(Strings.Get("ConvertNotExpressionBodyProperty"));
+                return plan;
+            }
+
+            change = new TextChange(TextSpan.FromBounds(property.ExpressionBody.SpanStart, property.SemicolonToken.Span.End),
+                "{ get { return " + property.ExpressionBody.Expression.WithoutTrivia() + "; } }");
+        }
+
+        return await ApplyAndCheckAsync(solution, documentId, document, change, plan).ConfigureAwait(false);
     }
 
     // A method with no parameters, one return of an expression, and a non-void return becomes "Type Name => expr;"; calls "Name()" become "Name".
