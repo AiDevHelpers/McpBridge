@@ -830,7 +830,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("showInfoBar", new { text, actions = (actions ?? Array.Empty<string>()).Select(label => new { label }), confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Write an entry to the Visual Studio activity log (ActivityLog.xml). Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    [Description("Write an entry to the Visual Studio activity log (ActivityLog.xml), or in VS Code to the AiDevHelpers output channel. Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeWriteActivityLog(
         [Description("Error, Warning, or Information")] string level,
         [Description("Source name for the entry")] string source,
@@ -843,7 +843,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("writeActivityLog", new { level, source, message, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Read one Visual Studio setting by its key path. Returns found:false when the setting does not exist. Read-only.")]
+    [Description("Read one IDE setting by its key path: a Visual Studio setting path, or in VS Code a dotted setting name such as editor.tabSize.Returns found:false when the setting does not exist. Read-only.")]
     public Task<string> IdeGetSetting(
         [Description("Setting key path")] string key,
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,

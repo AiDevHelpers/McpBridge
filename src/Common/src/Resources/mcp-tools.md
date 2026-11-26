@@ -41,7 +41,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `ide_get_locals` | Read local variables in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint. |
 | `ide_get_output` | Read the last lines of an IDE output pane, e.g. 'Build' or 'Debug'. For a filtered, deduplicated summary, use LogQuery with a vsout: channel. |
 | `ide_get_preferred` | Read the preferred IDE stored for a solution, or none. |
-| `ide_get_setting` | Read one Visual Studio setting by its key path. Returns found:false when the setting does not exist. Read-only. |
+| `ide_get_setting` | Read one IDE setting by its key path: a Visual Studio setting path, or in VS Code a dotted setting name such as editor.tabSize. Returns found:false when the setting does not exist. Read-only. |
 | `ide_get_test_results` | Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, which also covers TRX files written by other test runs in the solution's TestResults folder. |
 | `ide_get_test_summary` | Get the counts of the newest finished Test Explorer run, read from the Visual Studio Tests output pane. Works in TestExplorer mode, where no TRX is written. failures lists the tests the runner marked [FAIL] in that run; it is empty when the pane has no such lines. |
 | `ide_go_to_definition` | Go to the definition of the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. Moves the IDE's active document and caret. Returns the IDE state, not the target location. Visual Studio only. |
@@ -94,7 +94,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `ide_tdd_update_test` | TDD step 2: replace the body of a test, then run it and return its result. newBody is a block or the statements of the new body; the test's attribute and signature stay. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the test runs, and tdd.status says red or green. Give targetFile and targetLine (a line inside the method under test) to also get that method's line coverage. Then implement the method with ide_edit_method, which runs the tests that call it. Visual Studio only. |
 | `ide_undo_group` | Apply several range edits in one IDE undo group, so they undo as one step. Each edit gives start and end line and column (1-based) and new text. Without confirm it lists the edits. Show the plan to the user and get their yes before setting confirm to true. |
 | `ide_unsubscribe_events` | Stop this server's events subscription to one instance. Automatic subscription resumes on the next check unless the instance is closed. |
-| `ide_write_activity_log` | Write an entry to the Visual Studio activity log (ActivityLog.xml). Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
+| `ide_write_activity_log` | Write an entry to the Visual Studio activity log (ActivityLog.xml), or in VS Code to the AiDevHelpers output channel. Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true. |
 
 ## Git
 

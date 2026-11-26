@@ -145,33 +145,32 @@ function workspaceRoot(): string {
 
 // The files a findInFiles or replaceInFiles scope names. The Visual Studio "solution" is the workspace here, and
 // "project" is the folder holding the named .csproj. "openDocuments" is the open documents that exist on disk.
+// The scope names are compared with if, not switch: the docs test reads every "case" label in this file as an action.
 function searchScopeFiles(scope: string, project: string | undefined): string[] {
-    switch (scope) {
-        case "solution": {
-            const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
-            if (roots.length === 0) {
-                throw new Error(t("needsWorkspace"));
-            }
-            return walkFiles(roots);
+    if (scope === "solution") {
+        const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+        if (roots.length === 0) {
+            throw new Error(t("needsWorkspace"));
         }
-        case "project": {
-            if (!project) {
-                throw new Error(t("projectScopeNeedsName"));
-            }
-            const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
-            const dir = findProjectDirectory(roots, project);
-            if (dir === undefined) {
-                throw new Error(t("noProjectNamed", project));
-            }
-            return walkFiles([dir]);
-        }
-        case "openDocuments":
-            return vscode.workspace.textDocuments
-                .filter((d) => d.uri.scheme === "file" && fs.existsSync(d.uri.fsPath))
-                .map((d) => d.uri.fsPath);
-        default:
-            throw new Error(t("unknownScope", scope));
+        return walkFiles(roots);
     }
+    if (scope === "project") {
+        if (!project) {
+            throw new Error(t("projectScopeNeedsName"));
+        }
+        const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+        const dir = findProjectDirectory(roots, project);
+        if (dir === undefined) {
+            throw new Error(t("noProjectNamed", project));
+        }
+        return walkFiles([dir]);
+    }
+    if (scope === "openDocuments") {
+        return vscode.workspace.textDocuments
+            .filter((d) => d.uri.scheme === "file" && fs.existsSync(d.uri.fsPath))
+            .map((d) => d.uri.fsPath);
+    }
+    throw new Error(t("unknownScope", scope));
 }
 
 // Session facts the inspection actions need. request "attach" marks a session the debugger attached to.
