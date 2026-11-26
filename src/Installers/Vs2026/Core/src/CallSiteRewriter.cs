@@ -85,20 +85,19 @@ internal static class CallSiteRewriter
                 continue;
             }
 
-            if (method.Parameters.Any(p => p.IsParams))
+            // A trailing params array: its arguments are passed one by one, or as the array itself.
+            var paramsIndex = method.Parameters.Length > 0 && method.Parameters[method.Parameters.Length - 1].IsParams ? method.Parameters.Length - 1 : -1;
+            if (method.Parameters.Take(Math.Max(0, method.Parameters.Length - 1)).Any(p => p.IsParams))
             {
                 uncovered.Add(Uncovered(reference, Strings.Get("CallSiteParams")));
                 continue;
             }
 
             // An extension method called as receiver.Method(...) passes the receiver as its first parameter.
-            var reduced = false;
-            if (call is InvocationExpressionSyntax invocation)
-            {
-                var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
-                reduced = model is not null && model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ReducedFrom: not null }
-                    && invocation.Expression is MemberAccessExpressionSyntax;
-            }
+            var model = await document.GetSemanticModelAsync().ConfigureAwait(false);
+            var reduced = model is not null && call is InvocationExpressionSyntax invocation
+                && model.GetSymbolInfo(invocation).Symbol is IMethodSymbol { ReducedFrom: not null }
+                && invocation.Expression is MemberAccessExpressionSyntax;
 
             var (argumentList, arguments) = parts.Value;
             var old = new Arg?[method.Parameters.Length];
@@ -109,12 +108,24 @@ internal static class CallSiteRewriter
 
             var refusal = (string?)null;
             var positional = reduced ? 1 : 0;
+            var tail = new List<Arg>();
             foreach (var argument in arguments)
             {
                 int index;
                 if (argument.Name is { } name)
                 {
                     index = method.Parameters.ToList().FindIndex(p => p.Name == name);
+                    if (index >= 0 && index == paramsIndex)
+                    {
+                        refusal = Strings.Get("CallSiteParams");
+                        break;
+                    }
+                }
+                else if (paramsIndex >= 0 && positional >= paramsIndex)
+                {
+                    tail.Add(argument);
+                    positional++;
+                    continue;
                 }
                 else
                 {
@@ -130,6 +141,19 @@ internal static class CallSiteRewriter
                 old[index] = argument;
             }
 
+            // One argument that is already an array is the array itself; anything else is expanded arguments of the params array.
+            if (refusal is null && paramsIndex >= 0 && tail.Count == 1 && model!.GetTypeInfo(tail[0].Expression).Type is IArrayTypeSymbol)
+            {
+                old[paramsIndex] = tail[0];
+                tail.Clear();
+            }
+
+            if (refusal is null && paramsIndex >= 0 && newParameters.Select((p, i) => (p, i)).Any(t => t.p.FromOld == paramsIndex
+                && newParameters.Skip(t.i + 1).Any()))
+            {
+                refusal = Strings.Get("CallSiteParams");
+            }
+
             var output = new List<string>();
             if (refusal is null && reduced && (newParameters.Count == 0 || newParameters[0].FromOld != 0))
             {
@@ -142,6 +166,18 @@ internal static class CallSiteRewriter
                 var parameter = newParameters[k];
                 if (parameter.FromOld is { } j)
                 {
+                    if (j == paramsIndex)
+                    {
+                        if (omitted && (old[j] is not null || tail.Count > 0))
+                        {
+                            refusal = Strings.Get("CallSiteKeptParameterMissing");
+                            break;
+                        }
+
+                        output.AddRange(old[j] is { } array ? new[] { array.Text } : tail.Select(t => t.Text).ToArray());
+                        continue;
+                    }
+
                     if (reduced && j == 0)
                     {
                         continue; // the receiver stays in the expression; checked to be first above
@@ -199,6 +235,13 @@ internal static class CallSiteRewriter
                 {
                     refusal = Strings.Get("CallSiteRemovedArgumentSideEffects");
                 }
+            }
+
+            // A removed params parameter drops its expanded arguments, which must have no side effects.
+            if (refusal is null && paramsIndex >= 0 && !newParameters.Any(p => p.FromOld == paramsIndex)
+                && tail.Any(t => !IsSideEffectFree(t.Expression)))
+            {
+                refusal = Strings.Get("CallSiteRemovedArgumentSideEffects");
             }
 
             if (refusal is null && argumentList is null)
