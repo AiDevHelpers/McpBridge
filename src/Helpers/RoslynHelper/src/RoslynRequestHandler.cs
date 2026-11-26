@@ -11,39 +11,34 @@ public sealed class RoslynRequestHandler
 {
     private readonly Func<string?> _solutionPath;
     private readonly SolutionLoader _loader;
+    private readonly ActionDispatcher _dispatcher = new();
 
     public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null)
     {
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
         _loader = loader ?? new SolutionLoader();
+        _dispatcher.Register("health", _ => Task.FromResult<object>(new
+        {
+            ok = true,
+            pid = Environment.ProcessId,
+            solutionPath = _solutionPath(),
+        }));
+        _dispatcher.Register("loadSolution", LoadSolutionAsync);
     }
 
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
-    public async Task<object> InvokeAsync(string action, JsonElement args)
+    public Task<object> InvokeAsync(string action, JsonElement args) => _dispatcher.InvokeAsync(action, args);
+
+    private async Task<object> LoadSolutionAsync(JsonElement args)
     {
-        if (action == "health")
+        var solutionPath = args.GetProperty("solutionPath").GetString()
+            ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
+        var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
+        return new
         {
-            return new
-            {
-                ok = true,
-                pid = Environment.ProcessId,
-                solutionPath = _solutionPath(),
-            };
-        }
-
-        if (action == "loadSolution")
-        {
-            var solutionPath = args.GetProperty("solutionPath").GetString()
-                ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
-            var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
-            return new
-            {
-                ok = true,
-                result = new { projects = loaded.Projects },
-            };
-        }
-
-        throw new InvalidOperationException($"Unknown action: {action}.");
+            ok = true,
+            result = new { projects = loaded.Projects },
+        };
     }
 
     /// <summary>Handles one request line and returns one reply line. A malformed line gets an error reply.</summary>
