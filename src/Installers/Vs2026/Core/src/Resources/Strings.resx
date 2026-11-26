@@ -156,5 +156,8 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="CallSiteKeptParameterMissing" xml:space="preserve"><value>a kept parameter has no argument here (it relies on a default)</value></data>
   <data name="CallSiteNewParameterNoValue" xml:space="preserve"><value>a new parameter has no valueForCallers</value></data>
   <data name="CallSiteRemovedArgumentSideEffects" xml:space="preserve"><value>a removed parameter's argument could have side effects</value></data>
+  <data name="MemberEditDeclarationKind" xml:space="preserve"><value>the new declaration must be exactly one member of the same kind as the one at the line</value></data>
+  <data name="MemberEditShapeChanged" xml:space="preserve"><value>the kind, access, type or parameters changed and {0} references use it; only its body or accessors can change while it is used</value></data>
+
 </root>
 
