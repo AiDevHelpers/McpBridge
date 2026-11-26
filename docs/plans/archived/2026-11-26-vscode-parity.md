@@ -1,6 +1,6 @@
 # VS Code parity for the IDE bridge
 
-Status: draft, needs the user's answers to the open questions before work starts.
+Status: done. Units 0 to 7, 9, 11 and 12 merged into wip. Unit 8 (Task List) dropped in v1. Unit 10 (Roslyn edit tools) is a separate helper plan, not started. Live checks not run: the VS Code events pipe and git routing need a running VS Code window.
 
 Drafted by a read-only Sonnet agent from `ideActions.ts`, `IdeActions.cs`, `docs/ide-bridge.md`, `conformance/protocol.md` and `conformance/fixtures.json`. Nothing was run. Claims about file sizes and test helpers were not checked.
 

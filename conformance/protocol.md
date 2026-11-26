@@ -91,9 +91,9 @@ A call that can't reach an instance within 60 seconds gets an error reply. An in
 
 ## Events pipe
 
-Visual Studio only. Separate from the request pipe, which is unchanged (one request, one reply).
+Served by Visual Studio and by VS Code. Separate from the request pipe, which is unchanged (one request, one reply).
 
-- Name: `AiDevHelpers.VS.<pid>.events`. Up to 8 concurrent subscribers.
+- Name: `AiDevHelpers.VS.<pid>.events` for Visual Studio, `AiDevHelpers.VsCode.<pid>.events` for VS Code. Up to 8 concurrent subscribers.
 - Subscribe: the client connects and writes one line `{"action":"subscribe","args":{"events":["buildDone", ...]}}`.
   Omit `events` (or pass an empty list) for all events.
 - Reply, one line: `{"ok":true,"pid":N,"subscriptionId":"..."}`. A refused subscribe is `{"ok":false,"pid":N,"error":"..."}`.
@@ -106,7 +106,7 @@ Visual Studio only. Separate from the request pipe, which is unchanged (one requ
 - Unsubscribe: the client closes its connection. No separate request.
 - Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
   `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`.
-- A VS Code bridge does not offer this pipe; `ide_subscribe_events` reports it as an error for VS Code.
+- VS Code approximations: `buildBegin` and `buildDone` come from build tasks, not the build system, and `solutionOpened` and `solutionClosing` come from workspace folder changes. Both are approximate.
 
 ## Actions added in phases 1 to 6
 
