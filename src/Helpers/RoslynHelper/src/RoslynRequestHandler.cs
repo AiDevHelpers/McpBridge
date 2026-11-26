@@ -10,23 +10,37 @@ namespace AiDevHelpers.Helpers.RoslynHelper;
 public sealed class RoslynRequestHandler
 {
     private readonly Func<string?> _solutionPath;
+    private readonly SolutionLoader _loader;
 
-    public RoslynRequestHandler(Func<string?> solutionPath)
+    public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null)
     {
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
+        _loader = loader ?? new SolutionLoader();
     }
 
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
-    public Task<object> InvokeAsync(string action, JsonElement args)
+    public async Task<object> InvokeAsync(string action, JsonElement args)
     {
         if (action == "health")
         {
-            return Task.FromResult<object>(new
+            return new
             {
                 ok = true,
                 pid = Environment.ProcessId,
                 solutionPath = _solutionPath(),
-            });
+            };
+        }
+
+        if (action == "loadSolution")
+        {
+            var solutionPath = args.GetProperty("solutionPath").GetString()
+                ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
+            var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
+            return new
+            {
+                ok = true,
+                result = new { projects = loaded.Projects },
+            };
         }
 
         throw new InvalidOperationException($"Unknown action: {action}.");
