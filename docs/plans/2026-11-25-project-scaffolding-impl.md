@@ -239,7 +239,7 @@ Findings (verified 2026-11-25 on this machine, SDK 11.0.100, VS 18.12 Community;
 ## Follow-ups (open)
 
 - Live workload install (U13 "done when"): needs `setup tools` run elevated with the chat yes, the UAC prompt, then `workload_install_confirm`.
-- Approval status of the elevated scripts: `elev verify` needs the broker running, which needs the elevated `setup tools` run.
+- Approval status of the elevated scripts: checked 2026-11-26. `elev verify` on `C:\ProgramData\AiDevHelpers\script-helper\bin\tools` reports `fullyApproved=True`; `install-tool.ps1` and `install-workload.ps1` are approved and unchanged. The check needed the broker running (started elevated with UAC approval). Run `elev verify` on the tools folder, not the repo: the repo has no `.elevated.json`.
 - `scripts/workload-install.ps1 -WritePin`: not written. The pin matches the table and is checked by `InstallableWorkloadsTests`; add the script only when the table changes.
 - VS-running refusal for `vs_installer modify`: not needed while `vs` installs are not offered.
 - `ServerControlTests.ResumeClearsThePause`: failed once in 14 runs, not reproduced in 3. Suspect a live MCP server rewriting the shared state file.
