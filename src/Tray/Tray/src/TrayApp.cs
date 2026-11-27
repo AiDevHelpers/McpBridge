@@ -1,0 +1,135 @@
+using System.Drawing;
+using System.IO;
+using System.Net.Http;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Windows;
+using System.Windows.Controls;
+using H.NotifyIcon;
+using AiDevHelpers.MCP.Core.Services;
+
+namespace AiDevHelpers.Tray;
+
+/// <summary>The tray icon, its menu, the Status window, toasts, and the approval pipe. Lives for the whole tray session.</summary>
+public sealed class TrayApp : IDisposable
+{
+    public const int Port = 5058;
+    private const string ServiceName = "AiDevHelpers";
+
+    private readonly TaskbarIcon _icon;
+    private readonly StatusViewModel _status;
+    private readonly CompositeDisposable _feeds = new();
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Dictionary<TrayIconState, System.Drawing.Icon> _icons;
+    private StatusWindow? _window;
+    private TrayIconState? _previous;
+
+    public TrayApp()
+    {
+        _icons = Enum.GetValues<TrayIconState>().ToDictionary(state => state, MakeIcon);
+
+        var handler = new SocketsHttpHandler();
+        var healthz = new Uri($"http://127.0.0.1:{Port}/healthz");
+        var statusFile = Path.Combine(
+            Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "mcp-http", "status.json");
+        var health = HealthFeed.Watch(handler, healthz, () => File.Exists(statusFile) ? File.ReadAllText(statusFile) : null, TimeSpan.FromSeconds(5));
+        var service = Observable.Interval(TimeSpan.FromSeconds(5))
+            .StartWith(0L)
+            .Select(_ => ServiceStatus.Read(ServiceName))
+            .DistinctUntilChanged();
+
+        // The UI thread's context exists here because the WPF Application was created first.
+        var ui = new System.Reactive.Concurrency.SynchronizationContextScheduler(SynchronizationContext.Current!);
+        _status = new StatusViewModel(health, service, Port, ui);
+        _status.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(StatusViewModel.Icon))
+            {
+                OnIconChanged();
+            }
+        };
+
+        _icon = new TaskbarIcon
+        {
+            ToolTipText = "AiDevHelpers",
+            ContextMenu = BuildMenu(),
+            Icon = _icons[TrayIconState.Disconnected],
+        };
+        _icon.TrayLeftMouseUp += (_, _) => ShowStatus();
+        _icon.ForceCreate();
+    }
+
+    /// <summary>Serves approval requests from the MCP server until the tray exits.</summary>
+    public Task RunApprovalsAsync() =>
+        ApprovalPipeHost.RunAsync(ApprovalWire.PipeNameForCurrentUser(), AskAsync, _stop.Token);
+
+    public void Dispose()
+    {
+        _stop.Cancel();
+        _feeds.Dispose();
+        _status.Dispose();
+        _icon.Dispose();
+        foreach (var icon in _icons.Values)
+        {
+            icon.Dispose();
+        }
+    }
+
+    private Task<bool> AskAsync(ApprovalRequest request) =>
+        Application.Current.Dispatcher.InvokeAsync(() => ApprovalWindow.Ask(request)).Task.Unwrap();
+
+    private void OnIconChanged()
+    {
+        var current = _status.Icon;
+        _icon.Icon = _icons[current];
+        var text = TrayNotifications.For(_previous, current);
+        if (text is not null)
+        {
+            _icon.ShowNotification("AiDevHelpers", text);
+        }
+
+        _previous = current;
+    }
+
+    private void ShowStatus()
+    {
+        _window ??= new StatusWindow(_status);
+        _window.Show();
+        _window.Activate();
+    }
+
+    private ContextMenu BuildMenu()
+    {
+        var menu = new ContextMenu();
+        var open = new MenuItem { Header = "Open status" };
+        open.Click += (_, _) => ShowStatus();
+        var exit = new MenuItem { Header = "Exit tray" };
+        exit.Click += (_, _) => Application.Current.Shutdown();
+        menu.Items.Add(open);
+        menu.Items.Add(exit);
+        return menu;
+    }
+
+    private static System.Drawing.Icon MakeIcon(TrayIconState state)
+    {
+        var color = state switch
+        {
+            TrayIconState.Running => Color.SeaGreen,
+            TrayIconState.Degraded => Color.Goldenrod,
+            TrayIconState.Disconnected => Color.Gray,
+            _ => Color.Firebrick,
+        };
+        using var bitmap = new Bitmap(16, 16);
+        using (var graphics = Graphics.FromImage(bitmap))
+        using (var brush = new SolidBrush(color))
+        {
+            graphics.Clear(Color.Transparent);
+            graphics.FillEllipse(brush, 1, 1, 14, 14);
+        }
+
+        // Made once per state at startup (four icons), so the native icon handle is not released per change.
+        return (System.Drawing.Icon)System.Drawing.Icon.FromHandle(bitmap.GetHicon()).Clone();
+    }
+}
+
