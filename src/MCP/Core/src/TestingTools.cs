@@ -12,6 +12,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class TestingTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Start watching a solution. While hot reload is active the server polls its TestResults folder and reports new failures " +
                  "(log notification and test_failures). ideHotReload is on, off or unknown; dotnetWatchRunning is true when dotnet watch runs.")]
     public static string TestWatch(
@@ -32,6 +33,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Stop watching a solution.")]
     public static string TestUnwatch([Description("Full path of the .sln or its folder")] string solutionPath)
     {
@@ -40,6 +42,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the test projects a change can affect, and the dotnet test command for each. A changed file affects its project and every project that references it. " +
                  "With no changedFiles, the files git reports as changed (working tree and untracked) are used. Nothing is run.")]
     public static async Task<string> TestAffected(
@@ -82,6 +85,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Return test failures queued since the last call, then clear the queue.")]
     public static string TestFailures()
     {
@@ -91,6 +95,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run code coverage for a solution. provider is Coverlet or VisualStudio. " +
                  "Default: Coverlet when the repo references it, otherwise VisualStudio (dotnet-coverage CLI).")]
     public static async Task<string> TestCoverage(
@@ -128,6 +133,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Start live testing for a solution with dotnet watch test. Works in Visual Studio Community, which has no Live Unit Testing. " +
                  "Each run writes TestResults/live.trx; failures are reported through test_failures and the error log.")]
     public static string LiveTestStart(McpServer server, [Description("Full path of the .sln or its folder")] string solutionPath)
@@ -216,6 +222,7 @@ internal sealed class TestingTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Stop live testing for a solution started by live_test_start.")]
     public static string LiveTestStop([Description("Full path of the .sln or its folder")] string solutionPath)
     {

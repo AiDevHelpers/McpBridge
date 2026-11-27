@@ -1,4 +1,6 @@
 using AiDevHelpers.Bridge;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 
 namespace AiDevHelpers.MCP.Core.Services;
@@ -28,5 +30,52 @@ internal sealed class IdeInstanceBridge : IIdeBridge
         int? pid = root.TryGetProperty("instance_pid", out JsonElement p) && p.TryGetInt32(out int pidValue) ? pidValue : null;
         string? answeredBy = root.TryGetProperty("ide", out JsonElement i) && i.ValueKind == JsonValueKind.String ? i.GetString() : null;
         return new BridgeReply(ok, result, error, pid, answeredBy);
+    }
+}
+
+/// <summary>
+/// Sends the global dialog settings (IdeTools) to each running IDE instance the first time the server sees it, and again when a value
+/// changes. The bridge applies them with its configure action and reports a change as settingsChanged.
+/// </summary>
+internal sealed class BridgeSettingsService(IOptions<IdeToolsOptions> options) : BackgroundService
+{
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SendLimit = TimeSpan.FromSeconds(10);
+    private readonly Dictionary<int, string> _sent = [];
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        using var timer = new PeriodicTimer(Interval);
+        while (await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            var autoDismiss = options.Value.AutoDismissDialogs;
+            var seconds = options.Value.ActionTimeoutSeconds;
+            var current = $"{autoDismiss}|{seconds}";
+
+            foreach (var instance in AiDevHelpers.Bridge.VsInstanceRegistry.ListRunning())
+            {
+                if (_sent.TryGetValue(instance.Pid, out var last) && last == current)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    using var limit = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                    limit.CancelAfter(SendLimit);
+                    await AiDevHelpers.Bridge.IdeInstanceRouter.CallAsync(
+                        "configure",
+                        new { autoDismissDialogs = autoDismiss, actionTimeoutSeconds = seconds },
+                        solutionPath: null,
+                        limit.Token,
+                        instancePid: instance.Pid);
+                    _sent[instance.Pid] = current;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // Not sent: the next tick tries this instance again.
+                }
+            }
+        }
     }
 }

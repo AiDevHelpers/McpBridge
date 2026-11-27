@@ -29,6 +29,7 @@ internal sealed class SelfTestTools
         helper == ScriptHelperName ? typeof(SelfTestTools).Assembly : Assembly.Load("AiDevHelpers.Helpers." + helper);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the helpers with their versions, the MCP server (Core) version, and whether each helper has a self-test.")]
     public static string SelfTestList()
     {
@@ -52,6 +53,7 @@ internal sealed class SelfTestTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read a helper's self-test markdown, which is embedded in its library.")]
     public static string SelfTestRead(
         [Description("Helper name, e.g. LintHelper. See self_test_list.")] string helper)

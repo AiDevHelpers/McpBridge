@@ -125,6 +125,7 @@ internal sealed class ScriptHelperTools
     }
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Run an approved debug script elevated through the Script Helper broker. projectRoot is the folder with " +
         "the .elevated.json manifest; script is the path relative to it; args are passed to the script in order. " +

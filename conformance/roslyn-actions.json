@@ -1,0 +1,27 @@
+{
+  "description": "The edit actions the Roslyn helper answers. The helper's tests, the Bridge's routing (RoslynRouting.Actions) and the VS Code client (ROSLYN_ACTIONS) each read this list and must match it.",
+  "editActions": [
+    "addEnumMember",
+    "addInterfaceMember",
+    "addMember",
+    "addMethod",
+    "addOverload",
+    "addType",
+    "changeSignature",
+    "deleteMember",
+    "deleteType",
+    "editEnumMember",
+    "editMember",
+    "editMethod",
+    "editType",
+    "generateConstructor",
+    "implementMembers",
+    "listUnused",
+    "moveType",
+    "renameNamespace",
+    "renameSymbol",
+    "tddAddTest",
+    "tddUpdateTest",
+    "threadParameter"
+  ]
+}

@@ -12,21 +12,30 @@ public sealed class ActionDispatcher
 
     public void Register(string action, Func<JsonElement, Task<object>> handler)
     {
-        ArgumentNullException.ThrowIfNull(handler);
-        if (!_handlers.TryAdd(action, handler))
+        if (handler is null)
         {
-            throw new InvalidOperationException($"Action already registered: {action}.");
+            throw new ArgumentNullException(nameof(handler));
         }
+
+        if (_handlers.ContainsKey(action))
+        {
+            throw new InvalidOperationException(Strings.Format("ActionAlreadyRegistered", action));
+        }
+
+        _handlers[action] = handler;
     }
 
     public bool Has(string action) => _handlers.ContainsKey(action);
+
+    /// <summary>Every registered action name, in no particular order.</summary>
+    public IReadOnlyList<string> Names => _handlers.Keys.ToList();
 
     /// <summary>Runs one registered action. An unknown action throws, and the pipe server turns the message into an error reply.</summary>
     public Task<object> InvokeAsync(string action, JsonElement args)
     {
         if (!_handlers.TryGetValue(action, out var handler))
         {
-            throw new InvalidOperationException($"Unknown action: {action}.");
+            throw new InvalidOperationException(Strings.Format("UnknownAction", action));
         }
 
         return handler(args);

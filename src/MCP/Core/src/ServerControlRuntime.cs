@@ -1,3 +1,7 @@
+using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -23,10 +27,262 @@ public static class ServerControlGate
     }
 }
 
-/// <summary>The MCP session of this server process, remembered from the last tool call so a state change can be pushed to its client.</summary>
+/// <summary>
+/// The MCP sessions of this server process, each remembered from its last tool call, so a state change reaches every client that is
+/// connected. Over HTTP one process serves several sessions; over stdio there is one.
+/// </summary>
 internal static class ControlSession
 {
-    public static volatile McpServer? Server;
+    private static readonly ConcurrentDictionary<string, McpServer> ServersBySession = new(StringComparer.Ordinal);
+
+    /// <summary>Remembers a session's server. Called from every tool call.</summary>
+    public static void Remember(McpServer server)
+    {
+        if (!string.IsNullOrEmpty(server.SessionId))
+        {
+            ServersBySession[server.SessionId] = server;
+        }
+    }
+
+    /// <summary>Runs <paramref name="send"/> for every remembered session. A session whose send fails is forgotten, since it is gone.</summary>
+    public static async Task BroadcastAsync(Func<McpServer, Task> send)
+    {
+        foreach (var (id, server) in ServersBySession)
+        {
+            try
+            {
+                await send(server).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)
+            {
+                ServersBySession.TryRemove(id, out _);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Which MCP session planned each confirm token. Over HTTP one process serves several sessions, so a token planned in one chat must
+/// not be confirmed from another. Tokens are learned from tool results that carry a "token" field.
+/// </summary>
+public static class PlanOwnership
+{
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Owners = new(StringComparer.Ordinal);
+
+    public static void Record(string token, string sessionId) => Owners[token] = sessionId;
+
+    /// <summary>True unless the token was planned by a different session. An unknown token is left to the tool to refuse.</summary>
+    public static bool MayUse(string token, string sessionId) =>
+        !Owners.TryGetValue(token, out var owner) || string.Equals(owner, sessionId, StringComparison.Ordinal);
+
+    /// <summary>Records the "token" field of a tool result's text, if it has one, as planned by this session.</summary>
+    public static void RecordFrom(string resultText, string sessionId)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(resultText);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("token", out var token)
+                && token.ValueKind == System.Text.Json.JsonValueKind.String
+                && !string.IsNullOrEmpty(token.GetString()))
+            {
+                Record(token.GetString()!, sessionId);
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON, so no token to learn.
+        }
+    }
+}
+
+/// <summary>A request, through the tray, for the person's yes on one call to a dangerous tool. The reply must echo the nonce and hash.</summary>
+public sealed record ApprovalRequest(string Nonce, string ToolName, string ArgumentsHash, DateTime ExpiresUtc);
+
+/// <summary>The tray's answer. Approved is true only when the person said yes for this call.</summary>
+public sealed record ApprovalReply(string Nonce, string ArgumentsHash, bool Approved);
+
+/// <summary>The channel to the person. A null reply, or no reply in time, means no approval.</summary>
+public interface IApprovalChannel
+{
+    Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct);
+}
+
+/// <summary>
+/// Asks for a dangerous call's approval and accepts only an exact yes: the nonce and the argument hash must match this request, and the
+/// request must not have expired. Every other outcome is a refusal (fail closed). Pure except for the channel and the clock.
+/// </summary>
+public static class ApprovalGate
+{
+    public static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);
+
+    public static ApprovalRequest CreateRequest(string toolName, string argumentsJson, DateTime nowUtc) =>
+        new(Convert.ToHexString(RandomNumberGenerator.GetBytes(16)), toolName, HashOf(toolName, argumentsJson), nowUtc + Limit);
+
+    public static string HashOf(string toolName, string argumentsJson) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolName + "\n" + argumentsJson)));
+
+    /// <summary>True only for a yes that echoes this request's nonce and argument hash, before it expires.</summary>
+    public static bool Accepts(ApprovalRequest request, ApprovalReply? reply, DateTime nowUtc)
+    {
+        if (reply is null || !reply.Approved || nowUtc > request.ExpiresUtc)
+        {
+            return false;
+        }
+
+        return SameText(reply.Nonce, request.Nonce) && SameText(reply.ArgumentsHash, request.ArgumentsHash);
+    }
+
+    /// <summary>Asks the channel and returns whether the call may run. No channel, a timeout, an error or a refusal all mean no.</summary>
+    public static async Task<bool> ApproveAsync(IApprovalChannel? channel, string toolName, string argumentsJson, Func<DateTime> now, CancellationToken ct, TimeSpan? wait = null)
+    {
+        if (channel is null)
+        {
+            return false;
+        }
+
+        var request = CreateRequest(toolName, argumentsJson, now());
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(wait ?? Limit);
+        try
+        {
+            var reply = await channel.RequestAsync(request, limit.Token).ConfigureAwait(false);
+            return Accepts(request, reply, now());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    private static bool SameText(string a, string b)
+    {
+        var x = Encoding.UTF8.GetBytes(a);
+        var y = Encoding.UTF8.GetBytes(b);
+        return x.Length == y.Length && CryptographicOperations.FixedTimeEquals(x, y);
+    }
+}
+
+/// <summary>Which MCP tools are dangerous, read from their [DangerousTool] attribute. A tool's name is its method name in snake_case.</summary>
+public static class ToolClassification
+{
+    private static readonly Lazy<HashSet<string>> DangerousNames = new(Collect, isThreadSafe: true);
+
+    public static bool IsDangerous(string? toolName) => toolName is not null && DangerousNames.Value.Contains(toolName);
+
+    private static HashSet<string> Collect()
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var type in typeof(ToolClassification).Assembly.GetTypes())
+        {
+            if (type.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolTypeAttribute), false).Length == 0)
+            {
+                continue;
+            }
+
+            foreach (var method in type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+                                                   | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static))
+            {
+                if (method.GetCustomAttributes(typeof(DangerousToolAttribute), false).Length > 0
+                    && method.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolAttribute), false).Length > 0)
+                {
+                    names.Add(Regex.Replace(method.Name, "(?<!^)([A-Z])", "_$1").ToLowerInvariant());
+                }
+            }
+        }
+
+        return names;
+    }
+}
+
+/// <summary>
+/// The wire format of an approval over the approval pipe: one JSON line each way. The MCP server writes a request; the tray writes a reply
+/// that echoes the nonce and the argument hash. Both sides use this one class, so the contract is in one place.
+/// </summary>
+public static class ApprovalWire
+{
+    public const string PipeNamePrefix = "AiDevHelpers.Approval.";
+
+    /// <summary>The pipe name for the signed-in user. Both the MCP server and the tray run as that user, so they agree on it without config.</summary>
+    public static string PipeNameForCurrentUser() =>
+        PipeNamePrefix + System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+
+    public static string Encode(ApprovalRequest request) =>
+        System.Text.Json.JsonSerializer.Serialize(new { nonce = request.Nonce, tool = request.ToolName, argumentsHash = request.ArgumentsHash, expiresUtc = request.ExpiresUtc });
+
+    public static string Encode(ApprovalReply reply) =>
+        System.Text.Json.JsonSerializer.Serialize(new { nonce = reply.Nonce, argumentsHash = reply.ArgumentsHash, approved = reply.Approved });
+
+    public static ApprovalRequest? DecodeRequest(string line)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            return new ApprovalRequest(
+                root.GetProperty("nonce").GetString() ?? string.Empty,
+                root.GetProperty("tool").GetString() ?? string.Empty,
+                root.GetProperty("argumentsHash").GetString() ?? string.Empty,
+                root.GetProperty("expiresUtc").GetDateTime());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    public static ApprovalReply? DecodeReply(string line)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            return new ApprovalReply(
+                root.GetProperty("nonce").GetString() ?? string.Empty,
+                root.GetProperty("argumentsHash").GetString() ?? string.Empty,
+                root.GetProperty("approved").GetBoolean());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+}
+
+/// <summary>The MCP side of the approval pipe: connects, sends the request, and reads the reply. No pipe, or no reply, is no answer.</summary>
+public sealed class ApprovalPipeChannel(string pipeName) : IApprovalChannel
+{
+    public async Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct)
+    {
+        await using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", pipeName, System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
+        await pipe.ConnectAsync(ct).ConfigureAwait(false);
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        await writer.WriteLineAsync(ApprovalWire.Encode(request)).ConfigureAwait(false);
+        var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+        return line is null ? null : ApprovalWire.DecodeReply(line);
+    }
+}
+
+/// <summary>The tray side of the approval pipe: reads one request, asks the person through <paramref name="decide"/>, and replies with
+/// the request's nonce and hash. A request it cannot read gets no reply.</summary>
+public static class ApprovalPipeServer
+{
+    public static async Task ServeOnceAsync(System.IO.Pipes.NamedPipeServerStream pipe, Func<ApprovalRequest, Task<bool>> decide, CancellationToken ct)
+    {
+        await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
+        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+        var request = line is null ? null : ApprovalWire.DecodeRequest(line);
+        if (request is null)
+        {
+            return;
+        }
+
+        var approved = await decide(request).ConfigureAwait(false);
+        await writer.WriteLineAsync(ApprovalWire.Encode(new ApprovalReply(request.Nonce, request.ArgumentsHash, approved))).ConfigureAwait(false);
+    }
 }
 
 /// <summary>
@@ -38,6 +294,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan ClosingGrace = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan QuiesceLimit = TimeSpan.FromMinutes(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -56,6 +313,25 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
             if (current.State == ServerControl.Closing)
             {
+                // Each IDE instance finishes its running step and stops taking actions first. Retry until all confirm or the state
+                // changes; stop only when every instance has confirmed.
+                var stop = false;
+                while (ServerControl.Read().State == ServerControl.Closing)
+                {
+                    if (await QuiesceInstancesAsync(stoppingToken))
+                    {
+                        stop = true;
+                        break;
+                    }
+
+                    await Task.Delay(Interval, stoppingToken);
+                }
+
+                if (!stop)
+                {
+                    continue;
+                }
+
                 // Give the notification and any reply in flight a moment, then release the process.
                 await Task.Delay(ClosingGrace, stoppingToken);
                 lifetime.StopApplication();
@@ -64,14 +340,35 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
         }
     }
 
-    private static async Task NotifyAsync(ControlState state, CancellationToken ct)
+    /// <summary>
+    /// Asks every running IDE instance to finish its step and stop taking actions (its <c>quiesce</c> action). True only when each one
+    /// confirmed. An instance that cannot be reached counts as not confirmed, so the server keeps running and the closing state stays.
+    /// </summary>
+    internal static async Task<bool> QuiesceInstancesAsync(CancellationToken ct)
     {
-        var server = ControlSession.Server;
-        if (server is null)
+        var confirmed = true;
+        foreach (var instance in AiDevHelpers.Bridge.VsInstanceRegistry.ListRunning())
         {
-            return;
+            try
+            {
+                using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                limit.CancelAfter(QuiesceLimit);
+                var json = await AiDevHelpers.Bridge.IdeInstanceRouter.CallAsync("quiesce", new { }, solutionPath: null, limit.Token, instancePid: instance.Pid);
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var ok = doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == System.Text.Json.JsonValueKind.True;
+                confirmed &= ok;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                confirmed = false;
+            }
         }
 
+        return confirmed;
+    }
+
+    private static async Task NotifyAsync(ControlState state, CancellationToken ct)
+    {
         var suffix = string.IsNullOrWhiteSpace(state.Message) ? string.Empty : ": " + state.Message;
 
         // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. A client that ignores the
@@ -86,7 +383,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
         try
         {
-            await server.SendNotificationAsync(
+            await ControlSession.BroadcastAsync(server => server.SendNotificationAsync(
                 NotificationMethods.LoggingMessageNotification,
                 new LoggingMessageNotificationParams
                 {
@@ -94,7 +391,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
                     Logger = "AiDevHelpers.Control",
                     Data = System.Text.Json.JsonSerializer.SerializeToElement(new { state = state.State, message = text }),
                 },
-                cancellationToken: ct);
+                cancellationToken: ct));
         }
 #pragma warning restore MCP9005
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)

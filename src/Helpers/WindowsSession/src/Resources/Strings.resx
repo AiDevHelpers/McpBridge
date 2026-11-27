@@ -8,4 +8,7 @@
   <data name="WtsQueryUserTokenFailed" xml:space="preserve"><value>WTSQueryUserToken failed.</value></data>
   <data name="DuplicateTokenExFailed" xml:space="preserve"><value>DuplicateTokenEx failed.</value></data>
   <data name="SetTokenInformationFailed" xml:space="preserve"><value>SetTokenInformation(TokenSessionId) failed.</value></data>
+  <data name="FileNameContainsQuote" xml:space="preserve"><value>The file name must not contain a double quote.</value></data>
+  <data name="CreateProcessAsUserFailed" xml:space="preserve"><value>CreateProcessAsUser failed.</value></data>
+  <data name="NoConsoleUserSession" xml:space="preserve"><value>The console session has no logged-on user.</value></data>
 </root>

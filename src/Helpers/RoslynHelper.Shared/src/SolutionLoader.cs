@@ -72,7 +72,7 @@ public sealed class SolutionLoader
     {
         if (!File.Exists(solutionPath))
         {
-            throw new InvalidOperationException($"Solution not found: {solutionPath}.");
+            throw new InvalidOperationException(Strings.Format("SolutionNotFound", solutionPath));
         }
 
         var listed = ReadProjectPaths(solutionPath);
@@ -94,12 +94,22 @@ public sealed class SolutionLoader
                 return;
             }
 
+#if NETFRAMEWORK
+            // The net48 host loads with the Framework MSBuild that Visual Studio installs, so projects that need it load.
+            var vs = MSBuildLocator.QueryVisualStudioInstances()
+                .Where(i => i.DiscoveryType != DiscoveryType.DotNetSdk)
+                .OrderByDescending(i => i.Version)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException(Strings.Get("NoVisualStudioMsBuild"));
+            MSBuildLocator.RegisterInstance(vs);
+#else
             var sdk = MSBuildLocator.QueryVisualStudioInstances()
                 .Where(i => i.DiscoveryType == DiscoveryType.DotNetSdk && i.Version.Major == 10)
                 .OrderByDescending(i => i.Version)
                 .FirstOrDefault()
-                ?? throw new InvalidOperationException("No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.");
+                ?? throw new InvalidOperationException(Strings.Get("NoDotnetSdk"));
             MSBuildLocator.RegisterInstance(sdk);
+#endif
         }
     }
 
@@ -121,7 +131,7 @@ public sealed class SolutionLoader
                 .Select(e => (string?)e.Attribute("Path"))
                 .Where(p => p != null)
                 .Select(p => p!)
-            : SlnProjectLine.Matches(File.ReadAllText(solutionPath)).Select(m => m.Groups[1].Value);
+            : SlnProjectLine.Matches(File.ReadAllText(solutionPath)).Cast<Match>().Select(m => m.Groups[1].Value);
 
         return entries
             .Where(p => Path.GetExtension(p).EndsWith("proj", StringComparison.OrdinalIgnoreCase))
@@ -159,7 +169,7 @@ public sealed class SolutionLoader
 
         return all.Select(full =>
         {
-            var name = Path.GetRelativePath(folder, full);
+            var name = RelativeName(folder, full);
             var messages = failures
                 .Where(m => m.Contains(full, StringComparison.OrdinalIgnoreCase)
                             || m.Contains(Path.GetFileName(full), StringComparison.OrdinalIgnoreCase))
@@ -176,8 +186,17 @@ public sealed class SolutionLoader
 
             var error = messages.Count > 0
                 ? string.Join("; ", messages)
-                : "Project did not load and MSBuild reported no diagnostic.";
+                : Strings.Get("ProjectNoDiagnostic");
             return new ProjectLoadResult(name, false, error);
         }).ToList();
+    }
+
+    // Path.GetRelativePath is not in .NET Framework; this gives the same result for the project paths the loader names.
+    private static string RelativeName(string from, string to)
+    {
+        var folder = Path.GetFullPath(from).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var target = new Uri(Path.GetFullPath(to));
+        var relative = new Uri(folder).MakeRelativeUri(target);
+        return Uri.UnescapeDataString(relative.ToString()).Replace('/', Path.DirectorySeparatorChar);
     }
 }

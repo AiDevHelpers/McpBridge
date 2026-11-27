@@ -36,6 +36,21 @@
       "project": "src/Bridge/src/AiDevHelpers.Bridge.csproj",
       "framework": "net48",
       "reason": "The bridge loads into the Visual Studio extension host as .NET Framework 4.8 (see the System.Text.Json pin note in CLAUDE.md)."
+    },
+    {
+      "project": "src/Helpers/RoslynHelper.Shared/src/AiDevHelpers.Helpers.RoslynHelper.Shared.csproj",
+      "framework": "net48",
+      "reason": "Shared Roslyn handler for the .NET Framework 4.8 helper, which runs inside the Visual Studio extension host."
+    },
+    {
+      "project": "src/Helpers/RoslynHelper48/src/AiDevHelpers.Helpers.RoslynHelper48.csproj",
+      "framework": "net48",
+      "reason": "Roslyn helper for Visual Studio extension hosts that load .NET Framework 4.8 assemblies."
+    },
+    {
+      "project": "src/Helpers/RoslynHelper48/tests/AiDevHelpers.Helpers.RoslynHelper48.Tests.csproj",
+      "framework": "net48",
+      "reason": "Tests the .NET Framework 4.8 Roslyn helper, so it targets the same framework."
     }
   ]
 }

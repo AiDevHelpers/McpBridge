@@ -26,6 +26,19 @@ public static class IdeInstanceRouter
     /// </summary>
     public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null, int? instancePid = null)
     {
+        // Edit actions for a VS Code solution go to its Roslyn helper; everything else keeps the bridge path below.
+        var route = RoslynRouting.DecideAcross(action, ide, solutionPath, FileArguments(args), RoslynHelperRegistry.FindForSolution);
+        if (route.Kind == RoslynRouteKind.NoHelper)
+        {
+            return JsonSerializer.Serialize(new { ide = "VsCode", solution_path = solutionPath, ok = false, error = route.Error });
+        }
+
+        if (route.Kind == RoslynRouteKind.Helper && route.Helper is { } helper)
+        {
+            var helperTarget = new VsInstance(helper.Pid, helper.PipeName, helper.SolutionPath, DateTime.UtcNow, "VsCode", Array.Empty<string>());
+            return await SendAsync(helperTarget, action, args, ct);
+        }
+
         var instances = VsInstanceRegistry.ListRunning();
         if (!string.IsNullOrWhiteSpace(ide))
         {
@@ -82,6 +95,39 @@ public static class IdeInstanceRouter
         }
 
         return await SendAsync(target, action, args, ct);
+    }
+
+    /// <summary>The <c>file</c> argument of an action, when it has one; the routing reads its project's framework.</summary>
+    private static List<string> FileArguments(object args)
+    {
+        var files = new List<string>();
+        var element = JsonSerializer.SerializeToElement(args);
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return files;
+        }
+
+        foreach (var key in new[] { "file", "anchorFile", "methodFile", "testFile", "targetFile" })
+        {
+            if (element.TryGetProperty(key, out var value) && value.ValueKind == JsonValueKind.String && value.GetString() is { } path)
+            {
+                files.Add(path);
+            }
+        }
+
+        // Caller edits name the files whose call sites change, so they count toward the framework too.
+        if (element.TryGetProperty("callerEdits", out var edits) && edits.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var edit in edits.EnumerateArray())
+            {
+                if (edit.TryGetProperty("file", out var path) && path.ValueKind == JsonValueKind.String && path.GetString() is { } callerFile)
+                {
+                    files.Add(callerFile);
+                }
+            }
+        }
+
+        return files;
     }
 
     /// <summary>JSON for <c>IdeListInstances</c>: every running instance with its solution.</summary>

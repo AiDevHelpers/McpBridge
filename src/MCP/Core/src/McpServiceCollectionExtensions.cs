@@ -7,6 +7,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Server;
+using TokenSaver.AgentHelpers.Anthropic;
+using TokenSaver.AgentHelpers.Core.Extensions;
+using TokenSaver.AgentHelpers.Core.Services;
+using TokenSaver.AgentHelpers.DeepSeek;
+using TokenSaver.AgentHelpers.OpenSource;
+using TokenSaver.AgentHelpers.Qwen;
 
 namespace AiDevHelpers.MCP.Core;
 
@@ -48,6 +54,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.ServerControlService>();
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.BridgeSettingsService>();
         services.AddSingleton<ProcessElevRunner>();
         services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());
@@ -63,12 +70,22 @@ public static class McpServiceCollectionExtensions
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.EventAutoSubscribeService>();
 
+        // Caller-aware formatting (AiDevHelpers.AgentHelpers): the model adapter and client adapter for each caller.
+        services.AddAgentHelpers()
+            .AddAdapter<AnthropicAgentAdapter>()
+            .AddAdapter<DeepSeekAgentAdapter>()
+            .AddAdapter<QwenAgentAdapter>()
+            .AddAdapter<OpenSourceAgentAdapter>()
+            .AddAdapter<CopilotClientAdapter>()
+            .AddAdapter<CursorClientAdapter>()
+            .AddAdapter<ContinueClientAdapter>();
+
         return services
             .AddMcpServer()
             .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
             {
                 // Remember this chat's server so a control change can be pushed to it, and refuse calls while not running.
-                AiDevHelpers.MCP.Core.Services.ControlSession.Server = context.Server;
+                AiDevHelpers.MCP.Core.Services.ControlSession.Remember(context.Server);
                 var refusal = AiDevHelpers.MCP.Core.Services.ServerControlGate.Refusal(
                     context.Params?.Name,
                     AiDevHelpers.MCP.Core.Services.ServerControl.Read());
@@ -81,7 +98,57 @@ public static class McpServiceCollectionExtensions
                     };
                 }
 
-                return await next(context, ct);
+                // A token planned in another chat session cannot be confirmed here.
+                var sessionId = context.Server.SessionId ?? string.Empty;
+                if (context.Params?.Arguments is { } arguments
+                    && arguments.TryGetValue("token", out var suppliedToken)
+                    && suppliedToken.ValueKind == System.Text.Json.JsonValueKind.String
+                    && !PlanOwnership.MayUse(suppliedToken.GetString() ?? string.Empty, sessionId))
+                {
+                    return new ModelContextProtocol.Protocol.CallToolResult
+                    {
+                        IsError = true,
+                        Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = Strings.Get("TokenOtherSession") }],
+                    };
+                }
+
+                // A dangerous tool needs the person's yes on the tray for this exact call. Only a host that registers a channel (HTTP) asks;
+                // stdio registers none and keeps its behaviour.
+                var approvalChannel = context.Services?.GetService<IApprovalChannel>();
+                var toolName = context.Params?.Name;
+                if (approvalChannel is not null && ToolClassification.IsDangerous(toolName))
+                {
+                    var argumentsJson = System.Text.Json.JsonSerializer.Serialize(context.Params?.Arguments);
+                    if (!await ApprovalGate.ApproveAsync(approvalChannel, toolName!, argumentsJson, () => DateTime.UtcNow, ct).ConfigureAwait(false))
+                    {
+                        return new ModelContextProtocol.Protocol.CallToolResult
+                        {
+                            IsError = true,
+                            Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = Strings.Get("ApprovalRefused") }],
+                        };
+                    }
+                }
+
+                var result = await next(context, ct);
+                foreach (var block in result.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>())
+                {
+                    PlanOwnership.RecordFrom(block.Text, sessionId);
+                }
+
+                // Fit the text to this caller's token budget (AgentHelpers). Runs after the plan tokens are recorded, so a cut never hides one.
+                var registry = context.Services?.GetService<AgentAdapterRegistry>();
+                if (registry is not null)
+                {
+                    var caller = AgentFormatting.CallerFrom(context.Server.ClientInfo?.Name, context.Server.ClientInfo?.Version, null, null);
+                    var format = AgentFormatting.FormatFor(registry, caller);
+                    result.Content = result.Content
+                        .Select(block => block is ModelContextProtocol.Protocol.TextContentBlock text
+                            ? new ModelContextProtocol.Protocol.TextContentBlock { Text = AgentFormatting.Fit(text.Text, format) }
+                            : block)
+                        .ToList();
+                }
+
+                return result;
             }))
             .WithResources<McpDocumentationResources>()
             .WithTools<IdeTools>()
@@ -111,4 +178,22 @@ public static class McpServiceCollectionExtensions
             .WithTools<ToolInstallTools>()
             .WithTools<DotnetDiagTools>();
     }
+}
+
+/// <summary>
+/// Marks an MCP tool that only reads or changes nothing outside the chat. Every tool carries exactly one of <see cref="SafeToolAttribute"/>
+/// or <see cref="DangerousToolAttribute"/>; a test fails for a tool with neither.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class SafeToolAttribute : Attribute
+{
+}
+
+/// <summary>
+/// Marks an MCP tool that runs commands, kills processes or changes the machine. Over HTTP it needs the person's confirmation
+/// before it runs (unit 1c of docs/plans/2026-11-26-tray-service.md).
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class DangerousToolAttribute : Attribute
+{
 }

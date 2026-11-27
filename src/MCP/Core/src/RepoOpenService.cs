@@ -61,25 +61,19 @@ internal sealed class RepoOpenService(IElevVerifier verifier, IElevScanner scann
 
     private static async Task PushAsync(string text, object details)
     {
-        var server = ControlSession.Server;
-        if (server is null)
-        {
-            return;
-        }
-
         // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. A client that ignores it
         // can still run the elev --verify check itself. Revisit when the SDK offers a replacement.
 #pragma warning disable MCP9005
         try
         {
-            await server.SendNotificationAsync(
+            await ControlSession.BroadcastAsync(server => server.SendNotificationAsync(
                 NotificationMethods.LoggingMessageNotification,
                 new LoggingMessageNotificationParams
                 {
                     Level = LoggingLevel.Warning,
                     Logger = "AiDevHelpers.ScriptHelper",
                     Data = System.Text.Json.JsonSerializer.SerializeToElement(new { details, message = text }),
-                });
+                }));
         }
 #pragma warning restore MCP9005
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)

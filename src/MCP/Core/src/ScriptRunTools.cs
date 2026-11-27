@@ -22,6 +22,7 @@ internal sealed class ScriptRunTools(ScriptRunService service, IOptions<ScriptWa
     };
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Run a script from a repo (.ps1, .cmd, .bat, .sh, .py, .js) with the interpreter that fits it: PowerShell 7 or 5.1 from " +
         "#Requires, cmd, Git Bash, Python or Node. Output is captured, the run is stopped after the timeout or after a stretch with no " +

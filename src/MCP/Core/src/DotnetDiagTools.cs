@@ -20,6 +20,7 @@ internal sealed class DotnetDiagTools(DotnetDiagService service)
     };
 
     [McpServerTool]
+    [SafeTool]
     [Description(
         "Wrap the .NET diagnostic tools. action 'status' lists each tool with its path and version, or that it is missing (with the " +
         "install command). 'processes' lists .NET processes (dotnet-dump ps). 'stack' prints managed stacks for pid. 'dump' writes a " +

@@ -10,30 +10,44 @@ namespace AiDevHelpers.Helpers.RoslynHelper;
 public sealed class RoslynRequestHandler
 {
     private readonly Func<string?> _solutionPath;
+    private readonly string _framework;
     private readonly SolutionLoader _loader;
     private readonly ActionDispatcher _dispatcher = new();
+    private Microsoft.CodeAnalysis.Solution? _solution;
 
-    public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null)
+    public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null, string framework = "net10")
     {
+        _framework = framework;
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
         _loader = loader ?? new SolutionLoader();
         _dispatcher.Register("health", _ => Task.FromResult<object>(new
         {
             ok = true,
-            pid = Environment.ProcessId,
+            pid = Process.GetCurrentProcess().Id,
             solutionPath = _solutionPath(),
+            framework = _framework,
         }));
         _dispatcher.Register("loadSolution", LoadSolutionAsync);
+        PlanActions.Register(_dispatcher, () => _solution, s => _solution = s);
+        ListUnusedActions.Register(_dispatcher, () => _solution);
+        RenameSymbolActions.Register(_dispatcher, () => _solution, s => _solution = s);
     }
 
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
     public Task<object> InvokeAsync(string action, JsonElement args) => _dispatcher.InvokeAsync(action, args);
 
+    /// <summary>True when the helper answers this action. The parity test uses it to compare with the VS bridge's actions.</summary>
+    public bool HandlesAction(string action) => _dispatcher.Has(action);
+
+    /// <summary>Every action the helper answers, health and loadSolution included.</summary>
+    public IReadOnlyList<string> HandledActions => _dispatcher.Names;
+
     private async Task<object> LoadSolutionAsync(JsonElement args)
     {
         var solutionPath = args.GetProperty("solutionPath").GetString()
-            ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
+            ?? throw new InvalidOperationException(Strings.Get("LoadSolutionNeedsPath"));
         var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
+        _solution = loaded.Solution;
         return new
         {
             ok = true,

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The net48 Roslyn helper: loads net48 and VSSDK solutions with the Framework MSBuild from Visual Studio. Same actions and
+       reply shapes as the net10 helper (RoslynHelper), from the shared project. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>RoslynHelper48</AssemblyName>
+    <RootNamespace>AiDevHelpers.Helpers.RoslynHelper48</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
+    <ProjectReference Include="..\..\RoslynHelper.Shared\src\AiDevHelpers.Helpers.RoslynHelper.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

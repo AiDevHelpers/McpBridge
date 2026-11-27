@@ -12,13 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
     <ProjectReference Include="..\..\..\Installers\Vs2026\Engines\src\AiDevHelpers.Installers.Vs2026.Engines.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.12.0" />
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.11.2" />
-    <!-- Runtime comes from the registered MSBuild SDK, not a copy in the output (Locator error MSBL001). -->
-    <PackageReference Include="Microsoft.Build.Framework" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.NET.StringTools" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
+    <ProjectReference Include="..\..\RoslynHelper.Shared\src\AiDevHelpers.Helpers.RoslynHelper.Shared.csproj" />
   </ItemGroup>
 </Project>

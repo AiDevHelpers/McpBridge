@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
 
 
 
@@ -161,7 +163,24 @@ public sealed class BridgeServer : IDisposable
             }
 
             var args = root.TryGetProperty("args", out var a) ? a.Clone() : default;
-            var result = await _invoke(action, args).ConfigureAwait(false);
+            var call = _invoke(action, args);
+            var finished = await Task.WhenAny(call, Task.Delay(ActionLimit)).ConfigureAwait(false);
+            if (finished != call)
+            {
+                // The UI thread did not answer in time, usually because a dialog is open. Tell subscribers, then reply instead of holding the caller.
+                try
+                {
+                    ActionTimedOut?.Invoke(action);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogException(ex);
+                }
+
+                return JsonSerializer.Serialize(new { ok = false, pid = System.Diagnostics.Process.GetCurrentProcess().Id, error = "The IDE did not answer in time; a dialog may be open." });
+            }
+
+            var result = await call.ConfigureAwait(false);
             return JsonSerializer.Serialize(new { ok = true, pid = System.Diagnostics.Process.GetCurrentProcess().Id, result });
         }
         catch (Exception ex)
@@ -174,6 +193,12 @@ public sealed class BridgeServer : IDisposable
     // Answered without touching Visual Studio, so it reports even when the UI thread is busy.
     /// <summary>True while the UI thread answers the watchdog's ping. Set by the host; defaults to true when no host sets it.</summary>
     public Func<bool>? UiResponsive { get; set; }
+
+    /// <summary>How long one action may take on the IDE's UI thread before the caller gets an error. Default 60 seconds.</summary>
+    public TimeSpan ActionLimit { get; set; } = TimeSpan.FromSeconds(60);
+
+    /// <summary>Called with the action name when an action passes <see cref="ActionLimit"/>. The host uses it to report an open dialog.</summary>
+    public Action<string>? ActionTimedOut { get; set; }
 
     private object Health() => new
     {
@@ -193,5 +218,55 @@ public sealed class BridgeServer : IDisposable
     {
         _cts.Cancel();
         _cts.Dispose();
+    }
+}
+
+/// <summary>Finds the titles of visible Win32 message dialogs (class #32770) owned by one process. Used to name a dialog that blocks the IDE.</summary>
+public static class DialogWindows
+{
+    private const string DialogClass = "#32770";
+
+    private delegate bool EnumWindowsProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetClassName(IntPtr hwnd, StringBuilder className, int maxCount);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int maxCount);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(IntPtr hwnd);
+
+    /// <summary>Titles of the visible message dialogs that process <paramref name="processId"/> has open. Empty when there are none.</summary>
+    public static IReadOnlyList<string> OpenTitles(int processId)
+    {
+        var titles = new List<string>();
+        EnumWindows((hwnd, _) =>
+        {
+            GetWindowThreadProcessId(hwnd, out var owner);
+            if (owner != (uint)processId || !IsWindowVisible(hwnd))
+            {
+                return true;
+            }
+
+            var cls = new StringBuilder(64);
+            GetClassName(hwnd, cls, cls.Capacity);
+            if (cls.ToString() != DialogClass)
+            {
+                return true;
+            }
+
+            var text = new StringBuilder(512);
+            GetWindowText(hwnd, text, text.Capacity);
+            titles.Add(text.ToString());
+            return true;
+        }, IntPtr.Zero);
+        return titles;
     }
 }
