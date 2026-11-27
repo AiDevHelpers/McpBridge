@@ -1,5 +1,12 @@
 # Changelog
 
+## Tray client library (unreleased)
+
+- New `AiDevHelpers.Mcp.Client` library: reads the HTTP MCP's endpoint record and token, and calls `/healthz`. The Host service and the tray both use it.
+- The tray's status monitor reports the HTTP MCP as Connected, Reconnecting or Disconnected, with a reason. It refuses to send the token to a process that does not own the port.
+- The tray's service monitor reports the `AiDevHelpers` Windows service state without needing administrator rights.
+- The tray's approval server is the pipe end of dangerous-tool confirmation: first instance, current user only, client process checked, denied on timeout or error. The dialog arrives with the tray shell.
+
 ## MCP over HTTP (unreleased)
 
 - New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1`, requires a bearer token (file readable only by your user and SYSTEM), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `endpoint.json` and the exe exits with code 2. The stdio exe is unchanged. See `docs/mcp-http.md`.

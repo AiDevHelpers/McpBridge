@@ -33,6 +33,18 @@ pwsh scripts/service-uninstall.ps1
 
 If you are logged on over RDP, the server runs in that session; with a local console user it runs in the console session. One server serves one user.
 
+## The tray's view of the server
+
+The tray (`AiDevHelpers.Tray`) reads the same endpoint record and token, through the shared `AiDevHelpers.Mcp.Client` library, and reports the server's state:
+
+- **Connected:** the record is valid, the process listening on the port is the one that wrote the record, and `/healthz` answers 200 with the same pid.
+- **Reconnecting:** a connected server failed its health check fewer than three times in a row.
+- **Disconnected:** with a reason: `no-endpoint`, `endpoint-invalid`, a startup error such as `port-in-use`, `no-token`, `not-listening`, `listener-mismatch` (another process owns the port, so the token is never sent), or `unhealthy`.
+
+The tray never sends the token to a process that does not own the port. The state is observable: a new subscriber gets the current state at once, and polling runs only while someone subscribes.
+
+Services are read the same way: the tray reports the `AiDevHelpers` service as running, stopped, pending, not installed, or unknown. Starting and stopping go through the pinned install scripts with a UAC prompt.
+
 ## What the server checks
 
 Every request must pass, in order:
