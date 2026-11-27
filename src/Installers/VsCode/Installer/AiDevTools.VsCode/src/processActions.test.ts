@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parsePsOutput, parseTasklistCsv } from "./processList.js";
 import { recordDapMessage, forgetSession } from "./exceptionFilters.js";
 
@@ -84,7 +84,16 @@ describe("process list shaping", () => {
 });
 
 describe("processActions", () => {
+    // The fixture is Windows tasklist output, so pretend to be Windows: on other hosts the list would run ps instead.
+    const realPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+    afterEach(() => {
+        if (realPlatform) {
+            Object.defineProperty(process, "platform", realPlatform);
+        }
+    });
+
     beforeEach(() => {
+        Object.defineProperty(process, "platform", { value: "win32" });
         fake.stdout = TASKLIST;
         fake.commands.length = 0;
         state.activeDebugSession = undefined;

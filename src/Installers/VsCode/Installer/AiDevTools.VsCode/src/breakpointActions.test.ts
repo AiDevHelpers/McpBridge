@@ -46,7 +46,9 @@ const { runIdeAction } = await import("./ideActions.js");
 const { hitConditionFor } = await import("./breakpointActions.js");
 const vscodeMock = await import("vscode");
 
-const FILE = "F:/work/app/Program.cs";
+// Windows drive paths are only absolute on Windows; on other hosts (CI runs Linux) use a rooted path.
+const DRIVE = process.platform === "win32" ? "F:" : "";
+const FILE = DRIVE + "/work/app/Program.cs";
 
 // Breakpoints are added as real SourceBreakpoint instances, because the code under test filters with instanceof.
 function addBreakpointAt(line: number, extra: { enabled?: boolean; condition?: string; hitCondition?: string } = {}) {
