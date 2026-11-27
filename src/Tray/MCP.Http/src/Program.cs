@@ -10,7 +10,8 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
 {
     // Stateful sessions: the plan-then-confirm tokens and the log subscriptions are per session (see the plan's static-state audit).
     options.Stateless = false;
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
+    options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
 });
 
 var app = builder.Build();
