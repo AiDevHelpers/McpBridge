@@ -33,6 +33,9 @@ public sealed class RoslynRequestHandler
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
     public Task<object> InvokeAsync(string action, JsonElement args) => _dispatcher.InvokeAsync(action, args);
 
+    /// <summary>True when the helper answers this action. The parity test uses it to compare with the VS bridge's actions.</summary>
+    public bool HandlesAction(string action) => _dispatcher.Has(action);
+
     private async Task<object> LoadSolutionAsync(JsonElement args)
     {
         var solutionPath = args.GetProperty("solutionPath").GetString()
