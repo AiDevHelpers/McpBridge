@@ -54,6 +54,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 
 - `server_control_set` and `server_control_status` pause, close and resume every server for an update.
 - `self_test_list` and `self_test_read` expose each helper's self-test. See [self_test.md](self_test.md).
+- `AiDevHelpers.MCP.Http` serves the same tools over streamable HTTP on `127.0.0.1` for several clients at once: bearer token, Host and Origin checks, stateful sessions, `/healthz`. See [mcp-http.md](mcp-http.md).
 
 ## Packaging and CI
 

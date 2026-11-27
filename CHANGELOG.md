@@ -1,5 +1,9 @@
 # Changelog
 
+## MCP over HTTP (unreleased)
+
+- New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1`, requires a bearer token (file readable only by your user and SYSTEM), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `endpoint.json` and the exe exits with code 2. The stdio exe is unchanged. See `docs/mcp-http.md`.
+
 ## LocalizationHelper (unreleased)
 
 - New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
