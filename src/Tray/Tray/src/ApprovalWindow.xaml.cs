@@ -15,6 +15,11 @@ public partial class ApprovalWindow : Window
     private ApprovalWindow(ApprovalRequest request)
     {
         InitializeComponent();
+        Title = Strings.Get("ApprovalTitle");
+        PromptText.Text = Strings.Get("ApprovalPrompt");
+        DetailText.Text = Strings.Get("ApprovalDetail");
+        DenyButton.Content = Strings.Get("Deny");
+        AllowButton.Content = Strings.Get("AllowOnce");
         ToolText.Text = request.ToolName;
         AllowButton.Click += (_, _) => Finish(true);
         DenyButton.Click += (_, _) => Finish(false);

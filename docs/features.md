@@ -62,6 +62,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - `server_control_set` and `server_control_status` pause, close and resume every server for an update.
 - `self_test_list` and `self_test_read` expose each helper's self-test. See [self_test.md](self_test.md).
 - `AiDevHelpers.MCP.Http` serves the same tools over streamable HTTP on `127.0.0.1` for several clients at once: bearer token, Host and Origin checks, stateful sessions, `/healthz`. See [mcp-http.md](mcp-http.md).
+- The tray's IDE Instances tab lists running Visual Studio and VS Code instances with their repo, branch, path, start time and user. It is read-only.
 - The tray reports the HTTP MCP's connection state (Connected, Reconnecting, Disconnected, with a reason) and the `AiDevHelpers` service state. It only sends the token to the process that owns the MCP port. See [mcp-http.md](mcp-http.md#the-trays-view-of-the-server).
 
 ## Packaging and CI

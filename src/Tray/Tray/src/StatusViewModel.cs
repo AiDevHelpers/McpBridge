@@ -42,7 +42,13 @@ public sealed class StatusViewModel : ObservableObject, IDisposable
     public TrayIconState Icon
     {
         get => _icon;
-        private set => SetProperty(ref _icon, value);
+        private set
+        {
+            if (SetProperty(ref _icon, value))
+            {
+                OnPropertyChanged(nameof(IconText));
+            }
+        }
     }
 
     public string Headline
@@ -54,8 +60,33 @@ public sealed class StatusViewModel : ObservableObject, IDisposable
     public int? Sessions
     {
         get => _sessions;
-        private set => SetProperty(ref _sessions, value);
+        private set
+        {
+            if (SetProperty(ref _sessions, value))
+            {
+                OnPropertyChanged(nameof(SessionsText));
+            }
+        }
     }
+
+    /// <summary>The endpoint line, localized.</summary>
+    public string EndpointText => Strings.Format("EndpointLine", Endpoint);
+
+    /// <summary>The session count line, localized; "not reported" when the server gives no count.</summary>
+    public string SessionsText => Strings.Format(
+        "SessionsLine",
+        Sessions is { } count ? count.ToString(System.Globalization.CultureInfo.CurrentCulture) : Strings.Get("SessionsUnknown"));
+
+    /// <summary>The tray state line, localized.</summary>
+    public string IconText => Strings.Format("TrayStateLine", Strings.Get(IconStateKey(Icon)));
+
+    private static string IconStateKey(TrayIconState state) => state switch
+    {
+        TrayIconState.Running => "StateRunning",
+        TrayIconState.Degraded => "StateDegraded",
+        TrayIconState.Stopped => "StateStopped",
+        _ => "StateDisconnected",
+    };
 
     public void Dispose() => _subscription.Dispose();
 
