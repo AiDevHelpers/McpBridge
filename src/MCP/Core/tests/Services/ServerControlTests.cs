@@ -149,6 +149,83 @@ public sealed class ServerControlTests : IDisposable
         Assert.Contains("ScriptRunTools.ScriptRun", dangerous);
     }
 
+    private sealed class FakeTray(ApprovalReply? reply, Exception? failure = null) : IApprovalChannel
+    {
+        public ApprovalRequest? Seen { get; private set; }
+
+        public Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct)
+        {
+            Seen = request;
+            if (failure is not null)
+            {
+                throw failure;
+            }
+
+            return Task.FromResult(reply is null ? null : reply with { Nonce = request.Nonce, ArgumentsHash = request.ArgumentsHash });
+        }
+    }
+
+    private static readonly DateTime Now = new(2026, 11, 27, 12, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task AYesForThisCallIsAccepted()
+    {
+        var tray = new FakeTray(new ApprovalReply("", "", Approved: true));
+
+        Assert.True(await ApprovalGate.ApproveAsync(tray, "terminal_session", "{\"action\":\"open\"}", () => Now, CancellationToken.None));
+        Assert.Equal("terminal_session", tray.Seen!.ToolName);
+    }
+
+    [Fact]
+    public async Task ANoIsRefused()
+    {
+        var tray = new FakeTray(new ApprovalReply("", "", Approved: false));
+
+        Assert.False(await ApprovalGate.ApproveAsync(tray, "script_run", "{}", () => Now, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task NoTrayMeansNoApproval()
+    {
+        Assert.False(await ApprovalGate.ApproveAsync(null, "script_run", "{}", () => Now, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task AChannelFailureIsRefused()
+    {
+        var tray = new FakeTray(null, new InvalidOperationException("tray gone"));
+
+        Assert.False(await ApprovalGate.ApproveAsync(tray, "script_run", "{}", () => Now, CancellationToken.None));
+    }
+
+    [Fact]
+    public void AReplyWithAnotherNonceOrHashIsRefused()
+    {
+        var request = ApprovalGate.CreateRequest("script_run", "{\"a\":1}", Now);
+
+        Assert.False(ApprovalGate.Accepts(request, new ApprovalReply("other", request.ArgumentsHash, true), Now));
+        Assert.False(ApprovalGate.Accepts(request, new ApprovalReply(request.Nonce, ApprovalGate.HashOf("script_run", "{\"a\":2}"), true), Now));
+        Assert.True(ApprovalGate.Accepts(request, new ApprovalReply(request.Nonce, request.ArgumentsHash, true), Now));
+    }
+
+    [Fact]
+    public void AnExpiredApprovalIsRefused()
+    {
+        var request = ApprovalGate.CreateRequest("script_run", "{}", Now);
+
+        Assert.False(ApprovalGate.Accepts(request, new ApprovalReply(request.Nonce, request.ArgumentsHash, true), Now + ApprovalGate.Limit + TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public void TheDangerousToolsAreTheOnesTheListNames()
+    {
+        Assert.True(ToolClassification.IsDangerous("terminal_session"));
+        Assert.True(ToolClassification.IsDangerous("script_run"));
+        Assert.True(ToolClassification.IsDangerous("run_elevated_script"));
+        Assert.True(ToolClassification.IsDangerous("ide_kill_process"));
+        Assert.False(ToolClassification.IsDangerous("server_control_status"));
+    }
+
     [Fact]
     public void ATokenPlannedInOneSessionCannotBeUsedFromAnother()
     {

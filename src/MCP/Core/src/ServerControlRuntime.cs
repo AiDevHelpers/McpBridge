@@ -1,4 +1,7 @@
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -90,6 +93,105 @@ public static class PlanOwnership
         {
             // Not JSON, so no token to learn.
         }
+    }
+}
+
+/// <summary>A request, through the tray, for the person's yes on one call to a dangerous tool. The reply must echo the nonce and hash.</summary>
+public sealed record ApprovalRequest(string Nonce, string ToolName, string ArgumentsHash, DateTime ExpiresUtc);
+
+/// <summary>The tray's answer. Approved is true only when the person said yes for this call.</summary>
+public sealed record ApprovalReply(string Nonce, string ArgumentsHash, bool Approved);
+
+/// <summary>The channel to the person. A null reply, or no reply in time, means no approval.</summary>
+public interface IApprovalChannel
+{
+    Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct);
+}
+
+/// <summary>
+/// Asks for a dangerous call's approval and accepts only an exact yes: the nonce and the argument hash must match this request, and the
+/// request must not have expired. Every other outcome is a refusal (fail closed). Pure except for the channel and the clock.
+/// </summary>
+public static class ApprovalGate
+{
+    public static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);
+
+    public static ApprovalRequest CreateRequest(string toolName, string argumentsJson, DateTime nowUtc) =>
+        new(Convert.ToHexString(RandomNumberGenerator.GetBytes(16)), toolName, HashOf(toolName, argumentsJson), nowUtc + Limit);
+
+    public static string HashOf(string toolName, string argumentsJson) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(toolName + "\n" + argumentsJson)));
+
+    /// <summary>True only for a yes that echoes this request's nonce and argument hash, before it expires.</summary>
+    public static bool Accepts(ApprovalRequest request, ApprovalReply? reply, DateTime nowUtc)
+    {
+        if (reply is null || !reply.Approved || nowUtc > request.ExpiresUtc)
+        {
+            return false;
+        }
+
+        return SameText(reply.Nonce, request.Nonce) && SameText(reply.ArgumentsHash, request.ArgumentsHash);
+    }
+
+    /// <summary>Asks the channel and returns whether the call may run. No channel, a timeout, an error or a refusal all mean no.</summary>
+    public static async Task<bool> ApproveAsync(IApprovalChannel? channel, string toolName, string argumentsJson, Func<DateTime> now, CancellationToken ct)
+    {
+        if (channel is null)
+        {
+            return false;
+        }
+
+        var request = CreateRequest(toolName, argumentsJson, now());
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        limit.CancelAfter(Limit);
+        try
+        {
+            var reply = await channel.RequestAsync(request, limit.Token).ConfigureAwait(false);
+            return Accepts(request, reply, now());
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            return false;
+        }
+    }
+
+    private static bool SameText(string a, string b)
+    {
+        var x = Encoding.UTF8.GetBytes(a);
+        var y = Encoding.UTF8.GetBytes(b);
+        return x.Length == y.Length && CryptographicOperations.FixedTimeEquals(x, y);
+    }
+}
+
+/// <summary>Which MCP tools are dangerous, read from their [DangerousTool] attribute. A tool's name is its method name in snake_case.</summary>
+public static class ToolClassification
+{
+    private static readonly Lazy<HashSet<string>> DangerousNames = new(Collect, isThreadSafe: true);
+
+    public static bool IsDangerous(string? toolName) => toolName is not null && DangerousNames.Value.Contains(toolName);
+
+    private static HashSet<string> Collect()
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var type in typeof(ToolClassification).Assembly.GetTypes())
+        {
+            if (type.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolTypeAttribute), false).Length == 0)
+            {
+                continue;
+            }
+
+            foreach (var method in type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic
+                                                   | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static))
+            {
+                if (method.GetCustomAttributes(typeof(DangerousToolAttribute), false).Length > 0
+                    && method.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolAttribute), false).Length > 0)
+                {
+                    names.Add(Regex.Replace(method.Name, "(?<!^)([A-Z])", "_$1").ToLowerInvariant());
+                }
+            }
+        }
+
+        return names;
     }
 }
 
