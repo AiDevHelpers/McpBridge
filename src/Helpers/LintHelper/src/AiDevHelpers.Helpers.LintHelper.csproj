@@ -11,6 +11,9 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\LocalizationHelper\src\AiDevHelpers.Helpers.LocalizationHelper.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
   </ItemGroup>
   <ItemGroup>

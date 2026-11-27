@@ -1,11 +1,46 @@
 # Changelog
 
+## Tray (unreleased)
+
+- The tray reads the HTTP MCP's state (`HealthFeed`: Connected, Disconnected or PortConflict) and the `AiDevHelpers` service state (`ServiceStatus`) without needing administrator rights.
+- The tray hosts the approval pipe (`ApprovalPipeHost`): first instance, current user only. A dangerous tool call over HTTP runs only on an exact yes; no, no tray, or a timeout refuses it. The approval dialog arrives with the tray shell.
+
+## MCP over HTTP (unreleased)
+
+- New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1` on the configured port (`Http:Port`, default 5058), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `status.json` in `%ProgramData%\AiDevHelpers\mcp-http`. The stdio exe is unchanged. See `docs/mcp-http-clients.md`.
+- New `AiDevHelpers.Host` Windows service that keeps the HTTP MCP running in your logon session (console or RDP), with restart backoff, health checks and a hold while servers are closing for an update. `scripts/service-install.ps1` and `scripts/service-uninstall.ps1` install and remove it; both are pinned by SHA-256 and support `-DryRun`.
+- Over HTTP, tools marked `[DangerousTool]` need the user's confirmation in the tray for each call. Control and repo notices now reach every connected client instead of the last one.
+
+## Item templates (unreleased)
+
+- New `ide_list_item_templates` (Visual Studio only): lists the item templates Add New Item offers, with name, description, language, category and path, so `ide_add_project_item` mode fromNew has a template path to use. Filters: `filter` (name or description), `language`, `limit`.
+>
+## LocalizationHelper (unreleased)
+
+- New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
+- New `localization_sync_check` and `localization_sync` (plan, then confirm with a token): compare culture resx files with the neutral one and add stubs, create a culture file or remove extra keys. The resx comment `same-in-culture` marks a value that is meant to equal the neutral text.
+- New `localization_extract` (plan, then confirm with a token): moves hardcoded literals into the project's `Strings.resx` and rewrites them as `Strings.Get` or `Strings.Format`; literals it cannot rewrite safely are listed as skipped with a reason. `string_scan` findings now carry `Column` and `Interpolated`.
+- New `localization_culture_check`: lists culture-sensitive calls with no culture argument, using Roslyn (`Microsoft.CodeAnalysis.CSharp` 5.12.0, new package in LocalizationHelper). Report only.
+- New `localization_pseudo` (plan, then confirm with a token): writes a pseudo-localized `Strings.qps-ploc.resx` to find unlocalized text and layout limits.
+- New `localization_translate` (plan, then confirm with a token): translates culture stubs through the client's model with MCP sampling, checks placeholders, and marks results `machine-translated`. It needs a client that supports sampling.
+
+## Instance check and event filter limits (unreleased)
+
+- `ide_list_instances` takes `solutionPath`, `expectedBranch` and `expectedWorktree`, and adds a `check`: whether the solution is open, and whether an instance is open on the expected branch and worktree.
+- Instances list their git branch and worktree.
+- `.claude/aidevhelpers.json` takes an `eventFilter` object (`waitSeconds`, `maxEvents`, `maxEventTextChars`, `maxSummaryMessageChars`, `maxReplyChars`). A bad value falls back to its default and is listed in `settings_warnings`.
+- `ide_build` reads the router's `instance_pid`, so it no longer fails with "An error occurred".
+- Replies over `maxReplyChars` are cut to fit and marked `reply_truncated`.
+
 ## Project scaffolding tools (unreleased)
 
 - New ProjectHelper: `project_types_list`, `project_audit`, `project_fix_plan`/`project_fix_confirm`, `project_add_plan`/`project_add_confirm`, `project_add_test_plan`/`project_add_test_confirm`.
 - Repo standards in `.aidevhelpers/project-standards.json`, read through repo settings and validated. The repo's own exceptions (net48 for the VS installer and bridge) are seeded.
 - Every write is plan, then confirm, with a single-use token. A failed build restores the files byte for byte.
 - `AiDevTools.VsCode.csproj` now sets `Nullable` and `ImplicitUsings`, as the standards require.
+- Workloads: `workload_list`, `workload_check`, and `workload_install_plan`/`workload_install_confirm`. The install runs through the elevated helper with a pinned workload table (`scripts/workload-install.sha256`).
+- Chat-first approvals: `elev setup tools` is refused before UAC unless `--approved-in-chat` is given. `repo-setup`, terminals, rules and allow-all-preview no longer prompt on the console; they refuse the question and say to ask in chat.
+- Test project planning: with no pinned Test SDK or runner, `project_add_test_plan` asks the user in chat for the version instead of failing.
 
 ## Settings folder renamed
 

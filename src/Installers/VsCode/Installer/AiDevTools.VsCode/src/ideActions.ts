@@ -1,10 +1,54 @@
 import { spawn, type ChildProcess } from "child_process";
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
+import {
+    appliedCloseReply,
+    appliedCloseSolutionReply,
+    appliedSaveReply,
+    dirtyPaths,
+    planCloseReply,
+    planCloseSolutionReply,
+    planSaveReply,
+    refuseDirtyClose,
+    refuseDirtySolution,
+    requireOpenDocument,
+    sameFile,
+    shapeDocumentList,
+} from "./documentActions.js";
 import { OutputBuffer } from "./vendor/core/index.js";
 import { debugOutputStore } from "./debugOutputTracker.js";
 import { t } from "./strings.js";
 import { isGitAction, runGitAction } from "./gitActions.js";
+import { parseHitCountType, setBreakpointCondition, setBreakpointEnabled, type ConditionChange } from "./breakpointActions.js";
+import { debuggerMode, isAttached, shapeDetachAll, shapeProcesses, shapeStackFrames, shapeThreads, type SessionInfo } from "./debugInspect.js";
+import { liveDebugSessions } from "./debugOutputTracker.js";
+import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./processList.js";
+import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
+import { applyReplace, buildSearchPattern, findInFiles, findProjectDirectory, planReplace, walkFiles } from "./textSearch.js";
+import {
+    addItemChange,
+    formatLogLine,
+    infoBarLabels,
+    isInsideDir,
+    isSdkStyle,
+    logLevel,
+    readProjectProperties,
+    removeItemChange,
+    settingReply,
+} from "./projectShell.js";
+import {
+    changedFiles,
+    dedupeLocations,
+    forgetLastEditGroup,
+    lastEditGroup,
+    recordEditGroup,
+    requireCSharpExtension,
+    shapeCodeElements,
+    shapeLocation,
+    type SourceLocation,
+    type SymbolNode,
+} from "./languageActions.js";
 
 // Common IDE actions for VS Code. The names match the Visual Studio bridge (AiDevHelpers.Installers.Vs2026.Core
 // IdeActions.cs), so the MCP caller uses the same calls for either IDE. Actions VS Code's API cannot
@@ -32,6 +76,8 @@ const watches: string[] = [];
 let selectedConfiguration: string | undefined;
 // Named channels written by outputWrite. VS Code cannot read channels back, so each is created once and only appended to.
 const namedChannels = new Map<string, vscode.OutputChannel>();
+// The activity log channel, created on the first writeActivityLog that is confirmed.
+let logChannel: vscode.OutputChannel | undefined;
 
 function writeNamedChannel(name: string, text: string): void {
     let channel = namedChannels.get(name);
@@ -58,6 +104,11 @@ function optionalString(args: Args, key: string): string | undefined {
 function optionalInt(args: Args, key: string): number | undefined {
     const value = args[key];
     return typeof value === "number" ? value : undefined;
+}
+
+function optionalBool(args: Args, key: string): boolean | undefined {
+    const value = args[key];
+    return typeof value === "boolean" ? value : undefined;
 }
 
 function requireInt(args: Args, key: string): number {
@@ -90,6 +141,52 @@ function workspaceRoot(): string {
         throw new Error(t("needsWorkspace"));
     }
     return root;
+}
+
+// The files a findInFiles or replaceInFiles scope names. The Visual Studio "solution" is the workspace here, and
+// "project" is the folder holding the named .csproj. "openDocuments" is the open documents that exist on disk.
+// The scope names are compared with if, not switch: the docs test reads every "case" label in this file as an action.
+function searchScopeFiles(scope: string, project: string | undefined): string[] {
+    if (scope === "solution") {
+        const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+        if (roots.length === 0) {
+            throw new Error(t("needsWorkspace"));
+        }
+        return walkFiles(roots);
+    }
+    if (scope === "project") {
+        if (!project) {
+            throw new Error(t("projectScopeNeedsName"));
+        }
+        const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+        const dir = findProjectDirectory(roots, project);
+        if (dir === undefined) {
+            throw new Error(t("noProjectNamed", project));
+        }
+        return walkFiles([dir]);
+    }
+    if (scope === "openDocuments") {
+        return vscode.workspace.textDocuments
+            .filter((d) => d.uri.scheme === "file" && fs.existsSync(d.uri.fsPath))
+            .map((d) => d.uri.fsPath);
+    }
+    throw new Error(t("unknownScope", scope));
+}
+
+// Session facts the inspection actions need. request "attach" marks a session the debugger attached to.
+function sessionInfo(session: vscode.DebugSession): SessionInfo {
+    const processId = session.configuration.processId;
+    return { name: session.name, request: String(session.configuration.request ?? ""), processId: typeof processId === "number" ? processId : undefined };
+}
+
+// Debugger mode from the active session and its stopped stack item, named as the Visual Studio bridge names it.
+function currentDebuggerMode(): ReturnType<typeof debuggerMode> {
+    return debuggerMode(vscode.debug.activeDebugSession !== undefined, vscode.debug.activeStackItem !== undefined);
+}
+
+function currentThreadId(): number | undefined {
+    const item = vscode.debug.activeStackItem;
+    return item && "threadId" in item ? item.threadId : undefined;
 }
 
 function appendOutput(text: string): void {
@@ -138,6 +235,29 @@ function killTracked(pid: number): Promise<unknown> {
     });
 }
 
+// VS Code's API has no read-only flag on a document. The closest reading is the file's write permission on disk.
+function isReadOnlyOnDisk(uri: vscode.Uri): boolean {
+    if (uri.scheme !== "file" || !fs.existsSync(uri.fsPath)) {
+        return false;
+    }
+    try {
+        fs.accessSync(uri.fsPath, fs.constants.W_OK);
+        return false;
+    } catch {
+        return true;
+    }
+}
+
+// Closes the editor tabs showing a file. A document with no tab is not on screen, so there is no tab to close.
+async function closeTabsFor(fsPath: string): Promise<void> {
+    const tabs = vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .filter((tab) => tab.input instanceof vscode.TabInputText && sameFile(tab.input.uri.fsPath, fsPath));
+    for (const tab of tabs) {
+        await vscode.window.tabGroups.close(tab);
+    }
+}
+
 async function evaluateWatches(): Promise<Array<Record<string, unknown>>> {
     const session = vscode.debug.activeDebugSession;
     const frame = vscode.debug.activeStackItem;
@@ -156,6 +276,201 @@ async function evaluateWatches(): Promise<Array<Record<string, unknown>>> {
         }
     }
     return results;
+}
+
+// Language actions. The C# Dev Kit or the C# extension provides the symbols, so one of them must be installed; without
+// it these throw rather than return empty results. Lines and columns are 1-based, as in the Visual Studio bridge.
+function requireCSharp(): void {
+    requireCSharpExtension((id) => vscode.extensions.getExtension(id));
+}
+
+function languagePosition(args: Args): { uri: vscode.Uri; position: vscode.Position; line: number; column: number } {
+    const uri = resolveFile(requireString(args, "file"));
+    const line = requireInt(args, "line");
+    const column = optionalInt(args, "column") ?? 1;
+    return { uri, position: new vscode.Position(Math.max(0, line - 1), Math.max(0, column - 1)), line, column };
+}
+
+// The name of the word under the caret, or null when there is no word there.
+async function symbolNameAt(uri: vscode.Uri, position: vscode.Position): Promise<string | null> {
+    const doc = await vscode.workspace.openTextDocument(uri);
+    const range = doc.getWordRangeAtPosition(position);
+    return range ? doc.getText(range) : null;
+}
+
+function requireSymbol(name: string | null, uri: vscode.Uri, position: vscode.Position): string {
+    if (name === null) {
+        throw new Error(t("noSymbolAtPosition", uri.fsPath, position.line + 1, position.character + 1));
+    }
+    return name;
+}
+
+function toSourceLocations(items: ReadonlyArray<vscode.Location | vscode.LocationLink>): SourceLocation[] {
+    return items.map((item) => {
+        const target = "targetUri" in item ? { uri: item.targetUri, range: item.targetRange } : { uri: item.uri, range: item.range };
+        return shapeLocation(target.uri.fsPath, target.range.start.line, target.range.start.character);
+    });
+}
+
+async function listCodeElements(args: Args): Promise<unknown> {
+    requireCSharp();
+    const uri = resolveFile(requireString(args, "file"));
+    const symbols = await vscode.commands.executeCommand<Array<vscode.DocumentSymbol | vscode.SymbolInformation> | undefined>(
+        "vscode.executeDocumentSymbolProvider",
+        uri,
+    );
+    // Only DocumentSymbol carries a range; a SymbolInformation list (no hierarchy) is skipped.
+    const documentSymbols = (symbols ?? []).filter((s): s is vscode.DocumentSymbol => "range" in s);
+    return { elements: shapeCodeElements(documentSymbols as unknown as SymbolNode[]) };
+}
+
+async function semanticLocations(action: "semanticDefinition" | "semanticReferences", args: Args): Promise<unknown> {
+    requireCSharp();
+    const { uri, position } = languagePosition(args);
+    const symbol = requireSymbol(await symbolNameAt(uri, position), uri, position);
+    if (action === "semanticDefinition") {
+        const links = await vscode.commands.executeCommand<Array<vscode.Location | vscode.LocationLink> | undefined>(
+            "vscode.executeDefinitionProvider",
+            uri,
+            position,
+        );
+        return { symbol, locations: toSourceLocations(links ?? []) };
+    }
+    // The reference command takes no includeDeclaration argument, so the declaration is reported when the provider includes it.
+    const refs = await vscode.commands.executeCommand<Array<vscode.Location | vscode.LocationLink> | undefined>(
+        "vscode.executeReferenceProvider",
+        uri,
+        position,
+    );
+    return { symbol, locations: dedupeLocations(toSourceLocations(refs ?? [])) };
+}
+
+async function renameSymbolAt(args: Args, confirm: boolean): Promise<unknown> {
+    requireCSharp();
+    const { uri, position, line, column } = languagePosition(args);
+    const newName = requireString(args, "newName");
+    const name = await symbolNameAt(uri, position);
+    const edit = await vscode.commands.executeCommand<vscode.WorkspaceEdit | undefined>(
+        "vscode.executeDocumentRenameProvider",
+        uri,
+        position,
+        newName,
+    );
+    if (name === null || edit === undefined) {
+        throw new Error(t("noSymbolAtPosition", uri.fsPath, line, column));
+    }
+    const files = changedFiles(edit.entries().map(([file]) => file));
+    const change = { symbol: name, new_name: newName, files };
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    if (!(await vscode.workspace.applyEdit(edit))) {
+        throw new Error(t("renameNotApplied"));
+    }
+    recordEditGroup({ name: "renameSymbol", files });
+    return { planned: false, applied: change };
+}
+
+// VS Code's undo is one global stack with no names, so this reverses the last edit group this bridge applied, not a group
+// picked by name. The note in the reply says so.
+async function undoLastGroup(name: string, confirm: boolean): Promise<unknown> {
+    const group = lastEditGroup();
+    if (group === undefined) {
+        throw new Error(t("noEditGroupToUndo"));
+    }
+    const reply = { name, undone: group.name, files: group.files, note: t("undoGroupApproximate") };
+    if (!confirm) {
+        return { planned: true, would: reply };
+    }
+    await vscode.commands.executeCommand("undo");
+    forgetLastEditGroup();
+    return { planned: false, applied: reply };
+}
+
+function requireStringArray(args: Args, key: string): string[] {
+    const value = args[key];
+    if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
+        throw new Error(t("missingArgument", key));
+    }
+    return value as string[];
+}
+
+// The .csproj a project argument names: a path ending in .csproj, or a project name found in the workspace.
+function resolveProjectFile(project: string): string {
+    if (project.toLowerCase().endsWith(".csproj")) {
+        const file = resolveFile(project).fsPath;
+        if (!fs.existsSync(file)) {
+            throw new Error(t("noProjectNamed", project));
+        }
+        return file;
+    }
+    const roots = vscode.workspace.workspaceFolders?.map((f) => f.uri.fsPath) ?? [];
+    if (roots.length === 0) {
+        throw new Error(t("needsWorkspace"));
+    }
+    const wanted = `${project}.csproj`.toLowerCase();
+    const found = walkFiles(roots).find((file) => path.basename(file).toLowerCase() === wanted);
+    if (found === undefined) {
+        throw new Error(t("noProjectNamed", project));
+    }
+    return found;
+}
+
+// A file argument as a path: absolute as given, otherwise relative to the project folder.
+function projectItemPath(projectFile: string, file: string): string {
+    return path.isAbsolute(file) ? file : path.join(path.dirname(projectFile), file);
+}
+
+// SDK-style projects include files by globbing, so a fromFile add needs no csproj edit: the file just has to be in the
+// project folder. fromNew copies the template to the file. Legacy (non-SDK) projects would need a csproj edit, which is refused.
+function addProjectItem(args: Args, confirm: boolean): unknown {
+    const project = requireString(args, "project");
+    const file = requireString(args, "file");
+    const change = addItemChange(project, file, requireString(args, "mode"), optionalString(args, "template"));
+    const projectFile = resolveProjectFile(project);
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    if (!isSdkStyle(fs.readFileSync(projectFile, "utf8"))) {
+        throw new Error(t("addItemNotApplied", file));
+    }
+    const target = projectItemPath(projectFile, file);
+    if (!isInsideDir(path.dirname(projectFile), target)) {
+        throw new Error(t("itemOutsideProjectFolder", file));
+    }
+    if (change.mode === "fromFile") {
+        if (!fs.existsSync(target)) {
+            throw new Error(t("fileNotFound", target));
+        }
+        return { planned: false, applied: change, note: t("sdkGlobNote") };
+    }
+    const templatePath = resolveFile(change.template ?? "").fsPath;
+    if (!fs.existsSync(templatePath)) {
+        throw new Error(t("templateNotFound", templatePath));
+    }
+    if (fs.existsSync(target)) {
+        throw new Error(t("fileAlreadyExists", target));
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(templatePath, target);
+    return { planned: false, applied: change, note: t("sdkGlobNote") };
+}
+
+// Matches the C# version for the item: it is removed from the project and the file stays on disk. For an SDK-style
+// project that removal means excluding the file in the csproj, which this bridge does not edit, so a confirmed
+// remove changes nothing and throws. The plan is still returned without confirm.
+function removeProjectItem(args: Args, confirm: boolean): unknown {
+    const project = requireString(args, "project");
+    const file = requireString(args, "file");
+    const projectFile = resolveProjectFile(project);
+    if (!isInsideDir(path.dirname(projectFile), projectItemPath(projectFile, file))) {
+        throw new Error(t("noProjectItemFor", file));
+    }
+    const change = removeItemChange(project, file);
+    if (!confirm) {
+        return { planned: true, would: change };
+    }
+    throw new Error(t("removeItemNotApplied", file));
 }
 
 export async function runIdeAction(action: string, args: Args): Promise<unknown> {
@@ -304,6 +619,21 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             return { ide: "VsCode", enabled: value ?? null, setting: "csharp.experimental.debug.hotReload" };
         }
 
+        case "listCodeElements":
+            return listCodeElements(args);
+
+        case "semanticDefinition":
+            return semanticLocations("semanticDefinition", args);
+
+        case "semanticReferences":
+            return semanticLocations("semanticReferences", args);
+
+        case "renameSymbol":
+            return renameSymbolAt(args, optionalBool(args, "confirm") === true);
+
+        case "undoGroup":
+            return undoLastGroup(requireString(args, "name"), optionalBool(args, "confirm") === true);
+
         case "goToDefinition":
         case "findAllReferences": {
             const uri = resolveFile(requireString(args, "file"));
@@ -351,6 +681,139 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             return { file: uri.fsPath, line: line ?? null, opened: true };
         }
 
+        case "findInFiles": {
+            // Read-only. The Visual Studio names are pattern, matchCase, useRegex, scope and project.
+            const regex = buildSearchPattern(requireString(args, "pattern"), optionalBool(args, "matchCase") === true, optionalBool(args, "useRegex") === true);
+            return findInFiles(searchScopeFiles(optionalString(args, "scope") ?? "solution", optionalString(args, "project")), regex);
+        }
+
+        case "replaceInFiles": {
+            // Without confirm, only the per-file match counts are returned. An empty replacement is valid, so only its type is checked.
+            const pattern = requireString(args, "pattern");
+            if (typeof args.replacement !== "string") {
+                throw new Error(t("missingArgument", "replacement"));
+            }
+            const useRegex = optionalBool(args, "useRegex") === true;
+            const regex = buildSearchPattern(pattern, optionalBool(args, "matchCase") === true, useRegex);
+            const files = searchScopeFiles(optionalString(args, "scope") ?? "solution", optionalString(args, "project"));
+            const dirty = vscode.workspace.textDocuments.filter((d) => d.isDirty).map((d) => d.uri.fsPath);
+            const plan = planReplace(files, regex, dirty);
+            const skipped = plan.skipped.map((file) => ({ file, reason: t("openWithUnsavedChanges") }));
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: { files: plan.planned, skipped } };
+            }
+            const result = applyReplace(plan.planned, regex, args.replacement, useRegex);
+            return { planned: false, applied: { files: result.applied, skipped }, failed: result.failed };
+        }
+
+        case "projectProperties": {
+            // Read-only. An unknown property name gives null, as in the Visual Studio version.
+            const project = requireString(args, "project");
+            const projectFile = resolveProjectFile(project);
+            return { project, values: readProjectProperties(fs.readFileSync(projectFile, "utf8"), requireStringArray(args, "names")) };
+        }
+
+        case "addProjectItem":
+            return addProjectItem(args, optionalBool(args, "confirm") === true);
+
+        case "removeProjectItem":
+            return removeProjectItem(args, optionalBool(args, "confirm") === true);
+
+        case "getSetting":
+            // Read-only. The key is a dotted VS Code setting name, such as editor.tabSize.
+            return settingReply(requireString(args, "key"), vscode.workspace.getConfiguration().get(requireString(args, "key")));
+
+        case "setStatus": {
+            const text = optionalString(args, "text") ?? "";
+            const change = { text };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            // VS Code clears a status bar message after a timeout; the Visual Studio status bar text stays until replaced.
+            vscode.window.setStatusBarMessage(text);
+            return { planned: false, applied: change };
+        }
+
+        case "showInfoBar": {
+            const text = requireString(args, "text");
+            const actions = infoBarLabels(args.actions);
+            const change = { text, actions };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            // The button choice is not awaited: the notification waits for the user, and the Visual Studio version does not return a choice either.
+            void vscode.window.showInformationMessage(text, ...actions);
+            return { planned: false, applied: change };
+        }
+
+        case "writeActivityLog": {
+            const level = logLevel(requireString(args, "level"));
+            const source = optionalString(args, "source") ?? "AiDevHelpers";
+            const message = requireString(args, "message");
+            const change = { level, source, message };
+            if (optionalBool(args, "confirm") !== true) {
+                return { planned: true, would: change };
+            }
+            logChannel ??= vscode.window.createOutputChannel("AiDevHelpers");
+            logChannel.appendLine(formatLogLine(new Date(), level, source, message));
+            return { planned: false, applied: change, written: true };
+        }
+
+        case "listDocuments":
+            return shapeDocumentList(
+                vscode.workspace.textDocuments.map((d) => ({ fullName: d.uri.fsPath, saved: !d.isDirty, readOnly: isReadOnlyOnDisk(d.uri) })),
+            );
+
+        case "saveDocument": {
+            const file = requireString(args, "file");
+            const document = requireOpenDocument(vscode.workspace.textDocuments, resolveFile(file).fsPath, file);
+            if (optionalBool(args, "confirm") !== true) {
+                return planSaveReply(document.uri.fsPath, document.isDirty);
+            }
+            if (!(await document.save())) {
+                throw new Error(t("saveFailed", document.uri.fsPath));
+            }
+            return appliedSaveReply(document.uri.fsPath);
+        }
+
+        case "closeDocument": {
+            const file = requireString(args, "file");
+            const discard = optionalBool(args, "discardChanges") === true;
+            const document = requireOpenDocument(vscode.workspace.textDocuments, resolveFile(file).fsPath, file);
+            refuseDirtyClose(file, document.isDirty, discard);
+            if (optionalBool(args, "confirm") !== true) {
+                return planCloseReply(document.uri.fsPath, document.isDirty, discard);
+            }
+            if (document.isDirty) {
+                // The extension API has no revert on a document, so the file is shown and the active-editor revert runs. save is never called.
+                await vscode.window.showTextDocument(document);
+                await vscode.commands.executeCommand("workbench.action.files.revert");
+            }
+            await closeTabsFor(document.uri.fsPath);
+            return appliedCloseReply(document.uri.fsPath);
+        }
+
+        case "closeSolution": {
+            const saveFirst = optionalBool(args, "saveFirst") === true;
+            const dirty = dirtyPaths(vscode.workspace.textDocuments);
+            if (optionalBool(args, "confirm") !== true) {
+                return planCloseSolutionReply(dirty, saveFirst);
+            }
+            refuseDirtySolution(dirty, saveFirst);
+            const savedDocuments: string[] = [];
+            if (saveFirst) {
+                for (const document of vscode.workspace.textDocuments.filter((d) => d.isDirty)) {
+                    if (!(await document.save())) {
+                        throw new Error(t("saveFailed", document.uri.fsPath));
+                    }
+                    savedDocuments.push(document.uri.fsPath);
+                }
+            }
+            // VS Code has no solution; the closest equivalent is closing the workspace folder.
+            await vscode.commands.executeCommand("workbench.action.closeFolder");
+            return appliedCloseSolutionReply(savedDocuments);
+        }
+
         case "setBreakpoint": {
             const uri = resolveFile(requireString(args, "file"));
             const line = optionalInt(args, "line");
@@ -383,6 +846,100 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
                         condition: b.condition ?? null,
                     })),
             };
+
+        case "enableBreakpoint":
+        case "disableBreakpoint": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = requireInt(args, "line");
+            return setBreakpointEnabled(uri.fsPath, line, action === "enableBreakpoint", args.confirm === true);
+        }
+
+        case "setBreakpointCondition": {
+            const uri = resolveFile(requireString(args, "file"));
+            const line = requireInt(args, "line");
+            // An empty condition clears it, so it is kept as "" rather than treated as absent.
+            const change: ConditionChange = {
+                condition: typeof args.condition === "string" ? args.condition : undefined,
+                hitCountType: parseHitCountType(optionalString(args, "hitCountType")),
+                hitCount: optionalInt(args, "hitCount"),
+            };
+            return setBreakpointCondition(uri.fsPath, line, change, args.confirm === true);
+        }
+
+        case "listDebuggedProcesses":
+            return shapeProcesses(liveDebugSessions().map(sessionInfo));
+
+        case "listThreads": {
+            const mode = currentDebuggerMode();
+            // Outside break mode the list is not read at all; shapeThreads returns the empty reply.
+            const reply = mode === "dbgBreakMode" && vscode.debug.activeDebugSession
+                ? await vscode.debug.activeDebugSession.customRequest("threads", {})
+                : undefined;
+            return shapeThreads(mode, currentThreadId(), reply);
+        }
+
+        case "listStackFrames": {
+            const mode = currentDebuggerMode();
+            const threadId = currentThreadId();
+            const reply = mode === "dbgBreakMode" && vscode.debug.activeDebugSession && threadId !== undefined
+                ? await vscode.debug.activeDebugSession.customRequest("stackTrace", { threadId })
+                : undefined;
+            return shapeStackFrames(mode, reply);
+        }
+
+        case "listProcesses":
+            return { processes: await listLocalProcesses() };
+
+        case "attachProcess": {
+            // The pid must be in the local process list, with or without confirm. Only confirm starts the attach.
+            const pid = requireInt(args, "pid");
+            const target = findLocalProcess(await listLocalProcesses(), pid);
+            if (args.confirm !== true) {
+                return { planned: true, would: { pid, name: target.name } };
+            }
+            const started = await vscode.debug.startDebugging(undefined, attachConfiguration(pid, target.name));
+            if (!started) {
+                throw new Error(t("attachDidNotStart", pid));
+            }
+            return { planned: false, applied: { pid, name: target.name } };
+        }
+
+        case "listExceptions":
+            return shapeExceptions(vscode.debug.activeDebugSession?.id, optionalString(args, "group"));
+
+        case "setExceptionBreak": {
+            const session = vscode.debug.activeDebugSession;
+            if (!session) throw new Error(t("noExceptionFilters"));
+            const change: ExceptionChange = {
+                group: optionalString(args, "group"),
+                name: requireString(args, "name"),
+                breakWhenThrown: optionalBool(args, "breakWhenThrown"),
+                breakWhenUserUnhandled: optionalBool(args, "breakWhenUserUnhandled"),
+            };
+            const plan = planExceptionChange(session.id, change);
+            // Reduced model: partial is true in both replies, and note says what the bridge does not cover.
+            const partial = { partial: true, note: t("exceptionPartialNote") };
+            if (args.confirm !== true) {
+                return { planned: true, would: plan.reply, ...partial };
+            }
+            await session.customRequest("setExceptionBreakpoints", { filters: plan.filters });
+            commitExceptionChange(session.id, plan.enabledAfter);
+            return { planned: false, applied: plan.reply, ...partial };
+        }
+
+        case "detachAll": {
+            // Only attached sessions are detached; sessions the debugger launched are left running.
+            const sessions = liveDebugSessions();
+            const attached = sessions.filter((s) => isAttached(sessionInfo(s)));
+            const reply = shapeDetachAll(args.confirm === true, attached.map(sessionInfo));
+            if (args.confirm !== true) {
+                return reply;
+            }
+            for (const session of attached) {
+                await vscode.debug.stopDebugging(session);
+            }
+            return reply;
+        }
 
         case "step": {
             // The MCP ide_step tool sends "mode" (as the Visual Studio bridge expects); older callers sent "kind".

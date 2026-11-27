@@ -91,9 +91,9 @@ A call that can't reach an instance within 60 seconds gets an error reply. An in
 
 ## Events pipe
 
-Visual Studio only. Separate from the request pipe, which is unchanged (one request, one reply).
+Served by Visual Studio and by VS Code. Separate from the request pipe, which is unchanged (one request, one reply).
 
-- Name: `AiDevHelpers.VS.<pid>.events`. Up to 8 concurrent subscribers.
+- Name: `AiDevHelpers.VS.<pid>.events` for Visual Studio, `AiDevHelpers.VsCode.<pid>.events` for VS Code. Up to 8 concurrent subscribers.
 - Subscribe: the client connects and writes one line `{"action":"subscribe","args":{"events":["buildDone", ...]}}`.
   Omit `events` (or pass an empty list) for all events.
 - Reply, one line: `{"ok":true,"pid":N,"subscriptionId":"..."}`. A refused subscribe is `{"ok":false,"pid":N,"error":"..."}`.
@@ -106,15 +106,22 @@ Visual Studio only. Separate from the request pipe, which is unchanged (one requ
 - Unsubscribe: the client closes its connection. No separate request.
 - Event names: `solutionOpened`, `solutionClosing`, `buildBegin`, `buildDone`, `enterBreakMode`, `enterRunMode`,
   `contextChanged`, `documentSaved`, `documentOpened`, `documentClosing`.
-- A VS Code bridge does not offer this pipe; `ide_subscribe_events` reports it as an error for VS Code.
+- VS Code approximations: `buildBegin` and `buildDone` come from build tasks, not the build system, and `solutionOpened` and `solutionClosing` come from workspace folder changes. Both are approximate.
 
 ## Actions added in phases 1 to 6
 
-Visual Studio bridge actions behind the tools in `docs/ide-bridge.md`. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+Bridge actions behind the tools in `docs/ide-bridge.md`. Visual Studio implements all of them. The VS Code bridge implements all except `listTasks`, `addTask` and `clearTasks`, which it refuses as unsupported. Each write action takes `confirm` (default false) and replies `planned` or `applied`.
+
+VS Code differences:
+- `undoGroup` reverses the last edit group this bridge applied. VS Code has one unnamed undo stack, so the group is not chosen by name.
+- `listExceptions` and `setExceptionBreak` cover only the debug adapter's exception filters. Their replies carry `partial: true`.
+- `semanticDefinition`, `semanticReferences` and `renameSymbol` use VS Code's language providers, not Roslyn.
+- `writeActivityLog` appends to an "AiDevHelpers" output channel, not ActivityLog.xml.
+- `setStatus` text clears after a VS Code timeout. Visual Studio keeps it until replaced.
 
 - Debugger: `listProcesses`, `listDebuggedProcesses`, `listThreads`, `listStackFrames`, `listExceptions`, `setExceptionBreak`, `setBreakpointCondition`, `enableBreakpoint`, `disableBreakpoint`, `attachProcess`, `detachAll`.
 - Editor and documents: `findInFiles`, `replaceInFiles`, `listDocuments`, `saveDocument`, `closeDocument`, `undoGroup`, `listCodeElements`.
-- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`.
+- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`, `listItemTemplates` (Visual Studio only; the VS Code bridge answers unknown action).
 - Tasks and shell services: `listTasks`, `addTask`, `clearTasks`, `setStatus`, `showInfoBar`, `writeActivityLog`, `getSetting`.
 - Roslyn: `semanticReferences`, `semanticDefinition`, `renameSymbol`.
 - Events: subscription over `AiDevHelpers.VS.<pid>.events`, not a request action.

@@ -98,6 +98,18 @@ public sealed class TestProjectAddTests : IDisposable
     }
 
     [Fact]
+    public async Task NoPinnedTestSdkAsksTheUserInChat()
+    {
+        Csproj("src/Other/tests/Other.Tests.csproj", "<Nullable>enable</Nullable>", "<PackageReference Include=\"Foo.Analyzers\" Version=\"1.0.0\" />");
+        Csproj("src/Extra/tests/Extra.Tests.csproj", "<Nullable>enable</Nullable>", "<PackageReference Include=\"Foo.Analyzers\" Version=\"1.0.0\" />");
+
+        var plan = await PlanAsync();
+
+        Assert.Null(plan.Token);
+        Assert.Contains(plan.Errors, e => e.Contains("Microsoft.NET.Test.Sdk") && e.Contains("Ask the user in chat"));
+    }
+
+    [Fact]
     public async Task ConfirmWritesTheReferenceTheSeedTestAndTheSolutionEntry()
     {
         var plan = await PlanAsync(seed: true);

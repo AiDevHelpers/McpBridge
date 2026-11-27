@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using AiDevHelpers.Helpers.LocalizationHelper;
 
 namespace AiDevHelpers.Helpers.LintHelper;
 

@@ -241,84 +241,84 @@ public static class ProjectFixer
         switch (action.Kind)
         {
             case FixKind.SetProperty:
-            {
-                var existing = root.Elements().Where(e => e.Name.LocalName == "PropertyGroup" && e.Attribute("Condition") is null)
-                    .SelectMany(g => g.Elements()).FirstOrDefault(e => e.Name.LocalName == action.Name);
-                if (existing is not null)
                 {
-                    existing.Value = action.Value!;
+                    var existing = root.Elements().Where(e => e.Name.LocalName == "PropertyGroup" && e.Attribute("Condition") is null)
+                        .SelectMany(g => g.Elements()).FirstOrDefault(e => e.Name.LocalName == action.Name);
+                    if (existing is not null)
+                    {
+                        existing.Value = action.Value!;
+                        return;
+                    }
+
+                    var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "PropertyGroup" && e.Attribute("Condition") is null)
+                        ?? AppendChild(root, new XElement(ns + "PropertyGroup"), newline);
+                    AppendChild(group, new XElement(ns + action.Name, action.Value), newline);
                     return;
                 }
 
-                var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "PropertyGroup" && e.Attribute("Condition") is null)
-                    ?? AppendChild(root, new XElement(ns + "PropertyGroup"), newline);
-                AppendChild(group, new XElement(ns + action.Name, action.Value), newline);
-                return;
-            }
-
             case FixKind.AddPackage:
-            {
-                var element = new XElement(ns + "PackageReference", new XAttribute("Include", action.Name), new XAttribute("Version", action.Value!));
-                var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
-                    && e.Elements().Any(i => i.Name.LocalName == "PackageReference"))
-                    ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
-                AppendChild(group, element, newline);
-                return;
-            }
+                {
+                    var element = new XElement(ns + "PackageReference", new XAttribute("Include", action.Name), new XAttribute("Version", action.Value!));
+                    var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
+                        && e.Elements().Any(i => i.Name.LocalName == "PackageReference"))
+                        ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
+                    AppendChild(group, element, newline);
+                    return;
+                }
 
             case FixKind.AddReference:
-            {
-                var element = new XElement(ns + "ProjectReference", new XAttribute("Include", action.Value!));
-                var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
-                    && e.Elements().Any(i => i.Name.LocalName == "ProjectReference"))
-                    ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
-                AppendChild(group, element, newline);
-                return;
-            }
+                {
+                    var element = new XElement(ns + "ProjectReference", new XAttribute("Include", action.Value!));
+                    var group = root.Elements().FirstOrDefault(e => e.Name.LocalName == "ItemGroup" && e.Attribute("Condition") is null
+                        && e.Elements().Any(i => i.Name.LocalName == "ProjectReference"))
+                        ?? AppendChild(root, new XElement(ns + "ItemGroup"), newline);
+                    AppendChild(group, element, newline);
+                    return;
+                }
 
             case FixKind.SetPackageVersion:
-            {
-                foreach (var item in root.Descendants().Where(e => e.Name.LocalName == "PackageReference"
-                    && (string.Equals(e.Attribute("Include")?.Value, action.Name, StringComparison.OrdinalIgnoreCase)
-                        || string.Equals(e.Attribute("Update")?.Value, action.Name, StringComparison.OrdinalIgnoreCase))))
                 {
-                    if (item.Attribute("Version") is { } attribute)
+                    foreach (var item in root.Descendants().Where(e => e.Name.LocalName == "PackageReference"
+                        && (string.Equals(e.Attribute("Include")?.Value, action.Name, StringComparison.OrdinalIgnoreCase)
+                            || string.Equals(e.Attribute("Update")?.Value, action.Name, StringComparison.OrdinalIgnoreCase))))
                     {
-                        attribute.Value = action.Value!;
+                        if (item.Attribute("Version") is { } attribute)
+                        {
+                            attribute.Value = action.Value!;
+                        }
+                        else if (item.Elements().FirstOrDefault(e => e.Name.LocalName == "Version") is { } child)
+                        {
+                            child.Value = action.Value!;
+                        }
                     }
-                    else if (item.Elements().FirstOrDefault(e => e.Name.LocalName == "Version") is { } child)
-                    {
-                        child.Value = action.Value!;
-                    }
-                }
 
-                return;
-            }
+                    return;
+                }
 
             default:
-            {
-                foreach (var element in root.Descendants().Where(e => e.Name.LocalName == "TargetFramework").ToList())
                 {
-                    if (element.Value.Trim() == action.Name)
+                    foreach (var element in root.Descendants().Where(e => e.Name.LocalName == "TargetFramework").ToList())
                     {
-                        element.Value = action.Value!;
-                    }
-                }
-
-                foreach (var element in root.Descendants().Where(e => e.Name.LocalName == "TargetFrameworks").ToList())
-                {
-                    var list = element.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                    if (!list.Contains(action.Name, StringComparer.Ordinal))
-                    {
-                        continue;
+                        if (element.Value.Trim() == action.Name)
+                        {
+                            element.Value = action.Value!;
+                        }
                     }
 
-                    list = list.Select(f => f == action.Name ? action.Value! : f).Distinct(StringComparer.Ordinal).ToList();
-                    element.Value = string.Join(';', list);
-                }
+                    foreach (var element in root.Descendants().Where(e => e.Name.LocalName == "TargetFrameworks").ToList())
+                    {
+                        var list = element.Value.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+                        if (!list.Contains(action.Name, StringComparer.Ordinal))
+                        {
+                            continue;
+                        }
 
-                return;
-            }
+                        list = list.Select(f => f == action.Name ? action.Value! : f).Distinct(StringComparer.Ordinal).ToList();
+                        element.Value = string.Join(';', list);
+                    }
+
+                    return;
+                }
         }
     }
 

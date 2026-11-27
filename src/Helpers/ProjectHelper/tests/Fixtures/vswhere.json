@@ -1,0 +1,18 @@
+[
+  {
+    "instanceId": "fixture-community",
+    "installationPath": "C:\\Program Files\\Microsoft Visual Studio\\18\\Community",
+    "installationVersion": "18.12.12412.261",
+    "productId": "Microsoft.VisualStudio.Product.Community",
+    "isComplete": true,
+    "displayName": "Visual Studio Community 2026"
+  },
+  {
+    "instanceId": "fixture-enterprise",
+    "installationPath": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise",
+    "installationVersion": "18.13.12412.241",
+    "productId": "Microsoft.VisualStudio.Product.Enterprise",
+    "isComplete": false,
+    "displayName": "Visual Studio Enterprise 2026"
+  }
+]

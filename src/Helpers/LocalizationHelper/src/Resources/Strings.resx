@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="FolderNotFound" xml:space="preserve"><value>Folder not found: {0}</value></data>
+  <data name="InvalidCulture" xml:space="preserve"><value>Not a valid culture name: {0}</value></data>
+  <data name="TokenInvalid" xml:space="preserve"><value>The confirm token is unknown, already used or expired. Run the plan again.</value></data>
+  <data name="FileChangedSincePlan" xml:space="preserve"><value>{0} changed after the plan was made. Run the plan again.</value></data>
+  <data name="KeyExists" xml:space="preserve"><value>Key {0} already exists with different text.</value></data>
+  <data name="CultureSuggestInvariant" xml:space="preserve"><value>Pass CultureInfo.InvariantCulture, or CultureInfo.CurrentCulture for text shown to the user.</value></data>
+  <data name="CultureSuggestOrdinal" xml:space="preserve"><value>Pass StringComparison.Ordinal or OrdinalIgnoreCase, or a culture when the order is shown to the user.</value></data>
+  <data name="OutputOutsideRoot" xml:space="preserve"><value>The output path is outside the root folder: {0}</value></data>
+  <data name="NotAResx" xml:space="preserve"><value>Not a .resx file: {0}</value></data>
+  <data name="NotAStub" xml:space="preserve"><value>Not waiting for translation (no needs-translation comment): {0}</value></data>
+  <data name="TranslatePromptSystem" xml:space="preserve"><value>You translate software UI text into the culture {0}. Keep every placeholder such as {{0}} or {{name}} exactly as written. Reply with one JSON object that maps each key to its translation, and nothing else.</value></data>
+  <data name="TranslatePromptItem" xml:space="preserve"><value>Translate the values of this JSON object:</value></data>
+</root>

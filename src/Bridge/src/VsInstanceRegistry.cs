@@ -16,9 +16,11 @@ public static class VsInstanceRegistry
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
+    /// <summary>The folder that holds one manifest per running instance: %ProgramData%\AiDevHelpers\vs-instances.</summary>
     public static string Directory =>
         Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "vs-instances");
 
+    /// <summary>The instances whose manifests exist and whose processes still run. Manifests for exited processes are deleted.</summary>
     public static IReadOnlyList<VsInstance> ListRunning()
     {
         var instances = new List<VsInstance>();

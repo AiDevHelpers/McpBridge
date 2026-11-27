@@ -23,7 +23,9 @@ public static class ProjectFiles
         var projects = new List<ProjectFile>();
         foreach (var file in Directory.EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
                      .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")
-                         && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")))
+                         && !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                         // Test fixtures are sample inputs, not repo projects.
+                         && !p.Contains($"{Path.DirectorySeparatorChar}tests{Path.DirectorySeparatorChar}Fixtures{Path.DirectorySeparatorChar}")))
         {
             XDocument doc;
             try

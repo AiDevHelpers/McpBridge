@@ -14,8 +14,8 @@ internal sealed class SelfTestTools
     /// <summary>Helper names without the AiDevHelpers.Helpers. prefix. Each has an embedded AiDevHelpers.SelfTest.md.</summary>
     public static readonly string[] HelperNames =
     [
-        "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "LintHelper", "LogHelper",
-        "OutputHelper", "PackageHelper", "ProjectHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
+        "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "FileEditHelper", "LintHelper", "LocalizationHelper", "LogHelper",
+        "ModelServerHelper", "OutputHelper", "PackageHelper", "ProjectHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
         ScriptHelperName,
     ];
 
@@ -29,6 +29,7 @@ internal sealed class SelfTestTools
         helper == ScriptHelperName ? typeof(SelfTestTools).Assembly : Assembly.Load("AiDevHelpers.Helpers." + helper);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the helpers with their versions, the MCP server (Core) version, and whether each helper has a self-test.")]
     public static string SelfTestList()
     {
@@ -52,6 +53,7 @@ internal sealed class SelfTestTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read a helper's self-test markdown, which is embedded in its library.")]
     public static string SelfTestRead(
         [Description("Helper name, e.g. LintHelper. See self_test_list.")] string helper)

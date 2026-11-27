@@ -76,4 +76,5 @@ public sealed class ProcessVisibleRunnerTests
         {
             Directory.Delete(dir, recursive: true);
         }
-    }}
+    }
+}

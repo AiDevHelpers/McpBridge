@@ -15,7 +15,10 @@ Standalone MCP server and IDE integrations for Visual Studio and VS Code. The se
 - `src/Helpers/ExtensionsHelper` — list, describe and add VS Code and Visual Studio extensions; workspace recommendations; the Visual Studio installs with their MSBuild and VSSDK targets.
 - `src/Helpers/TestingHelper` — hot-reload test failures, and code coverage.
 - `src/Helpers/BookmarkHelper` — bookmark model and service over the IDE bridge.
-- `src/Helpers/LintHelper` — lint setup checks (editorconfig, NoWarn, tsconfig strict, ESLint, TSLint, dotnet format, duplicate resource names), the hardcoded-string scanner and the resx key check.
+- `src/Helpers/ModelServerHelper` — SimpleModelServer router address discovery, status and capacity client.
+- `src/Helpers/FileEditHelper` — validated, backed-up text edits confined to a workspace root.
+- `src/Helpers/LintHelper` — lint setup checks (editorconfig, NoWarn, tsconfig strict, ESLint, TSLint, dotnet format, duplicate resource names).
+- `src/Helpers/LocalizationHelper` — the hardcoded-string scanner and the resx key check.
 - `src/Helpers/SourceControlHelper` — git status, diff, and two-step approved writes through git.exe; pull request checks and failed CI logs through gh.
 - `src/Helpers/OutputHelper` — writes to named output channels in Visual Studio and VS Code.
 - `src/Helpers/PackageHelper` — NuGet, pip and npm package setup checks.

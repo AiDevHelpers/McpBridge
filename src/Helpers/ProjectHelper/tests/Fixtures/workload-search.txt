@@ -1,0 +1,9 @@
+
+Workload ID                      Description
+-----------------------------------------------------------------------------------------
+android                          .NET SDK Workload for building Android applications.
+ios                              .NET SDK Workload for building iOS applications.
+maccatalyst                      .NET SDK Workload for building MacCatalyst applications.
+macos                            .NET SDK Workload for building macOS applications.
+maui                             .NET MAUI SDK for all platforms
+

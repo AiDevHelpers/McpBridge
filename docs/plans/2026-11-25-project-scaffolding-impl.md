@@ -1,6 +1,6 @@
 # Project scaffolding tools: implementation plan, 2026-11-25
 
-Status: draft, not approved. Source: `2026-11-25-project-scaffolding-tools.md` (revised). Checked against `RepoSettings.cs`,
+Status: PR1 (U1–U10) and PR2 (U11–U14) merged to `wip` (PRs #10–#13). Follow-ups merged in #16 and #17. Source: `2026-11-25-project-scaffolding-tools.md` (revised). Checked against `RepoSettings.cs`,
 `ElevationFiles.cs`, `RepoSettingsFile.cs`, `SolutionProjects.cs`, `ToolInstallService.cs`, `ScriptHelperTools.cs`
 (`IElevInstaller`), `InstallToolFiles.cs`, `ExtensionTools.cs`, `PackageUpdates.cs`, `AffectedTests.cs`, `GatePlanner.cs`,
 `SelfTestCoverageTests.cs`, `DocsMatchCodeTests.cs`, `scripts/gate-tpm.ps1`.
@@ -181,6 +181,17 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 
 ## U11. Phase 0 verification (no code)
 
+Findings (verified 2026-11-25 on this machine, SDK 11.0.100, VS 18.12 Community; Learn pages cited):
+
+- `dotnet workload list` prints a table: `Installed Workload Id`, `Manifest Version`, `Installation Source`. Parse the table, or use `--machine-readable` (JSON body only, no boundary lines; Learn "dotnet workload output change"). Use JSON.
+- `dotnet workload search [text]` prints `Workload ID` and `Description` columns. Learn: `dotnet workload search`.
+- `dotnet workload install <id>` installs a workload; Learn "dotnet workload install" applies. Manifests download first unless `--skip-manifest-update`.
+- `vswhere -products * -format json` lists instances with `installationPath`, `installationVersion`, `productId`, `isComplete`, `displayName`.
+- VS install and workload add: `vs_installer modify --installPath <path> --add <workload-id> --passive --norestart` (Learn "Command-line parameter examples": `setup.exe modify --installPath ... --config`). Elevation is required; standard users may not use `--passive` or `--quiet` (Learn "Modify Visual Studio workloads").
+- VS running during modify: not documented in Learn. Plan keeps the refusal: probe for `devenv.exe` and refuse while it runs.
+- `kind` argument fixed: `dotnet` and `vs`.
+
+
 - Check on Microsoft Learn: `dotnet workload list` and `search` output; `vswhere -products * -requires`; `vs_installer.exe
   modify --add <id>` flags and exit codes; whether the installer refuses or fails while VS runs. Record the answers in
   `docs/dogfood.md`. If the VS-running behavior cannot be confirmed, the plan refuses by probing for `devenv.exe` processes.
@@ -224,6 +235,16 @@ The user chose `.aidevhelpers` and a hard rename with no fallback shim (no legac
 - Edit: `mcp-tools.md`, `docs/dogfood.md`, `CHANGELOG.md`, helper `SelfTest.md`, `docs/prereqs.md` (VS Installer, elevation).
 - Run: full gate including the new pin check; open the PR per `pr-promotion`.
 - Commit: `Docs: workload tools, changelog and dogfood`
+
+## Follow-ups (open)
+
+- Live workload install (U13 "done when"): needs `setup tools` run elevated with the chat yes, the UAC prompt, then `workload_install_confirm`.
+- Approval status of the elevated scripts: checked 2026-11-26. `elev verify` on `C:\ProgramData\AiDevHelpers\script-helper\bin\tools` reports `fullyApproved=True`; `install-tool.ps1` and `install-workload.ps1` are approved and unchanged. The check needed the broker running (started elevated with UAC approval). Run `elev verify` on the tools folder, not the repo: the repo has no `.elevated.json`.
+- `scripts/workload-install.ps1 -WritePin`: not written. The pin matches the table and is checked by `InstallableWorkloadsTests`; add the script only when the table changes.
+- VS-running refusal for `vs_installer modify`: not needed while `vs` installs are not offered.
+- `ServerControlTests.ResumeClearsThePause`: failed once in 14 runs, not reproduced in 3. Suspect a live MCP server rewriting the shared state file.
+- Chat-first prompts in `repo-setup`, terminals and rules: built, not run end to end. The client has no tests.
+- Pre-existing, not from this work: 56 `-warnaserror` errors (CS1591 in `src/Bridge`) and a VSSDK crash in `Vs2026/Installer`.
 
 ## After merge (outside this repo)
 

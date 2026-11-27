@@ -5,7 +5,6 @@
   <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="NoActiveUserSession" xml:space="preserve"><value>No active user session with a logged-on user was found.</value></data>
-  <data name="CreateProcessAsUserFailed" xml:space="preserve"><value>CreateProcessAsUser failed.</value></data>
   <data name="IntegratedTerminalDisplayName" xml:space="preserve"><value>Integrated Terminal (PowerShell/CMD)</value></data>
   <data name="TabDoesNotExist" xml:space="preserve"><value>Tab '{0}' does not exist in session {1}.</value></data>
   <data name="CommandTimedOut" xml:space="preserve"><value>Command timed out after {0:F0}s.</value></data>

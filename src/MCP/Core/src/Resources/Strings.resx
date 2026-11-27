@@ -7,6 +7,7 @@
   <data name="UnknownControlState" xml:space="preserve"><value>Unknown state. Use one of: {0}.</value></data>
   <data name="PausedRefusal" xml:space="preserve"><value>aidevtools is paused for an update{0}. Do not call its tools until it resumes.</value></data>
   <data name="ClosingRefusal" xml:space="preserve"><value>aidevtools is closing for an update{0}. Wait for it to resume, then reconnect.</value></data>
+  <data name="TestExplorerRefusedTwice" xml:space="preserve"><value>Test Explorer refused the run twice (HRESULT 0x{0:X8}). It is probably still discovering or running tests; wait, then call ide_get_test_summary before retrying.</value></data>
   <data name="ResumedNotice" xml:space="preserve"><value>aidevtools has resumed. Its tools work again.</value></data>
   <data name="PausedNotice" xml:space="preserve"><value>aidevtools is pausing for an update{0}. Stop calling its tools and wait for the resume signal.</value></data>
   <data name="ClosingNotice" xml:space="preserve"><value>aidevtools is closing for an update{0}. Reconnect after the resume signal.</value></data>
@@ -164,4 +165,15 @@
   <data name="NoSubscribedInstance" xml:space="preserve"><value>No Visual Studio instance is subscribed for events.</value></data>
   <data name="MultipleSubscribedInstances" xml:space="preserve"><value>More than one instance is subscribed. Pass instancePid.</value></data>
   <data name="SubscribeFirst" xml:space="preserve"><value>No events subscription to instance {0}. Subscribe first.</value></data>
+  <data name="WorkloadUnknown" xml:space="preserve"><value>'{0}' is not a workload this helper installs. Allowed: {1}.</value></data>
+  <data name="WorkloadAlreadyInstalled" xml:space="preserve"><value>{0} is already installed; nothing to do.</value></data>
+  <data name="WorkloadPlanned" xml:space="preserve"><value>Ready to install the {0} workload with dotnet workload install. Confirm to run it.</value></data>
+  <data name="WorkloadNeedsAdmin" xml:space="preserve"><value>This runs elevated and will show a UAC prompt.</value></data>
+  <data name="WorkloadUnknownToken" xml:space="preserve"><value>The token is unknown, already used, or expired. Plan again.</value></data>
+  <data name="WorkloadDone" xml:space="preserve"><value>Installed the {0} workload.</value></data>
+  <data name="WorkloadFailed" xml:space="preserve"><value>The workload install failed (exit {0}): {1}</value></data>
+  <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
+  <data name="TokenOtherSession" xml:space="preserve"><value>refused: this token was planned in another chat session.</value></data>
+  <data name="ApprovalRefused" xml:space="preserve"><value>refused: this dangerous tool needs the person's yes on the tray for this call. Nothing ran.</value></data>
+  <data name="AgentToolReplyLimit" xml:space="preserve"><value>Tool replies are fitted to about {0} tokens for this client. When a reply is cut short, ask again with a narrower request (a single file, test, or log range) to get the rest.</value></data>
 </root>

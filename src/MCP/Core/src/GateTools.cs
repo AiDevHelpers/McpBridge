@@ -12,6 +12,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class GateTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Check NuGet, pip and npm package setup in a folder: nuget.config, Directory.Packages.props, xunit analyzers, " +
                  "pinned requirements, and npm lockfiles. Reads files only; nothing is installed.")]
     public static string PackageCheck(
@@ -29,6 +30,7 @@ internal sealed class GateTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Show the full gate steps for a repo without running them: the commands in .claude/reference/full-gate.md, or the steps detected from the stack.")]
     public static string GatePlan(
         [Description("Repo root")] string root)
@@ -55,6 +57,7 @@ internal sealed class GateTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run the full gate for a repo, step by step, and stop at the first failure. Runs build and test commands in the repo.")]
     public static async Task<string> GateRun(
         [Description("Repo root")] string root)

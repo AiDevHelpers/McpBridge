@@ -28,11 +28,20 @@ public sealed record PendingWrite(
 public sealed record PendingSequence(string Token, IReadOnlyList<PendingWrite> Steps, string Description);
 
 /// <summary>
+/// Runs an approved write in an open VS Code window. Returns null when no VS Code window has the folder open, so the write
+/// runs through git.exe. Once a window has taken the write, its result is final: the caller never falls back to git.exe.
+/// </summary>
+public interface IVsCodeWriteRouter
+{
+    Task<GitResult?> TryRunAsync(string repoPath, string vsCodeAction, IReadOnlyDictionary<string, object?> arguments, CancellationToken ct);
+}
+
+/// <summary>
 /// Git status and diff run at once. Every write (stage, commit, pull, push, branch, switch, stash) is two-step:
 /// Plan returns the exact git command and a token, and Confirm runs it once (D7, as in the extension Add flow).
 /// Visual Studio has no public git write API, so this runs git.exe for both IDEs (see the plan's Phase 2 spike).
 /// </summary>
-public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules = null)
+public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules = null, IVsCodeWriteRouter? vsCode = null)
 {
     private readonly ConcurrentDictionary<string, PendingWrite> _pending = new();
     private readonly ConcurrentDictionary<string, PendingSequence> _sequences = new();
@@ -188,7 +197,40 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             return new GitResult(false, -1, Strings.Format("RulesChangedBeforeConfirm", refusal));
         }
 
+        return await RunWriteAsync(pending, ct);
+    }
+
+    // Runs one approved write. The VS Code route takes it when a window has the folder open and VS Code does exactly what the
+    // approved command does; otherwise git.exe runs it. The token is already spent, so a route failure is final.
+    private async Task<GitResult> RunWriteAsync(PendingWrite pending, CancellationToken ct)
+    {
+        if (vsCode is not null && VsCodeRoute(pending) is { } route
+            && await vsCode.TryRunAsync(pending.RepoPath, route.Action, route.Arguments, ct) is { } routed)
+        {
+            return routed.Ok || routed.Output.Length > 0
+                ? routed
+                : new GitResult(false, -1, Strings.Format("VsCodeRouteFailed", route.Action));
+        }
+
         return await git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+    }
+
+    // The VS Code action and arguments for an approved write, or null when the write stays on git.exe (push, pull, create_branch).
+    // Each argument comes from the approved git arguments, so VS Code runs the same paths, message and branch.
+    private static (string Action, IReadOnlyDictionary<string, object?> Arguments)? VsCodeRoute(PendingWrite pending)
+    {
+        var args = pending.Arguments;
+        return pending.Action switch
+        {
+            "stage" => ("gitStage", new Dictionary<string, object?> { ["paths"] = args.Skip(2).ToArray() }),        // add -- <paths>
+            "commit" => ("gitCommit", new Dictionary<string, object?> { ["message"] = args[2] }),                   // commit -m <message>
+            "switch" => ("gitSwitch", new Dictionary<string, object?> { ["branch"] = args[1] }),                    // switch <branch>
+            "delete_branch" => ("gitDeleteBranch", new Dictionary<string, object?> { ["branch"] = args[2] }),       // branch -d <branch>
+            "stash_push" => ("gitStashPush", new Dictionary<string, object?>()),                                    // stash push
+            "stash_pop" => ("gitStashPop", new Dictionary<string, object?>()),                                      // stash pop
+            "stash_apply" => ("gitStashApply", new Dictionary<string, object?>()),                                  // stash apply
+            _ => null,
+        };
     }
 
     // Runs each step in order, logging each command. The first refused or failed step stops the sequence.
@@ -204,7 +246,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
                 return new GitResult(false, -1, log.ToString());
             }
 
-            var result = await git.RunAsync(step.RepoPath, step.Arguments, ct);
+            var result = await RunWriteAsync(step, ct);
             log.Append(result.Output);
             if (!result.Ok)
             {

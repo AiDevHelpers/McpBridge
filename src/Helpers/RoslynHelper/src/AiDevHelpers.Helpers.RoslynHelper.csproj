@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>RoslynHelper</AssemblyName>
+    <RootNamespace>AiDevHelpers.Helpers.RoslynHelper</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
+    <ProjectReference Include="..\..\..\Installers\Vs2026\Engines\src\AiDevHelpers.Installers.Vs2026.Engines.csproj" />
+    <ProjectReference Include="..\..\RoslynHelper.Shared\src\AiDevHelpers.Helpers.RoslynHelper.Shared.csproj" />
+  </ItemGroup>
+</Project>

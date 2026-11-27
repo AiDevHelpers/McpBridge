@@ -68,6 +68,28 @@ var installTool = Verb("install-tool", "Install an allowed tool through the brok
 });
 installTool.Add(tool);
 
+var installWorkload = Verb("install-workload", "Install an allowed .NET workload through the broker.", async (pr, ct) =>
+{
+    var name = pr.GetRequiredValue(tool);
+    if (InstallableWorkloads.TryGet(name) is not { } found)
+    {
+        Console.Error.WriteLine($"refused: '{name}' is not a workload this helper installs");
+        return 2;
+    }
+
+    var link = Broker.Link();
+    var ensured = await Broker.EnsureAsync(link, ct);
+    if (!ensured.Ok)
+    {
+        Console.Error.WriteLine($"refused: {ensured.Reason}");
+        return 1;
+    }
+
+    var result = await link.Client.RunAsync(InstallToolFiles.ToolsRoot(link.Config), InstallWorkloadFiles.ScriptName, [found.Name], TimeSpan.FromMinutes(30));
+    return Broker.Print(result);
+});
+installWorkload.Add(tool);
+
 var repoScan = Verb("repo-scan", "Print the repo scan as JSON. Local; needs no broker.", Sync(pr => Local(["--repo-scan", pr.GetRequiredValue(repo)])));
 repoScan.Add(repo);
 
@@ -145,7 +167,15 @@ review.Add(repo);
 var scanLaunch = SetupVerb("scan-launch", "Scan a repo's launch and debug configurations (administrator).", pr => ["scan", pr.GetRequiredValue(repo)]);
 scanLaunch.Add(repo);
 
-var tools = SetupVerb("tools", "Install the Script Helper tools (administrator).", _ => ["tools"]);
+// Installing the tools changes what elevated scripts can run, so it needs the person's yes in chat before the UAC prompt.
+var tools = Verb("tools", "Install the Script Helper tools (administrator). Needs --approved-in-chat after the person agreed in chat.", Sync(pr =>
+{
+    var refusal = SetupApproval.ToolsRefusal(pr.GetValue(approvedInChat));
+    return refusal is null
+        ? ElevatedSetup.Run(["tools", "--approved-in-chat"], pr.GetValue(allowNoTpm))
+        : Refuse(refusal);
+}));
+tools.Add(approvedInChat);
 
 var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated process. Launched by the client, not by hand.", Sync(pr =>
 {
@@ -168,8 +198,9 @@ var elevatedStep = Verb("elevated-step", "Runs one setup step in an elevated pro
     if (exit != 0 && !Console.IsInputRedirected)
     {
         // This window closes when the process ends, so a failure would vanish before it could be read.
-        Console.Error.WriteLine("The step did not finish. Press Enter to close this window.");
-        Console.ReadLine();
+        // No question is asked: the window stays open for ten seconds so the message can be read.
+        Console.Error.WriteLine("The step did not finish. This window closes in 10 seconds.");
+        Thread.Sleep(TimeSpan.FromSeconds(10));
     }
 
     return exit;
@@ -179,6 +210,7 @@ elevatedStep.Hidden = true;
 root.Add(run);
 root.Add(verify);
 root.Add(installTool);
+root.Add(installWorkload);
 root.Add(repoScan);
 root.Add(repoSetup);
 root.Add(repoApply);
@@ -215,10 +247,16 @@ static Command Verb(string name, string description, Func<ParseResult, Cancellat
     return command;
 }
 
+static int Refuse(string message)
+{
+    Console.Error.WriteLine(message);
+    return 1;
+}
+
 static Func<ParseResult, CancellationToken, Task<int>> Sync(Func<ParseResult, int> action) =>
     (pr, _) => Task.FromResult(action(pr));
 
 Command SetupVerb(string name, string description, Func<ParseResult, string[]> build) =>
     Verb(name, description, Sync(pr => ElevatedSetup.Run(build(pr), pr.GetValue(allowNoTpm))));
 
-static int Local(string[] args) => ElevLocalCommands.TryRun(args, Console.Out, new ConsoleConfirmer(), out var exit) ? exit : 2;
+static int Local(string[] args) => ElevLocalCommands.TryRun(args, Console.Out, new ChatFirstConfirmer(), out var exit) ? exit : 2;

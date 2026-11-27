@@ -11,6 +11,7 @@ using EnvDTE;
 using EnvDTE80;
 
 using AiDevHelpers.Bridge;
+using static AiDevHelpers.Installers.Vs2026.Core.ArgumentParsers;
 
 namespace AiDevHelpers.Installers.Vs2026.Core;
 
@@ -25,6 +26,9 @@ public sealed class IdeActions(DTE2 dte)
     // Watch expressions for this instance. Kept here (not in the Watch window) and evaluated on read.
     private readonly List<string> _watches = [];
 
+    /// <summary>True (default) answers the IDE's dialogs with its defaults during each action. Set by the MCP server's "configure" action.</summary>
+    public bool AutoDismissDialogs { get; set; } = true;
+
     public object Invoke(string action, JsonElement args)
     {
         // Callers switch to the UI thread first (BridgePackage); this asserts it at runtime.
@@ -32,6 +36,11 @@ public sealed class IdeActions(DTE2 dte)
 
         // Modal prompts (line endings, reload, save) would freeze the UI thread and the bridge with it. Suppressing UI for the
         // duration of one action lets the IDE answer with its defaults instead of waiting. Restored afterwards.
+        if (!AutoDismissDialogs)
+        {
+            return InvokeOnUiThread(action, args);
+        }
+
         var previous = dte.SuppressUI;
         dte.SuppressUI = true;
         try
@@ -122,6 +131,7 @@ public sealed class IdeActions(DTE2 dte)
         "prepareKill" => PrepareKill(),
         "killProcess" => KillProcess(RequireInt(args, "pid")),
         "listProcesses" => ListProcesses(),
+        "listItemTemplates" => ListItemTemplates(OptionalString(args, "filter"), OptionalString(args, "language"), OptionalInt(args, "limit")),
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(OptionalString(args, "group")),
@@ -161,6 +171,148 @@ public sealed class IdeActions(DTE2 dte)
             ParseCallerEdits(args),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
+            OptionalBool(args, "rewriteCallers") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "threadParameter" => CodeModelActions.ThreadParameter(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "declaration"),
+            RequireString(args, "valueAtTop"),
+            OptionalInt(args, "depth") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addEnumMember" => CodeModelActions.AddEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "name"),
+            OptionalString(args, "value"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editEnumMember" => CodeModelActions.EditEnumMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "value"),
+            OptionalBool(args, "allowValueChange") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "editType" => CodeModelActions.EditType(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "modifiers"),
+            args.ValueKind == JsonValueKind.Object && args.TryGetProperty("baseList", out _) ? StringList(args, "baseList").ToList() : null,
+            StringList(args, "attributesAdd").ToList(),
+            StringList(args, "attributesRemove").ToList(),
+            OptionalString(args, "typeParameters"),
+            OptionalString(args, "constraints"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "checkDocs" => CodeModelActions.CheckDocs(RequireString(args, "file")),
+        "listCodeActions" => CodeModelActions.ListCodeActions(RequireString(args, "file"), RequireInt(args, "line")),
+        "removeUnused" => CodeModelActions.RemoveUnused(ParseUnusedItems(args), OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "updateDocs" => CodeModelActions.UpdateDocs(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalString(args, "summary"),
+            ParseDocUpdates(args).Items,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "convert" => CodeModelActions.Convert(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "kind"),
+            OptionalInt(args, "depth") ?? 0,
+            OptionalBool(args, "suffix") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractInterface" => CodeModelActions.ExtractInterface(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "interfaceName"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractValue" => CodeModelActions.ExtractValue(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "expression"),
+            RequireString(args, "name"),
+            RequireString(args, "kind"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "inlineMethod" => CodeModelActions.InlineMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractMethod" => CodeModelActions.ExtractMethod(
+            RequireString(args, "file"),
+            RequireInt(args, "startLine"),
+            RequireInt(args, "endLine"),
+            RequireString(args, "name"),
+            OptionalString(args, "accessibility") ?? "private",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "applyCodeAction" => CodeModelActions.ApplyCodeAction(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "id"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "extractPartial" => CodeModelActions.ExtractPartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            RequireString(args, "suffix"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "mergePartial" => CodeModelActions.MergePartial(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "organizeFile" => CodeModelActions.OrganizeFile(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "action"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "moveMember" => CodeModelActions.MoveMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            RequireString(args, "toType"),
+            ParseCallerEdits(args),
+            OptionalBool(args, "toStatic") == true,
+            OptionalBool(args, "pullUp") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "generateMembers" => CodeModelActions.GenerateMembers(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "kind"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "generateConstructor" => CodeModelActions.GenerateConstructor(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            StringList(args, "members").ToList(),
+            OptionalString(args, "accessibility") ?? "public",
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "implementMembers" => CodeModelActions.ImplementMembers(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "mode"),
+            StringList(args, "members").ToList(),
+            OptionalBool(args, "explicit") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addType" => CodeModelActions.AddType(
+            RequireString(args, "anchorFile"),
+            RequireString(args, "declaration"),
+            StringList(args, "usings").ToList(),
+            OptionalString(args, "namespaceName"),
+            OptionalString(args, "summary"),
+            StringList(args, "attributes").ToList(),
+            OptionalBool(args, "withTests") == true,
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "addInterfaceMember" => CodeModelActions.AddInterfaceMember(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            RequireString(args, "declaration"),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
+        "changeSignature" => CodeModelActions.ChangeSignature(
+            RequireString(args, "file"),
+            RequireInt(args, "line"),
+            OptionalInt(args, "column") ?? 1,
+            ParseNewParameters(args),
+            ParseDocUpdates(args),
+            new HeaderChange { ReturnType = OptionalString(args, "returnType"), Accessibility = OptionalString(args, "accessibility") },
             OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMethod" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
@@ -170,7 +322,7 @@ public sealed class IdeActions(DTE2 dte)
             ParseDocUpdates(args),
             false,
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addOverload" => CodeModelActions.AddMethod(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -179,7 +331,7 @@ public sealed class IdeActions(DTE2 dte)
             ParseDocUpdates(args),
             true,
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "deleteMember" => CodeModelActions.DeleteMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
@@ -203,25 +355,25 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "newNamespace"),
             OptionalBool(args, "moveFiles") == true,
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "moveType" => CodeModelActions.MoveType(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             RequireString(args, "newNamespace"),
             OptionalBool(args, "moveFiles") == true,
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "addMember" => CodeModelActions.AddMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "editMember" => CodeModelActions.EditMember(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             ParseMemberEdit(args),
             ParseCallerEdits(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "tddAddTest" => CodeModelActions.TddAddTest(
             RequireString(args, "testFile"),
             RequireInt(args, "testLine"),
@@ -231,14 +383,14 @@ public sealed class IdeActions(DTE2 dte)
             RequireString(args, "methodText"),
             ParseDocUpdates(args),
             ParseMemberSpecs(args),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "tddUpdateTest" => CodeModelActions.TddUpdateTest(
             RequireString(args, "file"),
             RequireInt(args, "line"),
             RequireString(args, "newBody"),
             OptionalString(args, "targetFile"),
             OptionalInt(args, "targetLine"),
-            OptionalBool(args, "confirm") == true),
+            OptionalBool(args, "confirm") == true, OptionalString(args, "planHash")),
         "projectProperties" => ProjectProperties(RequireString(args, "project"), RequireStringArray(args, "names")),
         "addProjectItem" => AddProjectItem(
             RequireString(args, "project"),
@@ -926,18 +1078,57 @@ public sealed class IdeActions(DTE2 dte)
         }
     }
 
-    private static string? OptionalString(JsonElement args, string name) =>
-        args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
-
-    // Reads an optional boolean argument. Returns null when absent or not a boolean, so callers choose the default.
-    internal static bool? OptionalBool(JsonElement args, string name) =>
-        args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False)
-            ? value.GetBoolean()
-            : null;
-
     // Process lists for the debugger. Read-only: nothing is attached or detached here.
+    // Item templates this Visual Studio offers in Add New Item: its shipped and extension templates (ItemTemplatesCache,
+    // ItemTemplates), those the user's instance data folders cache, and the user's own under Documents. Each path can be
+    // passed as the template of addProjectItem in mode fromNew.
+    private object ListItemTemplates(string? filter, string? language, int? limit)
+    {
+        var max = Math.Min(Math.Max(limit ?? 200, 1), 1000);
+        var ide = Path.GetDirectoryName(dte.FullName) ?? string.Empty;
+        var roots = new List<string> { Path.Combine(ide, "ItemTemplatesCache"), Path.Combine(ide, "ItemTemplates") };
+        roots.AddRange(MatchingFolders(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "VisualStudio"),
+            "*", "ItemTemplatesCache"));
+        roots.AddRange(MatchingFolders(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Visual Studio*", Path.Combine("Templates", "ItemTemplates")));
+
+        var found = ItemTemplateFinder.Find(roots, filter, language, max);
+        return new
+        {
+            count = found.Templates.Count,
+            truncated = found.Truncated,
+            templates = found.Templates.Select(t => new { name = t.Name, description = t.Description, language = t.Language, category = t.Category, path = t.Path }).ToList(),
+        };
+    }
+
+    // <parent>\<match>\<suffix> for every folder under parent that matches the pattern and has the suffix folder.
+    private static IEnumerable<string> MatchingFolders(string parent, string pattern, string suffix)
+    {
+        if (!Directory.Exists(parent))
+        {
+            yield break;
+        }
+
+        string[] matches;
+        try
+        {
+            matches = Directory.GetDirectories(parent, pattern);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        foreach (var match in matches)
+        {
+            var folder = Path.Combine(match, suffix);
+            if (Directory.Exists(folder))
+            {
+                yield return folder;
+            }
+        }
+    }
+
     private object ListProcesses()
     {
         var processes = dte.Debugger.LocalProcesses;
@@ -1501,102 +1692,6 @@ public sealed class IdeActions(DTE2 dte)
         return null;
     }
 
-    private static List<(string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText)> ParseEdits(JsonElement args)
-    {
-        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty("edits", out var array) || array.ValueKind != JsonValueKind.Array)
-        {
-            throw new ArgumentException(Strings.Format("MissingStringArgument", "edits"));
-        }
-
-        var edits = new List<(string, int, int, int, int, string)>();
-        foreach (var e in array.EnumerateArray())
-        {
-            edits.Add((RequireString(e, "file"), RequireInt(e, "startLine"), RequireInt(e, "startColumn"), RequireInt(e, "endLine"), RequireInt(e, "endColumn"), RequireString(e, "newText")));
-        }
-
-        return edits;
-    }
-
-    // The optional callerEdits array of editMethod: each item names a reference (file, line, column) and its replacement text.
-    private static List<CallerEdit> ParseCallerEdits(JsonElement args)
-    {
-        var edits = new List<CallerEdit>();
-        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("callerEdits", out var array) && array.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var e in array.EnumerateArray())
-            {
-                edits.Add(new CallerEdit(RequireString(e, "file"), RequireInt(e, "line"), RequireInt(e, "column"), RequireString(e, "newText")));
-            }
-        }
-
-        return edits;
-    }
-
-    // The members array: each item names a field or property, its type, privacy and backing.
-    private static List<MemberSpec> ParseMemberSpecs(JsonElement args)
-    {
-        var specs = new List<MemberSpec>();
-        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("members", out var array) && array.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var e in array.EnumerateArray())
-            {
-                var spec = new MemberSpec
-                {
-                    Name = RequireString(e, "name"),
-                    Type = RequireString(e, "type"),
-                    Accessibility = OptionalString(e, "accessibility") ?? "",
-                    Backing = OptionalString(e, "backing") ?? "auto",
-                    Setter = OptionalString(e, "setter") ?? "set",
-                    Required = OptionalBool(e, "required") == true,
-                    Initializer = OptionalString(e, "initializer"),
-                    Summary = OptionalString(e, "summary"),
-                };
-                spec.Attributes.AddRange(StringList(e, "attributes"));
-                specs.Add(spec);
-            }
-        }
-
-        return specs;
-    }
-
-    // The editMember arguments: only the fields that are present change.
-    private static MemberEdit ParseMemberEdit(JsonElement args)
-    {
-        var edit = new MemberEdit
-        {
-            NewName = OptionalString(args, "newName"),
-            NewType = OptionalString(args, "newType"),
-            Accessibility = OptionalString(args, "accessibility"),
-            Backing = OptionalString(args, "backing"),
-            Setter = OptionalString(args, "setter"),
-            Required = OptionalBool(args, "required"),
-            NewSummary = OptionalString(args, "newSummary"),
-        };
-        edit.AddAttributes.AddRange(StringList(args, "addAttributes"));
-        edit.RemoveAttributes.AddRange(StringList(args, "removeAttributes"));
-        return edit;
-    }
-
-    private static IEnumerable<string> StringList(JsonElement element, string name) =>
-        element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var array) && array.ValueKind == JsonValueKind.Array
-            ? array.EnumerateArray().Select(v => v.GetString() ?? "").Where(s => s.Length > 0).ToList()
-            : new List<string>();
-
-    // The optional newSummary and docs of editMethod: docs is an array of {tag, name, text} for param, typeparam and returns tags.
-    private static DocUpdates ParseDocUpdates(JsonElement args)
-    {
-        var updates = new DocUpdates { NewSummary = OptionalString(args, "newSummary") };
-        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("docs", out var array) && array.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var e in array.EnumerateArray())
-            {
-                updates.Items.Add(new DocItem(RequireString(e, "tag"), OptionalString(e, "name"), RequireString(e, "text")));
-            }
-        }
-
-        return updates;
-    }
-
     // Replaces one range through the editor's selection, so the change goes through the IDE's undo stack.
     private void ApplyEdit((string File, int StartLine, int StartColumn, int EndLine, int EndColumn, string NewText) edit)
     {
@@ -1783,31 +1878,6 @@ public sealed class IdeActions(DTE2 dte)
         }
 
         return new { processes = list };
-    }
-
-    private static int? OptionalInt(JsonElement args, string name) =>
-        args.ValueKind == JsonValueKind.Object && args.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
-            ? value.GetInt32()
-            : null;
-
-    private static int RequireInt(JsonElement args, string name)
-    {
-        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Number)
-        {
-            throw new ArgumentException(Strings.Format("MissingIntegerArgument", name));
-        }
-
-        return value.GetInt32();
-    }
-
-    private static string RequireString(JsonElement args, string name)
-    {
-        if (args.ValueKind != JsonValueKind.Object || !args.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.String)
-        {
-            throw new ArgumentException(Strings.Format("MissingStringArgument", name));
-        }
-
-        return value.GetString()!;
     }
 
     private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;

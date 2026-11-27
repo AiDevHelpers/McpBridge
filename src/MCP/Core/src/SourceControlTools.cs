@@ -7,13 +7,42 @@ using ModelContextProtocol.Server;
 namespace AiDevHelpers.MCP.Core.Tools;
 
 /// <summary>Git status and diff run at once. Writes are two-step: git_plan shows the command, git_confirm runs it.</summary>
+/// <summary>Runs an approved git_confirm write in the open VS Code window for its folder. Null when no VS Code window has the folder open.</summary>
+internal sealed class VsCodeGitRouter : IVsCodeWriteRouter
+{
+    public async Task<GitResult?> TryRunAsync(string repoPath, string vsCodeAction, IReadOnlyDictionary<string, object?> arguments, CancellationToken ct)
+    {
+        var full = Path.GetFullPath(repoPath);
+        if (!SourceControlTools.IsVsCodeOpen(full))
+        {
+            return null;
+        }
+
+        var values = new Dictionary<string, object?>(arguments) { ["repoPath"] = full };
+        var reply = await IdeInstanceRouter.CallAsync(vsCodeAction, values, full, ct, ide: "VsCode");
+
+        using var doc = JsonDocument.Parse(reply);
+        var root = doc.RootElement;
+        if (root.TryGetProperty("ok", out var ok) && ok.GetBoolean())
+        {
+            var result = root.TryGetProperty("result", out var r) ? r.GetRawText() : "{}";
+            return new GitResult(true, 0, result);
+        }
+
+        // An empty error makes the service report the failure itself (no git.exe fallback).
+        var error = root.TryGetProperty("error", out var e) && e.ValueKind == JsonValueKind.String ? e.GetString() : null;
+        return new GitResult(false, -1, error ?? string.Empty);
+    }
+}
+
 [McpServerToolType]
 internal sealed class SourceControlTools
 {
-    private static readonly SourceControlService Service = new(new ProcessGitRunner(), new AiDevHelpers.Common.FileRepoRulesSource());
+    private static readonly SourceControlService Service = new(new ProcessGitRunner(), new AiDevHelpers.Common.FileRepoRulesSource(), new VsCodeGitRouter());
     private static readonly GitHubService GitHub = new(new ProcessGhRunner());
 
     [McpServerTool]
+    [SafeTool]
     [Description("Branch, upstream, ahead and behind counts, and changed paths for a git repo folder.")]
     public static async Task<string> GitStatus(
         [Description("Repo folder, e.g. the folder that holds the .sln")] string repoPath,
@@ -43,11 +72,7 @@ internal sealed class SourceControlTools
     private static async Task<string?> TryVsCodeStatusAsync(string repoPath, CancellationToken ct)
     {
         var full = Path.GetFullPath(repoPath);
-        var open = VsInstanceRegistry.ListRunning().Any(i =>
-            string.Equals(i.Ide, "VsCode", StringComparison.OrdinalIgnoreCase)
-            && !string.IsNullOrEmpty(i.SolutionPath)
-            && string.Equals(Path.GetFullPath(i.SolutionPath), full, StringComparison.OrdinalIgnoreCase));
-        if (!open)
+        if (!IsVsCodeOpen(full))
         {
             return null;
         }
@@ -55,7 +80,14 @@ internal sealed class SourceControlTools
         return await IdeInstanceRouter.CallAsync("gitStatus", new { repoPath = full }, full, ct, ide: "VsCode");
     }
 
+    // True when a running VS Code window has this folder open.
+    internal static bool IsVsCodeOpen(string fullPath) => VsInstanceRegistry.ListRunning().Any(i =>
+        string.Equals(i.Ide, "VsCode", StringComparison.OrdinalIgnoreCase)
+        && !string.IsNullOrEmpty(i.SolutionPath)
+        && string.Equals(Path.GetFullPath(i.SolutionPath), fullPath, StringComparison.OrdinalIgnoreCase));
+
     [McpServerTool]
+    [SafeTool]
     [Description("Diff of the working tree (or the staged changes when staged is true), optionally for one path.")]
     public static async Task<string> GitDiff(
         [Description("Repo folder")] string repoPath,
@@ -67,6 +99,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
                  "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. " +
                  "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
@@ -105,6 +138,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run a write planned by git_plan, once. The token is single use.")]
     public static async Task<string> GitConfirm(
         [Description("Token returned by git_plan")] string token)
@@ -114,6 +148,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Status of each CI check of a pull request, read through the GitHub CLI (gh). Read only. " +
                  "bucket is pass, fail, pending, skipping or cancel. Use it instead of waiting in a loop.")]
     public static async Task<string> PrChecks(
@@ -138,6 +173,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("The first failing CI job of a pull request and the error lines of its log, through gh. Read only. " +
                  "When no line looks like an error, the end of the log is returned. maxLines caps the lines.")]
     public static async Task<string> CiFailure(

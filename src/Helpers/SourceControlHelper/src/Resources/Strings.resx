@@ -20,6 +20,7 @@
   <data name="DeleteBranchNeedsName" xml:space="preserve"><value>delete_branch needs a branch name.</value></data>
   <data name="SwitchNeedsName" xml:space="preserve"><value>switch needs a branch name.</value></data>
   <data name="CouldNotStartGit" xml:space="preserve"><value>Could not start git.</value></data>
+  <data name="VsCodeRouteFailed" xml:space="preserve"><value>VS Code did not run '{0}'. The write was not retried with git, so nothing else ran. Plan the write again.</value></data>
   <data name="GitFailedSilently" xml:space="preserve"><value>git exited with code {0} and printed nothing.</value></data>
   <data name="GhNotFound" xml:space="preserve"><value>gh (the GitHub CLI) was not found, or is not on PATH.</value></data>
   <data name="GhFailedSilently" xml:space="preserve"><value>gh exited with code {0} and printed nothing. Check that it is signed in (gh auth status).</value></data>

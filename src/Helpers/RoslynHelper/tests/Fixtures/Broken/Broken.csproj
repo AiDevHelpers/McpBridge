@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  <!-- deliberately malformed XML: the PropertyGroup is never closed -->
+</Project>

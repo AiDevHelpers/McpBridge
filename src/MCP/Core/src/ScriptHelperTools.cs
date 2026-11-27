@@ -52,6 +52,9 @@ public interface IElevVisibleRunner
 public interface IElevInstaller
 {
     Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct);
+
+    /// <summary>Runs install-workload through elev.exe. The name is checked again by elev.exe and by the script.</summary>
+    Task<ElevRunResult> InstallWorkloadAsync(string workloadName, CancellationToken ct);
 }
 
 /// <summary>Starts elev.exe from the MCP server's folder and collects what it prints.</summary>
@@ -62,6 +65,9 @@ internal sealed class ProcessElevRunner : IElevRunner, IElevVerifier, IElevScann
 
     public Task<ElevRunResult> InstallAsync(string toolName, CancellationToken ct) =>
         RunElevAsync(["install-tool", toolName], ct);
+
+    public Task<ElevRunResult> InstallWorkloadAsync(string workloadName, CancellationToken ct) =>
+        RunElevAsync(["install-workload", workloadName], ct);
 
     public Task<ElevRunResult> ScanAsync(string repoRoot, CancellationToken ct) =>
         RunElevAsync(["repo-scan", repoRoot], ct);
@@ -119,6 +125,7 @@ internal sealed class ScriptHelperTools
     }
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Run an approved debug script elevated through the Script Helper broker. projectRoot is the folder with " +
         "the .elevated.json manifest; script is the path relative to it; args are passed to the script in order. " +

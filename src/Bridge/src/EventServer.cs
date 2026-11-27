@@ -38,6 +38,7 @@ public sealed class EventServer : IDisposable
     private readonly CancellationTokenSource _cts = new();
     private readonly List<Task> _accepts = new();
 
+    /// <summary>Creates the events pipe server for one instance. Call <see cref="Start"/> to begin accepting subscribers.</summary>
     public EventServer(string pipeName, int pid, EventHub hub, IBridgeLogger logger)
     {
         _pipeName = pipeName;
@@ -46,6 +47,7 @@ public sealed class EventServer : IDisposable
         _logger = logger;
     }
 
+    /// <summary>Starts one accept loop per pipe instance, up to <see cref="MaxSubscribers"/>.</summary>
     public void Start()
     {
         // One accept loop per pipe instance: a client that holds one instance (for example the MCP server's automatic
@@ -79,6 +81,7 @@ public sealed class EventServer : IDisposable
         }
     }
 
+    /// <summary>Closes every subscriber with reason "bridgeStopped" and stops the accept loops.</summary>
     public void Dispose()
     {
         _hub.CloseAll("bridgeStopped");

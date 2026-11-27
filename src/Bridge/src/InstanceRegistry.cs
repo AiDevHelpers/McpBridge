@@ -13,14 +13,20 @@ public static class InstanceRegistry
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
+    /// <summary>The folder that holds one manifest per running instance: %ProgramData%\AiDevHelpers\vs-instances.</summary>
     public static string Directory =>
         Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "vs-instances");
 
+    /// <summary>The request pipe name for a Visual Studio process id.</summary>
     public static string PipeNameFor(int pid) => $"AiDevHelpers.VS.{pid}";
 
     /// <summary>Events pipe for the instance: pushes events to subscribed clients (see conformance/protocol.md).</summary>
     public static string EventPipeNameFor(int pid) => $"AiDevHelpers.VS.{pid}.events";
 
+    /// <summary>Events pipe for a VS Code extension host, the same protocol as <see cref="EventPipeNameFor"/>.</summary>
+    public static string VsCodeEventPipeNameFor(int pid) => $"AiDevHelpers.VsCode.{pid}.events";
+
+    /// <summary>Writes this instance's manifest, atomically, with its open solution path.</summary>
     public static void Write(int pid, string? solutionPath)
     {
         var record = new VsInstance(pid, PipeNameFor(pid), solutionPath, DateTime.UtcNow, "VisualStudio", Array.Empty<string>());
@@ -41,6 +47,7 @@ public static class InstanceRegistry
 #endif
     }
 
+    /// <summary>Deletes the manifest for the process id. A missing or locked file is ignored.</summary>
     public static void Remove(int pid)
     {
         try

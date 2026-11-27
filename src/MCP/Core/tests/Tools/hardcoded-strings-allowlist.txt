@@ -1,6 +1,19 @@
 # Multi-word literals in helper sources that are not user-facing text. Format: Helper|literal. Anything else must be in Resources/Strings.resx.
 
 # Folder names on disk.
+# RoslynHelper protocol errors returned to the bridge caller; developer-facing, not UI text.
+RoslynHelper|Unknown or incomplete argument: {args[i]}
+RoslynHelper|Action already registered: {action}.
+RoslynHelper|No solution is loaded. Call loadSolution first.
+RoslynHelper|The plan was not applied.
+RoslynHelper|Unknown action: {action}.
+RoslynHelper|Changed document has no file on disk: {documentId}.
+RoslynHelper|Plan removes {before.FilePath}; the helper does not delete files in this step.
+RoslynHelper|File changed on disk since the plan was made: {before.FilePath}.
+RoslynHelper|loadSolution needs a solutionPath.
+RoslynHelper|Solution not found: {solutionPath}.
+RoslynHelper|No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.
+RoslynHelper|Project did not load and MSBuild reported no diagnostic.
 ConfigHelper|Remote Debugger
 ExtensionsHelper|Microsoft Visual Studio
 
@@ -84,6 +97,10 @@ MCP.Core|Test run finished: (\d+) Tests \((\d+) Passed, (\d+) Failed, (\d+) Skip
 Vs2026.Core|Every entry point runs on the UI thread: BridgePackage switches to it before calling Invoke, and Invoke asserts it with ThreadHelper.ThrowIfNotOnUIThread.
 Vs2026.Core|Visual Studio bridge package initialized for process {_pid}.
 Vs2026.Core|[IdeBridge] Watchdog error: {ex}
+# ide_add_type withTests writes this C# test source into the user's test project; it is code, not a user-facing message.
+Vs2026.Core|public sealed class
+Vs2026.Core|    public void NotWrittenYet() => Assert.Fail(\"test not written\");
+Vs2026.Core|public override
 Vs2026.Core|AiDevHelpers IDE Bridge
 Vs2026.Core|{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff} [{level}] {message}
 Vs2026.Installer|AiDevHelpers IDE Bridge
@@ -114,7 +131,10 @@ Vs2026.Core|Visual Studio UI thread answers again (pid {_pid}).
 Vs2026.Core|Visual Studio UI thread has not answered for {UiHungAfter.TotalSeconds} s (pid {_pid}).
 
 # dotnet new list column header, matched when parsing the CLI table.
+MCP.Core|dotnet workload install {entry.Name}
 ProjectHelper|Template Name
+ProjectHelper|Installed Workload Id
+ProjectHelper|Workload ID
 # Test runner arguments and process labels, and the body of a generated stub; none is shown to a user as text.
 TestingHelper|XPlat Code Coverage
 MCP.Core|method test run
@@ -123,3 +143,20 @@ Vs2026.Core|protected internal
 Vs2026.Core|private protected
 # Task List provider name: an identifier the IDE shows as the source, not prose.
 Vs2026.Core|AiDevHelpers bridge
+
+# Resx XML markup written by ResxFile, not user-facing text.
+LocalizationHelper|<data name=\"{System.Security.SecurityElement.Escape(name)}\" xml:space=\"preserve\"><value>{new XText(value)}</value>
+LocalizationHelper|<comment>{new XText(comment)}</comment>
+# ide_generate_members writes these C# member declarations and body lines into the user's type; they are code, not user-facing text.
+Vs2026.Core|public override bool Equals(object? obj)
+Vs2026.Core|    return obj is
+Vs2026.Core|public override int GetHashCode()
+Vs2026.Core|        int hash = 17;
+Vs2026.Core|        return hash;
+Vs2026.Core|public override string ToString()
+# ide_extract_interface writes this declaration into a new file; it is code, not a user-facing message.
+Vs2026.Core|public interface I
+# ide_convert null-guards writes this guard line into the user's method; it is code, not a user-facing message.
+Vs2026.Core| == null) throw new System.ArgumentNullException(nameof(
+# ide_list_item_templates looks for the per-user Visual Studio documents folders by this folder-name pattern; it is a path, not a user-facing message.
+Vs2026.Core|Visual Studio*

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AiDevHelpers.Bridge;
 using EnvDTE;
@@ -58,6 +60,7 @@ public sealed class BridgeHost : IDisposable
 
     public void Dispose()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         if (_disposed)
         {
             return;
@@ -103,6 +106,7 @@ public sealed class BridgeHost : IDisposable
     // Named so Dispose can unhook them. Lambdas could not be removed.
     private void OnSolutionOpened()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         UpdateSolutionPath(_dte.Solution?.FullName);
         _events.Publish("solutionOpened", new { solution = _solutionPath });
     }
@@ -128,11 +132,56 @@ public sealed class BridgeHost : IDisposable
     private void OnContextChanged(EnvDTE.Process newProcess, EnvDTE.Program newProgram, EnvDTE.Thread newThread, EnvDTE.StackFrame newStackFrame) =>
         _events.Publish("contextChanged", new { process = newProcess?.Name, function = newStackFrame?.FunctionName });
 
+#pragma warning disable VSTHRD010 // DTE document events are raised on the UI thread.
     private void OnDocumentSaved(Document document) => _events.Publish("documentSaved", new { file = document.FullName });
 
     private void OnDocumentOpened(Document document) => _events.Publish("documentOpened", new { file = document.FullName });
 
     private void OnDocumentClosing(Document document) => _events.Publish("documentClosing", new { file = document.FullName });
+#pragma warning restore VSTHRD010
+
+    // Set by "quiesce". Once set, new actions are refused so the server can stop or restart without this instance changing under it.
+    private volatile bool _quiesced;
+
+    // The MCP server asks each instance to stop taking actions before it stops or restarts. Requests are served one at a time, so this
+    // reply comes after the action that is running has finished: that is the "finish the step, then report back" step.
+    private object Quiesce()
+    {
+        _quiesced = true;
+        _events.Publish("serverStopping", new { pid = _pid });
+        return new { quiesced = true, pid = _pid };
+    }
+
+    // The MCP server sends its global dialog settings here. Only values that differ are applied, and a change is published as settingsChanged.
+    private object Configure(IdeActions actions, JsonElement args)
+    {
+        var changed = new List<string>();
+        if (args.ValueKind == JsonValueKind.Object
+            && args.TryGetProperty("autoDismissDialogs", out var dismiss)
+            && (dismiss.ValueKind == JsonValueKind.True || dismiss.ValueKind == JsonValueKind.False)
+            && actions.AutoDismissDialogs != dismiss.GetBoolean())
+        {
+            actions.AutoDismissDialogs = dismiss.GetBoolean();
+            changed.Add("autoDismissDialogs");
+        }
+
+        if (args.ValueKind == JsonValueKind.Object
+            && args.TryGetProperty("actionTimeoutSeconds", out var seconds)
+            && seconds.TryGetInt32(out var limitSeconds)
+            && limitSeconds > 0
+            && _server.ActionLimit != TimeSpan.FromSeconds(limitSeconds))
+        {
+            _server.ActionLimit = TimeSpan.FromSeconds(limitSeconds);
+            changed.Add("actionTimeoutSeconds");
+        }
+
+        if (changed.Count > 0)
+        {
+            _events.Publish("settingsChanged", new { changed });
+        }
+
+        return new { applied = true, changed };
+    }
 
     private void Initialize()
     {
@@ -145,11 +194,19 @@ public sealed class BridgeHost : IDisposable
         _server = new BridgeServer(
             pipeName,
 #pragma warning disable VSTHRD010 // _runOnMainThread marshals the call onto the UI thread before Invoke runs.
-            (action, args) => _runOnMainThread(() => actions.Invoke(action, args)),
+            (action, args) => action == "configure"
+                ? Task.FromResult<object>(Configure(actions, args))
+                : action == "quiesce"
+                    ? Task.FromResult<object>(Quiesce())
+                    : _quiesced
+                        ? Task.FromException<object>(new InvalidOperationException(Strings.Get("QuiesceRefused")))
+                        : _runOnMainThread(() => actions.Invoke(action, args)),
 #pragma warning restore VSTHRD010
             () => _solutionPath,
             new DebugBridgeLogger());
         _server.UiResponsive = () => _uiResponsive;
+        // An action that never answers usually means a dialog is open on the UI thread. Name the dialogs so the client can act.
+        _server.ActionTimedOut = action => _events.Publish("dialogBlocking", new { action, dialogs = DialogWindows.OpenTitles(_pid) });
         BridgeControl.Attach(_server, _pid, pipeName, () => _solutionPath);
         BridgeControl.Start();
 
@@ -218,9 +275,10 @@ public sealed class BridgeHost : IDisposable
         }
 
         var answer = _runOnMainThread(() => (object)DateTime.UtcNow);
-        answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
+        _ = answer.ContinueWith(_ => Interlocked.Exchange(ref _uiPingInFlight, 0), TaskScheduler.Default);
         return Task.WhenAny(answer, Task.Delay(UiPingTimeout)).ContinueWith(done =>
         {
+            Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
             if (ReferenceEquals(done.Result, answer))
             {
                 if (!_uiResponsive)
@@ -240,6 +298,7 @@ public sealed class BridgeHost : IDisposable
 
     private void MarkHungIfOverdue()
     {
+        Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
         if (_uiResponsive && DateTime.UtcNow - _lastUiAnswerUtc > UiHungAfter)
         {
             _uiResponsive = false;

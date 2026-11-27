@@ -78,6 +78,8 @@ public sealed partial class DocsMatchCodeTests
             .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}") && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}"))
             .Select(f => Path.GetRelativePath(RepoRoot(), f).Replace('\\', '/'))
             .Where(f => !f.Contains("/node_modules/"))
+            // Test fixtures are sample inputs for tests, kept in their own Fixtures.slnx; they are not solution members.
+            .Where(f => !f.Contains("/tests/Fixtures/"))
             .ToList();
 
         var missing = projects.Where(p => !solution.Contains(p)).ToList();

@@ -13,6 +13,7 @@ internal sealed class BookmarkTools
     private static readonly IIdeBridge Bridge = new IdeInstanceBridge();
 
     [McpServerTool]
+    [SafeTool]
     [Description("List Visual Studio bookmarks. Visual Studio only in v1.")]
     public static async Task<string> BookmarkList(CancellationToken ct = default)
     {
@@ -28,6 +29,7 @@ internal sealed class BookmarkTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Get one Visual Studio bookmark by id.")]
     public static async Task<string> BookmarkGet([Description("Bookmark id")] string id, CancellationToken ct = default)
     {
@@ -45,6 +47,7 @@ internal sealed class BookmarkTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set a Visual Studio bookmark at a line. file must be a full path; line is 1-based; name is optional.")]
     public static async Task<string> BookmarkSet(
         [Description("Full path of the file")] string file,
@@ -64,6 +67,7 @@ internal sealed class BookmarkTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Remove a Visual Studio bookmark by id.")]
     public static async Task<string> BookmarkRemove([Description("Bookmark id")] string id, CancellationToken ct = default)
     {

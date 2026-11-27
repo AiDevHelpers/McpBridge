@@ -23,6 +23,7 @@
   <data name="AddFolderUnsafe" xml:space="preserve"><value>The folder {0} must stay inside the repo.</value></data>
   <data name="AddFolderNotEmpty" xml:space="preserve"><value>The folder {0} already has files. Choose an empty folder.</value></data>
   <data name="AddTemplateUnknown" xml:space="preserve"><value>The template {0} is not in dotnet new list.</value></data>
+  <data name="AddTestVersionAsk" xml:space="preserve"><value>No existing project pins {0}. Ask the user in chat which version to use, then add it to the test project by hand or rerun with it in the standards file.</value></data>
   <data name="AddLanguageUnsupported" xml:space="preserve"><value>The template {0} does not support {1}.</value></data>
   <data name="SlnxAlreadyListed" xml:space="preserve"><value>The solution already lists {0}.</value></data>
   <data name="SeedTestSource" xml:space="preserve"><value>using Xunit;
@@ -35,6 +36,9 @@ public sealed class SeedTest
     public void Seed_fails_until_the_first_test_is_written() => Assert.Fail("seed");
 }}
 </value></data>
+  <data name="WorkloadListHeaderMissing" xml:space="preserve"><value>dotnet workload list did not print the expected table header.</value></data>
+  <data name="WorkloadSearchHeaderMissing" xml:space="preserve"><value>dotnet workload search did not print the expected table header.</value></data>
+  <data name="VswhereNotArray" xml:space="preserve"><value>vswhere did not print a JSON array.</value></data>
   <data name="FixDescAddReference" xml:space="preserve"><value>Add a ProjectReference to {1} in {0}.</value></data>
   <data name="FixNoRootElement" xml:space="preserve"><value>The project file has no root element.</value></data>
   <data name="FixTokenUnknown" xml:space="preserve"><value>The token is unknown or was already used. Plan again.</value></data>

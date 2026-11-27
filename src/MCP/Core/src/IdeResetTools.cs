@@ -14,6 +14,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class IdeResetTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Reset a Visual Studio instance whose UI thread has stopped answering (health ui_responsive false, or no answer at all). " +
                  "Without confirm it changes nothing and reports what a reset does: ask the user first, then call again with confirm true. " +
                  "A reset closes the instance without saving, so unsaved edits can be lost. Relaunch afterwards with ide_open_solution.")]
