@@ -21,15 +21,18 @@ public static class VsInstanceRegistry
         Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "vs-instances");
 
     /// <summary>The instances whose manifests exist and whose processes still run. Manifests for exited processes are deleted.</summary>
-    public static IReadOnlyList<VsInstance> ListRunning()
+    public static IReadOnlyList<VsInstance> ListRunning() => ListRunning(Directory, IsRunning);
+
+    /// <summary>The same listing over any folder and process check. Tests use this seam; the parameterless call uses the real ones.</summary>
+    public static IReadOnlyList<VsInstance> ListRunning(string directory, Func<int, bool> isRunning)
     {
         var instances = new List<VsInstance>();
-        if (!System.IO.Directory.Exists(Directory))
+        if (!System.IO.Directory.Exists(directory))
         {
             return instances;
         }
 
-        foreach (var file in System.IO.Directory.EnumerateFiles(Directory, "*.json"))
+        foreach (var file in System.IO.Directory.EnumerateFiles(directory, "*.json"))
         {
             var instance = TryRead(file);
             if (instance is null)
@@ -37,7 +40,7 @@ public static class VsInstanceRegistry
                 continue;
             }
 
-            if (IsRunning(instance.Pid))
+            if (isRunning(instance.Pid))
             {
                 instances.Add(instance);
             }

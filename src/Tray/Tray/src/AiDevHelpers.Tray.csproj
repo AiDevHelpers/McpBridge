@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\MCP\Core\src\AiDevHelpers.MCP.Core.csproj" />
+    <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
   </ItemGroup>
 
   <ItemGroup>

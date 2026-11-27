@@ -15,6 +15,7 @@
   <data name="ServiceStoppedNotice"><value>AiDevHelpers service stopped</value></data>
   <data name="OpenStatus"><value>Open status</value></data>
   <data name="ExitTray"><value>Exit tray</value></data>
+  <data name="NoInstances"><value>No IDE instances are running.</value></data>
   <data name="CrashStopped"><value>AiDevHelpers tray stopped after repeated crashes, so it will not start again yet. Fix the cause, then delete the crashes file in the AiDevHelpers tray folder.</value></data>
 </root>
 
