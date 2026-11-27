@@ -58,6 +58,23 @@ public static class RoslynHelperRegistry
             }
         }
 
+        // A manifest whose process is gone is left behind by a killed helper; remove it so the folder does not fill up.
+        foreach (var file in Directory.Exists(folder) ? Directory.EnumerateFiles(folder, "*.json") : Enumerable.Empty<string>())
+        {
+            var stale = manifests.FirstOrDefault(m => Path.GetFileName(file) == m.Pid + ".json");
+            if (stale is not null && !IsAlive(stale.Pid))
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (IOException)
+                {
+                    // In use right now; the next call tries again.
+                }
+            }
+        }
+
         return Pick(manifests, solutionPath, framework, IsAlive);
     }
 
@@ -85,6 +102,9 @@ public enum RoslynRouteKind
 
     /// <summary>The action belongs to a helper, but no helper of the needed framework runs for the solution.</summary>
     NoHelper,
+
+    /// <summary>The action touches projects of both frameworks, which no single helper can load.</summary>
+    Refused,
 }
 
 /// <summary>Where an edit action is routed.</summary>
@@ -104,7 +124,11 @@ public static class RoslynRouting
     };
 
     /// <summary>Routes one action. <paramref name="find"/> looks up the live helper for a solution and framework.</summary>
-    public static RoslynRoute Decide(string action, string? ide, string? solutionPath, string? file, Func<string, string, RoslynHelperManifest?> find)
+    public static RoslynRoute Decide(string action, string? ide, string? solutionPath, string? file, Func<string, string, RoslynHelperManifest?> find) =>
+        DecideAcross(action, ide, solutionPath, file is null ? Array.Empty<string>() : new[] { file }, find);
+
+    /// <summary>Routes one action that may touch several files. Files in projects of both frameworks are refused: one helper cannot load both.</summary>
+    public static RoslynRoute DecideAcross(string action, string? ide, string? solutionPath, IEnumerable<string> files, Func<string, string, RoslynHelperManifest?> find)
     {
         if (!string.Equals(ide, "VsCode", StringComparison.OrdinalIgnoreCase) || !Actions.Contains(action)
             || solutionPath is null || string.IsNullOrWhiteSpace(solutionPath))
@@ -112,7 +136,14 @@ public static class RoslynRouting
             return new RoslynRoute(RoslynRouteKind.Bridge, null, null);
         }
 
-        var framework = FrameworkForFile(file);
+        var frameworks = files.Select(FrameworkForFile).Distinct().ToList();
+        if (frameworks.Count > 1)
+        {
+            return new RoslynRoute(RoslynRouteKind.Refused, null,
+                $"'{action}' touches projects of both net10 and net48. Split it into one action per framework.");
+        }
+
+        var framework = frameworks.FirstOrDefault() ?? "net10";
         var helper = find(solutionPath, framework);
         return helper is null
             ? new RoslynRoute(RoslynRouteKind.NoHelper, null,
