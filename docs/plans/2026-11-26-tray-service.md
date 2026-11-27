@@ -1,6 +1,6 @@
 # Windows service + login tray app + one HTTP MCP
 
-Branch from `wip`; PRs and merges into `wip`. Status (2026-11-27): five Sonnet reviews folded in. Phase 0 done except spikes B and C. Spike A passed on the parts run, with logoff, logon and `terminal_session` assumed. Unit 1a first slice merged (PR #99): MCP.Http on 127.0.0.1:5058, Host/Origin checks, no bearer token (loopback only). Next: rest of 1a.
+Branch from `wip`; PRs and merges into `wip`. Status (2026-11-27): five Sonnet reviews folded in. Phase 0 done except spikes B and C. Spike A passed on the parts run, with logoff, logon and `terminal_session` assumed. Unit 1a first slice merged (PR #99): MCP.Http on 127.0.0.1:5058, Host/Origin checks, no bearer token (loopback only). Unit 4 (approval pipe) done: tray-side `ApprovalPipeHost` (first-instance pipe, current-user ACL, fail closed) with contract tests over the real pipe; MCP.Http uses `ApprovalPipeChannel` on the per-user pipe name, `NoTrayApprovalChannel` removed. Not yet: the tray's dialog (unit 5) and the tray shell that calls `ApprovalPipeHost.RunAsync` (unit 5); until then every dangerous call is refused. Next: unit 5.
 
 ## Decisions (user, 2026-11-26)
 - SCM Windows Service (LocalSystem) supervises one **HTTP MCP** and applies updates; a per-user WPF tray app starts at login. The service stays, despite two reviewers calling it avoidable; Spike A (below) re-prices it before unit 3.
