@@ -23,6 +23,15 @@
   <data name="ColPath"><value>Solution or workspace</value></data>
   <data name="ColOpenFile"><value>Open file</value></data>
   <data name="UnknownFile"><value>not known yet</value></data>
+  <data name="CloseVsCodeNotSupported"><value>Closing VS Code instances from this page is not supported yet.</value></data>
+  <data name="CloseRefusedDebugging"><value>Not closed: a build or debug session is running in this instance. Stop it first.</value></data>
+  <data name="CloseDenied"><value>Not closed.</value></data>
+  <data name="CloseFailed"><value>Not closed: {0}</value></data>
+  <data name="CloseDone"><value>The solution was closed after saving.</value></data>
+  <data name="CloseButton"><value>Close</value></data>
+  <data name="ColAction"><value>Action</value></data>
+  <data name="ConfirmCloseTitle"><value>AiDevHelpers: close this solution?</value></data>
+  <data name="ConfirmClosePrompt"><value>Close the solution in {0} (repo {1}, pid {2})? Open documents are saved first.</value></data>
   <data name="ColStarted"><value>Started</value></data>
   <data name="ColPid"><value>PID</value></data>
   <data name="ColUser"><value>User</value></data>

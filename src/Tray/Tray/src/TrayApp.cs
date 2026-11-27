@@ -26,6 +26,7 @@ public sealed class TrayApp : IDisposable
     private readonly Dictionary<TrayIconState, System.Drawing.Icon> _icons;
     private readonly InstancesViewModel _instances;
     private readonly OpenFileWatcher _openFiles;
+    private readonly InstanceActions _actions;
     private StatusWindow? _window;
     private TrayIconState? _previous;
 
@@ -57,6 +58,11 @@ public sealed class TrayApp : IDisposable
             .Select(list => (IReadOnlyList<InstanceRow>)list.Select(rowBuilder.Build).OfType<InstanceRow>().ToList())
             .CombineLatest(_openFiles.Snapshots, (instanceRows, files) => InstanceRowFiles.WithFiles(instanceRows, files));
         _instances = new InstancesViewModel(rows, ui);
+        _actions = new InstanceActions(
+            (action, args, pid, ct) => IdeInstanceRouter.CallAsync(action, args, null, ct, instancePid: pid),
+            instance => Application.Current.Dispatcher.InvokeAsync(() => ConfirmDialog.Ask(
+                Strings.Get("ConfirmCloseTitle"),
+                Strings.Format("ConfirmClosePrompt", instance.Ide, Path.GetFileName(instance.SolutionPath ?? string.Empty), instance.Pid))).Task.Unwrap());
         _status.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(StatusViewModel.Icon))
@@ -93,6 +99,14 @@ public sealed class TrayApp : IDisposable
         }
     }
 
+    /// <summary>Closes the instance on a row, after the person's yes, and tells the outcome.</summary>
+    private async Task CloseInstanceAsync(InstanceRow row)
+    {
+        var instance = new VsInstance(row.Pid, $"AiDevHelpers.VS.{row.Pid}", row.Path, DateTime.UtcNow, row.Ide, []);
+        var result = await _actions.CloseAsync(instance, CancellationToken.None);
+        _icon.ShowNotification("AiDevHelpers", result.Message);
+    }
+
     /// <summary>The manifests the page may show: each one is checked, and a refused one is traced with its reason.</summary>
     private static IReadOnlyList<AiDevHelpers.Bridge.VsInstance> ValidInstances() =>
         AiDevHelpers.Bridge.VsInstanceRegistry.ListRunning()
@@ -126,7 +140,11 @@ public sealed class TrayApp : IDisposable
 
     private void ShowStatus()
     {
-        _window ??= new StatusWindow(_status, _instances);
+        if (_window is null)
+        {
+            _window = new StatusWindow(_status, _instances);
+            _window.CloseRequested += row => _ = CloseInstanceAsync(row);
+        }
         _window.Show();
         _window.Activate();
     }
