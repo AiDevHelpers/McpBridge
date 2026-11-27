@@ -294,6 +294,7 @@ CI builds both packages on pull requests and `v*` tags. See the README for the r
 | `ide_list_documents` | List the open documents with saved state and read-only flag. Read-only. |
 | `ide_list_exceptions` | List the debugger's exception settings, grouped as the debugger groups them, with break-when-thrown and break-when-user-unhandled. Read-only. |
 | `ide_list_instances` | List running IDE instances (currently Visual Studio) with their process id, solution, git branch and worktree. Pass solutionPath to add a `check`: whether the solution is open and whether an instance is open on the expected branch and worktree (default: those of the solution's checkout). |
+| `ide_list_item_templates` | List the item templates Visual Studio offers in Add New Item, with name, description, language, category and path. Pass a path as the template of `ide_add_project_item` in mode fromNew. Read-only. Visual Studio only. |
 | `ide_list_processes` | List the processes the IDE's debugger can attach to (local processes), with pid and name. Read-only. |
 | `ide_list_stack_frames` | List the stack frames of the current thread (index, function, return type). Empty unless the debugger is in break mode. Read-only. |
 | `ide_list_tasks` | List the items in the Visual Studio Task List window (category, text, file, line). Read-only. |

@@ -1,5 +1,9 @@
 # Changelog
 
+## Item templates (unreleased)
+
+- New `ide_list_item_templates` (Visual Studio only): lists the item templates Add New Item offers, with name, description, language, category and path, so `ide_add_project_item` mode fromNew has a template path to use. Filters: `filter` (name or description), `language`, `limit`.
+
 ## LocalizationHelper (unreleased)
 
 - New LocalizationHelper. `string_scan` and `resx_check` moved into it from LintHelper; names, descriptions and JSON are unchanged. `lint_check` still reports duplicate resource names, now through a LintHelper reference to LocalizationHelper.
