@@ -118,4 +118,36 @@ public sealed class ServerControlTests : IDisposable
 
         Assert.Equal(ServerControlGate.AlwaysAllowed.OrderBy(n => n), tools);
     }
+
+    [Fact]
+    public void ATokenPlannedInOneSessionCannotBeUsedFromAnother()
+    {
+        var token = "plan-" + Guid.NewGuid().ToString("N");
+        PlanOwnership.Record(token, "session-a");
+
+        Assert.True(PlanOwnership.MayUse(token, "session-a"));
+        Assert.False(PlanOwnership.MayUse(token, "session-b"));
+    }
+
+    [Fact]
+    public void AnUnknownTokenIsLeftToTheToolToRefuse()
+    {
+        Assert.True(PlanOwnership.MayUse("never-planned-" + Guid.NewGuid().ToString("N"), "session-b"));
+    }
+
+    [Fact]
+    public void ARecordedTokenIsLearnedFromAToolResultWithATokenField()
+    {
+        var token = "tok-" + Guid.NewGuid().ToString("N");
+        PlanOwnership.RecordFrom($"{{\"ok\":true,\"token\":\"{token}\"}}", "session-c");
+
+        Assert.False(PlanOwnership.MayUse(token, "session-d"));
+    }
+
+    [Fact]
+    public void AResultWithoutATokenRecordsNothing()
+    {
+        PlanOwnership.RecordFrom("{\"ok\":true}", "session-e");
+        PlanOwnership.RecordFrom("not json", "session-e");
+    }
 }

@@ -59,6 +59,41 @@ internal static class ControlSession
 }
 
 /// <summary>
+/// Which MCP session planned each confirm token. Over HTTP one process serves several sessions, so a token planned in one chat must
+/// not be confirmed from another. Tokens are learned from tool results that carry a "token" field.
+/// </summary>
+public static class PlanOwnership
+{
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Owners = new(StringComparer.Ordinal);
+
+    public static void Record(string token, string sessionId) => Owners[token] = sessionId;
+
+    /// <summary>True unless the token was planned by a different session. An unknown token is left to the tool to refuse.</summary>
+    public static bool MayUse(string token, string sessionId) =>
+        !Owners.TryGetValue(token, out var owner) || string.Equals(owner, sessionId, StringComparison.Ordinal);
+
+    /// <summary>Records the "token" field of a tool result's text, if it has one, as planned by this session.</summary>
+    public static void RecordFrom(string resultText, string sessionId)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(resultText);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("token", out var token)
+                && token.ValueKind == System.Text.Json.JsonValueKind.String
+                && !string.IsNullOrEmpty(token.GetString()))
+            {
+                Record(token.GetString()!, sessionId);
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON, so no token to learn.
+        }
+    }
+}
+
+/// <summary>
 /// Watches the shared control state. On a change it tells this process's client (a log notification), and on a switch to
 /// <c>closing</c> it stops the process after a short pause so the update can replace its files. A server that starts while
 /// the state is already paused or closing refuses calls but keeps running.
