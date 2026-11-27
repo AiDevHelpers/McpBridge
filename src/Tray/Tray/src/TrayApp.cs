@@ -7,6 +7,8 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using H.NotifyIcon;
+using System.Reactive.Concurrency;
+using AiDevHelpers.Bridge;
 using AiDevHelpers.MCP.Core.Services;
 
 namespace AiDevHelpers.Tray;
@@ -22,6 +24,7 @@ public sealed class TrayApp : IDisposable
     private readonly CompositeDisposable _feeds = new();
     private readonly CancellationTokenSource _stop = new();
     private readonly Dictionary<TrayIconState, System.Drawing.Icon> _icons;
+    private readonly InstancesViewModel _instances;
     private StatusWindow? _window;
     private TrayIconState? _previous;
 
@@ -42,6 +45,12 @@ public sealed class TrayApp : IDisposable
         // The UI thread's context exists here because the WPF Application was created first.
         var ui = new System.Reactive.Concurrency.SynchronizationContextScheduler(SynchronizationContext.Current!);
         _status = new StatusViewModel(health, service, Port, ui);
+
+        // The IDE instances: read off the UI thread every 5 s, validated, turned into rows, then bound on the UI thread.
+        var rowBuilder = new InstanceRowBuilder(InstanceProcessFacts.StartedAt, InstanceProcessFacts.OwnerOf, GitWorktree.RootFor, GitWorktree.BranchFor);
+        var rows = InstanceFeed.Watch(ValidInstances, TimeSpan.FromSeconds(5), TaskPoolScheduler.Default)
+            .Select(list => (IReadOnlyList<InstanceRow>)list.Select(rowBuilder.Build).OfType<InstanceRow>().ToList());
+        _instances = new InstancesViewModel(rows, ui);
         _status.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(StatusViewModel.Icon))
@@ -69,12 +78,28 @@ public sealed class TrayApp : IDisposable
         _stop.Cancel();
         _feeds.Dispose();
         _status.Dispose();
+        _instances.Dispose();
         _icon.Dispose();
         foreach (var icon in _icons.Values)
         {
             icon.Dispose();
         }
     }
+
+    /// <summary>The manifests the page may show: each one is checked, and a refused one is traced with its reason.</summary>
+    private static IReadOnlyList<AiDevHelpers.Bridge.VsInstance> ValidInstances() =>
+        AiDevHelpers.Bridge.VsInstanceRegistry.ListRunning()
+            .Where(instance =>
+            {
+                var problem = InstanceValidator.Problem(instance);
+                if (problem is not null)
+                {
+                    System.Diagnostics.Trace.TraceWarning($"IDE manifest for pid {instance.Pid} refused: {problem}");
+                }
+
+                return problem is null;
+            })
+            .ToList();
 
     private Task<bool> AskAsync(ApprovalRequest request) =>
         Application.Current.Dispatcher.InvokeAsync(() => ApprovalWindow.Ask(request)).Task.Unwrap();
@@ -94,7 +119,7 @@ public sealed class TrayApp : IDisposable
 
     private void ShowStatus()
     {
-        _window ??= new StatusWindow(_status);
+        _window ??= new StatusWindow(_status, _instances);
         _window.Show();
         _window.Activate();
     }

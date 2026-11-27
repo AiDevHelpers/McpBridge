@@ -15,6 +15,17 @@
   <data name="ServiceStoppedNotice"><value>AiDevHelpers service stopped</value></data>
   <data name="OpenStatus"><value>Open status</value></data>
   <data name="ExitTray"><value>Exit tray</value></data>
+  <data name="TabStatus"><value>Status</value></data>
+  <data name="TabInstances"><value>IDE instances</value></data>
+  <data name="ColIde"><value>IDE</value></data>
+  <data name="ColRepo"><value>Repo</value></data>
+  <data name="ColBranch"><value>Branch</value></data>
+  <data name="ColPath"><value>Solution or workspace</value></data>
+  <data name="ColStarted"><value>Started</value></data>
+  <data name="ColPid"><value>PID</value></data>
+  <data name="ColUser"><value>User</value></data>
+  <data name="EmptyInstances"><value>No IDE instances are running.</value></data>
+  <data name="NotARepo"><value>not a repo</value></data>
   <data name="CrashStopped"><value>AiDevHelpers tray stopped after repeated crashes, so it will not start again yet. Fix the cause, then delete the crashes file in the AiDevHelpers tray folder.</value></data>
 </root>
 
