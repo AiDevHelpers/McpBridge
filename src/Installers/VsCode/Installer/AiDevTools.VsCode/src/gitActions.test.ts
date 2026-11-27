@@ -1,4 +1,7 @@
 import { join } from "node:path";
+
+// Windows drive paths are only absolute on Windows; on other hosts (CI runs Linux) use a rooted path.
+const DRIVE = process.platform === "win32" ? "F:" : "";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // A fake VS Code git extension, recording every call the actions make.
@@ -16,14 +19,14 @@ vi.mock("vscode", () => ({
     Uri: { file: (p: string) => ({ fsPath: p }) },
 }));
 
-function fakeRepo(root = "F:/work/app") {
+function fakeRepo(root = DRIVE + "/work/app") {
     const record = (name: string) => async (...args: unknown[]) => { calls.push([name, args]); };
     return {
         rootUri: { fsPath: root },
         state: {
             HEAD: { name: "main", ahead: 1, behind: 0 },
-            indexChanges: [{ uri: { fsPath: "F:/work/app/a.cs" }, status: 0 }],
-            workingTreeChanges: [{ uri: { fsPath: "F:/work/app/b.cs" }, status: 3 }],
+            indexChanges: [{ uri: { fsPath: DRIVE + "/work/app/a.cs" }, status: 0 }],
+            workingTreeChanges: [{ uri: { fsPath: DRIVE + "/work/app/b.cs" }, status: 3 }],
         },
         add: record("add"),
         commit: record("commit"),
@@ -52,15 +55,15 @@ describe("git actions", () => {
 
         expect(status.branch).toBe("main");
         expect(status.changes).toEqual([
-            { path: "F:/work/app/a.cs", index: "A", worktree: " " },
-            { path: "F:/work/app/b.cs", index: " ", worktree: "M" },
+            { path: DRIVE + "/work/app/a.cs", index: "A", worktree: " " },
+            { path: DRIVE + "/work/app/b.cs", index: " ", worktree: "M" },
         ]);
     });
 
     it("stages the given paths", async () => {
         await runIdeAction("gitStage", { paths: ["a.cs", "b.cs"] });
 
-        expect(calls).toEqual([["add", [[join("F:/work/app", "a.cs"), join("F:/work/app", "b.cs")]]]]);
+        expect(calls).toEqual([["add", [[join(DRIVE + "/work/app", "a.cs"), join(DRIVE + "/work/app", "b.cs")]]]]);
     });
 
     it("commits with the message", async () => {
@@ -92,7 +95,7 @@ describe("git actions", () => {
     });
 
     it("picks the repository whose root matches repoPath", async () => {
-        repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
+        repos = [fakeRepo(DRIVE + "/other"), fakeRepo(DRIVE + "/work/app")];
 
         await runIdeAction("gitCommit", { message: "m", repoPath: "f:/WORK/app" });
 
@@ -112,18 +115,18 @@ describe("git actions", () => {
     });
 
     it("stages the approved paths, resolved against the repository named by repoPath", async () => {
-        repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
+        repos = [fakeRepo(DRIVE + "/other"), fakeRepo(DRIVE + "/work/app")];
 
-        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: ["src/a.cs", "b.txt"] });
+        await runIdeAction("gitStage", { repoPath: DRIVE + "/work/app", paths: ["src/a.cs", "b.txt"] });
 
-        expect(calls).toEqual([["add", [[join("F:/work/app", "src/a.cs"), join("F:/work/app", "b.txt")]]]]);
+        expect(calls).toEqual([["add", [[join(DRIVE + "/work/app", "src/a.cs"), join(DRIVE + "/work/app", "b.txt")]]]]);
     });
 
     it("keeps an absolute path as given when staging", async () => {
-        repos = [fakeRepo("F:/work/app")];
-        const absolute = join("F:/work/app", "c.txt");
+        repos = [fakeRepo(DRIVE + "/work/app")];
+        const absolute = join(DRIVE + "/work/app", "c.txt");
 
-        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: [absolute] });
+        await runIdeAction("gitStage", { repoPath: DRIVE + "/work/app", paths: [absolute] });
 
         expect(calls).toEqual([["add", [[absolute]]]]);
     });
@@ -131,7 +134,7 @@ describe("git actions", () => {
     it("commits the approved message exactly, multi-line included", async () => {
         const message = "fix: parse\n\nBody line";
 
-        await runIdeAction("gitCommit", { repoPath: "F:/work/app", message });
+        await runIdeAction("gitCommit", { repoPath: DRIVE + "/work/app", message });
 
         expect(calls).toEqual([["commit", [message]]]);
     });
