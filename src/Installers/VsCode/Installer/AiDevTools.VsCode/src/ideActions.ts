@@ -26,6 +26,7 @@ import { liveDebugSessions } from "./debugOutputTracker.js";
 import { attachConfiguration, findLocalProcess, listLocalProcesses } from "./processList.js";
 import { commitExceptionChange, planExceptionChange, shapeExceptions, type ExceptionChange } from "./exceptionFilters.js";
 import { applyReplace, buildSearchPattern, findInFiles, findProjectDirectory, planReplace, walkFiles } from "./textSearch.js";
+import { replaceInFile as replaceInFileEdit, type Edit } from "./fileEdit.js";
 import {
     addItemChange,
     formatLogLine,
@@ -687,6 +688,19 @@ export async function runIdeAction(action: string, args: Args): Promise<unknown>
             return findInFiles(searchScopeFiles(optionalString(args, "scope") ?? "solution", optionalString(args, "project")), regex);
         }
 
+        case "replaceInFile": {
+            // One file, through the same rules as FileEditHelper (backup, BOM, atomic write). Without confirm it only plans.
+            const file = requireString(args, "file");
+            const edits = args.edits;
+            if (!Array.isArray(edits) || edits.length === 0) {
+                throw new Error(t("missingArgument", "edits"));
+            }
+            const root = optionalString(args, "root") ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (!root) {
+                throw new Error(t("needsWorkspace"));
+            }
+            return replaceInFileEdit(root, file, edits as Edit[], optionalBool(args, "confirm") === true);
+        }
         case "replaceInFiles": {
             // Without confirm, only the per-file match counts are returned. An empty replacement is valid, so only its type is checked.
             const pattern = requireString(args, "pattern");
