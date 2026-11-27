@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- One streamable-HTTP MCP server for every IDE and chat client. Runs in the console user's session,
+       started and supervised by AiDevHelpers.Host. See docs/plans/2026-11-26-tray-service.md. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiDevHelpers.MCP.Http</RootNamespace>
+    <AssemblyName>AiDevHelpers.MCP.Http</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\MCP\Core\src\AiDevHelpers.MCP.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.4.0" />
+  </ItemGroup>
+
+</Project>

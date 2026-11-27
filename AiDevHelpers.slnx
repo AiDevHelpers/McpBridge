@@ -113,4 +113,16 @@
     <Project Path="src/ScriptHelper/client/AiDevHelpers.ScriptHelper.Client.csproj" />
     <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/Tray/MCP.Http/">
+    <Project Path="src/Tray/MCP.Http/src/AiDevHelpers.MCP.Http.csproj" />
+    <Project Path="src/Tray/MCP.Http/tests/AiDevHelpers.MCP.Http.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tray/Host/">
+    <Project Path="src/Tray/Host/src/AiDevHelpers.Host.csproj" />
+    <Project Path="src/Tray/Host/tests/AiDevHelpers.Host.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tray/Tray/">
+    <Project Path="src/Tray/Tray/src/AiDevHelpers.Tray.csproj" />
+    <Project Path="src/Tray/Tray/tests/AiDevHelpers.Tray.Tests.csproj" />
+  </Folder>
 </Solution>
