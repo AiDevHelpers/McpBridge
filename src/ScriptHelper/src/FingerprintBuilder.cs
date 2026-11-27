@@ -19,12 +19,17 @@ public static class FingerprintBuilder
         string root,
         string relativeScript,
         IInterpreterInfo interpreter,
-        IPathInspector inspector)
+        IPathInspector inspector,
+        IReadOnlyList<string>? pins = null)
     {
         var parts = new List<FingerprintPart>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         var queue = new Queue<string>();
         queue.Enqueue(relativeScript);
+        foreach (var pin in pins ?? [])
+        {
+            queue.Enqueue(pin);
+        }
 
         while (queue.Count > 0)
         {

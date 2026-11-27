@@ -1,0 +1,6 @@
+{
+  "scripts": [
+    { "path": "scripts/service-install.ps1", "args": ["-SourceFolder", "*"], "pins": ["scripts/service-install.sha256"] },
+    { "path": "scripts/service-uninstall.ps1", "pins": ["scripts/service-uninstall.sha256"] }
+  ]
+}

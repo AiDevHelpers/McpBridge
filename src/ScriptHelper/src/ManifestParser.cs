@@ -53,7 +53,29 @@ public static class ManifestParser
                     args = list;
                 }
 
-                entries.Add(new AllowlistEntry(path.GetString()!, args));
+                IReadOnlyList<string>? pins = null;
+                if (item.TryGetProperty("pins", out var pinsElement))
+                {
+                    if (pinsElement.ValueKind != JsonValueKind.Array)
+                    {
+                        return Fail("\"pins\" must be an array of strings");
+                    }
+
+                    var list = new List<string>();
+                    foreach (var p in pinsElement.EnumerateArray())
+                    {
+                        if (p.ValueKind != JsonValueKind.String)
+                        {
+                            return Fail("\"pins\" must be an array of strings");
+                        }
+
+                        list.Add(p.GetString()!);
+                    }
+
+                    pins = list;
+                }
+
+                entries.Add(new AllowlistEntry(path.GetString()!, args, pins));
             }
 
             return new ManifestResult(true, entries, "parsed");

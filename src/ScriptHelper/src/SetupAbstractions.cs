@@ -61,18 +61,10 @@ public sealed class PwshInterpreterInfo : IInterpreterInfo
 {
     public string Describe()
     {
-        var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
-        foreach (var dir in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-        {
-            var candidate = Path.Combine(dir, "pwsh.exe");
-            if (File.Exists(candidate))
-            {
-                var version = FileVersionInfo.GetVersionInfo(candidate).ProductVersion ?? "unknown";
-                return $"pwsh|{Path.GetFullPath(candidate)}|{version}";
-            }
-        }
-
-        return "pwsh|missing";
+        // Names the interpreter and its major version, and reads nothing from the environment: the broker, an elevated shell and an
+        // ordinary shell have different PATH values, and the fingerprint must not change with that. If pwsh is missing, the run fails
+        // when it starts it; the approval does not need to know.
+        return "pwsh|7";
     }
 }
 

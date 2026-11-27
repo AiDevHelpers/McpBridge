@@ -107,6 +107,8 @@ public sealed class SetupAllowScriptTests : IDisposable
 
         public AiDevHelpers.Common.Contracts.SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash) => throw new NotSupportedException();
 
+        public AiDevHelpers.Common.Contracts.SetupResult ApproveInChat(string root, string relativeScript) => throw new NotSupportedException();
+
         public AiDevHelpers.Common.Contracts.SetupResult AllowAll(string root) => throw new NotSupportedException();
         public AiDevHelpers.Common.Contracts.SetupResult AllowAllApproved(string root, string approvedHash) => throw new NotSupportedException();
         public AiDevHelpers.Common.Contracts.SetupResult PruneStale(string root) => throw new NotSupportedException();

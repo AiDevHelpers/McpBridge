@@ -143,6 +143,33 @@ public sealed class SetupApproveTests : IDisposable
             c.ApprovalsPath(id), _signer, id, _root, lastSeen, script, fp.Fingerprint, allowHash ?? ManifestHash());
     }
 
+    // The person's yes was given in chat, so the one step writes the approval without a console question.
+    [Fact]
+    public void ApproveInChat_writes_in_one_step_without_asking_the_console()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+
+        var r = c.ApproveInChat(_root, Script);
+
+        Assert.True(r.Ok, r.Reason);
+        Assert.Equal(0, _confirmer.Calls);
+        Assert.True(File.Exists(c.ApprovalsPath(id)));
+    }
+
+    [Fact]
+    public void ApproveInChat_refuses_when_not_elevated_and_writes_nothing()
+    {
+        var c = Commands();
+        var id = RegisterProject(c);
+        _elevation.Elevated = false;
+
+        var r = c.ApproveInChat(_root, Script);
+
+        Assert.False(r.Ok);
+        Assert.False(File.Exists(c.ApprovalsPath(id)));
+    }
+
     [Fact]
     public void Approve_refuses_when_not_elevated_and_writes_nothing()
     {

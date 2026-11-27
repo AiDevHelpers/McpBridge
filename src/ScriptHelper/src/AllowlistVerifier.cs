@@ -49,7 +49,7 @@ public static class AllowlistVerifier
                 continue;
             }
 
-            var fingerprint = FingerprintBuilder.Build(project.Root, rel, interpreter, inspector);
+            var fingerprint = FingerprintBuilder.Build(project.Root, rel, interpreter, inspector, Allowlist.PinsFor(project.Root, rel));
             if (!fingerprint.Ok)
             {
                 scripts.Add(new ScriptStatus(rel, ApprovalStatus.Invalid, fingerprint.Reason));

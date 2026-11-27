@@ -66,4 +66,6 @@ public sealed class SetupCommands : ISetupCommands, IVerifyCommands, IToolComman
 
     public SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash) =>
         _approval.ConfirmApproval(root, relativeScript, fingerprint, allowlistHash);
+
+    public SetupResult ApproveInChat(string root, string relativeScript) => _approval.ApproveInChat(root, relativeScript);
 }

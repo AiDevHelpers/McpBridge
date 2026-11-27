@@ -23,7 +23,7 @@ public sealed class AllowCommands(SetupDeps deps) : SetupStepBase(deps)
         if (ApprovalStore.NormalizeScriptPath(rel) is null)
             return Fail($"'{relativeScript}' is not a valid relative path");
 
-        var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
+        var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector, Allowlist.PinsFor(project.Root, rel));
         if (!fingerprint.Ok)
             return Fail(fingerprint.Reason);
 

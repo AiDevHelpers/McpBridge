@@ -39,6 +39,31 @@ public sealed class FingerprintBuilderTests : IDisposable
     private FingerprintResult Build(string rel = "scripts/reset.ps1") =>
         FingerprintBuilder.Build(_root, rel, _interpreter, _inspector);
 
+    // A pin file the script reads from its own folder is part of the approved set, so it is staged beside the script.
+    [Fact]
+    public void Declared_pins_are_part_of_the_fingerprint_and_the_file_set()
+    {
+        Write("scripts/install.ps1", "Write-Output 'hi'");
+        Write("scripts/install.sha256", "ABC");
+
+        var plain = Build("scripts/install.ps1");
+        var pinned = FingerprintBuilder.Build(_root, "scripts/install.ps1", _interpreter, _inspector, ["scripts/install.sha256"]);
+
+        Assert.True(pinned.Ok);
+        Assert.Contains("scripts/install.sha256", pinned.Files);
+        Assert.NotEqual(plain.Fingerprint, pinned.Fingerprint);
+    }
+
+    [Fact]
+    public void A_declared_pin_that_is_missing_fails_closed()
+    {
+        Write("scripts/install.ps1", "Write-Output 'hi'");
+
+        var result = FingerprintBuilder.Build(_root, "scripts/install.ps1", _interpreter, _inspector, ["scripts/install.sha256"]);
+
+        Assert.False(result.Ok);
+    }
+
     [Fact]
     public void Script_only_fingerprint_is_script_plus_interpreter()
     {

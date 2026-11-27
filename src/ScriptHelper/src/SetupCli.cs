@@ -177,6 +177,11 @@ public static class SetupCli
             return 0;
         }
 
+        if (args.Length == 4 && args[3] == "--approved-in-chat")
+        {
+            return Report(commands.ApproveInChat(root, script), output);
+        }
+
         if (args.Length == 6 && args[3] == "--confirm")
         {
             return Report(commands.ConfirmApproval(root, script, args[4], args[5]), output);

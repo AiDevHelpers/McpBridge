@@ -163,7 +163,8 @@ public sealed class RequestHandler
         }
 
         // Stage the whole approved file set, then check the approval against the staged bytes.
-        var source = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
+        var pins = Allowlist.PinsFor(project.Root, rel);
+        var source = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector, pins);
         if (!source.Ok)
             return Deny(request, source.Reason);
 
@@ -177,7 +178,7 @@ public sealed class RequestHandler
             File.Copy(Path.Combine(project.Root, file.Replace('/', '\\')), target, overwrite: false);
         }
 
-        var staged = FingerprintBuilder.Build(stage, rel, _interpreter, _inspector);
+        var staged = FingerprintBuilder.Build(stage, rel, _interpreter, _inspector, pins);
         if (!staged.Ok)
             return Deny(request, staged.Reason);
 

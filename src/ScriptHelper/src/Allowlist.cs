@@ -32,6 +32,29 @@ public static class Allowlist
             : new Decision(false, "script is not in the allowlist");
     }
 
+    /// <summary>
+    /// The pins the repo's .elevated.json declares for a script, or null when there are none or the manifest does not parse. Read from the
+    /// project root, never from a staged copy, so the fingerprint is the same at approval, at staging and at the staged check.
+    /// </summary>
+    public static IReadOnlyList<string>? PinsFor(string projectRoot, string relativePath)
+    {
+        try
+        {
+            var manifest = ManifestParser.Parse(File.ReadAllText(Path.Combine(projectRoot, ".elevated.json")));
+            if (!manifest.Ok)
+                return null;
+
+            var path = relativePath.Replace('\\', '/');
+            return manifest.Entries
+                .FirstOrDefault(e => GlobMatch(e.Path.Replace('\\', '/'), path, excludeSlash: true))?
+                .Pins;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+    }
+
     /// <summary>True when the path matches any entry, ignoring arguments. Used at approval time.</summary>
     public static bool IsPathListed(IEnumerable<AllowlistEntry> entries, string relativePath)
     {

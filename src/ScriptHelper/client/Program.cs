@@ -118,8 +118,14 @@ var register = SetupVerb("register", "Register a repo as a project (administrato
 register.Add(approvedInChat);
 register.Add(repo);
 
-var approve = Verb("approve", "Approve a manifest-listed script for this user (administrator).", Sync(pr =>
+var approvedInChatForApprove = new Option<bool>("--approved-in-chat") { Description = "Set only after the person said yes in chat to approving this script. Approves in one step, with no fingerprint shown and no console question." };
+var approve = Verb("approve", "Approve a manifest-listed script for this user (administrator). With --approved-in-chat, approves in one step after the person's yes in chat.", Sync(pr =>
 {
+    if (pr.GetValue(approvedInChatForApprove))
+    {
+        return ElevatedSetup.Run(["approve", pr.GetRequiredValue(verbRepo), pr.GetRequiredValue(verbScript), "--approved-in-chat"], pr.GetValue(allowNoTpm));
+    }
+
     var values = pr.GetValue(confirm);
     if (values is not null && values.Length is not (0 or 2))
     {
@@ -143,6 +149,7 @@ approve.Add(verbRepo);
 approve.Add(verbScript);
 approve.Add(prepare);
 approve.Add(confirm);
+approve.Add(approvedInChatForApprove);
 
 // allow-all is decided in chat only (preview, then apply with the hash). The console question and its elevated copy are gone,
 // so this verb refuses before any UAC prompt.

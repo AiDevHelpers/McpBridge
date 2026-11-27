@@ -28,6 +28,12 @@ public interface ISetupCommands
     SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash);
 
     /// <summary>
+    /// Approves in one step, without showing the fingerprint and without a console question. Only call it after the person has
+    /// said yes in chat to approving this script; the caller is responsible for that.
+    /// </summary>
+    SetupResult ApproveInChat(string root, string relativeScript);
+
+    /// <summary>
     /// Approves allow-all for a registered project whose repo settings request it, after two separate confirmations in the
     /// elevated console. Any script inside the repo may then run elevated without per-script approval.
     /// </summary>

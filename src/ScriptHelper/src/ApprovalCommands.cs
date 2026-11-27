@@ -118,6 +118,16 @@ public sealed class ApprovalCommands(SetupDeps deps) : SetupStepBase(deps)
         return new ApprovalPreview(true, "prepared", BuildPrompt(analysis), analysis.Fingerprint.Fingerprint, analysis.AllowlistHash);
     }
 
+    /// <summary>One step: analyzes the script and writes its approval, with no console question. Refused unless elevated.</summary>
+    public SetupResult ApproveInChat(string root, string relativeScript)
+    {
+        var analysis = Analyze(root, relativeScript);
+        if (!analysis.Ok)
+            return Fail(analysis.Reason);
+
+        return Write(analysis);
+    }
+
     public SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash)
     {
         if (string.IsNullOrWhiteSpace(fingerprint) || string.IsNullOrWhiteSpace(allowlistHash))
@@ -180,7 +190,7 @@ public sealed class ApprovalCommands(SetupDeps deps) : SetupStepBase(deps)
         if (!Allowlist.IsPathListed(manifest.Entries, rel))
             return Analysis.Failed($"script is not listed in {ManifestName}");
 
-        var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector);
+        var fingerprint = FingerprintBuilder.Build(project.Root, rel, _interpreter, _inspector, Allowlist.PinsFor(project.Root, rel));
         if (!fingerprint.Ok)
             return Analysis.Failed(fingerprint.Reason);
 

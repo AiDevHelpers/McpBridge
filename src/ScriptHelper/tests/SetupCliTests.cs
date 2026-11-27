@@ -50,6 +50,13 @@ public sealed class SetupCliTests
             return PreviewResult;
         }
 
+        public SetupResult ApproveInChat(string root, string relativeScript)
+        {
+            // (fake; see PwshInterpreterInfoTests for the interpreter description)
+            Calls.Add($"approve-in-chat {root} {relativeScript}");
+            return ConfirmResult;
+        }
+
         public SetupResult ConfirmApproval(string root, string relativeScript, string fingerprint, string allowlistHash)
         {
             Calls.Add($"confirm {root} {relativeScript} {fingerprint} {allowlistHash}");
