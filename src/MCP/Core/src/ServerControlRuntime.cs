@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -23,10 +24,73 @@ public static class ServerControlGate
     }
 }
 
-/// <summary>The MCP session of this server process, remembered from the last tool call so a state change can be pushed to its client.</summary>
+/// <summary>
+/// The MCP sessions of this server process, each remembered from its last tool call, so a state change reaches every client that is
+/// connected. Over HTTP one process serves several sessions; over stdio there is one.
+/// </summary>
 internal static class ControlSession
 {
-    public static volatile McpServer? Server;
+    private static readonly ConcurrentDictionary<string, McpServer> ServersBySession = new(StringComparer.Ordinal);
+
+    /// <summary>Remembers a session's server. Called from every tool call.</summary>
+    public static void Remember(McpServer server)
+    {
+        if (!string.IsNullOrEmpty(server.SessionId))
+        {
+            ServersBySession[server.SessionId] = server;
+        }
+    }
+
+    /// <summary>Runs <paramref name="send"/> for every remembered session. A session whose send fails is forgotten, since it is gone.</summary>
+    public static async Task BroadcastAsync(Func<McpServer, Task> send)
+    {
+        foreach (var (id, server) in ServersBySession)
+        {
+            try
+            {
+                await send(server).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)
+            {
+                ServersBySession.TryRemove(id, out _);
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Which MCP session planned each confirm token. Over HTTP one process serves several sessions, so a token planned in one chat must
+/// not be confirmed from another. Tokens are learned from tool results that carry a "token" field.
+/// </summary>
+public static class PlanOwnership
+{
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> Owners = new(StringComparer.Ordinal);
+
+    public static void Record(string token, string sessionId) => Owners[token] = sessionId;
+
+    /// <summary>True unless the token was planned by a different session. An unknown token is left to the tool to refuse.</summary>
+    public static bool MayUse(string token, string sessionId) =>
+        !Owners.TryGetValue(token, out var owner) || string.Equals(owner, sessionId, StringComparison.Ordinal);
+
+    /// <summary>Records the "token" field of a tool result's text, if it has one, as planned by this session.</summary>
+    public static void RecordFrom(string resultText, string sessionId)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(resultText);
+            if (doc.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("token", out var token)
+                && token.ValueKind == System.Text.Json.JsonValueKind.String
+                && !string.IsNullOrEmpty(token.GetString()))
+            {
+                Record(token.GetString()!, sessionId);
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Not JSON, so no token to learn.
+        }
+    }
 }
 
 /// <summary>
@@ -113,12 +177,6 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
     private static async Task NotifyAsync(ControlState state, CancellationToken ct)
     {
-        var server = ControlSession.Server;
-        if (server is null)
-        {
-            return;
-        }
-
         var suffix = string.IsNullOrWhiteSpace(state.Message) ? string.Empty : ": " + state.Message;
 
         // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. A client that ignores the
@@ -133,7 +191,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
         try
         {
-            await server.SendNotificationAsync(
+            await ControlSession.BroadcastAsync(server => server.SendNotificationAsync(
                 NotificationMethods.LoggingMessageNotification,
                 new LoggingMessageNotificationParams
                 {
@@ -141,7 +199,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
                     Logger = "AiDevHelpers.Control",
                     Data = System.Text.Json.JsonSerializer.SerializeToElement(new { state = state.State, message = text }),
                 },
-                cancellationToken: ct);
+                cancellationToken: ct));
         }
 #pragma warning restore MCP9005
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)

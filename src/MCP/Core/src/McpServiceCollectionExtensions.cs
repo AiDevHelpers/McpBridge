@@ -69,7 +69,7 @@ public static class McpServiceCollectionExtensions
             .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
             {
                 // Remember this chat's server so a control change can be pushed to it, and refuse calls while not running.
-                AiDevHelpers.MCP.Core.Services.ControlSession.Server = context.Server;
+                AiDevHelpers.MCP.Core.Services.ControlSession.Remember(context.Server);
                 var refusal = AiDevHelpers.MCP.Core.Services.ServerControlGate.Refusal(
                     context.Params?.Name,
                     AiDevHelpers.MCP.Core.Services.ServerControl.Read());
@@ -82,7 +82,27 @@ public static class McpServiceCollectionExtensions
                     };
                 }
 
-                return await next(context, ct);
+                // A token planned in another chat session cannot be confirmed here.
+                var sessionId = context.Server.SessionId ?? string.Empty;
+                if (context.Params?.Arguments is { } arguments
+                    && arguments.TryGetValue("token", out var suppliedToken)
+                    && suppliedToken.ValueKind == System.Text.Json.JsonValueKind.String
+                    && !PlanOwnership.MayUse(suppliedToken.GetString() ?? string.Empty, sessionId))
+                {
+                    return new ModelContextProtocol.Protocol.CallToolResult
+                    {
+                        IsError = true,
+                        Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = Strings.Get("TokenOtherSession") }],
+                    };
+                }
+
+                var result = await next(context, ct);
+                foreach (var block in result.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>())
+                {
+                    PlanOwnership.RecordFrom(block.Text, sessionId);
+                }
+
+                return result;
             }))
             .WithResources<McpDocumentationResources>()
             .WithTools<IdeTools>()
