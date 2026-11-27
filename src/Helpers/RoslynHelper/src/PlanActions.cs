@@ -67,6 +67,45 @@ public static class PlanActions
             return ChangeSignatureEngine.PlanAsync(solution, file, line, column, ArgumentParsers.ParseNewParameters(a),
                 ArgumentParsers.ParseDocUpdates(a), header);
         }));
+
+        dispatcher.Register("editType", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            var file = ArgumentParsers.RequireString(a, "file");
+            var line = ArgumentParsers.RequireInt(a, "line");
+            var baseList = a.ValueKind == JsonValueKind.Object && a.TryGetProperty("baseList", out _)
+                ? ArgumentParsers.StringList(a, "baseList").ToList()
+                : null;
+            return EditTypeEngine.PlanAsync(solution, file, line, ArgumentParsers.OptionalString(a, "modifiers"), baseList,
+                ArgumentParsers.StringList(a, "attributesAdd").ToList(), ArgumentParsers.StringList(a, "attributesRemove").ToList(),
+                ArgumentParsers.OptionalString(a, "typeParameters"), ArgumentParsers.OptionalString(a, "constraints"));
+        }));
+
+        dispatcher.Register("addType", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return AddTypeEngine.AddAsync(solution, ArgumentParsers.RequireString(a, "anchorFile"), ArgumentParsers.RequireString(a, "declaration"),
+                ArgumentParsers.StringList(a, "usings").ToList(), ArgumentParsers.OptionalString(a, "namespaceName"),
+                ArgumentParsers.OptionalString(a, "summary"), ArgumentParsers.StringList(a, "attributes").ToList(),
+                ArgumentParsers.OptionalBool(a, "withTests") == true);
+        }));
+
+        dispatcher.Register("addInterfaceMember", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return InterfaceMemberEngine.AddAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "declaration"));
+        }));
+
+        dispatcher.Register("implementMembers", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return ImplementMembersEngine.PlanAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "mode"), ArgumentParsers.StringList(a, "members").ToList(),
+                ArgumentParsers.OptionalBool(a, "explicit") == true);
+        }));
+
+        dispatcher.Register("generateConstructor", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return GenerateConstructorEngine.PlanAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.StringList(a, "members").ToList(), ArgumentParsers.OptionalString(a, "accessibility") ?? "public");
+        }));
     }
 
     // addMethod and addOverload share one planner: a method added to the type at a line, or an overload of the method at that line.
