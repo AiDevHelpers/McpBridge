@@ -144,6 +144,18 @@ public sealed class StringExtractorTests : IDisposable
     }
 
     [Fact]
+    public void ConstOnSameLineDoesNotSkipOtherLiterals()
+    {
+        var root = Project();
+        Source("        const string C = \"Keep this text.\"; string M() => \"Could not read it.\";");
+
+        var plan = Extractor().Plan(root, null);
+
+        Assert.Equal("const-context", Assert.Single(plan.Skipped).Reason);
+        Assert.Equal("Could not read it.", Assert.Single(plan.Items).Literal);
+    }
+
+    [Fact]
     public void CaseLabelIsSkipped()
     {
         var root = Project();

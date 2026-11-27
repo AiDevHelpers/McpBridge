@@ -72,7 +72,10 @@ public sealed partial class StringExtractor(PlanStore<ExtractPlan> store)
                 continue;
             }
 
-            if (line.Contains("const ", StringComparison.Ordinal))
+            var prefix = line[..finding.Column];
+            var statementStart = prefix.LastIndexOfAny([';', '{', '}']);
+            var statement = statementStart >= 0 ? prefix[(statementStart + 1)..] : prefix;
+            if (ConstDeclaration().IsMatch(statement))
             {
                 skipped.Add(skip("const-context"));
                 continue;
@@ -284,6 +287,9 @@ public sealed partial class StringExtractor(PlanStore<ExtractPlan> store)
 
     [GeneratedRegex(@"\G\$?""(?:[^""\\]|\\.)*""")]
     private static partial Regex SourceToken();
+
+    [GeneratedRegex(@"\bconst\s")]
+    private static partial Regex ConstDeclaration();
 
     [GeneratedRegex(@"\\[^""\\nt]")]
     private static partial Regex UnsupportedEscape();
