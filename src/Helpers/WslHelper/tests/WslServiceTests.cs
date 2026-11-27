@@ -546,6 +546,48 @@ public sealed class WslServiceTests
     }
 
     [Fact]
+    public async Task DebugSetup_WriteRefusesJunctionVscodeFolder()
+    {
+        string root = Path.Combine(Path.GetTempPath(), "wslhelper-junction-" + Guid.NewGuid().ToString("N"));
+        string target = Path.Combine(root, "elsewhere");
+        string workspace = Path.Combine(root, "workspace");
+        string vscode = Path.Combine(workspace, ".vscode");
+        Directory.CreateDirectory(target);
+        Directory.CreateDirectory(workspace);
+        try
+        {
+            using (System.Diagnostics.Process? mklink = System.Diagnostics.Process.Start(
+                new System.Diagnostics.ProcessStartInfo("cmd.exe", $"/c mklink /J \"{vscode}\" \"{target}\"")
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                }))
+            {
+                mklink!.WaitForExit();
+            }
+
+            Assert.True(Directory.Exists(vscode));
+
+            FakeWslCommands fake = ProbeFake();
+            WslDebugSetupResult r = await new WslService(fake).DebugSetupAsync(
+                "node", "/app/index.js", "Ubuntu", workspaceRoot: workspace, write: true);
+
+            Assert.False(r.Ok);
+            Assert.False(r.ConfigWritten);
+            Assert.False(File.Exists(Path.Combine(target, "launch.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(vscode))
+            {
+                Directory.Delete(vscode, recursive: false);
+            }
+
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task DebugSetup_WriteWithMissingWorkspaceRoot_Refused()
     {
         string dir = Path.Combine(Path.GetTempPath(), "wslhelper-missing-" + Guid.NewGuid().ToString("N"));
