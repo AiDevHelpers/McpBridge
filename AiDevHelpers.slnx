@@ -66,6 +66,7 @@
   </Folder>
   <Folder Name="/Helpers/RoslynHelper/">
     <Project Path="src/Helpers/RoslynHelper/src/AiDevHelpers.Helpers.RoslynHelper.csproj" />
+    <Project Path="src/Helpers/RoslynHelper.Shared/src/AiDevHelpers.Helpers.RoslynHelper.Shared.csproj" />
     <Project Path="src/Helpers/RoslynHelper/tests/AiDevHelpers.Helpers.RoslynHelper.Tests.csproj" />
   </Folder>
   <Folder Name="/Helpers/WindowsSession/">

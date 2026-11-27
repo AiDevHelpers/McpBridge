@@ -21,7 +21,7 @@ public sealed class RoslynRequestHandler
         _dispatcher.Register("health", _ => Task.FromResult<object>(new
         {
             ok = true,
-            pid = Environment.ProcessId,
+            pid = Process.GetCurrentProcess().Id,
             solutionPath = _solutionPath(),
         }));
         _dispatcher.Register("loadSolution", LoadSolutionAsync);
