@@ -118,6 +118,22 @@ public sealed class BridgeServerTests
     }
 
     [Fact]
+    public void ATimedOutActionIsReportedByName()
+    {
+        string? reported = null;
+        var pipe = NewPipeName();
+        using var named = new BridgeServer(pipe, (_, _) => new TaskCompletionSource<object>().Task, () => null, new SilentLogger())
+        {
+            ActionLimit = TimeSpan.FromMilliseconds(100),
+            ActionTimedOut = action => reported = action,
+        };
+        named.Start();
+        _ = SendWithRetryAsync(pipe, "{\"action\":\"stuck\"}").GetAwaiter().GetResult();
+
+        Assert.Equal("stuck", reported);
+    }
+
+    [Fact]
     public void StartTwice_DoesNotStartASecondListener()
     {
         var pipe = NewPipeName();
