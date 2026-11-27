@@ -39,7 +39,9 @@ Parent plan: `docs/plans/archived/2026-11-26-roslyn-helper.md` (decision 7: two 
 4. **Edit actions on net48.** The shared actions run on the net48 host. Test first: `editMethod` plan on a net48 fixture without confirm writes nothing; with the hash it applies.
 5. **Routing by framework, per action.** Bridge and VS Code choose the helper from the manifest and the project each action touches. Test first: an action on a net48 project routes to the net48 helper; an action on an SDK project routes to net10; an action spanning both kinds is refused with a clear message.
 6. **Extension wiring and bundling.** The extension starts the net48 helper when needed; the build publishes `RoslynHelper48` to `dist/roslyn48`. Test first: a solution with a net48 project starts the net48 helper with `--solution`.
-7. **Live check.** One net48 edit through the VS Code helper, compared with the VS result on the same fixture. Record in `docs/dogfood.md`.
+7. **Live check.** One net48 edit through the VS Code helper, compared with the VS result on the same fixture. Record in `docs/dogfood.md`. *Done 2026-11-27: VSIX installed, VS Code started the net48 helper for a legacy fixture; a plan and confirmed edit over its pipe matched `ide_edit_method` in VS (row 42). Not exercised: the MCP router with a net48 file.*
+
+*Units 2 to 6 are done too: `RoslynHelper48` (exe, Program, `framework: net48` in the manifest, a process pipe test); the Framework MSBuild load through the real helper process (legacy, SDK net48 and broken projects each reported); edit actions on net48 (plan, then apply with the hash); per-action routing by the project's framework in the Bridge (`RoslynRouting`) and the VS Code client; the extension starts the net48 helper when the folder has a net48 or legacy project, and both helpers are published and bundled.*
 
 ## Risks
 

@@ -94,12 +94,22 @@ public sealed class SolutionLoader
                 return;
             }
 
+#if NETFRAMEWORK
+            // The net48 host loads with the Framework MSBuild that Visual Studio installs, so projects that need it load.
+            var vs = MSBuildLocator.QueryVisualStudioInstances()
+                .Where(i => i.DiscoveryType != DiscoveryType.DotNetSdk)
+                .OrderByDescending(i => i.Version)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException("No Visual Studio with MSBuild found. Install Visual Studio to load net48 solutions.");
+            MSBuildLocator.RegisterInstance(vs);
+#else
             var sdk = MSBuildLocator.QueryVisualStudioInstances()
                 .Where(i => i.DiscoveryType == DiscoveryType.DotNetSdk && i.Version.Major == 10)
                 .OrderByDescending(i => i.Version)
                 .FirstOrDefault()
                 ?? throw new InvalidOperationException("No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.");
             MSBuildLocator.RegisterInstance(sdk);
+#endif
         }
     }
 
