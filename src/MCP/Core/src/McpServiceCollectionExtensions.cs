@@ -116,14 +116,27 @@ public static class McpServiceCollectionExtensions
                 // Lock this session to its repo's toolset path at the first call that finds a repo. Routing by the locked path comes next.
                 var toolsetLocks = context.Services?.GetService<AiDevHelpers.MCP.Core.Services.ToolsetSessionLock>();
                 var toolsetOptions = context.Services?.GetService<Microsoft.Extensions.Options.IOptions<AiDevHelpers.MCP.Core.Services.IdeToolsOptions>>();
+                // The path this call runs on: the locked one, or the server default while no repo is found.
+                var toolsetPath = AiDevHelpers.MCP.Core.Services.ToolsetPaths.Standalone;
                 if (toolsetLocks is not null && toolsetOptions is not null)
                 {
-                    AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.LockFor(
+                    var locked = AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.LockFor(
                         toolsetLocks,
                         sessionId,
                         toolsetOptions.Value,
                         AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.ExplicitRepoArgument(context.Params?.Arguments),
                         Directory.GetCurrentDirectory());
+                    toolsetPath = locked?.Path ?? AiDevHelpers.MCP.Core.Services.ToolsetPaths.Normalize(toolsetOptions.Value.ToolsetPath);
+                }
+
+                var routingRefusal = AiDevHelpers.MCP.Core.Services.ToolsetRouting.RefusalFor(context.Params?.Name, toolsetPath);
+                if (routingRefusal is not null)
+                {
+                    return new ModelContextProtocol.Protocol.CallToolResult
+                    {
+                        IsError = true,
+                        Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = routingRefusal }],
+                    };
                 }
 
                 // A dangerous tool needs the person's yes on the tray for this exact call. Only a host that registers a channel (HTTP) asks;

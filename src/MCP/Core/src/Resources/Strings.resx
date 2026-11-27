@@ -175,6 +175,7 @@
   <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
   <data name="ContainerUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'logs', 'start', 'stop', 'restart' or 'exec'.</value></data>
   <data name="WslUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'health', 'run' or 'debug_setup'.</value></data>
+  <data name="ToolsetPathRefused" xml:space="preserve"><value>'{0}' runs only on the Standalone toolset path, and this session uses {1}. Open the repo without an IDE toolset, or set toolsetPath to Standalone for this repo.</value></data>
   <data name="RepoToolsetPathRefused" xml:space="preserve"><value>The repo file set toolsetPath '{0}' in {1}, which is unknown or not allowed by the server. The server default is used.</value></data>
   <data name="TokenOtherSession" xml:space="preserve"><value>refused: this token was planned in another chat session.</value></data>
   <data name="ApprovalRefused" xml:space="preserve"><value>refused: this dangerous tool needs the person's yes on the tray for this call. Nothing ran.</value></data>
