@@ -1,17 +1,16 @@
 # Changelog
 
-## Tray client library (unreleased)
+## Tray (unreleased)
 
-- New `AiDevHelpers.Mcp.Client` library: reads the HTTP MCP's endpoint record and token, and calls `/healthz`. The Host service and the tray both use it.
-- The tray's status monitor reports the HTTP MCP as Connected, Reconnecting or Disconnected, with a reason. It refuses a health answer from a process that does not own the port.
-- The tray's service monitor reports the `AiDevHelpers` Windows service state without needing administrator rights.
-- The tray's approval server is the pipe end of dangerous-tool confirmation: first instance, current user only, client process checked, denied on timeout or error. The dialog arrives with the tray shell.
+- The tray reads the HTTP MCP's state (`HealthFeed`: Connected, Disconnected or PortConflict) and the `AiDevHelpers` service state (`ServiceStatus`) without needing administrator rights.
+- The tray hosts the approval pipe (`ApprovalPipeHost`): first instance, current user only. A dangerous tool call over HTTP runs only on an exact yes; no, no tray, or a timeout refuses it. The approval dialog arrives with the tray shell.
 
 ## MCP over HTTP (unreleased)
 
-- New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1` on the configured port (`Http:Port`, default 5058), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `status.json` in `%ProgramData%\AiDevHelpers\mcp-http`. The stdio exe is unchanged. See `docs/mcp-http.md`.
+- New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1` on the configured port (`Http:Port`, default 5058), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `status.json` in `%ProgramData%\AiDevHelpers\mcp-http`. The stdio exe is unchanged. See `docs/mcp-http-clients.md`.
 - New `AiDevHelpers.Host` Windows service that keeps the HTTP MCP running in your logon session (console or RDP), with restart backoff, health checks and a hold while servers are closing for an update. `scripts/service-install.ps1` and `scripts/service-uninstall.ps1` install and remove it; both are pinned by SHA-256 and support `-DryRun`.
-- Over HTTP, 19 dangerous tools (commands, scripts, process control, debugger evaluation, installs, publish, git push, server control) need the user's confirmation in the tray for each call; unlisted tools count as dangerous. Control and repo notices now reach every connected client instead of the last one.
+- Over HTTP, tools marked `[DangerousTool]` need the user's confirmation in the tray for each call. Control and repo notices now reach every connected client instead of the last one.
+
 ## Item templates (unreleased)
 
 - New `ide_list_item_templates` (Visual Studio only): lists the item templates Add New Item offers, with name, description, language, category and path, so `ide_add_project_item` mode fromNew has a template path to use. Filters: `filter` (name or description), `language`, `limit`.
