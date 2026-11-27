@@ -1,5 +1,15 @@
 # Changelog
 
+## Files, model server, container and WSL tools (unreleased)
+
+- New `file_edit`: apply, insert, delete, rename and rollback text edits in a workspace root, with a byte-exact backup before every write, an atomic write and the BOM kept. Standalone path only for rename and rollback.
+- New `model_server_status` and `model_server_capacity`: read the SimpleModelServer router over HTTP, loopback only.
+- New `container` (logs, start, stop, restart, exec) for Docker or Podman, with JSON results and a 20,000-character output cap.
+- New `wsl` (status, health, run, debug_setup) for WSL distributions. `debug_setup` writes `.vscode/launch.json` only when it does not exist.
+- Toolset paths: each repo picks `VisualStudio`, `VsCode` or `Standalone` with `toolsetPath` in `.aidevhelpers/settings.json`. The server default is `IdeTools:ToolsetPath`, and `IdeTools:AllowedToolsetPaths` caps what a repo may choose. A session locks to its repo and path at its first call that finds a repo.
+- On the VisualStudio and VsCode paths, `file_edit` apply, insert and delete run as the new `replaceInFile` bridge action in both IDE bridges. `container`, `wsl` and `model_server_*` run only on Standalone; on an IDE path they refuse with the path name.
+- Tools that run commands (`container`, `wsl`) are marked dangerous and need the tray's yes over HTTP.
+
 ## Tray (unreleased)
 
 - The tray reads the HTTP MCP's state (`HealthFeed`: Connected, Disconnected or PortConflict) and the `AiDevHelpers` service state (`ServiceStatus`) without needing administrator rights.

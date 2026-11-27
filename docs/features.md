@@ -16,6 +16,7 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 ## Files and model server (no IDE needed)
 
 - `file_edit`: apply, insert, delete, rename and rollback text edits inside a workspace root, with a byte-exact backup before every write, an atomic write and the file's BOM kept. On a VisualStudio or VsCode toolset path, apply, insert and delete run through the IDE bridge. See [Host-MCP/file-edit-contract.md](Host-MCP/file-edit-contract.md).
+- Toolset paths: a repo runs on `VisualStudio`, `VsCode` or `Standalone`, set in `.aidevhelpers/settings.json` (`toolsetPath`), with a server default and a server ceiling. A session keeps the path it locks to at its first call in a repo.
 - `model_server_status`, `model_server_capacity`: read the SimpleModelServer router over HTTP (loopback only). See [Host-MCP/model-server-contract.md](Host-MCP/model-server-contract.md).
 - `container`: logs, start, stop, restart and exec on a Docker or Podman container, with JSON results and a 20,000-character output cap. See [Host-MCP/container-contract.md](Host-MCP/container-contract.md).
 - `wsl`: WSL distro status and health, `run` a bash command line in a distro, and `debug_setup` for a debug launch config (writes `.vscode/launch.json` only when absent). See [Host-MCP/wsl-contract.md](Host-MCP/wsl-contract.md).

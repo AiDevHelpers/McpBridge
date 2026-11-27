@@ -31,7 +31,8 @@ public sealed class CommandRunnerWatchTests
     [Fact]
     public async Task OutputKeepsTheWatchdogQuiet()
     {
-        var result = await CommandRunner.RunAsync(Ps("1..5 | ForEach-Object { Write-Output $_; Start-Sleep -Milliseconds 500 }", TimeSpan.FromSeconds(2)));
+        // 10 s, not 2: PowerShell startup under a full test run can take longer than 2 s before the first line, which trips the watchdog.
+        var result = await CommandRunner.RunAsync(Ps("1..5 | ForEach-Object { Write-Output $_; Start-Sleep -Milliseconds 500 }", TimeSpan.FromSeconds(10)));
 
         Assert.False(result.Silent);
         Assert.True(result.Success);
