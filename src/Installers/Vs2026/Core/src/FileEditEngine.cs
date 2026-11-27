@@ -57,7 +57,7 @@ public static class FileEditEngine
         {
             if (string.IsNullOrEmpty(edit.OldText))
             {
-                throw new InvalidOperationException("An edit needs a non-empty oldText.");
+                throw new InvalidOperationException(Strings.Get("FileEditEmptyOldText"));
             }
 
             var positions = new List<int>();
@@ -75,7 +75,7 @@ public static class FileEditEngine
 
             if (positions.Count == 0)
             {
-                throw new InvalidOperationException($"No match for oldText '{edit.OldText}'.");
+                throw new InvalidOperationException(Strings.Format("FileEditNoMatch", edit.OldText));
             }
 
             total += positions.Count;
@@ -86,8 +86,7 @@ public static class FileEditEngine
                     : new List<int>();
             if (chosen.Count == 0)
             {
-                throw new InvalidOperationException(
-                    $"The file has {positions.Count} match(es); occurrence {edit.Occurrence} does not exist.");
+                throw new InvalidOperationException(Strings.Format("FileEditOccurrenceMissing", positions.Count, edit.Occurrence));
             }
 
             // Replace from the end so earlier positions stay valid.
@@ -108,14 +107,14 @@ public static class FileEditEngine
         var target = Path.GetFullPath(Path.Combine(resolvedRoot, file));
         if (!IsInside(resolvedRoot, target))
         {
-            throw new InvalidOperationException($"'{file}' is outside the repo root.");
+            throw new InvalidOperationException(Strings.Format("FileEditOutsideRoot", file));
         }
 
         var relative = RelativeTo(resolvedRoot, target);
         RefuseLinks(resolvedRoot, target, relative);
         if (!File.Exists(target))
         {
-            throw new InvalidOperationException($"File not found: '{relative}'.");
+            throw new InvalidOperationException(Strings.Format("FileEditNotFound", relative));
         }
 
         var original = File.ReadAllBytes(target);
@@ -189,7 +188,7 @@ public static class FileEditEngine
         {
             if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
             {
-                throw new InvalidOperationException($"'{relative}' passes through a link or junction; refusing to edit through it.");
+                throw new InvalidOperationException(Strings.Format("FileEditLink", relative));
             }
         }
     }
