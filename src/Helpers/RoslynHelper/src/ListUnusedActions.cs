@@ -15,7 +15,7 @@ public static class ListUnusedActions
 
     private static async Task<object> ListAsync(JsonElement args, Func<Solution?> current)
     {
-        var solution = current() ?? throw new InvalidOperationException("No solution is loaded. Call loadSolution first.");
+        var solution = current() ?? throw new InvalidOperationException(Strings.Get("NoSolutionLoaded"));
         var project = ArgumentParsers.OptionalString(args, "project");
         var includePublic = ArgumentParsers.OptionalBool(args, "includePublic") == true;
         var unused = await UnusedFinder.FindAsync(solution, project, includePublic).ConfigureAwait(false);

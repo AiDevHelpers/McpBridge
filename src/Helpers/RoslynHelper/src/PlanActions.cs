@@ -188,7 +188,7 @@ public static class PlanActions
         Action<Solution> setCurrent,
         Func<Solution, JsonElement, Task<MethodEditPlan>> plan)
     {
-        var disk = current() ?? throw new InvalidOperationException("No solution is loaded. Call loadSolution first.");
+        var disk = current() ?? throw new InvalidOperationException(Strings.Get("NoSolutionLoaded"));
         var confirm = ArgumentParsers.OptionalBool(args, "confirm") == true;
         var planHash = ArgumentParsers.OptionalString(args, "planHash");
         var buffers = ParseBuffers(args);
@@ -212,13 +212,13 @@ public static class PlanActions
                 // A file with unsaved editor text must stay where it is: the editor owns its contents until it is saved.
                 if (planDone?.FileMoves.Any(m => dirty.Contains(m.From)) == true || planDone?.FileDeletes.Any(p => dirty.Contains(p)) == true)
                 {
-                    throw new InvalidOperationException("A file with unsaved editor changes would move or be deleted. Save it first.");
+                    throw new InvalidOperationException(Strings.Get("UnsavedMoveRefused"));
                 }
 
                 var result = await PlanApplier.ApplyAsync(snapshot, planned, planDone?.FileDeletes, dirty).ConfigureAwait(false);
                 if (!result.Applied)
                 {
-                    throw new InvalidOperationException(result.Refusal ?? "The plan was not applied.");
+                    throw new InvalidOperationException(result.Refusal ?? Strings.Get("PlanNotApplied"));
                 }
 
                 unsavedEdits = result.Unsaved;
@@ -275,7 +275,7 @@ public static class PlanActions
         foreach (var (path, text) in buffers)
         {
             var id = solution.GetDocumentIdsWithFilePath(path).FirstOrDefault()
-                ?? throw new InvalidOperationException($"Buffer is not in the loaded solution: {path}.");
+                ?? throw new InvalidOperationException(Strings.Format("BufferNotInSolution", path));
             solution = solution.WithDocumentText(id, SourceText.From(text));
         }
 

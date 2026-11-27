@@ -36,6 +36,9 @@ public sealed class RoslynRequestHandler
     /// <summary>True when the helper answers this action. The parity test uses it to compare with the VS bridge's actions.</summary>
     public bool HandlesAction(string action) => _dispatcher.Has(action);
 
+    /// <summary>Every action the helper answers, health and loadSolution included.</summary>
+    public IReadOnlyList<string> HandledActions => _dispatcher.Names;
+
     private async Task<object> LoadSolutionAsync(JsonElement args)
     {
         var solutionPath = args.GetProperty("solutionPath").GetString()

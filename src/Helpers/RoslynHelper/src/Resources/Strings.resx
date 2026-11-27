@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="ActionAlreadyRegistered" xml:space="preserve"><value>Action already registered: {0}.</value></data>
+  <data name="NoSolutionLoaded" xml:space="preserve"><value>No solution is loaded. Call loadSolution first.</value></data>
+  <data name="UnsavedMoveRefused" xml:space="preserve"><value>A file with unsaved editor changes would move or be deleted. Save it first.</value></data>
+  <data name="PlanNotApplied" xml:space="preserve"><value>The plan was not applied.</value></data>
+  <data name="BufferNotInSolution" xml:space="preserve"><value>Buffer is not in the loaded solution: {0}.</value></data>
+  <data name="PlanRemovesUnlisted" xml:space="preserve"><value>Plan removes {0}, which the plan does not list as a file delete.</value></data>
+  <data name="PlanRemovesUnsaved" xml:space="preserve"><value>Plan removes {0}, which has unsaved changes in the editor. Save it first.</value></data>
+  <data name="FileChangedOnDisk" xml:space="preserve"><value>File changed on disk since the plan was made: {0}.</value></data>
+  <data name="AddedNoPath" xml:space="preserve"><value>Added document has no file path: {0}.</value></data>
+  <data name="PlanAddsExisting" xml:space="preserve"><value>Plan adds {0}, which already exists.</value></data>
+  <data name="FileNotInSolution" xml:space="preserve"><value>File is not in the loaded solution: {0}.</value></data>
+  <data name="LineOutsideFile" xml:space="preserve"><value>Line {0} is outside {1}.</value></data>
+  <data name="NoSymbolAtPosition" xml:space="preserve"><value>No symbol at that position.</value></data>
+  <data name="RenameNotApplied" xml:space="preserve"><value>The rename was not applied.</value></data>
+</root>
