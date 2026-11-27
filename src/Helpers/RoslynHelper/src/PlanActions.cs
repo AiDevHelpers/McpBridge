@@ -40,6 +40,46 @@ public static class PlanActions
             var line = ArgumentParsers.RequireInt(a, "line");
             return MemberAddEngine.PlanAsync(solution, file, line, ArgumentParsers.ParseMemberSpecs(a), finalize: true);
         }));
+
+        dispatcher.Register("addMethod", args => RunAsync(args, current, setCurrent, (solution, a) => AddMethodPlan(solution, a, overload: false)));
+
+        dispatcher.Register("addOverload", args => RunAsync(args, current, setCurrent, (solution, a) => AddMethodPlan(solution, a, overload: true)));
+
+        dispatcher.Register("deleteMember", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            var file = ArgumentParsers.RequireString(a, "file");
+            var line = ArgumentParsers.RequireInt(a, "line");
+            var column = ArgumentParsers.OptionalInt(a, "column") ?? 1;
+            return DeleteEngine.DeleteMemberAsync(solution, file, line, column, ArgumentParsers.ParseCallerEdits(a),
+                ArgumentParsers.StringList(a, "deleteTests").ToList(), _ => { });
+        }));
+
+        dispatcher.Register("changeSignature", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            var file = ArgumentParsers.RequireString(a, "file");
+            var line = ArgumentParsers.RequireInt(a, "line");
+            var column = ArgumentParsers.OptionalInt(a, "column") ?? 1;
+            var header = new HeaderChange
+            {
+                ReturnType = ArgumentParsers.OptionalString(a, "returnType"),
+                Accessibility = ArgumentParsers.OptionalString(a, "accessibility"),
+            };
+            return ChangeSignatureEngine.PlanAsync(solution, file, line, column, ArgumentParsers.ParseNewParameters(a),
+                ArgumentParsers.ParseDocUpdates(a), header);
+        }));
+    }
+
+    // addMethod and addOverload share one planner: a method added to the type at a line, or an overload of the method at that line.
+    private static Task<MethodEditPlan> AddMethodPlan(Solution solution, JsonElement a, bool overload)
+    {
+        var file = ArgumentParsers.RequireString(a, "file");
+        var line = ArgumentParsers.RequireInt(a, "line");
+        var newText = ArgumentParsers.RequireString(a, "newMethodText");
+        var afterLine = overload ? null : ArgumentParsers.OptionalInt(a, "afterLine");
+        var docs = ArgumentParsers.ParseDocUpdates(a);
+        var members = ArgumentParsers.ParseMemberSpecs(a);
+        return MemberPlanning.WithMembersAsync(solution, file, line, members, (s, shift, baseline) =>
+            MethodAddEngine.PlanAsync(s, file, shift(line), newText, afterLine is { } after ? shift(after) : null, overload, docs, baseline));
     }
 
     private static async Task<object> RunAsync(
