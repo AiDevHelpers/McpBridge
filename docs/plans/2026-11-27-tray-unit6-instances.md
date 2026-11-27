@@ -76,7 +76,7 @@ Each step names its failing test first, records the red run, then the green run.
   4. Dark and light theme, and 150% DPI: columns readable.
   5. Keyboard only: the grid is reachable and each column has a name for UI Automation.
 
-### 6.7 Live file path (separate slice, needs the decision below)
+### 6.7 Live file path
 
 - `InstanceEventsClient(pipeName, scheduler)`: connects to `<pipe>.events`, writes the subscribe line for `documentOpened` and `documentClosing` only, reads lines, tracks `seq`, treats 45 s of silence as disconnected, and reconnects with backoff. A `closed` line ends the subscription; it is not an error.
 - The last opened file is shown per instance, and "unknown" until the first event. A `documentClosing` for the same file clears it.
@@ -89,18 +89,29 @@ Each step names its failing test first, records the red run, then the green run.
 
 ## Done for unit 6
 
-- 6.1 to 6.6 green; 6.7 green or deferred by decision.
+- 6.1 to 6.7 green, and 6.9 green after its safety review.
 - Lite gate passes; the full Bridge, MCP Core and tray test suites pass.
 - Manual checklist (6.6) run with the screenshots attached to the PR.
 - PR into `wip`, merged without asking, per the cross-cutting rules.
 
-## Open questions (answer before 6.7; the rest of the plan does not depend on them)
+## Decisions (user, 2026-11-27)
 
-1. **Live file path in unit 6 or a follow-up?** Recommendation: follow-up (6.7 as its own PR), so 6.1 to 6.6 ship without the events pipe.
-2. **Other users' instances.** Manifests are per machine under `%ProgramData%`. Should the page show only this user's instances, or all of them? Recommendation: all, with the user shown as a column, since a second signed-in user's VS can still be running.
-3. **Read-only.** Confirm the page takes no actions (no close, kill or reset). Recommendation: yes.
+1. **Live file path (6.7) is in unit 6.** It is part of this unit's PR set, not a follow-up.
+2. **All users' instances.** The page lists every instance on the machine, with a user column, since a second signed-in user's VS can still be running.
+3. **Close and reset are allowed** (6.9). This is a change to the read-only default: it needs the safety review in 6.9 before any code.
+
+## 6.9 Close and reset from the page (needs a safety review first)
+
+- Row actions: close, reset. Kill is not offered on the page.
+- Safety review, done before 6.9 is coded; the review's outcome goes into this file:
+  - Unsaved work. Close and reset must not discard unsaved documents. Check the instance for unsaved documents first and refuse, naming the files, unless the person confirms a discard.
+  - Confirmation. Each action asks for a yes in the tray dialog, with the instance named (IDE, repo, pid). Deny is the default, as in the approval dialog.
+  - Which path runs the action. Reuse the bridge actions the MCP tools use (`ide_close_solution`, `ide_reset_instance` semantics) through `IdeInstanceRouter`, so the tray does not add a second way to act on an IDE. Check the MCP side's [DangerousTool] rules still apply to the tray's call.
+  - Running builds and debug sessions. Refuse while a build or debug session is running; show why.
+- Red tests: refusal with unsaved documents; refusal while debugging; a deny leaves the instance untouched; confirm calls the bridge with the pid of the row.
+- Done: tests pass; the manual checklist covers close and reset on a real VS and VS Code window with unsaved work.
 
 ## Not in unit 6
 
-- Closing, killing or resetting an instance from the tray (MCP tools already do that).
+- Killing an instance from the tray (MCP `ide_kill_instance` only).
 - Config page (unit 7) and Services page (unit 8).
