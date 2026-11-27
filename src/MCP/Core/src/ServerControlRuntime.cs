@@ -57,8 +57,21 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
             if (current.State == ServerControl.Closing)
             {
-                // Each IDE instance finishes its running step and stops taking actions first. Stop only when all have confirmed.
-                if (!await QuiesceInstancesAsync(stoppingToken))
+                // Each IDE instance finishes its running step and stops taking actions first. Retry until all confirm or the state
+                // changes; stop only when every instance has confirmed.
+                var stop = false;
+                while (ServerControl.Read().State == ServerControl.Closing)
+                {
+                    if (await QuiesceInstancesAsync(stoppingToken))
+                    {
+                        stop = true;
+                        break;
+                    }
+
+                    await Task.Delay(Interval, stoppingToken);
+                }
+
+                if (!stop)
                 {
                     continue;
                 }
