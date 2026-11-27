@@ -2,15 +2,12 @@
 // The tools are the same as the stdio server's. No token: the listener is bound to 127.0.0.1 only.
 using System.Reflection;
 using AiDevHelpers.MCP.Core;
-using AiDevHelpers.MCP.Http;
+using AiDevHelpers.MCP.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var port = builder.Configuration.GetValue("Http:Port", 5058);
 builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
-// Dangerous tools wait for the tray's approval over the named pipe; with no tray in this folder the call is refused.
-builder.Services.AddAiDevHelpersMcp(builder.Configuration)
-    .WithApproval(new NamedPipeApprovalChannel(NamedPipeApprovalChannel.DefaultPipeName, NamedPipeApprovalChannel.IsTrayInThisFolder, TimeSpan.FromSeconds(2)), McpApproval.DefaultTimeout)
-    .WithHttpTransport(options =>
+builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(options =>
 {
     // Stateful sessions: the plan-then-confirm tokens and the log subscriptions are per session (see the plan's static-state audit).
     options.Stateless = false;
@@ -18,6 +15,8 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration)
     options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
 });
 
+// Dangerous tools need the person's yes on the tray (unit 1c). The tray is not built yet, so no answer comes and they are refused.
+builder.Services.AddSingleton<IApprovalChannel>(new NoTrayApprovalChannel());
 var app = builder.Build();
 
 app.Use(async (context, next) =>
@@ -68,6 +67,12 @@ public static class PortConflictReport
         cause,
         atUtc = DateTime.UtcNow,
     });
+}
+
+/// <summary>The approval channel until the tray exists: it never answers, so every dangerous call is refused (fail closed).</summary>
+public sealed class NoTrayApprovalChannel : IApprovalChannel
+{
+    public Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct) => Task.FromResult<ApprovalReply?>(null);
 }
 
 /// <summary>The request checks. Pure, so the tests run them without a server.</summary>
