@@ -21,6 +21,16 @@ public sealed class ProjectTests
         Assert.Equal(allowed, HttpGuard.HostAllowed(host));
     }
 
+    [Fact]
+    public void PortConflictReportNamesThePortAndTheCause()
+    {
+        var json = PortConflictReport.Json(5058, "address in use");
+
+        Assert.Contains("\"state\":\"portConflict\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"port\":5058", json, StringComparison.Ordinal);
+        Assert.Contains("address in use", json, StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("http://localhost:5058", true)]
     [InlineData("http://127.0.0.1:5058", true)]
