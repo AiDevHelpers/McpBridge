@@ -205,6 +205,32 @@ public sealed class ServerControlTests : IDisposable
     }
 
     [Fact]
+    public async Task ApprovalOverThePipeIsGrantedOnlyByAYesFromTheTray()
+    {
+        var pipeName = ApprovalWire.PipeNamePrefix + Guid.NewGuid().ToString("N");
+        using var pipe = new System.IO.Pipes.NamedPipeServerStream(pipeName, System.IO.Pipes.PipeDirection.InOut, 1, System.IO.Pipes.PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+        var serving = ApprovalPipeServer.ServeOnceAsync(pipe, _ => Task.FromResult(true), CancellationToken.None);
+
+        var approved = await ApprovalGate.ApproveAsync(new ApprovalPipeChannel(pipeName), "terminal_session", "{}", () => Now, CancellationToken.None, TimeSpan.FromSeconds(5));
+        await serving;
+
+        Assert.True(approved);
+    }
+
+    [Fact]
+    public async Task ADenialOverThePipeIsRefused()
+    {
+        var pipeName = ApprovalWire.PipeNamePrefix + Guid.NewGuid().ToString("N");
+        using var pipe = new System.IO.Pipes.NamedPipeServerStream(pipeName, System.IO.Pipes.PipeDirection.InOut, 1, System.IO.Pipes.PipeTransmissionMode.Byte, System.IO.Pipes.PipeOptions.Asynchronous);
+        var serving = ApprovalPipeServer.ServeOnceAsync(pipe, _ => Task.FromResult(false), CancellationToken.None);
+
+        var approved = await ApprovalGate.ApproveAsync(new ApprovalPipeChannel(pipeName), "terminal_session", "{}", () => Now, CancellationToken.None, TimeSpan.FromSeconds(5));
+        await serving;
+
+        Assert.False(approved);
+    }
+
+    [Fact]
     public async Task NoTrayMeansNoApproval()
     {
         Assert.False(await ApprovalGate.ApproveAsync(null, "script_run", "{}", () => Now, CancellationToken.None));

@@ -13,6 +13,7 @@ internal sealed class FileEditTools
     private static readonly FileEditService Service = new(new FileEditEngine());
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Apply, insert, delete, rename, or roll back a text edit in a file inside the workspace root. A byte-exact backup is written to " +
         ".aidevhelpers/backups before every write; dryRun=true validates without writing. The file's encoding (BOM) is kept. action:\n" +
