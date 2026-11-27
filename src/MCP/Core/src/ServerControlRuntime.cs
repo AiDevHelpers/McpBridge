@@ -134,7 +134,7 @@ public static class ApprovalGate
     }
 
     /// <summary>Asks the channel and returns whether the call may run. No channel, a timeout, an error or a refusal all mean no.</summary>
-    public static async Task<bool> ApproveAsync(IApprovalChannel? channel, string toolName, string argumentsJson, Func<DateTime> now, CancellationToken ct)
+    public static async Task<bool> ApproveAsync(IApprovalChannel? channel, string toolName, string argumentsJson, Func<DateTime> now, CancellationToken ct, TimeSpan? wait = null)
     {
         if (channel is null)
         {
@@ -143,7 +143,7 @@ public static class ApprovalGate
 
         var request = CreateRequest(toolName, argumentsJson, now());
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        limit.CancelAfter(Limit);
+        limit.CancelAfter(wait ?? Limit);
         try
         {
             var reply = await channel.RequestAsync(request, limit.Token).ConfigureAwait(false);

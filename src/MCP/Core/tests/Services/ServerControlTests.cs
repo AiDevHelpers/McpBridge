@@ -184,6 +184,26 @@ public sealed class ServerControlTests : IDisposable
         Assert.False(await ApprovalGate.ApproveAsync(tray, "script_run", "{}", () => Now, CancellationToken.None));
     }
 
+    private sealed class SilentTray : IApprovalChannel
+    {
+        public async Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct)
+        {
+            await Task.Delay(Timeout.Infinite, ct);
+            return null;
+        }
+    }
+
+    [Fact]
+    public async Task ATrayThatNeverAnswersIsRefusedAtTheLimit()
+    {
+        var started = DateTime.UtcNow;
+
+        var approved = await ApprovalGate.ApproveAsync(new SilentTray(), "script_run", "{}", () => Now, CancellationToken.None, TimeSpan.FromMilliseconds(200));
+
+        Assert.False(approved);
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(10));
+    }
+
     [Fact]
     public async Task NoTrayMeansNoApproval()
     {
