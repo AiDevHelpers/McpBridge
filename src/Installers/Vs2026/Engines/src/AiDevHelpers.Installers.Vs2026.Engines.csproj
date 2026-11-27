@@ -30,6 +30,7 @@
     <InternalsVisibleTo Include="AiDevHelpers.Installers.Vs2026.Core" />
     <InternalsVisibleTo Include="AiDevHelpers.Installers.Vs2026.Core.Tests" />
     <InternalsVisibleTo Include="RoslynHelper" />
+    <InternalsVisibleTo Include="AiDevHelpers.Helpers.RoslynHelper.Shared" />
     <InternalsVisibleTo Include="AiDevHelpers.Helpers.RoslynHelper.Tests" />
   </ItemGroup>
 

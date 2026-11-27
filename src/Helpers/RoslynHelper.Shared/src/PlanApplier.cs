@@ -22,7 +22,7 @@ public static class PlanApplier
     /// after this returns applied.
     /// </summary>
     public static async Task<ApplyResult> ApplyAsync(
-        Solution snapshot, Solution planned, IReadOnlyCollection<string>? allowedDeletes = null, IReadOnlySet<string>? dirtyPaths = null,
+        Solution snapshot, Solution planned, IReadOnlyCollection<string>? allowedDeletes = null, ISet<string>? dirtyPaths = null,
         CancellationToken cancellationToken = default)
     {
         var writes = new List<(string Path, string Text, Encoding Encoding)>();

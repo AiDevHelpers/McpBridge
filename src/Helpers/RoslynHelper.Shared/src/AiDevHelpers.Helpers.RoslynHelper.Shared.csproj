@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Roslyn helper's request handler, dispatcher, actions and solution loader. Both helpers reference it: the net10
+       helper (RoslynHelper) and the net48 helper (RoslynHelper48), so the actions are written once. -->
+  <PropertyGroup>
+    <TargetFrameworks>net48;net10.0-windows</TargetFrameworks>
+    <AssemblyName>AiDevHelpers.Helpers.RoslynHelper.Shared</AssemblyName>
+    <RootNamespace>AiDevHelpers.Helpers.RoslynHelper</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Installers\Vs2026\Engines\src\AiDevHelpers.Installers.Vs2026.Engines.csproj" />
+  </ItemGroup>
+
+  <!-- Net48 ships its own Roslyn and MSBuild loader; the Framework MSBuild comes from Visual Studio at run time. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0-1.26573.119" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.12.0-1.26573.119" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.11.2" />
+    <!-- Records and init-only setters need IsExternalInit on .NET Framework; PolySharp supplies it at compile time only. -->
+    <PackageReference Include="PolySharp" Version="1.15.0" PrivateAssets="all" />
+    <!-- Runtime comes from the registered Framework MSBuild, not a copy in the output (Locator error MSBL001). -->
+    <PackageReference Include="Microsoft.Build.Framework" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.StringTools" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.12.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.12.0" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.11.2" />
+    <!-- Runtime comes from the registered MSBuild SDK, not a copy in the output (Locator error MSBL001). -->
+    <PackageReference Include="Microsoft.Build.Framework" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NET.StringTools" Version="18.7.1" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiDevHelpers.Helpers.RoslynHelper.Tests" />
+  </ItemGroup>
+
+</Project>

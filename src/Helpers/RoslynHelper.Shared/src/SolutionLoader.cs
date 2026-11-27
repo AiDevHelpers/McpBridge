@@ -121,7 +121,7 @@ public sealed class SolutionLoader
                 .Select(e => (string?)e.Attribute("Path"))
                 .Where(p => p != null)
                 .Select(p => p!)
-            : SlnProjectLine.Matches(File.ReadAllText(solutionPath)).Select(m => m.Groups[1].Value);
+            : SlnProjectLine.Matches(File.ReadAllText(solutionPath)).Cast<Match>().Select(m => m.Groups[1].Value);
 
         return entries
             .Where(p => Path.GetExtension(p).EndsWith("proj", StringComparison.OrdinalIgnoreCase))
@@ -159,7 +159,7 @@ public sealed class SolutionLoader
 
         return all.Select(full =>
         {
-            var name = Path.GetRelativePath(folder, full);
+            var name = RelativeName(folder, full);
             var messages = failures
                 .Where(m => m.Contains(full, StringComparison.OrdinalIgnoreCase)
                             || m.Contains(Path.GetFileName(full), StringComparison.OrdinalIgnoreCase))
@@ -179,5 +179,14 @@ public sealed class SolutionLoader
                 : "Project did not load and MSBuild reported no diagnostic.";
             return new ProjectLoadResult(name, false, error);
         }).ToList();
+    }
+
+    // Path.GetRelativePath is not in .NET Framework; this gives the same result for the project paths the loader names.
+    private static string RelativeName(string from, string to)
+    {
+        var folder = Path.GetFullPath(from).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var target = new Uri(Path.GetFullPath(to));
+        var relative = new Uri(folder).MakeRelativeUri(target);
+        return Uri.UnescapeDataString(relative.ToString()).Replace('/', Path.DirectorySeparatorChar);
     }
 }

@@ -33,7 +33,7 @@ Parent plan: `docs/plans/archived/2026-11-26-roslyn-helper.md` (decision 7: two 
 
 ## Units
 
-1. **Shared handler project.** Move the shared source into `RoslynHelper.Shared` (net48 and net10.0-windows). Test first: the existing net10 helper tests pass unchanged after the move (62/62 and the Bridge 101).
+1. **Shared handler project.** Move the shared source into `RoslynHelper.Shared` (net48 and net10.0-windows). Test first: the existing net10 helper tests pass unchanged after the move (62/62 and the Bridge 101). *Done: `src/Helpers/RoslynHelper.Shared` (ActionDispatcher, PlanActions, PlanApplier, RoslynRequestHandler, SolutionLoader, the actions, Strings and its resx) builds for net48 and net10.0-windows. Net48 needed PolySharp (init-only and records), `ISet` instead of `IReadOnlySet`, `Cast<Match>`, a relative-path helper (no `Path.GetRelativePath`), and no `ArgumentNullException.ThrowIfNull`/`TryAdd`. The net10 helper references the shared project; helper tests 62/62; the Engines project lets the shared assembly see its internals. `ManifestWriter` and `Program` stay in the net10 helper until unit 2.*
 2. **Skeleton.** `RoslynHelper48` exe, `health`, manifest with `framework: net48`. Test first: a pipe round trip returns health with framework net48.
 3. **Solution load on net48.** MSBuildLocator finds Framework MSBuild; load the fixture solution with a net48 SDK-less project and the SDK-style fixture. Test first: a net48 project loads and the SDK project loads in the same solution, each with its own diagnostic.
 4. **Edit actions on net48.** The shared actions run on the net48 host. Test first: `editMethod` plan on a net48 fixture without confirm writes nothing; with the hash it applies.
