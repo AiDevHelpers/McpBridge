@@ -15,6 +15,10 @@
   <data name="ServiceStoppedNotice"><value>AiDevHelpers service stopped</value></data>
   <data name="OpenStatus"><value>Open status</value></data>
   <data name="ExitTray"><value>Exit tray</value></data>
+  <data name="StartupLabel"><value>When the tray starts:</value></data>
+  <data name="StartOpen"><value>Open this window</value></data>
+  <data name="StartMinimized"><value>Minimized to the taskbar</value></data>
+  <data name="StartTray"><value>Hidden in the tray (minimizing hides it there)</value></data>
   <data name="TabStatus"><value>Status</value></data>
   <data name="TabInstances"><value>IDE instances</value></data>
   <data name="ColIde"><value>IDE</value></data>

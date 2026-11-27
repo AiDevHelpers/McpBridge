@@ -2,7 +2,12 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Width="440" SizeToContent="Height" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen">
-  <TabControl x:Name="Tabs" Margin="8">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+  <TabControl Grid.Row="0" x:Name="Tabs" Margin="8">
     <TabItem x:Name="StatusTab">
       <StackPanel Margin="8">
         <TextBlock Text="{Binding Headline}" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
@@ -36,5 +41,10 @@
       </Grid>
     </TabItem>
   </TabControl>
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,12">
+      <TextBlock x:Name="StartupLabel" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <ComboBox x:Name="StartupBox" Width="260"/>
+    </StackPanel>
+  </Grid>
 </Window>
 
