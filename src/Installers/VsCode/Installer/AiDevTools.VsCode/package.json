@@ -20,7 +20,7 @@
   ],
   "type": "module",
   "scripts": {
-    "prebuild": "node scripts/vendor-core.mjs; node scripts/vendor-roslyn.mjs",
+    "prebuild": "node scripts/vendor-core.mjs && node scripts/vendor-roslyn.mjs",
     "build": "tsc -p tsconfig.json",
     "postbuild": "node scripts/copy-vendor.mjs",
     "test": "vitest run",
