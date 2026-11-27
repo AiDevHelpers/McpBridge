@@ -5,7 +5,7 @@ Replaces three plans, archived under `docs/plans/archived/`:
 - `2026-11-27-tray-unit6-instances.md` (unit 6 steps and status)
 - `remaining-work-2026-11-19.md` (the 2026-11-19 migration of the IDE bridge; mostly done, its open items are carried below)
 
-Branch from `wip`; PRs and merges into `wip`. Status as of 2026-11-27, after PR #129 (unit 6 first slice) merged as `f1e594e`.
+Branch from `wip`. At the end of a unit, the unit's work is pushed to `wip`; no PR is opened for it. Status as of 2026-11-27, after PR #129 (unit 6 first slice) merged as `f1e594e`.
 
 ## Status at a glance
 
@@ -104,7 +104,7 @@ Layout:
 | `*.Tests` | xUnit per project; real Win32, SCM and UAC tests are `Category=Admin` or `Category=Manual`, excluded like `Tpm`, with elevated evidence attached to the unit PR |
 
 Rules for every unit:
-- A failing test or a verifiable done-state named up front; red run recorded; lite gate before commit; commit, push, and PR into `wip`, merged without asking.
+- A failing test or a verifiable done-state named up front; red run recorded; lite gate before commit; commit, and at the end of the unit push to `wip`. Do not open a PR for a unit.
 - All UI strings in `Strings.resx`; `string_scan`, `resx_check`, `localization_sync_check`. UIA names, high contrast, per-monitor v2 DPI.
 - Docs per unit: `docs/features.md`, CHANGELOG, and the client and troubleshooting docs for HTTP (`docs/mcp-http-clients.md`). Check `docs/ide-bridge.md` and `conformance/` for protocol impact.
 - Supportability: a diagnostics bundle (tray, service, MCP and IDE extension versions, port, pid, redacted last lines, service state and recovery settings), from a tray button and `/healthz`; version-skew warning across stdio, HTTP and extensions. Unit 6 adds the instance list when the bundle lands.
@@ -125,7 +125,7 @@ Remaining:
 1. 6.7 wiring: one events subscription per live instance, started and stopped with the instance list, feeding `OpenFileTracker` into an open-file column. Test with the fake pipe server.
 2. 6.6 manual checklist with screenshots: both IDEs appear within 5 s; a branch switch shows within 5 s; closing a window removes its row; dark and light theme and 150% DPI; keyboard only, with UIA names on each column.
 3. 6.9 close and reset: held until the safety review is written here. Its requirements: refuse on unsaved documents unless the person confirms a discard; a deny confirmation in the tray dialog naming the instance; reuse the bridge actions through `IdeInstanceRouter` (no second path); refuse while a build or debug session runs. Kill is not offered.
-4. Lite gate: its IDE steps need an open Visual Studio on `AiDevHelpers.slnx`. Run them before the PR merges.
+4. Lite gate: its IDE steps need an open Visual Studio on `AiDevHelpers.slnx`. Run them before the unit's work is pushed to `wip`.
 5. Diagnostics bundle: add the instance list when unit 9 or the supportability work lands.
 
 ### Units 7 to 11b (not started, unchanged from the phase plan)
