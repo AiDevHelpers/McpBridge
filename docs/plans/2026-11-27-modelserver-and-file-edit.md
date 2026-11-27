@@ -32,7 +32,7 @@ Sonnet review 2026-11-27 folded in (findings noted per unit).
 - [x] U2. (done: red run = CS0103 `WorkspacePathGuard` missing, then 9/9 green; root is an explicit argument, repo-root lookup happens in the tool in U6) Workspace path guard in `FileEditHelper` (new project). Failing tests first (ported from `PatchEngineTests`): `..` escape, absolute outside root,
   no root known, junction/symlink escape, rollback source not in backup root, rollback target outside root. Root comes from a `root` param, else
   `RepoSettingsFile.FindRepoRootFromFolder`. Done: red then green.
-- [ ] U3. `ModelServerHelper` + tests: discovery rules above, health, capacity parse (`gpu.detected`, `Math.Max(1,…)`), non-2xx, malformed JSON, `/api/ps` failure
+- [x] U3. (done: red = CS0246 `ModelServerClient` missing, then 23/23 green; non-loopback host ignores the whole file) `ModelServerHelper` + tests: discovery rules above, health, capacity parse (`gpu.detected`, `Math.Max(1,…)`), non-2xx, malformed JSON, `/api/ps` failure
   swallowed, no failure caching, TTL, timeout, cancellation. Fake `HttpMessageHandler`. Full wiring per list above.
 - [ ] U4. `ModelServerTools` (`model_server_status`, `model_server_capacity`): tool tests (ok/error JSON), self-test entries, `mcp-tools.md`.
 - [ ] U5. `FileEditHelper` edit engine + tests: apply (occurrence 0/N, not found), insert before/after (+anchor fallback when not required), delete literal/regex
