@@ -7,7 +7,8 @@ using AiDevHelpers.MCP.Http;
 using TokenSaver.AgentHelpers.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-var port = builder.Configuration.GetValue("Http:Port", 5058);
+// The shared settings file is the default; an explicit Http:Port (appsettings, environment, command line) still wins.
+var port = builder.Configuration.GetValue("Http:Port", McpPortSettings.Read(McpPortSettings.DefaultPath));
 var sessions = new SessionCounter();
 builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
 builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(options =>

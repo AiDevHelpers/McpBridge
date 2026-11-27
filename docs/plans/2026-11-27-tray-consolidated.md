@@ -34,11 +34,11 @@ Branch from `wip`; PRs and merges into `wip`. Status as of 2026-11-27, after PR 
 ## Open items
 
 From the tray work:
-1. Unit 5: visual check of the tray icon and windows; XAML text not localized.
+1. Unit 5: visual check of the tray icon and windows. XAML text is localized (`XamlLocalizationTests`), in branch `fix/tray-unit5`.
 2. Spike B (per-client HTTP checks: Claude Code, VS Code, Cursor, Visual Studio) and Spike C (light and dark follow, context menu, Explorer restart).
 3. Unit 3: a real elevated install and uninstall of the service scripts.
 4. Assumed, not tested: logoff, logon, and `terminal_session` from the service. Re-check before unit 2 ships.
-5. Tray port is hardcoded to 5058 in `TrayApp`; it should read `Http:Port`.
+5. Port: decided (2026-11-27) that the port comes from `%ProgramData%\AiDevHelpers\mcp-http\settings.json` (`{"port": N}`, default 5058). MCP.Http and the tray both read it through `McpPortSettings`. Done in `fix/tray-unit5`. An explicit `Http:Port` still overrides it on MCP.Http. Writing the file is an admin task; the Host does not write it.
 6. Unit 10b: create the signing key and the protected GitHub environment (manual, by the user).
 7. Cleanup: stale worktrees (`tray-merge`, `changelog-cleanup`, `tray-unit5`, `tray-unit6`); merged branches (`feature/tray-next`, `feat/tray-unit5`, `chore/changelog-tray-cleanup`, `chore/tray-unit5-strings`); the untracked `src/Tray/MCP.Http/src/Properties/` folder.
 8. CI: confirm `build-and-test` on the merged unit 5 branch, which was still running at last check.

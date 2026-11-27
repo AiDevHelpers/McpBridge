@@ -16,7 +16,7 @@ namespace AiDevHelpers.Tray;
 /// <summary>The tray icon, its menu, the Status window, toasts, and the approval pipe. Lives for the whole tray session.</summary>
 public sealed class TrayApp : IDisposable
 {
-    public const int Port = 5058;
+    public static readonly int Port = McpPortSettings.Read(McpPortSettings.DefaultPath);
     private const string ServiceName = "AiDevHelpers";
 
     private readonly TaskbarIcon _icon;

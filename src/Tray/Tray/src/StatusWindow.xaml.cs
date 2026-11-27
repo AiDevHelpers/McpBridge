@@ -9,6 +9,7 @@ public partial class StatusWindow : Window
     {
         InitializeComponent();
         DataContext = status;
+        Title = Strings.Get("AppName");
 
         StatusTab.Header = Strings.Get("TabStatus");
         InstancesTab.Header = Strings.Get("TabInstances");
