@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   build-and-test:
@@ -26,6 +27,8 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: Restore
+        env:
+          AIDEVHELPERS_NUGET_TOKEN: ${{ secrets.AIDEVHELPERS_PACKAGES_TOKEN }}
         run: dotnet restore AiDevHelpers.slnx
 
       - name: Build
