@@ -26,6 +26,19 @@ public static class IdeInstanceRouter
     /// </summary>
     public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null, int? instancePid = null)
     {
+        // Edit actions for a VS Code solution go to its Roslyn helper; everything else keeps the bridge path below.
+        var route = RoslynRouting.Decide(action, ide, solutionPath, RoslynHelperRegistry.FindForSolution);
+        if (route.Kind == RoslynRouteKind.NoHelper)
+        {
+            return JsonSerializer.Serialize(new { ide = "VsCode", solution_path = solutionPath, ok = false, error = route.Error });
+        }
+
+        if (route.Kind == RoslynRouteKind.Helper && route.Helper is { } helper)
+        {
+            var helperTarget = new VsInstance(helper.Pid, helper.PipeName, helper.SolutionPath, DateTime.UtcNow, "VsCode", Array.Empty<string>());
+            return await SendAsync(helperTarget, action, args, ct);
+        }
+
         var instances = VsInstanceRegistry.ListRunning();
         if (!string.IsNullOrWhiteSpace(ide))
         {
