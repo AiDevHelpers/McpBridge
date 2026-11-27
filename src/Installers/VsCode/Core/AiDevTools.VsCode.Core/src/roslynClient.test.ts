@@ -1,5 +1,8 @@
 import { describe, expect, test } from "vitest";
+import { readFileSync } from "node:fs";
 import { ROSLYN_ACTIONS, RoslynHelperClient, type HelperManifest, type PipeTransport } from "./roslynClient.js";
+
+const sharedEditActions = (JSON.parse(readFileSync(new URL("../../../../../../conformance/roslyn-actions.json", import.meta.url), "utf8")) as { editActions: string[] }).editActions;
 
 const manifest: HelperManifest = { pid: 4321, pipeName: "AiDevHelpers.Roslyn.4321", solutionPath: "F:\\repo\\App.slnx" };
 
@@ -40,6 +43,10 @@ describe("Roslyn helper client", () => {
         const client = new RoslynHelperClient(() => manifest, transport);
 
         await expect(client.runAction("editMethod", {})).rejects.toThrow("Unknown action: nope.");
+    });
+
+    test("the routed set is the shared helper edit actions", () => {
+        expect([...ROSLYN_ACTIONS].sort()).toEqual([...sharedEditActions].sort());
     });
 
     test("the routed set is the helper's edit actions, and other VS actions are not routed", () => {

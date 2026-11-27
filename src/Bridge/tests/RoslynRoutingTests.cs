@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using AiDevHelpers.Bridge;
 using Xunit;
 
@@ -57,16 +59,19 @@ public class RoslynRoutingTests
     }
 
     [Fact]
-    public void the_routed_action_set_matches_the_helper_edit_actions()
+    public void the_routed_action_set_matches_the_shared_edit_actions()
     {
-        var expected = new[]
+        // conformance/roslyn-actions.json is the list the helper, the Bridge and the VS Code client all match.
+        var dir = AppContext.BaseDirectory;
+        while (dir is not null && !File.Exists(Path.Combine(dir, "conformance", "roslyn-actions.json")))
         {
-            "addEnumMember", "addInterfaceMember", "addMember", "addMethod", "addOverload", "addType", "changeSignature",
-            "deleteMember", "deleteType", "editEnumMember", "editMember", "editMethod", "editType", "generateConstructor",
-            "implementMembers", "listUnused", "moveType", "renameNamespace", "renameSymbol", "tddAddTest", "tddUpdateTest",
-            "threadParameter",
-        };
+            dir = Path.GetDirectoryName(dir);
+        }
 
-        Assert.Equal(expected.OrderBy(x => x), RoslynRouting.Actions.OrderBy(x => x));
+        Assert.NotNull(dir);
+        using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir!, "conformance", "roslyn-actions.json")));
+        var shared = json.RootElement.GetProperty("editActions").EnumerateArray().Select(e => e.GetString()!).OrderBy(x => x, StringComparer.Ordinal).ToList();
+
+        Assert.Equal(shared, RoslynRouting.Actions.OrderBy(x => x, StringComparer.Ordinal).ToList());
     }
 }

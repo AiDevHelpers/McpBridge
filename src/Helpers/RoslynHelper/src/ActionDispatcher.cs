@@ -15,11 +15,14 @@ public sealed class ActionDispatcher
         ArgumentNullException.ThrowIfNull(handler);
         if (!_handlers.TryAdd(action, handler))
         {
-            throw new InvalidOperationException($"Action already registered: {action}.");
+            throw new InvalidOperationException(Strings.Format("ActionAlreadyRegistered", action));
         }
     }
 
     public bool Has(string action) => _handlers.ContainsKey(action);
+
+    /// <summary>Every registered action name, in no particular order.</summary>
+    public IReadOnlyList<string> Names => _handlers.Keys.ToList();
 
     /// <summary>Runs one registered action. An unknown action throws, and the pipe server turns the message into an error reply.</summary>
     public Task<object> InvokeAsync(string action, JsonElement args)

@@ -47,7 +47,7 @@ public static class PlanApplier
             var beforeText = await before.GetTextAsync(cancellationToken).ConfigureAwait(false);
             if (!File.Exists(before.FilePath) || File.ReadAllText(before.FilePath) != beforeText.ToString())
             {
-                return Refused($"File changed on disk since the plan was made: {before.FilePath}.");
+                return Refused(Strings.Format("FileChangedOnDisk", before.FilePath));
             }
 
             writes.Add((before.FilePath, afterText.ToString(), beforeText.Encoding ?? new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)));
@@ -61,18 +61,18 @@ public static class PlanApplier
                 var path = removed?.FilePath;
                 if (path is null || allowedDeletes is null || !allowedDeletes.Contains(path, StringComparer.OrdinalIgnoreCase))
                 {
-                    return Refused($"Plan removes {path ?? documentId.ToString()}, which the plan does not list as a file delete.");
+                    return Refused(Strings.Format("PlanRemovesUnlisted", path ?? documentId.ToString()));
                 }
 
                 if (dirtyPaths?.Contains(path) == true)
                 {
-                    return Refused($"Plan removes {path}, which has unsaved changes in the editor. Save it first.");
+                    return Refused(Strings.Format("PlanRemovesUnsaved", path));
                 }
 
                 var removedText = await removed!.GetTextAsync(cancellationToken).ConfigureAwait(false);
                 if (!File.Exists(path) || File.ReadAllText(path) != removedText.ToString())
                 {
-                    return Refused($"File changed on disk since the plan was made: {path}.");
+                    return Refused(Strings.Format("FileChangedOnDisk", path));
                 }
             }
 
@@ -82,12 +82,12 @@ public static class PlanApplier
                 var path = added?.FilePath;
                 if (added is null || path is null)
                 {
-                    return Refused($"Added document has no file path: {documentId}.");
+                    return Refused(Strings.Format("AddedNoPath", documentId));
                 }
 
                 if (File.Exists(path))
                 {
-                    return Refused($"Plan adds {path}, which already exists.");
+                    return Refused(Strings.Format("PlanAddsExisting", path));
                 }
 
                 var addedText = await added.GetTextAsync(cancellationToken).ConfigureAwait(false);
