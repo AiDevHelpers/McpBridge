@@ -16,7 +16,9 @@ if (pipes.Length > 0)
 {
     try
     {
-        using var client = new NamedPipeClientStream(".", pipes[0]!, PipeDirection.InOut);
+        // The request pipe, not the events pipe (".events" expects a subscribe line).
+        var requestPipe = pipes.First(p => !p!.EndsWith(".events", StringComparison.Ordinal))!;
+        using var client = new NamedPipeClientStream(".", requestPipe, PipeDirection.InOut);
         client.Connect(3000);
         using var writer = new StreamWriter(client, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
         using var reader = new StreamReader(client, Encoding.UTF8, false, 1024, leaveOpen: true);
