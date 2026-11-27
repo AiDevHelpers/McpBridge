@@ -4,7 +4,10 @@ using Microsoft.CodeAnalysis;
 namespace AiDevHelpers.Helpers.RoslynHelper;
 
 /// <summary>The outcome of applying a plan: the files written, or the reason nothing was written.</summary>
-public sealed record ApplyResult(bool Applied, IReadOnlyList<string> Written, string? Refusal);
+public sealed record ApplyResult(bool Applied, IReadOnlyList<string> Written, string? Refusal, IReadOnlyList<UnsavedEdit>? Unsaved = null);
+
+/// <summary>The planned text of a file that has unsaved editor changes. The helper does not write it; the editor applies it.</summary>
+public sealed record UnsavedEdit(string Path, string Text);
 
 /// <summary>
 /// Writes a plan's changed documents to disk. The helper never uses the workspace's TryApplyChanges or the editor, so a plan
@@ -19,9 +22,11 @@ public static class PlanApplier
     /// after this returns applied.
     /// </summary>
     public static async Task<ApplyResult> ApplyAsync(
-        Solution snapshot, Solution planned, IReadOnlyCollection<string>? allowedDeletes = null, CancellationToken cancellationToken = default)
+        Solution snapshot, Solution planned, IReadOnlyCollection<string>? allowedDeletes = null, IReadOnlySet<string>? dirtyPaths = null,
+        CancellationToken cancellationToken = default)
     {
         var writes = new List<(string Path, string Text, Encoding Encoding)>();
+        var unsaved = new List<UnsavedEdit>();
         foreach (var documentId in planned.GetChanges(snapshot).GetProjectChanges().SelectMany(p => p.GetChangedDocuments()))
         {
             var before = snapshot.GetDocument(documentId);
@@ -31,8 +36,15 @@ public static class PlanApplier
                 return Refused($"Changed document has no file on disk: {documentId}.");
             }
 
-            var beforeText = await before.GetTextAsync(cancellationToken).ConfigureAwait(false);
             var afterText = await after.GetTextAsync(cancellationToken).ConfigureAwait(false);
+            if (dirtyPaths?.Contains(before.FilePath) == true)
+            {
+                // The editor holds unsaved text for this file: its planned text goes back in the reply, and the disk is left alone.
+                unsaved.Add(new UnsavedEdit(before.FilePath, afterText.ToString()));
+                continue;
+            }
+
+            var beforeText = await before.GetTextAsync(cancellationToken).ConfigureAwait(false);
             if (!File.Exists(before.FilePath) || File.ReadAllText(before.FilePath) != beforeText.ToString())
             {
                 return Refused($"File changed on disk since the plan was made: {before.FilePath}.");
@@ -50,6 +62,11 @@ public static class PlanApplier
                 if (path is null || allowedDeletes is null || !allowedDeletes.Contains(path, StringComparer.OrdinalIgnoreCase))
                 {
                     return Refused($"Plan removes {path ?? documentId.ToString()}, which the plan does not list as a file delete.");
+                }
+
+                if (dirtyPaths?.Contains(path) == true)
+                {
+                    return Refused($"Plan removes {path}, which has unsaved changes in the editor. Save it first.");
                 }
 
                 var removedText = await removed!.GetTextAsync(cancellationToken).ConfigureAwait(false);
@@ -83,7 +100,7 @@ public static class PlanApplier
             File.WriteAllText(path, text, encoding);
         }
 
-        return new ApplyResult(true, writes.Select(w => w.Path).ToList(), null);
+        return new ApplyResult(true, writes.Select(w => w.Path).ToList(), null, unsaved);
     }
 
     private static ApplyResult Refused(string reason) => new(false, Array.Empty<string>(), reason);

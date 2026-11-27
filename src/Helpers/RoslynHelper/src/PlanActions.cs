@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using AiDevHelpers.Installers.Vs2026.Core;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 
 namespace AiDevHelpers.Helpers.RoslynHelper;
 
@@ -186,11 +188,15 @@ public static class PlanActions
         Action<Solution> setCurrent,
         Func<Solution, JsonElement, Task<MethodEditPlan>> plan)
     {
-        var snapshot = current() ?? throw new InvalidOperationException("No solution is loaded. Call loadSolution first.");
+        var disk = current() ?? throw new InvalidOperationException("No solution is loaded. Call loadSolution first.");
         var confirm = ArgumentParsers.OptionalBool(args, "confirm") == true;
         var planHash = ArgumentParsers.OptionalString(args, "planHash");
+        var buffers = ParseBuffers(args);
+        var dirty = new HashSet<string>(buffers.Select(b => b.Path), StringComparer.OrdinalIgnoreCase);
+        var snapshot = ApplyBuffers(disk, buffers);
         Solution? applied = null;
         MethodEditPlan? planDone = null;
+        IReadOnlyList<UnsavedEdit>? unsavedEdits = null;
 
         var reply = await PlanFlow.RunAsync(
             snapshot,
@@ -203,12 +209,19 @@ public static class PlanActions
             planHash,
             apply: async planned =>
             {
-                var result = await PlanApplier.ApplyAsync(snapshot, planned, planDone?.FileDeletes).ConfigureAwait(false);
+                // A file with unsaved editor text must stay where it is: the editor owns its contents until it is saved.
+                if (planDone?.FileMoves.Any(m => dirty.Contains(m.From)) == true || planDone?.FileDeletes.Any(p => dirty.Contains(p)) == true)
+                {
+                    throw new InvalidOperationException("A file with unsaved editor changes would move or be deleted. Save it first.");
+                }
+
+                var result = await PlanApplier.ApplyAsync(snapshot, planned, planDone?.FileDeletes, dirty).ConfigureAwait(false);
                 if (!result.Applied)
                 {
                     throw new InvalidOperationException(result.Refusal ?? "The plan was not applied.");
                 }
 
+                unsavedEdits = result.Unsaved;
                 applied = planned;
             },
             // Files move and delete on disk only after the text changes are written, as the VS host does.
@@ -218,9 +231,54 @@ public static class PlanActions
 
         if (applied is not null)
         {
-            setCurrent(applied);
+            // The helper's own copy keeps the disk text of the buffered files, since their edits went back to the editor.
+            var cache = applied;
+            foreach (var buffer in buffers)
+            {
+                var id = disk.GetDocumentIdsWithFilePath(buffer.Path).First();
+                cache = cache.WithDocumentText(id, await disk.GetDocument(id)!.GetTextAsync().ConfigureAwait(false));
+            }
+
+            setCurrent(cache);
+        }
+
+        if (unsavedEdits is { Count: > 0 })
+        {
+            var node = JsonSerializer.SerializeToNode(reply)!.AsObject();
+            node["unsaved"] = JsonSerializer.SerializeToNode(unsavedEdits, CamelCase);
+            return node;
         }
 
         return reply;
+    }
+
+    // The reply keys are camelCase, as the bridge's replies are.
+    private static readonly JsonSerializerOptions CamelCase = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+    private static List<(string Path, string Text)> ParseBuffers(JsonElement args)
+    {
+        var buffers = new List<(string Path, string Text)>();
+        if (args.ValueKind == JsonValueKind.Object && args.TryGetProperty("documents", out var array) && array.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var e in array.EnumerateArray())
+            {
+                buffers.Add((ArgumentParsers.RequireString(e, "path"), e.GetProperty("text").GetString() ?? string.Empty));
+            }
+        }
+
+        return buffers;
+    }
+
+    // Each buffer replaces its file's text in the snapshot, so the plan and its hash read the editor's text.
+    private static Solution ApplyBuffers(Solution solution, IReadOnlyList<(string Path, string Text)> buffers)
+    {
+        foreach (var (path, text) in buffers)
+        {
+            var id = solution.GetDocumentIdsWithFilePath(path).FirstOrDefault()
+                ?? throw new InvalidOperationException($"Buffer is not in the loaded solution: {path}.");
+            solution = solution.WithDocumentText(id, SourceText.From(text));
+        }
+
+        return solution;
     }
 }
