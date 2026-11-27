@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using AiDevHelpers.Bridge;
 using EnvDTE;
@@ -138,6 +140,37 @@ public sealed class BridgeHost : IDisposable
     private void OnDocumentClosing(Document document) => _events.Publish("documentClosing", new { file = document.FullName });
 #pragma warning restore VSTHRD010
 
+    // The MCP server sends its global dialog settings here. Only values that differ are applied, and a change is published as settingsChanged.
+    private object Configure(IdeActions actions, JsonElement args)
+    {
+        var changed = new List<string>();
+        if (args.ValueKind == JsonValueKind.Object
+            && args.TryGetProperty("autoDismissDialogs", out var dismiss)
+            && (dismiss.ValueKind == JsonValueKind.True || dismiss.ValueKind == JsonValueKind.False)
+            && actions.AutoDismissDialogs != dismiss.GetBoolean())
+        {
+            actions.AutoDismissDialogs = dismiss.GetBoolean();
+            changed.Add("autoDismissDialogs");
+        }
+
+        if (args.ValueKind == JsonValueKind.Object
+            && args.TryGetProperty("actionTimeoutSeconds", out var seconds)
+            && seconds.TryGetInt32(out var limitSeconds)
+            && limitSeconds > 0
+            && _server.ActionLimit != TimeSpan.FromSeconds(limitSeconds))
+        {
+            _server.ActionLimit = TimeSpan.FromSeconds(limitSeconds);
+            changed.Add("actionTimeoutSeconds");
+        }
+
+        if (changed.Count > 0)
+        {
+            _events.Publish("settingsChanged", new { changed });
+        }
+
+        return new { applied = true, changed };
+    }
+
     private void Initialize()
     {
         Microsoft.VisualStudio.Shell.ThreadHelper.ThrowIfNotOnUIThread();
@@ -149,7 +182,9 @@ public sealed class BridgeHost : IDisposable
         _server = new BridgeServer(
             pipeName,
 #pragma warning disable VSTHRD010 // _runOnMainThread marshals the call onto the UI thread before Invoke runs.
-            (action, args) => _runOnMainThread(() => actions.Invoke(action, args)),
+            (action, args) => action == "configure"
+                ? Task.FromResult<object>(Configure(actions, args))
+                : _runOnMainThread(() => actions.Invoke(action, args)),
 #pragma warning restore VSTHRD010
             () => _solutionPath,
             new DebugBridgeLogger());
