@@ -26,6 +26,7 @@ public sealed class RoslynRequestHandler
         }));
         _dispatcher.Register("loadSolution", LoadSolutionAsync);
         PlanActions.Register(_dispatcher, () => _solution, s => _solution = s);
+        ListUnusedActions.Register(_dispatcher, () => _solution);
     }
 
     /// <summary>Runs one action. Unknown actions throw, and the pipe server turns the message into an error reply.</summary>
