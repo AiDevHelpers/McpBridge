@@ -3,6 +3,7 @@
 ## MCP over HTTP (unreleased)
 
 - New `AiDevHelpers.MCP.Http` exe: the bridge's MCP tools over streamable HTTP, one process for every IDE and chat client. It binds to `127.0.0.1`, requires a bearer token (file readable only by your user and SYSTEM), refuses wrong `Host` and any `Origin`, keeps stateful sessions with a 30 minute idle timeout, and reports `/healthz`. A busy port is written to `endpoint.json` and the exe exits with code 2. The stdio exe is unchanged. See `docs/mcp-http.md`.
+- New `AiDevHelpers.Host` Windows service that keeps the HTTP MCP running in your logon session (console or RDP), with restart backoff, health checks and a hold while servers are closing for an update. `scripts/service-install.ps1` and `scripts/service-uninstall.ps1` install and remove it; both are pinned by SHA-256 and support `-DryRun`.
 - Over HTTP, 19 dangerous tools (commands, scripts, process control, debugger evaluation, installs, publish, git push, server control) need the user's confirmation in the tray for each call; unlisted tools count as dangerous. Control and repo notices now reach every connected client instead of the last one.
 
 ## LocalizationHelper (unreleased)

@@ -15,6 +15,24 @@ Options: `--port <n>` (default 5757, `0` picks a free port), `--token <file>`, `
 - `token`: the bearer token, created on first start. Only your user and SYSTEM can read it.
 - `endpoint.json`: `pid`, `port`, `version`, `startedUtc`, or `error` when startup failed. A busy port writes `"error": "port-in-use"` and the exe exits with code 2.
 
+## Install as a Windows service
+
+The Host service starts the HTTP MCP in your logon session, restarts it after a crash, and restarts it when `/healthz` stops answering. Install it from a folder that holds the published `AiDevHelpers.Host.exe`, `AiDevHelpers.MCP.Http.exe` and their files, in an elevated shell:
+
+```powershell
+pwsh scripts/service-install.ps1 -SourceDirectory <published folder>
+pwsh scripts/service-uninstall.ps1
+```
+
+- Both scripts check their own SHA-256 against `scripts/service-install.sha256` and `scripts/service-uninstall.sha256` before doing anything. After a reviewed change run the script once with `-WritePin` and commit the pin.
+- `-DryRun` prints the steps (lines that start with `PLAN:`) and changes nothing. `-Reinstall` replaces an installed service; `-NoStart` installs without starting.
+- The service installs under `%ProgramFiles%\AiDevHelpers`. The folder is created with SYSTEM and Administrators full control and Users read-only before any file is copied, and an existing folder owned by an ordinary user is refused. An `install-manifest.json` records the SHA-256 of every installed file.
+- The service runs as LocalSystem, starts automatically, and restarts itself after a failure (5 s, 5 s, then 30 s).
+- The token and endpoint record live in `%ProgramData%\AiDevHelpers\mcp-http`, open only to your user, SYSTEM and Administrators.
+- The uninstall script removes the service, the install folder (only when it holds `install-manifest.json`) and the token folder (unless `-KeepData`). The tray's run-at-login entry is removed by the tray.
+
+If you are logged on over RDP, the server runs in that session; with a local console user it runs in the console session. One server serves one user.
+
 ## What the server checks
 
 Every request must pass, in order:
