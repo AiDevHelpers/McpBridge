@@ -154,7 +154,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 
 | Tool | Purpose |
 | --- | --- |
-| `file_edit` | Apply, insert, delete, rename, or roll back a text edit in a file inside the workspace root. A byte-exact backup is written to .aidevhelpers/backups before every write; dryRun=true validates without writing. The file's encoding (BOM) is kept. root defaults to the git repo of the server's current folder. |
+| `file_edit` | Apply, insert, delete, rename, or roll back a text edit in a file inside the workspace root. A byte-exact backup is written to .aidevhelpers/backups before every write; dryRun=true validates without writing. The file's encoding (BOM) is kept. root defaults to the git repo of the server's current folder. On a VisualStudio or VsCode toolset path the edit runs in the IDE bridge (apply, insert and delete only); rename, rollback and regex delete are refused there. |
 
 ## WSL and containers
 
