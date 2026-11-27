@@ -12,7 +12,6 @@ public static class ToolsetRouting
     {
         "container",
         "wsl",
-        "file_edit",
         "model_server_status",
         "model_server_capacity",
     };

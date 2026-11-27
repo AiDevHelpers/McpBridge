@@ -138,6 +138,14 @@ It uses a per-process named pipe and registers this instance for MCP routing.
 
 There are no user-configurable bridge settings at this time.</value></data>
   <data name="TestExplorerRefusedTwice" xml:space="preserve"><value>Test Explorer refused the run twice (HRESULT 0x{0:X8}). It is probably still discovering or running tests; wait, then call ide_get_test_summary before retrying.</value></data>
+  <data name="FileEditEmptyOldText" xml:space="preserve"><value>An edit needs a non-empty oldText.</value></data>
+  <data name="FileEditNoMatch" xml:space="preserve"><value>No match for oldText '{0}'.</value></data>
+  <data name="FileEditOccurrenceMissing" xml:space="preserve"><value>The file has {0} match(es); occurrence {1} does not exist.</value></data>
+  <data name="FileEditOutsideRoot" xml:space="preserve"><value>'{0}' is outside the repo root.</value></data>
+  <data name="FileEditNotFound" xml:space="preserve"><value>File not found: '{0}'.</value></data>
+  <data name="FileEditMissingEdits" xml:space="preserve"><value>missing argument: edits</value></data>
+  <data name="FileEditNoSolution" xml:space="preserve"><value>No solution is open.</value></data>
+  <data name="FileEditLink" xml:space="preserve"><value>'{0}' passes through a link or junction; refusing to edit through it.</value></data>
   <data name="NoSolutionOpenToFormat" xml:space="preserve"><value>No solution is open to format.</value></data>
   <data name="PathMustBeAbsolute" xml:space="preserve"><value>The file path must be absolute.</value></data>
   <data name="LineAndColumnStartAtOne" xml:space="preserve"><value>Line and column start at 1.</value></data>

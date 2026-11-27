@@ -8,7 +8,6 @@ public sealed class ToolsetRoutingTests
     [Theory]
     [InlineData("container")]
     [InlineData("wsl")]
-    [InlineData("file_edit")]
     [InlineData("model_server_status")]
     [InlineData("model_server_capacity")]
     public void StandaloneOnlyToolsAreRefusedOnTheIdePaths(string tool)
@@ -20,7 +19,6 @@ public sealed class ToolsetRoutingTests
     [Theory]
     [InlineData("container")]
     [InlineData("wsl")]
-    [InlineData("file_edit")]
     [InlineData("model_server_status")]
     public void StandaloneOnlyToolsRunOnTheStandalonePath(string tool)
     {

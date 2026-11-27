@@ -1467,7 +1467,7 @@ public sealed class IdeActions(DTE2 dte)
         var file = RequireString(args, "file");
         if (!args.TryGetProperty("edits", out var editsJson) || editsJson.ValueKind != JsonValueKind.Array || editsJson.GetArrayLength() == 0)
         {
-            throw new ArgumentException("missing argument: edits");
+            throw new ArgumentException(Strings.Get("FileEditMissingEdits"));
         }
 
         var edits = new List<FileEditEngine.Edit>();
@@ -1483,7 +1483,7 @@ public sealed class IdeActions(DTE2 dte)
         var root = OptionalString(args, "root") ?? Path.GetDirectoryName(dte.Solution.FullName);
         if (string.IsNullOrEmpty(root))
         {
-            throw new InvalidOperationException("No solution is open.");
+            throw new InvalidOperationException(Strings.Get("FileEditNoSolution"));
         }
 
         var result = FileEditEngine.Replace(root, file, edits, OptionalBool(args, "confirm") == true);

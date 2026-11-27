@@ -175,6 +175,10 @@
   <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
   <data name="ContainerUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'logs', 'start', 'stop', 'restart' or 'exec'.</value></data>
   <data name="WslUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'health', 'run' or 'debug_setup'.</value></data>
+  <data name="FileEditIdeRefused" xml:space="preserve"><value>file_edit '{0}' cannot run on an IDE path: {1}. Use the Standalone toolset path for it.</value></data>
+  <data name="FileEditReasonRegex" xml:space="preserve"><value>a regex delete, because the IDE bridge matches literal text</value></data>
+  <data name="FileEditReasonIde" xml:space="preserve"><value>the IDE bridge has no single-file equivalent for this action</value></data>
+  <data name="FileEditReasonUnknown" xml:space="preserve"><value>the action is unknown</value></data>
   <data name="ToolsetPathRefused" xml:space="preserve"><value>'{0}' runs only on the Standalone toolset path, and this session uses {1}. Open the repo without an IDE toolset, or set toolsetPath to Standalone for this repo.</value></data>
   <data name="RepoToolsetPathRefused" xml:space="preserve"><value>The repo file set toolsetPath '{0}' in {1}, which is unknown or not allowed by the server. The server default is used.</value></data>
   <data name="TokenOtherSession" xml:space="preserve"><value>refused: this token was planned in another chat session.</value></data>

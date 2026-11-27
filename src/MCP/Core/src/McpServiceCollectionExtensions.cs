@@ -118,6 +118,7 @@ public static class McpServiceCollectionExtensions
                 var toolsetOptions = context.Services?.GetService<Microsoft.Extensions.Options.IOptions<AiDevHelpers.MCP.Core.Services.IdeToolsOptions>>();
                 // The path this call runs on: the locked one, or the server default while no repo is found.
                 var toolsetPath = AiDevHelpers.MCP.Core.Services.ToolsetPaths.Standalone;
+                AiDevHelpers.MCP.Core.Services.ToolsetLock? toolsetLock = null;
                 if (toolsetLocks is not null && toolsetOptions is not null)
                 {
                     var locked = AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.LockFor(
@@ -126,6 +127,7 @@ public static class McpServiceCollectionExtensions
                         toolsetOptions.Value,
                         AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.ExplicitRepoArgument(context.Params?.Arguments),
                         Directory.GetCurrentDirectory());
+                    toolsetLock = locked;
                     toolsetPath = locked?.Path ?? AiDevHelpers.MCP.Core.Services.ToolsetPaths.Normalize(toolsetOptions.Value.ToolsetPath);
                 }
 
@@ -136,6 +138,32 @@ public static class McpServiceCollectionExtensions
                     {
                         IsError = true,
                         Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = routingRefusal }],
+                    };
+                }
+
+                // file_edit on an IDE path runs as the bridge's replaceInFile action, in the locked repo.
+                if (context.Params?.Name == "file_edit" && toolsetPath != AiDevHelpers.MCP.Core.Services.ToolsetPaths.Standalone)
+                {
+                    var editArguments = context.Params?.Arguments ?? new Dictionary<string, System.Text.Json.JsonElement>();
+                    var mapping = AiDevHelpers.MCP.Core.Services.ToolsetFileEditMapper.Map(editArguments);
+                    if (mapping.Refusal is not null)
+                    {
+                        return new ModelContextProtocol.Protocol.CallToolResult
+                        {
+                            IsError = true,
+                            Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = mapping.Refusal }],
+                        };
+                    }
+
+                    if (toolsetLock is not null)
+                    {
+                        mapping.Args["root"] = toolsetLock.RepoRoot;
+                    }
+
+                    var reply = await AiDevHelpers.Bridge.IdeInstanceRouter.CallAsync(mapping.Action, mapping.Args, null, ct, toolsetPath);
+                    return new ModelContextProtocol.Protocol.CallToolResult
+                    {
+                        Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = reply }],
                     };
                 }
 
