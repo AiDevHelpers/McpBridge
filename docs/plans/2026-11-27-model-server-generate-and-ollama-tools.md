@@ -25,7 +25,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
   as TokenSaver's `WorkspacePathGuard` lives in its Utilities; the wsl review flagged the same cross-helper question).
 
 ## Units
-- [ ] U1. Contract `docs/Host-MCP/model-generate-contract.md`: request and response for generate and chat, endpoint names, selection rules, timeout, capped output,
+- [x] U1. (done: contract written and checked against OllamaService.cs and the router contract; every overload mapped or dropped; chat uses `/v1/chat/completions` because the router contract names it, `architecture.md` says `/api/chat`; endpoint pinning dropped because the router has no endpoint selection) Contract `docs/Host-MCP/model-generate-contract.md`: request and response for generate and chat, endpoint names, selection rules, timeout, capped output,
   error text, and what TokenSaver's `CallModelAsync` overloads map to. Done: every overload either mapped or listed as dropped.
 - [ ] U2. `ModelServerHelper` generate and chat. Failing tests first with the existing fake `HttpMessageHandler` pattern: request body shape (`/api/generate`, `/api/chat`
   as the router documents them; check the router's contract doc in `F:\aidevhelpers\TokenSaver\TokenSaver.SimpleModelServer` before writing), non-2xx, timeout, cancellation,
