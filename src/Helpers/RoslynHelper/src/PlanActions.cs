@@ -125,6 +125,26 @@ public static class PlanActions
                 ArgumentParsers.OptionalInt(a, "column") ?? 1, ArgumentParsers.RequireString(a, "declaration"),
                 ArgumentParsers.RequireString(a, "valueAtTop"), ArgumentParsers.OptionalInt(a, "depth") ?? 1);
         }));
+
+        dispatcher.Register("deleteType", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return DeleteEngine.DeleteTypeAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.OptionalInt(a, "column") ?? 1, ArgumentParsers.ParseCallerEdits(a),
+                ArgumentParsers.StringList(a, "deleteTests").ToList(), ArgumentParsers.OptionalBool(a, "deleteFile") == true);
+        }));
+
+        dispatcher.Register("moveType", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return TypeMoveEngine.MoveAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "newNamespace"), ArgumentParsers.OptionalBool(a, "moveFiles") == true,
+                ArgumentParsers.ParseCallerEdits(a));
+        }));
+
+        dispatcher.Register("renameNamespace", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return NamespaceEngine.RenameAsync(solution, ArgumentParsers.RequireString(a, "oldNamespace"), ArgumentParsers.RequireString(a, "newNamespace"),
+                ArgumentParsers.OptionalBool(a, "moveFiles") == true, ArgumentParsers.ParseCallerEdits(a));
+        }));
     }
 
     // addMethod and addOverload share one planner: a method added to the type at a line, or an overload of the method at that line.
@@ -150,15 +170,20 @@ public static class PlanActions
         var confirm = ArgumentParsers.OptionalBool(args, "confirm") == true;
         var planHash = ArgumentParsers.OptionalString(args, "planHash");
         Solution? applied = null;
+        MethodEditPlan? planDone = null;
 
         var reply = await PlanFlow.RunAsync(
             snapshot,
-            solution => plan(solution, args),
+            async solution =>
+            {
+                planDone = await plan(solution, args).ConfigureAwait(false);
+                return planDone;
+            },
             confirm,
             planHash,
             apply: async planned =>
             {
-                var result = await PlanApplier.ApplyAsync(snapshot, planned).ConfigureAwait(false);
+                var result = await PlanApplier.ApplyAsync(snapshot, planned, planDone?.FileDeletes).ConfigureAwait(false);
                 if (!result.Applied)
                 {
                     throw new InvalidOperationException(result.Refusal ?? "The plan was not applied.");
@@ -166,7 +191,10 @@ public static class PlanActions
 
                 applied = planned;
             },
-            afterApply: _ => (new List<object>(), new List<object>())).ConfigureAwait(false);
+            // Files move and delete on disk only after the text changes are written, as the VS host does.
+            afterApply: planned => (
+                planned.FileMoves.Select(m => FileOperations.Move(m.From, m.To, m.Project)).ToList(),
+                planned.FileDeletes.Select(p => FileOperations.Delete(p, planned.DeleteProject)).ToList())).ConfigureAwait(false);
 
         if (applied is not null)
         {
