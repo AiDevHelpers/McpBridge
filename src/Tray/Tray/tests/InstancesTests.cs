@@ -72,7 +72,7 @@ public sealed class InstancesTests
         startedAt: started ?? (_ => new DateTime(2026, 11, 27, 9, 0, 0, DateTimeKind.Utc)),
         ownerOf: _ => @"DOMAIN\richard",
         rootFor: path => path.StartsWith(@"C:\src\a", StringComparison.Ordinal) ? @"C:\src\a" : null,
-        branchFor: root => root == @"C:\src\a" ? "feat/x" : null);
+        branchFor: solutionPath => solutionPath.EndsWith(".sln", StringComparison.Ordinal) ? "feat/x" : null);
 
     [Fact]
     public void Row_ShowsRepoAndBranchForASolutionInGit()
