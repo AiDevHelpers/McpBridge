@@ -75,6 +75,8 @@ public sealed record InstanceRow(int Pid, string Ide, string? Repo, string? Bran
 {
     public string OpenFileText => OpenFile ?? Strings.Get("UnknownFile");
 
+    public string CloseText => Strings.Get("CloseButton");
+
     public string RepoText => Repo ?? Strings.Get("NotARepo");
 
     public string BranchText => Branch ?? string.Empty;

@@ -5,6 +5,17 @@ namespace AiDevHelpers.Tray;
 /// <summary>The Status page. Closing it hides it, so the tray keeps running and the page opens again from the icon.</summary>
 public partial class StatusWindow : Window
 {
+    /// <summary>The person asked to close the instance on this row. The tray decides, asks, and runs it.</summary>
+    public event Action<InstanceRow>? CloseRequested;
+
+    private void CloseRow_Click(object sender, RoutedEventArgs e)
+    {
+        if (((FrameworkElement)sender).DataContext is InstanceRow row)
+        {
+            CloseRequested?.Invoke(row);
+        }
+    }
+
     public StatusWindow(StatusViewModel status, InstancesViewModel instances)
     {
         InitializeComponent();
@@ -21,6 +32,7 @@ public partial class StatusWindow : Window
         StartedColumn.Header = Strings.Get("ColStarted");
         PidColumn.Header = Strings.Get("ColPid");
         UserColumn.Header = Strings.Get("ColUser");
+        ActionColumn.Header = Strings.Get("ColAction");
         EmptyText.Text = Strings.Get("EmptyInstances");
 
         InstancesGrid.ItemsSource = instances.Rows;

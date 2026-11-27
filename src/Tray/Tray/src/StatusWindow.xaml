@@ -23,6 +23,13 @@
             <DataGridTextColumn x:Name="StartedColumn" Binding="{Binding StartedText}"/>
             <DataGridTextColumn x:Name="PidColumn" Binding="{Binding Pid}"/>
             <DataGridTextColumn x:Name="UserColumn" Binding="{Binding UserText}"/>
+            <DataGridTemplateColumn x:Name="ActionColumn">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Button Content="{Binding CloseText}" Click="CloseRow_Click" Padding="8,2"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
         <TextBlock x:Name="EmptyText" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap"/>
