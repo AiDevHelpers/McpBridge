@@ -102,9 +102,9 @@ public sealed class TrayApp : IDisposable
     private ContextMenu BuildMenu()
     {
         var menu = new ContextMenu();
-        var open = new MenuItem { Header = "Open status" };
+        var open = new MenuItem { Header = Strings.Get("OpenStatus") };
         open.Click += (_, _) => ShowStatus();
-        var exit = new MenuItem { Header = "Exit tray" };
+        var exit = new MenuItem { Header = Strings.Get("ExitTray") };
         exit.Click += (_, _) => Application.Current.Shutdown();
         menu.Items.Add(open);
         menu.Items.Add(exit);

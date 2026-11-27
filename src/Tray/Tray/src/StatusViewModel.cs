@@ -15,7 +15,7 @@ public sealed class StatusViewModel : ObservableObject, IDisposable
     private HealthSnapshot? _health;
     private ServiceState? _service;
     private TrayIconState _icon = TrayIconState.Disconnected;
-    private string _headline = "Checking the MCP server";
+    private string _headline = Strings.Get("CheckingServer");
     private int? _sessions;
 
     public StatusViewModel(IObservable<HealthSnapshot> health, IObservable<ServiceState> service, int port, IScheduler scheduler)
@@ -76,11 +76,11 @@ public sealed class StatusViewModel : ObservableObject, IDisposable
     private string HeadlineFor(HealthSnapshot health, ServiceState service) =>
         health.State switch
         {
-            TrayConnection.Connected when service == ServiceState.Running => "Running",
-            TrayConnection.Connected => "Running, but the service is not",
-            TrayConnection.PortConflict => $"Port {Port} is in use by another program",
-            _ when service is ServiceState.Stopped or ServiceState.NotInstalled => "Service stopped",
-            _ => "MCP server not reachable",
+            TrayConnection.Connected when service == ServiceState.Running => Strings.Get("Running"),
+            TrayConnection.Connected => Strings.Get("RunningServiceNot"),
+            TrayConnection.PortConflict => Strings.Format("PortInUse", Port),
+            _ when service is ServiceState.Stopped or ServiceState.NotInstalled => Strings.Get("ServiceStopped"),
+            _ => Strings.Get("ServerNotReachable"),
         };
 }
 

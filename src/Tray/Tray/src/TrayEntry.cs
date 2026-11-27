@@ -23,7 +23,7 @@ public static class TrayEntry
         if (crashes.IsTripped(DateTime.UtcNow))
         {
             MessageBox.Show(
-                "AiDevHelpers tray stopped after repeated crashes, so it will not start again yet. Fix the cause, then delete the crashes file in the AiDevHelpers tray folder.",
+                Strings.Get("CrashStopped"),
                 "AiDevHelpers",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);

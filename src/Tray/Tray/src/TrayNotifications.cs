@@ -12,10 +12,10 @@ public static class TrayNotifications
 
         return current switch
         {
-            TrayIconState.Running => "MCP server running",
-            TrayIconState.Degraded => "MCP server needs attention",
-            TrayIconState.Disconnected => "MCP server not reachable",
-            _ => "AiDevHelpers service stopped",
+            TrayIconState.Running => Strings.Get("ServerRunning"),
+            TrayIconState.Degraded => Strings.Get("ServerNeedsAttention"),
+            TrayIconState.Disconnected => Strings.Get("ServerNotReachable"),
+            _ => Strings.Get("ServiceStoppedNotice"),
         };
     }
 }
