@@ -118,7 +118,8 @@ public sealed class InstanceRowBuilder(
             repo = Path.GetFileName(root.TrimEnd('\\', '/'));
 
             // A repo with no branch name is a detached HEAD.
-            branch = branchFor(root) ?? "detached";
+            // GitWorktree.BranchFor takes the solution path, not the repo root; it finds the root itself.
+            branch = branchFor(instance.SolutionPath) ?? "detached";
         }
 
         return new InstanceRow(instance.Pid, instance.Ide, repo, branch, instance.SolutionPath ?? string.Empty, started, ownerOf(instance.Pid));
