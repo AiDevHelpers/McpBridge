@@ -10,6 +10,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class PackageTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("List the outdated NuGet packages of the solution at a folder, with the version to move to. A package that versions with .NET " +
                  "(System.*, Microsoft.Extensions.* and the like) is never moved past the .NET major of its project, so a net10.0 project does not " +
                  "get an 11.x package; chosen is null when nothing newer is allowed. Restore first. Edits nothing.")]
@@ -45,6 +46,7 @@ internal sealed class PackageTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Restore the NuGet packages of the solution at a folder (dotnet restore). Use it before a build, a format check or " +
                  "PackageOutdated when packages may be missing. Edits no project file. Returns ok, the exit code and the tail of the output.")]
     public static async Task<string> PackageRestore(

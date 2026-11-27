@@ -10,6 +10,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class PreferredIdeTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Store the preferred IDE for a solution in .claude/aidevhelpers.json next to the .sln. " +
                  "It is used only when two IDE instances have the same solution open. An explicit ide or instancePid argument still wins.")]
     public static string IdeSetPreferred(
@@ -28,6 +29,7 @@ internal sealed class PreferredIdeTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read the preferred IDE stored for a solution, or none.")]
     public static string IdeGetPreferred(
         [Description("Full path of the .sln")] string solutionPath) =>

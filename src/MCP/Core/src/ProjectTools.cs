@@ -12,6 +12,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class ProjectTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("List the .NET project templates the SDK offers (dotnet new list --type project). Optional language (C#, F#, VB) and tag filters.")]
     public static async Task<string> ProjectTypesList(
         [Description("Optional language: C#, F# or VB")] string? language = null,
@@ -47,6 +48,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Audit the repo's .NET projects against .aidevhelpers/project-standards.json: framework (with exceptions), required properties, required analyzers, test SDK, and package versions pinned differently. Read only. ok is false when any error is found.")]
     public static string ProjectAudit(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -63,6 +65,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan the edits that bring projects to .aidevhelpers/project-standards.json: set properties, add missing analyzers and the test SDK, align differing package versions, retarget refused frameworks. Writes nothing; returns the actions and a token for project_fix_confirm. skip lists action ids to leave out (Kind:project:name).")]
     public static string ProjectFixPlan(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -80,6 +83,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Apply a plan from project_fix_plan. Re-checks the plan, applies the edits, re-audits, and builds each changed project with -warnaserror. Any failure restores every file to its original bytes. Tokens are single use and expire after 15 minutes.")]
     public static async Task<string> ProjectFixConfirm(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -91,6 +95,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan adding a .NET project from a dotnet new template to a .slnx solution, set up to the standards (properties, analyzers, test SDK for *.Tests). Framework defaults to the standard and is refused when another framework has no exception. folder is optional when the solution's layout gives a default. Writes nothing; returns a token for project_add_confirm.")]
     public static async Task<string> ProjectAddPlan(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -120,6 +125,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Apply a plan from project_add_plan: creates the project with dotnet new, removes template stubs, applies the edits, lists the project in the solution, and builds it with -warnaserror. A failed build removes what was created and restores the solution. Tokens are single use and expire after 15 minutes.")]
     public static async Task<string> ProjectAddConfirm(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -131,6 +137,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan a test project beside a source project: <Source>.Tests, referencing the source, with the repo's test runner packages, the test SDK and the standards. folder defaults to the solution's test layout. seedTest adds one failing test. Writes nothing; returns a token for project_add_test_confirm.")]
     public static async Task<string> ProjectAddTestPlan(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -156,6 +163,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Apply a plan from project_add_test_plan. Same steps and rollback as project_add_confirm.")]
     public static async Task<string> ProjectAddTestConfirm(
         [Description("Repo root that holds .aidevhelpers/project-standards.json")] string root,
@@ -167,6 +175,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List workloads. kind dotnet: installed .NET workloads from dotnet workload list. kind vs: Visual Studio instances from vswhere. Read only.")]
     public static async Task<string> WorkloadList(
         [Description("dotnet or vs")] string kind,
@@ -193,6 +202,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Check required workloads are present. kind dotnet: give workloads or a projectType (dotnet new short name); missing ones are listed. kind vs: give workload ids; each is checked with vswhere -requires. Read only.")]
     public static async Task<string> WorkloadCheck(
         [Description("dotnet or vs")] string kind,
@@ -245,6 +255,7 @@ internal sealed class ProjectTools
     private static readonly AiDevHelpers.MCP.Core.Services.WorkloadInstallService Installs = new(new ProcessElevRunner());
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan installing a .NET workload from the helper's table (maui, android, ios, wasm-tools) with dotnet workload install. Runs elevated (UAC). Writes nothing; returns a token for workload_install_confirm after the user says yes in chat.")]
     public static async Task<string> WorkloadInstallPlan(
         [Description("A workload name from the table, e.g. maui")] string workload,
@@ -275,6 +286,7 @@ internal sealed class ProjectTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run a workload install planned by workload_install_plan, through the elevated helper. Single use; expires after 15 minutes.")]
     public static async Task<string> WorkloadInstallConfirm(
         [Description("Token returned by workload_install_plan")] string token,

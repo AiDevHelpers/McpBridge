@@ -11,6 +11,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class LintTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Check a folder's lint setup for mismatches: .editorconfig vs csproj NoWarn, tsconfig strict, ESLint flat config for TypeScript, deprecated TSLint, duplicate resource names. " +
                  "Set runDotnetFormat to also run 'dotnet format --verify-no-changes' on the root solution.")]
     public static async Task<string> LintCheck(

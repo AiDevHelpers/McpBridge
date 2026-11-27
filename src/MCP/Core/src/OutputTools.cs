@@ -13,6 +13,7 @@ internal sealed class OutputTools
     private static readonly OutputService Service = new(new BridgeOutput());
 
     [McpServerTool]
+    [SafeTool]
     [Description("Store which IDE a named output channel writes to, in .claude/aidevhelpers.json next to the .sln.")]
     public static string OutputChannelSet(
         [Description("Full path of the .sln")] string solutionPath,
@@ -31,6 +32,7 @@ internal sealed class OutputTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Write text to a named output channel. The IDE is the ide argument, or the one stored for the channel. " +
                  "Visual Studio and VS Code channels can be written; they cannot be read back through this tool.")]
     public static async Task<string> OutputWrite(

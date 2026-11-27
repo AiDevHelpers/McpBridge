@@ -10,6 +10,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class ConfigTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Resolve the real path of a config file. Kinds: RemoteDebugger, LaunchSettings, AppSettings, UserSettings, SolutionSettings. " +
                  "LaunchSettings and AppSettings need projectPath. SolutionSettings needs solutionPath.")]
     public static string ConfigResolve(
@@ -28,6 +29,7 @@ internal sealed class ConfigTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read a config file with secret values redacted. The file must lie under the solution folder, the project folder, " +
                  "the user profile, AppData, or a Remote Debugger search root.")]
     public static string ConfigRead(

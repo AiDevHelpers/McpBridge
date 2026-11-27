@@ -21,6 +21,7 @@ internal sealed class ToolInstallTools(ToolInstallService service)
     };
 
     [McpServerTool]
+    [SafeTool]
     [Description(
         "Install a missing tool with winget through the elevated script helper. tool is one of pwsh, gitbash, python, node (wsl gets " +
         "instructions only). action 'plan' returns the exact command and a one-time token and installs nothing; ask the user, and only if " +

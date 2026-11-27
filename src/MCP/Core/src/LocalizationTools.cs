@@ -11,6 +11,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class LocalizationTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("List multi-word string literals in C# source that should be in Resources/Strings.resx. Takes a .cs file or a folder. " +
                  "Comments, attributes, logger calls, Strings.cs and bin or obj folders are skipped. resxKey names the resource when the text is already in one.")]
     public static string StringScan(
@@ -28,6 +29,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Check each Resources/Strings.resx under a folder against the Strings.Get and Strings.Format calls beside it: " +
                  "duplicate names, keys used in code but missing from the resx, and keys never used.")]
     public static string ResxCheck(
@@ -45,6 +47,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Compare each Strings.<culture>.resx under a folder with the neutral Strings.resx beside it. Findings: missing (key not in the culture file), " +
                  "extra (key not in the neutral file), untranslated (same text as neutral, or comment needs-translation; comment same-in-culture suppresses it), " +
                  "placeholder-mismatch ({0}-style tokens differ) and invalid-culture (file name is not a culture). The pseudo culture qps-ploc is skipped.")]
@@ -63,6 +66,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Bring culture resx files in line with the neutral Strings.resx: add missing keys as stubs (neutral text, comment needs-translation), " +
                  "create a new culture file, and with removeExtra remove keys the neutral file does not have. Two steps: without confirm it returns the changes and a token and writes nothing; " +
                  "call again with confirm set to that token to apply. A file changed since the plan is refused.")]
@@ -99,6 +103,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Move hardcoded multi-word string literals in a .cs file or folder into the project's Resources/Strings.resx and rewrite them as Strings.Get(\"Key\") " +
                  "or, for interpolated strings, Strings.Format(\"Key\", args). Two steps: without confirm it returns the items (file, line, literal, key, replacement) and the skipped literals " +
                  "with a reason code, and writes nothing; call again with confirm set to the token to apply. Skipped reasons: no-strings-class, namespace-mismatch, const-context, case-label, " +
@@ -136,6 +141,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List culture-sensitive C# calls that name no culture or comparison: string.Format, Parse and TryParse on numbers and dates, ToUpper and ToLower, string.Compare, " +
                  "StartsWith, EndsWith, IndexOf and LastIndexOf with a string, and ToString() on numbers and dates. Takes a .cs file or a folder (bin and obj are skipped). " +
                  "Uses the compiler's semantic model, so a call whose types do not resolve is skipped. A trailing // culture-ok comment suppresses a line. Report only; nothing is changed.")]
@@ -154,6 +160,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Write a pseudo-localized copy (Strings.qps-ploc.resx) of a neutral Strings.resx: letters become accented look-alikes, text grows about 30 percent and is wrapped in brackets, " +
                  "placeholders such as {0} are kept. Run the app with that culture to find unlocalized text and layout limits. The file is generated, so do not commit it. " +
                  "Two steps: without confirm it returns the first 20 changes and a token and writes nothing; call again with confirm set to the token to write.")]
@@ -191,6 +198,7 @@ internal sealed class LocalizationTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Translate the stubs (comment needs-translation) of one culture's Strings.<culture>.resx with the connected client's model, through MCP sampling. " +
                  "The client must support sampling; otherwise confirm is refused. Two steps: without confirm it lists the keys, their neutral text, the batch count and the prompt, sends nothing and writes nothing; " +
                  "call again with confirm set to the token to translate. Each reply is checked: placeholders such as {0} must match, the text must not be empty, and a line break is refused unless the source has one. " +

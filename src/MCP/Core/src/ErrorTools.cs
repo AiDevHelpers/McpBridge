@@ -17,6 +17,7 @@ internal sealed class ErrorTools
     private static readonly object Gate = new();
 
     [McpServerTool]
+    [SafeTool]
     [Description("Store build output (dotnet build or MSBuild text) so error_list and error_changes can answer from it. Replaces the previous output for the same solution.")]
     public static string ErrorIngest(
         [Description("Raw build output text")] string output,
@@ -27,6 +28,7 @@ internal sealed class ErrorTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List diagnostics from the last ingested build. kind is errors, warnings or notices. " +
                  "codes and sources are optional comma-separated filters (sources: Compiler, CodeAnalysis, NuGet, Other).")]
     public static string ErrorList(
@@ -53,12 +55,14 @@ internal sealed class ErrorTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Record the current diagnostics under a new snapshot id. Returns only the id; call error_changes with it later.")]
     public static string ErrorSnapshot(
         [Description("Optional: full path of the .sln")] string? solutionPath = null) =>
         Json(new { ok = true, snapshotId = For(solutionPath).TakeSnapshot() });
 
     [McpServerTool]
+    [SafeTool]
     [Description("List diagnostics that appeared after the given snapshot. Optional codes and sources filters as in error_list.")]
     public static string ErrorChanges(
         [Description("Snapshot id returned by error_snapshot")] string snapshotId,
