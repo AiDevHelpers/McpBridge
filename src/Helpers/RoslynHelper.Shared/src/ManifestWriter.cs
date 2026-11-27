@@ -8,7 +8,8 @@ namespace AiDevHelpers.Helpers.RoslynHelper;
 public sealed record Manifest(
     [property: JsonPropertyName("pid")] int Pid,
     [property: JsonPropertyName("pipeName")] string PipeName,
-    [property: JsonPropertyName("solutionPath")] string SolutionPath);
+    [property: JsonPropertyName("solutionPath")] string SolutionPath,
+    [property: JsonPropertyName("framework")] string Framework = "net10");
 
 /// <summary>Writes, reads and removes <c>&lt;pid&gt;.json</c> manifests in the helper folder.</summary>
 public static class ManifestWriter
@@ -16,14 +17,24 @@ public static class ManifestWriter
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
     /// <summary>Writes the manifest atomically: a temp file in the same folder, then a move over the target.</summary>
-    public static void Write(string folder, int pid, string pipeName, string solutionPath)
+    public static void Write(string folder, int pid, string pipeName, string solutionPath, string framework = "net10")
     {
         Directory.CreateDirectory(folder);
         var target = PathFor(folder, pid);
         var temp = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        var json = JsonSerializer.Serialize(new Manifest(pid, pipeName, solutionPath), Options);
+        var json = JsonSerializer.Serialize(new Manifest(pid, pipeName, solutionPath, framework), Options);
         File.WriteAllText(temp, json);
+#if NETFRAMEWORK
+        // .NET Framework's File.Move has no overwrite flag; the target is removed first.
+        if (File.Exists(target))
+        {
+            File.Delete(target);
+        }
+
+        File.Move(temp, target);
+#else
         File.Move(temp, target, overwrite: true);
+#endif
     }
 
     /// <summary>Returns the manifest, or null when it is missing, unreadable, or its process is not running.</summary>

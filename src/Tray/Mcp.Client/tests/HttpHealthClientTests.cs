@@ -7,9 +7,7 @@ namespace AiDevHelpers.Mcp.Client.Tests;
 
 public sealed class HttpHealthClientTests
 {
-    private const string Token = "0123456789abcdef0123456789abcdef";
-
-    /// <summary>A one-request HTTP server: answers with the status and body when the bearer token matches, else 401.</summary>
+    /// <summary>A one-request HTTP server that answers the given status and body.</summary>
     private static (int Port, Task Served) Serve(int status, string body)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -22,12 +20,8 @@ public sealed class HttpHealthClientTests
                 using var client = await listener.AcceptTcpClientAsync();
                 var stream = client.GetStream();
                 var buffer = new byte[4096];
-                var read = await stream.ReadAsync(buffer);
-                var request = Encoding.ASCII.GetString(buffer, 0, read);
-                var authorized = request.Contains("Authorization: Bearer " + Token, StringComparison.OrdinalIgnoreCase);
-                var code = authorized ? status : 401;
-                var payload = authorized ? body : string.Empty;
-                var response = $"HTTP/1.1 {code} X\r\nContent-Type: application/json\r\nContent-Length: {Encoding.UTF8.GetByteCount(payload)}\r\nConnection: close\r\n\r\n{payload}";
+                await stream.ReadAsync(buffer);
+                var response = $"HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {Encoding.UTF8.GetByteCount(body)}\r\nConnection: close\r\n\r\n{body}";
                 await stream.WriteAsync(Encoding.UTF8.GetBytes(response));
             }
         });
@@ -41,7 +35,7 @@ public sealed class HttpHealthClientTests
     {
         var (port, served) = Serve(200, "{\"status\":\"ok\",\"version\":\"1.2.3.4\",\"pid\":4242,\"port\":1}");
 
-        var result = await Client().CheckAsync(port, Token, CancellationToken.None);
+        var result = await Client().CheckAsync(port, CancellationToken.None);
 
         Assert.True(result.Ok);
         Assert.Equal("1.2.3.4", result.Version);
@@ -50,13 +44,11 @@ public sealed class HttpHealthClientTests
     }
 
     [Fact]
-    public async Task ARefusedTokenIsNotHealthy()
+    public async Task AServerErrorIsNotHealthy()
     {
-        var (port, served) = Serve(200, "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}");
+        var (port, served) = Serve(500, "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}");
 
-        var result = await Client().CheckAsync(port, "another-token-another-token-another", CancellationToken.None);
-
-        Assert.False(result.Ok);
+        Assert.False((await Client().CheckAsync(port, CancellationToken.None)).Ok);
         await served;
     }
 
@@ -65,7 +57,7 @@ public sealed class HttpHealthClientTests
     {
         var (port, served) = Serve(200, "<html>hello</html>");
 
-        Assert.False((await Client().CheckAsync(port, Token, CancellationToken.None)).Ok);
+        Assert.False((await Client().CheckAsync(port, CancellationToken.None)).Ok);
         await served;
     }
 
@@ -77,6 +69,18 @@ public sealed class HttpHealthClientTests
         var port = ((IPEndPoint)free.LocalEndpoint).Port;
         free.Stop();
 
-        Assert.False((await Client().CheckAsync(port, Token, CancellationToken.None)).Ok);
+        Assert.False((await Client().CheckAsync(port, CancellationToken.None)).Ok);
     }
+}
+
+public sealed class McpPortTests
+{
+    [Theory]
+    [InlineData(null, 5058)]
+    [InlineData("", 5058)]
+    [InlineData("abc", 5058)]
+    [InlineData("0", 5058)]
+    [InlineData("65536", 5058)]
+    [InlineData("5057", 5057)]
+    public void ThePortIsTheSettingOrTheDefault(string? value, int expected) => Assert.Equal(expected, McpPort.Parse(value));
 }

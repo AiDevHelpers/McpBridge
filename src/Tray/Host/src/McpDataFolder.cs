@@ -4,19 +4,14 @@ using System.Security.Principal;
 namespace AiDevHelpers.Host;
 
 /// <summary>
-/// The folder that holds the HTTP MCP's token and endpoint record: <c>%ProgramData%\AiDevHelpers\mcp-http</c>.
-/// Only the logged-on user (who runs the server and creates the token there), SYSTEM (the supervisor's health
-/// probe reads the token) and Administrators can use it; other users get nothing.
+/// The folder that holds the HTTP MCP's status file (a port conflict): <c>%ProgramData%\AiDevHelpers\mcp-http</c>.
+/// Only the logged-on user (who runs the server), SYSTEM and Administrators can use it; other users get nothing.
 /// </summary>
 public static class McpDataFolder
 {
     /// <summary>The default folder.</summary>
     public static string DefaultPath =>
         Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "mcp-http");
-
-    public static string TokenPath(string folder) => Path.Combine(folder, "token");
-
-    public static string EndpointPath(string folder) => Path.Combine(folder, "endpoint.json");
 
     /// <summary>Creates the folder if needed and sets its access to <paramref name="user"/>, SYSTEM and Administrators.</summary>
     public static void Ensure(string path, SecurityIdentifier user)

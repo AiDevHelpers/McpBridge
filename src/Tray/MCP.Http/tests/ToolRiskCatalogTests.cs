@@ -1,6 +1,12 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using AiDevHelpers.MCP.Core;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace AiDevHelpers.MCP.Http.Tests;
@@ -9,7 +15,7 @@ public sealed class ToolRiskCatalogTests : IAsyncLifetime
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "risk-" + Guid.NewGuid().ToString("N"));
     private readonly string? _previousState = Environment.GetEnvironmentVariable("AIDEVHELPERS_CONTROL_STATE");
-    private RunningHost? _host;
+    private WebApplication? _app;
 
     public Task InitializeAsync()
     {
@@ -20,9 +26,10 @@ public sealed class ToolRiskCatalogTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        if (_host is not null)
+        if (_app is not null)
         {
-            await _host.DisposeAsync();
+            await _app.StopAsync();
+            await _app.DisposeAsync();
         }
 
         Environment.SetEnvironmentVariable("AIDEVHELPERS_CONTROL_STATE", _previousState);
@@ -67,8 +74,8 @@ public sealed class ToolRiskCatalogTests : IAsyncLifetime
     [Fact]
     public async Task EveryRegisteredToolIsClassifiedAndEveryCatalogEntryExists()
     {
-        _host = await McpHttpHost.StartAsync(new HttpHostOptions(0, Path.Combine(_root, "token"), Path.Combine(_root, "endpoint.json")), CancellationToken.None);
-        using var client = new HttpClient { BaseAddress = new Uri($"http://127.0.0.1:{_host.Port}") };
+        var baseAddress = await StartServerAsync();
+        using var client = new HttpClient { BaseAddress = baseAddress };
 
         var names = await ListToolNamesAsync(client);
 
@@ -77,13 +84,28 @@ public sealed class ToolRiskCatalogTests : IAsyncLifetime
         Assert.Empty(ToolRiskCatalog.AllNames.Where(n => !names.Contains(n)).ToList());
     }
 
-    private async Task<HashSet<string>> ListToolNamesAsync(HttpClient client)
+    /// <summary>Starts the same MCP server as the entry point (stateful, tools registered) on a free loopback port.</summary>
+    private async Task<Uri> StartServerAsync()
     {
-        using var init = Send(client, "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1\"}}}", null);
+        var builder = WebApplication.CreateBuilder();
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+#pragma warning disable MCP9006
+        builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(options => options.Stateless = false);
+#pragma warning restore MCP9006
+        _app = builder.Build();
+        _app.MapMcp("/mcp");
+        await _app.StartAsync();
+        var address = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+        return new Uri(address);
+    }
+
+    private static async Task<HashSet<string>> ListToolNamesAsync(HttpClient client)
+    {
+        using var init = Send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1\"}}}", null);
         using var initResponse = await client.SendAsync(init);
         var session = initResponse.Headers.GetValues("Mcp-Session-Id").Single();
 
-        using var list = Send(client, "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}", session);
+        using var list = Send("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}", session);
         using var listResponse = await client.SendAsync(list);
         var body = await listResponse.Content.ReadAsStringAsync();
         var data = body.Split('\n').First(l => l.StartsWith("data:", StringComparison.Ordinal))[5..].Trim();
@@ -91,12 +113,11 @@ public sealed class ToolRiskCatalogTests : IAsyncLifetime
             .Select(t => t.GetProperty("name").GetString()!).ToHashSet();
     }
 
-    private HttpRequestMessage Send(HttpClient client, string json, string? session)
+    private static HttpRequestMessage Send(string json, string? session)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/mcp") { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _host!.Token);
         if (session is not null)
         {
             request.Headers.Add("Mcp-Session-Id", session);

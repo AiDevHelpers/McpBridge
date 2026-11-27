@@ -72,7 +72,7 @@ public sealed class SolutionLoader
     {
         if (!File.Exists(solutionPath))
         {
-            throw new InvalidOperationException($"Solution not found: {solutionPath}.");
+            throw new InvalidOperationException(Strings.Format("SolutionNotFound", solutionPath));
         }
 
         var listed = ReadProjectPaths(solutionPath);
@@ -94,12 +94,22 @@ public sealed class SolutionLoader
                 return;
             }
 
+#if NETFRAMEWORK
+            // The net48 host loads with the Framework MSBuild that Visual Studio installs, so projects that need it load.
+            var vs = MSBuildLocator.QueryVisualStudioInstances()
+                .Where(i => i.DiscoveryType != DiscoveryType.DotNetSdk)
+                .OrderByDescending(i => i.Version)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException(Strings.Get("NoVisualStudioMsBuild"));
+            MSBuildLocator.RegisterInstance(vs);
+#else
             var sdk = MSBuildLocator.QueryVisualStudioInstances()
                 .Where(i => i.DiscoveryType == DiscoveryType.DotNetSdk && i.Version.Major == 10)
                 .OrderByDescending(i => i.Version)
                 .FirstOrDefault()
-                ?? throw new InvalidOperationException("No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.");
+                ?? throw new InvalidOperationException(Strings.Get("NoDotnetSdk"));
             MSBuildLocator.RegisterInstance(sdk);
+#endif
         }
     }
 
@@ -176,7 +186,7 @@ public sealed class SolutionLoader
 
             var error = messages.Count > 0
                 ? string.Join("; ", messages)
-                : "Project did not load and MSBuild reported no diagnostic.";
+                : Strings.Get("ProjectNoDiagnostic");
             return new ProjectLoadResult(name, false, error);
         }).ToList();
     }

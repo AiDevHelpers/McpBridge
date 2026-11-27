@@ -1,46 +1,82 @@
+// The streamable-HTTP MCP server (unit 1a of docs/plans/2026-11-26-tray-service.md). Loopback only. Host and Origin are checked.
+// The tools are the same as the stdio server's. No token: the listener is bound to 127.0.0.1 only.
+using System.Reflection;
+using AiDevHelpers.MCP.Core;
 using AiDevHelpers.MCP.Http;
 
-// Entry point. Arguments: --port <n> (default 5757), --token <file>, --endpoint <file>.
-// Files default to %LOCALAPPDATA%\AiDevHelpers\mcp-http\ of the user this process runs as.
-var port = McpHttpHost.DefaultPort;
-var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AiDevHelpers", "mcp-http");
-var tokenPath = Path.Combine(folder, "token");
-var endpointPath = Path.Combine(folder, "endpoint.json");
-for (var i = 0; i + 1 < args.Length; i += 2)
+var builder = WebApplication.CreateBuilder(args);
+var port = builder.Configuration.GetValue("Http:Port", 5058);
+builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
+// Dangerous tools wait for the tray's approval over the named pipe; with no tray in this folder the call is refused.
+builder.Services.AddAiDevHelpersMcp(builder.Configuration)
+    .WithApproval(new NamedPipeApprovalChannel(NamedPipeApprovalChannel.DefaultPipeName, NamedPipeApprovalChannel.IsTrayInThisFolder, TimeSpan.FromSeconds(2)), McpApproval.DefaultTimeout)
+    .WithHttpTransport(options =>
 {
-    switch (args[i])
+    // Stateful sessions: the plan-then-confirm tokens and the log subscriptions are per session (see the plan's static-state audit).
+    options.Stateless = false;
+    // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
+    options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
+});
+
+var app = builder.Build();
+
+app.Use(async (context, next) =>
+{
+    if (!HttpGuard.HostAllowed(context.Request.Host.Host))
     {
-        case "--port":
-            port = int.Parse(args[i + 1], System.Globalization.CultureInfo.InvariantCulture);
-            break;
-        case "--token":
-            tokenPath = args[i + 1];
-            break;
-        case "--endpoint":
-            endpointPath = args[i + 1];
-            break;
+        context.Response.StatusCode = StatusCodes.Status421MisdirectedRequest;
+        return;
     }
-}
 
-using var stop = new CancellationTokenSource();
-Console.CancelKeyPress += (_, e) =>
+    if (context.Request.Headers.TryGetValue("Origin", out var origin) && !HttpGuard.OriginAllowed(origin.ToString()))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+
+    await next();
+});
+
+app.MapGet("/healthz", () => Results.Json(new
 {
-    e.Cancel = true;
-    stop.Cancel();
-};
-
+    ok = true,
+    pid = Environment.ProcessId,
+    version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+}));
+app.MapMcp("/mcp");
 try
 {
-    await using var host = await McpHttpHost.StartAsync(new HttpHostOptions(port, tokenPath, endpointPath), stop.Token);
-    await Task.Delay(Timeout.Infinite, stop.Token).ConfigureAwait(false);
+    await app.RunAsync();
 }
-catch (PortInUseException ex)
+catch (IOException ex)
 {
-    Console.Error.WriteLine(ex.Message);
-    return 2;
-}
-catch (OperationCanceledException)
-{
+    // The listener could not bind (usually the port is taken). No /healthz can answer, so the cause goes to a file the tray reads.
+    var folder = Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "mcp-http");
+    Directory.CreateDirectory(folder);
+    File.WriteAllText(Path.Combine(folder, "status.json"), PortConflictReport.Json(port, ex.Message));
+    throw;
 }
 
-return 0;
+/// <summary>The status file written when the listener cannot bind. Pure, so the tests check its shape without a server.</summary>
+public static class PortConflictReport
+{
+    public static string Json(int port, string cause) => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        ok = false,
+        state = "portConflict",
+        port,
+        cause,
+        atUtc = DateTime.UtcNow,
+    });
+}
+
+/// <summary>The request checks. Pure, so the tests run them without a server.</summary>
+public static class HttpGuard
+{
+    /// <summary>Only the loopback names; a request for any other Host name is refused (DNS rebinding).</summary>
+    public static bool HostAllowed(string host) => host is "127.0.0.1" or "localhost" or "[::1]" or "::1";
+
+    /// <summary>No browser origin is allowed except the loopback ones, so a web page cannot call the server.</summary>
+    public static bool OriginAllowed(string origin) =>
+        Uri.TryCreate(origin, UriKind.Absolute, out var uri) && HostAllowed(uri.Host);
+}

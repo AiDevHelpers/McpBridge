@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 namespace AiDevHelpers.Mcp.Client;
@@ -12,19 +11,18 @@ public sealed record HealthResult(bool Ok, string? Version = null, int? Pid = nu
 /// <summary>Asks the HTTP MCP whether it is well.</summary>
 public interface IHealthClient
 {
-    Task<HealthResult> CheckAsync(int port, string token, CancellationToken cancellationToken);
+    Task<HealthResult> CheckAsync(int port, CancellationToken cancellationToken);
 }
 
-/// <summary>Calls <c>GET /healthz</c> on the loopback port with the bearer token. Any failure is a not-ok result, never an exception.</summary>
+/// <summary>Calls <c>GET /healthz</c> on the loopback port. Any failure is a not-ok result, never an exception.</summary>
 public sealed class HttpHealthClient(TimeSpan timeout) : IHealthClient
 {
-    public async Task<HealthResult> CheckAsync(int port, string token, CancellationToken cancellationToken)
+    public async Task<HealthResult> CheckAsync(int port, CancellationToken cancellationToken)
     {
         try
         {
             using var client = new HttpClient { Timeout = timeout };
             using var request = new HttpRequestMessage(HttpMethod.Get, $"http://127.0.0.1:{port}/healthz");
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             using var response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
             {

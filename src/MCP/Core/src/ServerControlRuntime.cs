@@ -47,6 +47,7 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan ClosingGrace = TimeSpan.FromSeconds(3);
+    private static readonly TimeSpan QuiesceLimit = TimeSpan.FromMinutes(2);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -65,12 +66,58 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
             if (current.State == ServerControl.Closing)
             {
+                // Each IDE instance finishes its running step and stops taking actions first. Retry until all confirm or the state
+                // changes; stop only when every instance has confirmed.
+                var stop = false;
+                while (ServerControl.Read().State == ServerControl.Closing)
+                {
+                    if (await QuiesceInstancesAsync(stoppingToken))
+                    {
+                        stop = true;
+                        break;
+                    }
+
+                    await Task.Delay(Interval, stoppingToken);
+                }
+
+                if (!stop)
+                {
+                    continue;
+                }
+
                 // Give the notification and any reply in flight a moment, then release the process.
                 await Task.Delay(ClosingGrace, stoppingToken);
                 lifetime.StopApplication();
                 return;
             }
         }
+    }
+
+    /// <summary>
+    /// Asks every running IDE instance to finish its step and stop taking actions (its <c>quiesce</c> action). True only when each one
+    /// confirmed. An instance that cannot be reached counts as not confirmed, so the server keeps running and the closing state stays.
+    /// </summary>
+    internal static async Task<bool> QuiesceInstancesAsync(CancellationToken ct)
+    {
+        var confirmed = true;
+        foreach (var instance in AiDevHelpers.Bridge.VsInstanceRegistry.ListRunning())
+        {
+            try
+            {
+                using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                limit.CancelAfter(QuiesceLimit);
+                var json = await AiDevHelpers.Bridge.IdeInstanceRouter.CallAsync("quiesce", new { }, solutionPath: null, limit.Token, instancePid: instance.Pid);
+                using var doc = System.Text.Json.JsonDocument.Parse(json);
+                var ok = doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == System.Text.Json.JsonValueKind.True;
+                confirmed &= ok;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                confirmed = false;
+            }
+        }
+
+        return confirmed;
     }
 
     private static async Task NotifyAsync(ControlState state, CancellationToken ct)

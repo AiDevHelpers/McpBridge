@@ -48,6 +48,7 @@ public static class McpServiceCollectionExtensions
         services.AddSingleton<ITerminalSessionManager, TerminalSessionManager>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.TestMonitorService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.ServerControlService>();
+        services.AddHostedService<AiDevHelpers.MCP.Core.Services.BridgeSettingsService>();
         services.AddSingleton<ProcessElevRunner>();
         services.AddSingleton<IElevRunner>(sp => sp.GetRequiredService<ProcessElevRunner>());
         services.AddSingleton<IElevVerifier>(sp => sp.GetRequiredService<ProcessElevRunner>());

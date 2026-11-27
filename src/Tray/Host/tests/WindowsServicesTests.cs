@@ -37,24 +37,10 @@ public sealed class ControlFileTests : IDisposable
     }
 }
 
-public sealed class HttpHealthProbeTests : IDisposable
+public sealed class HttpHealthProbeTests
 {
-    private const string Token = "0123456789abcdef0123456789abcdef";
-
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "probe-" + Guid.NewGuid().ToString("N"));
-
-    public HttpHealthProbeTests() => Directory.CreateDirectory(_root);
-
-    public void Dispose() => Directory.Delete(_root, recursive: true);
-
-    private string TokenPath => Path.Combine(_root, "token");
-
-    private string EndpointPath => Path.Combine(_root, "endpoint.json");
-
-    private HttpHealthProbe Probe() => new(TokenPath, EndpointPath, TimeSpan.FromSeconds(3));
-
-    /// <summary>A one-request HTTP server that answers /healthz with the given status when the bearer token matches.</summary>
-    private static (int Port, Task Served) Serve(string expectedToken, int statusWhenAuthorized)
+    /// <summary>A one-request HTTP server that answers /healthz with the given status and body.</summary>
+    private static (int Port, Task Served) Serve(int status, string body)
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -66,67 +52,40 @@ public sealed class HttpHealthProbeTests : IDisposable
                 using var client = await listener.AcceptTcpClientAsync();
                 var stream = client.GetStream();
                 var buffer = new byte[4096];
-                var read = await stream.ReadAsync(buffer);
-                var request = Encoding.ASCII.GetString(buffer, 0, read);
-                var authorized = request.Contains("Authorization: Bearer " + expectedToken, StringComparison.OrdinalIgnoreCase);
-                var status = authorized ? statusWhenAuthorized : 401;
-                var body = authorized ? "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}" : string.Empty;
-                var response = $"HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}";
-                await stream.WriteAsync(Encoding.ASCII.GetBytes(response));
+                await stream.ReadAsync(buffer);
+                var response = $"HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {Encoding.UTF8.GetByteCount(body)}\r\nConnection: close\r\n\r\n{body}";
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(response));
             }
         });
         return (port, served);
     }
 
     [Fact]
-    public async Task HealthyWhenHealthzAnswersOkForTheToken()
+    public async Task HealthyWhenHealthzAnswersOkOnThePort()
     {
-        File.WriteAllText(TokenPath, Token);
-        var (port, served) = Serve(Token, 200);
-        File.WriteAllText(EndpointPath, $"{{\"pid\":1,\"port\":{port},\"version\":\"1\"}}");
+        var (port, served) = Serve(200, "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}");
 
-        Assert.True(await Probe().IsHealthyAsync(CancellationToken.None));
+        Assert.True(await new HttpHealthProbe(port, TimeSpan.FromSeconds(3)).IsHealthyAsync(CancellationToken.None));
         await served;
     }
 
     [Fact]
-    public async Task UnhealthyWhenTheServerRefusesTheToken()
+    public async Task UnhealthyWhenTheServerAnswersAnError()
     {
-        File.WriteAllText(TokenPath, "a-different-token-a-different-token");
-        var (port, served) = Serve(Token, 200);
-        File.WriteAllText(EndpointPath, $"{{\"pid\":1,\"port\":{port},\"version\":\"1\"}}");
+        var (port, served) = Serve(500, "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}");
 
-        Assert.False(await Probe().IsHealthyAsync(CancellationToken.None));
+        Assert.False(await new HttpHealthProbe(port, TimeSpan.FromSeconds(3)).IsHealthyAsync(CancellationToken.None));
         await served;
-    }
-
-    [Fact]
-    public async Task UnhealthyWhenThereIsNoEndpointRecord()
-    {
-        File.WriteAllText(TokenPath, Token);
-
-        Assert.False(await Probe().IsHealthyAsync(CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task UnhealthyWhenTheEndpointRecordReportsAnError()
-    {
-        File.WriteAllText(TokenPath, Token);
-        File.WriteAllText(EndpointPath, "{\"pid\":1,\"port\":5757,\"version\":\"1\",\"error\":\"port-in-use\"}");
-
-        Assert.False(await Probe().IsHealthyAsync(CancellationToken.None));
     }
 
     [Fact]
     public async Task UnhealthyWhenNothingListens()
     {
-        File.WriteAllText(TokenPath, Token);
         var free = new TcpListener(IPAddress.Loopback, 0);
         free.Start();
         var port = ((IPEndPoint)free.LocalEndpoint).Port;
         free.Stop();
-        File.WriteAllText(EndpointPath, $"{{\"pid\":1,\"port\":{port},\"version\":\"1\"}}");
 
-        Assert.False(await Probe().IsHealthyAsync(CancellationToken.None));
+        Assert.False(await new HttpHealthProbe(port, TimeSpan.FromSeconds(3)).IsHealthyAsync(CancellationToken.None));
     }
 }

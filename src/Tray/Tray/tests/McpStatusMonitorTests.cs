@@ -8,13 +8,11 @@ namespace AiDevHelpers.Tray.Tests;
 
 public sealed class McpStatusMonitorTests
 {
-    private const int Port = 5757;
+    private const int Port = 5058;
     private const int ServerPid = 4242;
 
     private sealed class Fakes
     {
-        public EndpointReadResult Endpoint { get; set; } = Found();
-
         public int? ListenerPid { get; set; } = ServerPid;
 
         public HealthResult Health { get; set; } = new(true, "1.0", ServerPid);
@@ -32,7 +30,7 @@ public sealed class McpStatusMonitorTests
 
         private sealed class FakeClient(Fakes fakes) : IHealthClient
         {
-            public Task<HealthResult> CheckAsync(int port, string token, CancellationToken cancellationToken)
+            public Task<HealthResult> CheckAsync(int port, CancellationToken cancellationToken)
             {
                 fakes.HealthCalls++;
                 return Task.FromResult(fakes.Health);
@@ -40,13 +38,10 @@ public sealed class McpStatusMonitorTests
         }
     }
 
-    private static EndpointReadResult Found(string? error = null, string token = "token") =>
-        new(EndpointReadKind.Found, new McpEndpoint(ServerPid, Port, "1.0", error, token));
-
     private static (McpStatusMonitor Monitor, TestScheduler Scheduler, List<McpStatus> Seen, IDisposable Subscription) Start(Fakes fakes)
     {
         var scheduler = new TestScheduler();
-        var monitor = new McpStatusMonitor(() => fakes.Endpoint, fakes.Owner, fakes.Client, TimeSpan.FromSeconds(5), scheduler);
+        var monitor = new McpStatusMonitor(Port, fakes.Owner, fakes.Client, TimeSpan.FromSeconds(5), scheduler);
         var seen = new List<McpStatus>();
         var subscription = monitor.Status.Subscribe(seen.Add);
         scheduler.AdvanceBy(1);
@@ -69,56 +64,7 @@ public sealed class McpStatusMonitorTests
     }
 
     [Fact]
-    public void NoEndpointRecordIsDisconnected()
-    {
-        var (_, _, seen, subscription) = Start(new Fakes { Endpoint = new EndpointReadResult(EndpointReadKind.Missing) });
-        using var _ = subscription;
-
-        Assert.Equal(new McpStatus(ConnectionState.Disconnected, null, null, null, "no-endpoint"), Assert.Single(seen));
-    }
-
-    [Fact]
-    public void AnInvalidEndpointRecordIsDisconnected()
-    {
-        var (_, _, seen, subscription) = Start(new Fakes { Endpoint = new EndpointReadResult(EndpointReadKind.Invalid) });
-        using var _ = subscription;
-
-        Assert.Equal("endpoint-invalid", Assert.Single(seen).Problem);
-    }
-
-    [Fact]
-    public void APortConflictFromTheServerIsShown()
-    {
-        var (_, _, seen, subscription) = Start(new Fakes { Endpoint = Found(error: "port-in-use") });
-        using var _ = subscription;
-
-        var status = Assert.Single(seen);
-        Assert.Equal(ConnectionState.Disconnected, status.State);
-        Assert.Equal("port-in-use", status.Problem);
-    }
-
-    [Fact]
-    public void AMissingTokenIsDisconnected()
-    {
-        var (_, _, seen, subscription) = Start(new Fakes { Endpoint = Found(token: string.Empty) });
-        using var _ = subscription;
-
-        Assert.Equal("no-token", Assert.Single(seen).Problem);
-    }
-
-    [Fact]
-    public void AnotherProcessOnThePortIsRefusedAndNeverGetsTheToken()
-    {
-        var fakes = new Fakes { ListenerPid = 9999 };
-        var (_, _, seen, subscription) = Start(fakes);
-        using var _ = subscription;
-
-        Assert.Equal("listener-mismatch", Assert.Single(seen).Problem);
-        Assert.Equal(0, fakes.HealthCalls);
-    }
-
-    [Fact]
-    public void NothingListeningIsDisconnected()
+    public void NothingListeningIsDisconnectedWithoutAHealthCall()
     {
         var fakes = new Fakes { ListenerPid = null };
         var (_, _, seen, subscription) = Start(fakes);
@@ -126,6 +72,15 @@ public sealed class McpStatusMonitorTests
 
         Assert.Equal("not-listening", Assert.Single(seen).Problem);
         Assert.Equal(0, fakes.HealthCalls);
+    }
+
+    [Fact]
+    public void AnotherProcessOnThePortIsRefused()
+    {
+        var (_, _, seen, subscription) = Start(new Fakes { ListenerPid = 9999 });
+        using var _ = subscription;
+
+        Assert.Equal("listener-mismatch", Assert.Single(seen).Problem);
     }
 
     [Fact]

@@ -123,6 +123,7 @@ public static class ToolRiskCatalog
         "ide_list_documents",
         "ide_list_exceptions",
         "ide_list_instances",
+        "ide_list_item_templates",
         "ide_list_processes",
         "ide_list_stack_frames",
         "ide_list_tasks",

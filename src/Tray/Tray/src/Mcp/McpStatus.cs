@@ -14,7 +14,6 @@ public enum ConnectionState
 /// <param name="Port">The server port when known.</param>
 /// <param name="Pid">The server pid when known.</param>
 /// <param name="Problem">
-/// Why it is not connected: <c>no-endpoint</c>, <c>endpoint-invalid</c>, a startup error from the server such as
-/// <c>port-in-use</c>, <c>no-token</c>, <c>not-listening</c>, <c>listener-mismatch</c> or <c>unhealthy</c>.
+/// Why it is not connected: <c>not-listening</c>, <c>listener-mismatch</c> or <c>unhealthy</c>.
 /// </param>
 public sealed record McpStatus(ConnectionState State, string? Version, int? Port, int? Pid, string? Problem);

@@ -7,6 +7,9 @@ export interface HelperManifest {
     solutionPath: string;
 }
 
+/** The framework a helper loads: net10 for SDK-style projects, net48 for legacy and net48 projects. */
+export type RoslynFramework = "net10" | "net48";
+
 /** Sends one request line to a named pipe and returns the one reply line. */
 export interface PipeTransport {
     send(pipeName: string, line: string): Promise<string>;
@@ -26,14 +29,15 @@ export const ROSLYN_ACTIONS: ReadonlySet<string> = new Set([
 /** Routes an edit action to the helper that loads the solution. Without a running helper, the error says so and nothing is sent. */
 export class RoslynHelperClient {
     constructor(
-        private readonly findHelper: () => HelperManifest | undefined,
+        private readonly findHelper: (framework: RoslynFramework) => HelperManifest | undefined,
         private readonly transport: PipeTransport,
     ) {}
 
-    async runAction(action: string, args: Record<string, unknown>): Promise<unknown> {
-        const helper = this.findHelper();
+    /** framework is the framework of the project the action touches: net10 (default) or net48. */
+    async runAction(action: string, args: Record<string, unknown>, framework: RoslynFramework = "net10"): Promise<unknown> {
+        const helper = this.findHelper(framework);
         if (helper === undefined) {
-            throw new Error(`No Roslyn helper is running for this solution, so '${action}' cannot run. Open the solution in VS Code to start it.`);
+            throw new Error(`No ${framework} Roslyn helper is running for this solution, so '${action}' cannot run. Open the solution in VS Code to start it.`);
         }
 
         const line = await this.transport.send(helper.pipeName, JSON.stringify({ action, args }));

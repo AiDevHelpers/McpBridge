@@ -158,3 +158,5 @@ Vs2026.Core|public override string ToString()
 Vs2026.Core|public interface I
 # ide_convert null-guards writes this guard line into the user's method; it is code, not a user-facing message.
 Vs2026.Core| == null) throw new System.ArgumentNullException(nameof(
+# ide_list_item_templates looks for the per-user Visual Studio documents folders by this folder-name pattern; it is a path, not a user-facing message.
+Vs2026.Core|Visual Studio*

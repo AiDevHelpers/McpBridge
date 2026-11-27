@@ -1,4 +1,5 @@
 using System.Runtime.Versioning;
+using AiDevHelpers.Mcp.Client;
 using Microsoft.Extensions.Hosting;
 
 namespace AiDevHelpers.Host;
@@ -10,16 +11,15 @@ public sealed class SupervisorWorker : BackgroundService
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var folder = McpDataFolder.DefaultPath;
-        var tokenPath = McpDataFolder.TokenPath(folder);
-        var endpointPath = McpDataFolder.EndpointPath(folder);
+        var port = McpPort.Resolve();
         var exe = Path.Combine(AppContext.BaseDirectory, "AiDevHelpers.MCP.Http.exe");
-        var options = new SupervisorOptions(exe, $"--token \"{tokenPath}\" --endpoint \"{endpointPath}\"", AppContext.BaseDirectory);
+        var options = new SupervisorOptions(exe, $"--Http:Port {port.ToString(System.Globalization.CultureInfo.InvariantCulture)}", AppContext.BaseDirectory);
 
         var supervisor = new McpSupervisor(
             options,
             new WindowsSessionSource(),
             new UserProcessLauncher(folder),
-            new HttpHealthProbe(tokenPath, endpointPath, TimeSpan.FromSeconds(3)),
+            new HttpHealthProbe(port, TimeSpan.FromSeconds(3)),
             () => ControlFile.IsClosing(),
             new SystemDelay());
         return supervisor.RunAsync(stoppingToken);

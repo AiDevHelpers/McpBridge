@@ -761,7 +761,19 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("projectProperties", new { project, names }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
-    [Description("Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
+    [Description("List the item templates Visual Studio offers in Add New Item (Class, Interface, Razor Component, and so on), with name, description, language, category and path. Pass a path as the template of ide_add_project_item in mode fromNew. Read-only. Visual Studio only.")]
+    public Task<string> IdeListItemTemplates(
+        [Description("Optional: text to find in the template name or description, ignoring case")] string? filter = null,
+        [Description("Optional: language, such as CSharp or VisualBasic")] string? language = null,
+        [Description("Optional: most templates to return (default 200, at most 1000)")] int? limit = null,
+        [Description("Optional: full path of the solution to target")] string? solutionPath = null,
+        [Description("Optional: VisualStudio or VsCode. Picks the IDE when several are open.")] string? ide = null,
+        [Description("Optional: process id of the instance to target. Use it when several instances have the same solution open.")] int? instancePid = null,
+        CancellationToken ct = default) =>
+        IdeInstanceRouter.CallAsync("listItemTemplates", new { filter, language, limit }, solutionPath, ct, ide, instancePid);
+
+    [McpServerTool]
+    [Description("Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path (find one with ide_list_item_templates). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeAddProjectItem(
         [Description("Project name")] string project,
         [Description("Full path of the file to add or create")] string file,

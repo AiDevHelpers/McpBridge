@@ -85,7 +85,7 @@ Every write takes `confirm` (default false). Without it the reply must be `plann
 - Tests after a change: `ide_edit_method` with `confirm` on a method a scratch test calls; expect `test_run` with that test's outcome and `coverage.method`. Edit a method no test calls and expect the whole test project to run, with a warning. Pass `runTests: false` and expect no `test_run`.
 - TDD: `ide_tdd_add_test` with a method given as `int M(int x);` and a failing test; expect `tdd.status` red. Then `ide_tdd_update_test`, then implement with `ide_edit_method` and expect green with coverage.
 - Tasks and shell services: `ide_add_task`, `ide_clear_tasks` (only bridge-added tasks), `ide_set_status`, `ide_show_info_bar`, `ide_write_activity_log`.
-- Projects: `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
+- Projects: `ide_list_item_templates` returns templates with a path (check one with `filter` set to `Class`); `ide_add_project_item`, `ide_remove_project_item` (the file stays on disk), `ide_close_solution` only on a scratch solution with no dirty documents.
 - Attach and detach: `ide_attach_process` to a throwaway console app, then `ide_detach_all`.
 - Events, with a build or a breakpoint: `ide_read_events` shows `buildBegin`, `buildDone`, `enterBreakMode`, `documentSaved` in order.
 - Build summary: `ide_build` returns `summary` with `status: "finished"`, `succeeded`, `error_count`, and capped `errors` (20, messages 200 characters). A build with a compile error lists it. The reply carries `instance_pid`, the instance that built.

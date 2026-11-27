@@ -10,12 +10,14 @@ namespace AiDevHelpers.Helpers.RoslynHelper;
 public sealed class RoslynRequestHandler
 {
     private readonly Func<string?> _solutionPath;
+    private readonly string _framework;
     private readonly SolutionLoader _loader;
     private readonly ActionDispatcher _dispatcher = new();
     private Microsoft.CodeAnalysis.Solution? _solution;
 
-    public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null)
+    public RoslynRequestHandler(Func<string?> solutionPath, SolutionLoader? loader = null, string framework = "net10")
     {
+        _framework = framework;
         _solutionPath = solutionPath ?? throw new ArgumentNullException(nameof(solutionPath));
         _loader = loader ?? new SolutionLoader();
         _dispatcher.Register("health", _ => Task.FromResult<object>(new
@@ -23,6 +25,7 @@ public sealed class RoslynRequestHandler
             ok = true,
             pid = Process.GetCurrentProcess().Id,
             solutionPath = _solutionPath(),
+            framework = _framework,
         }));
         _dispatcher.Register("loadSolution", LoadSolutionAsync);
         PlanActions.Register(_dispatcher, () => _solution, s => _solution = s);
@@ -42,7 +45,7 @@ public sealed class RoslynRequestHandler
     private async Task<object> LoadSolutionAsync(JsonElement args)
     {
         var solutionPath = args.GetProperty("solutionPath").GetString()
-            ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
+            ?? throw new InvalidOperationException(Strings.Get("LoadSolutionNeedsPath"));
         var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
         _solution = loaded.Solution;
         return new
