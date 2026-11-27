@@ -1,6 +1,26 @@
 # Implementation plan: tray unit 6, IDE Instances page
 
-Unit 6 of `docs/plans/2026-11-26-tray-service.md`. Branch from `wip`; PR into `wip`. Status: plan, not started.
+Unit 6 of `docs/plans/2026-11-26-tray-service.md`. Branch from `wip`; PR into `wip`.
+
+## Status (2026-11-27, after PR #129 merged to wip, merge commit f1e594e)
+
+Built: 6.1 (Bridge seam and `InstanceFeed`), 6.2, 6.3, 6.4, 6.5, 6.6 (tab, not yet verified on screen), 6.7 (client and `OpenFileTracker`, not wired), 6.8 (CHANGELOG and features). Tests: Tray 48, Bridge 105, MCP Core 403, passing.
+
+As built, where it differs from the steps below:
+- 6.1: `InstanceFeed.Watch(read, interval, scheduler)` is a static function, not an `IInstanceSource`. Production reads on `TaskPoolScheduler.Default`.
+- 6.2: `InstanceValidator.Problem(VsInstance) -> string?` (null when valid), not `Check -> Result`. Refusals are traced with `Trace.TraceWarning`.
+- 6.4: `InstanceProcessFacts.StartedAt` and `OwnerOf` (WMI via `System.Management`) are passed into `InstanceRowBuilder` as functions; no `IProcessInfo` interface.
+- 6.5: the view model takes the rows stream and a scheduler as written.
+- 6.7: `InstanceEventsClient.RunOnceAsync` and `RunAsync` are static; `RunAsync` backs off 2 s to 30 s. Event field names checked: Visual Studio sends `{file}` for `documentOpened`/`documentClosing` (`BridgeHost.cs`), VS Code sends `{path}` (`events.ts`). Both are read.
+- The IDE Instances tab is a `TabControl` page in `StatusWindow`, read-only.
+
+Remaining for unit 6:
+1. 6.7 wiring: one events subscription per live instance, started and stopped with the instance list, feeding `OpenFileTracker` into a row column. Needs a test with the fake pipe server for the wiring.
+2. 6.6 manual checklist (5 items) with screenshots, and a UIA name check on each column, high contrast, and per-monitor DPI, per the cross-cutting rules in `tray-service.md`.
+3. 6.9 close and reset: held. Its safety review is not done.
+4. Lite gate: not run. Its IDE steps need an open Visual Studio on `AiDevHelpers.slnx`; run them before the PR is merged.
+5. Docs: the tray-service cross-cutting rules also ask for a README line and a supportability entry. Add the instances list to the diagnostics bundle (pid, IDE, solution path, version of the bridge) when the bundle lands (unit 9).
+6. `docs/ide-bridge.md` and `conformance/`: no protocol change; the events protocol is used as written. Confirmed in this unit.
 
 ## Goal
 
