@@ -21,6 +21,8 @@
   <data name="ColRepo"><value>Repo</value></data>
   <data name="ColBranch"><value>Branch</value></data>
   <data name="ColPath"><value>Solution or workspace</value></data>
+  <data name="ColOpenFile"><value>Open file</value></data>
+  <data name="UnknownFile"><value>not known yet</value></data>
   <data name="ColStarted"><value>Started</value></data>
   <data name="ColPid"><value>PID</value></data>
   <data name="ColUser"><value>User</value></data>

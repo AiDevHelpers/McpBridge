@@ -19,6 +19,7 @@
             <DataGridTextColumn x:Name="RepoColumn" Binding="{Binding RepoText}"/>
             <DataGridTextColumn x:Name="BranchColumn" Binding="{Binding BranchText}"/>
             <DataGridTextColumn x:Name="PathColumn" Binding="{Binding Path}"/>
+            <DataGridTextColumn x:Name="OpenFileColumn" Binding="{Binding OpenFileText}"/>
             <DataGridTextColumn x:Name="StartedColumn" Binding="{Binding StartedText}"/>
             <DataGridTextColumn x:Name="PidColumn" Binding="{Binding Pid}"/>
             <DataGridTextColumn x:Name="UserColumn" Binding="{Binding UserText}"/>
