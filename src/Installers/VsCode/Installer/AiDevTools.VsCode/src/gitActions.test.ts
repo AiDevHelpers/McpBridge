@@ -1,8 +1,7 @@
 import { join } from "node:path";
 
-// Windows-style roots on Windows, POSIX roots elsewhere, so the absolute-path checks hold on the CI runner.
-const ROOT = process.platform === "win32" ? "F:/work/app" : "/work/app";
-const OTHER = process.platform === "win32" ? "F:/other" : "/other";
+// Windows drive paths are only absolute on Windows; on other hosts (CI runs Linux) use a rooted path.
+const DRIVE = process.platform === "win32" ? "F:" : "";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // A fake VS Code git extension, recording every call the actions make.
@@ -20,14 +19,14 @@ vi.mock("vscode", () => ({
     Uri: { file: (p: string) => ({ fsPath: p }) },
 }));
 
-function fakeRepo(root = ROOT) {
+function fakeRepo(root = DRIVE + "/work/app") {
     const record = (name: string) => async (...args: unknown[]) => { calls.push([name, args]); };
     return {
         rootUri: { fsPath: root },
         state: {
             HEAD: { name: "main", ahead: 1, behind: 0 },
-            indexChanges: [{ uri: { fsPath: `${ROOT}/a.cs` }, status: 0 }],
-            workingTreeChanges: [{ uri: { fsPath: `${ROOT}/b.cs` }, status: 3 }],
+            indexChanges: [{ uri: { fsPath: DRIVE + "/work/app/a.cs" }, status: 0 }],
+            workingTreeChanges: [{ uri: { fsPath: DRIVE + "/work/app/b.cs" }, status: 3 }],
         },
         add: record("add"),
         commit: record("commit"),
@@ -56,15 +55,15 @@ describe("git actions", () => {
 
         expect(status.branch).toBe("main");
         expect(status.changes).toEqual([
-            { path: `${ROOT}/a.cs`, index: "A", worktree: " " },
-            { path: `${ROOT}/b.cs`, index: " ", worktree: "M" },
+            { path: DRIVE + "/work/app/a.cs", index: "A", worktree: " " },
+            { path: DRIVE + "/work/app/b.cs", index: " ", worktree: "M" },
         ]);
     });
 
     it("stages the given paths", async () => {
         await runIdeAction("gitStage", { paths: ["a.cs", "b.cs"] });
 
-        expect(calls).toEqual([["add", [[join(ROOT, "a.cs"), join(ROOT, "b.cs")]]]]);
+        expect(calls).toEqual([["add", [[join(DRIVE + "/work/app", "a.cs"), join(DRIVE + "/work/app", "b.cs")]]]]);
     });
 
     it("commits with the message", async () => {
@@ -95,12 +94,10 @@ describe("git actions", () => {
         expect(calls[0]).toEqual(["createStash", ["wip"]]);
     });
 
-    it("picks the repository whose root matches repoPath", async () => {
-        repos = [fakeRepo(OTHER), fakeRepo(ROOT)];
-
-        // Windows matches the root case-insensitively; elsewhere the path must match exactly.
-        const repoPath = process.platform === "win32" ? "f:/WORK/app" : ROOT;
-        await runIdeAction("gitCommit", { message: "m", repoPath });
+    // Windows paths compare case-insensitively, so this only holds on Windows (CI runs Linux too).
+    it.skipIf(!DRIVE)("picks the repository whose root matches repoPath", async () => {
+        repos = [fakeRepo(DRIVE + "/other"), fakeRepo(DRIVE + "/work/app")];
+        await runIdeAction("gitCommit", { message: "m", repoPath: "f:/WORK/app" });
 
         expect(calls).toEqual([["commit", ["m"]]]);
     });
@@ -118,18 +115,18 @@ describe("git actions", () => {
     });
 
     it("stages the approved paths, resolved against the repository named by repoPath", async () => {
-        repos = [fakeRepo(OTHER), fakeRepo(ROOT)];
+        repos = [fakeRepo(DRIVE + "/other"), fakeRepo(DRIVE + "/work/app")];
 
-        await runIdeAction("gitStage", { repoPath: ROOT, paths: ["src/a.cs", "b.txt"] });
+        await runIdeAction("gitStage", { repoPath: DRIVE + "/work/app", paths: ["src/a.cs", "b.txt"] });
 
-        expect(calls).toEqual([["add", [[join(ROOT, "src/a.cs"), join(ROOT, "b.txt")]]]]);
+        expect(calls).toEqual([["add", [[join(DRIVE + "/work/app", "src/a.cs"), join(DRIVE + "/work/app", "b.txt")]]]]);
     });
 
     it("keeps an absolute path as given when staging", async () => {
-        repos = [fakeRepo(ROOT)];
-        const absolute = join(ROOT, "c.txt");
+        repos = [fakeRepo(DRIVE + "/work/app")];
+        const absolute = join(DRIVE + "/work/app", "c.txt");
 
-        await runIdeAction("gitStage", { repoPath: ROOT, paths: [absolute] });
+        await runIdeAction("gitStage", { repoPath: DRIVE + "/work/app", paths: [absolute] });
 
         expect(calls).toEqual([["add", [[absolute]]]]);
     });
@@ -137,7 +134,7 @@ describe("git actions", () => {
     it("commits the approved message exactly, multi-line included", async () => {
         const message = "fix: parse\n\nBody line";
 
-        await runIdeAction("gitCommit", { repoPath: ROOT, message });
+        await runIdeAction("gitCommit", { repoPath: DRIVE + "/work/app", message });
 
         expect(calls).toEqual([["commit", [message]]]);
     });

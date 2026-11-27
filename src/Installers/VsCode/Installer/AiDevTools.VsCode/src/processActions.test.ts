@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parsePsOutput, parseTasklistCsv } from "./processList.js";
 import { recordDapMessage, forgetSession } from "./exceptionFilters.js";
 
@@ -44,9 +44,6 @@ const TASKLIST = [
     "INFO: No tasks are running which match the specified criteria.",
 ].join("\r\n");
 
-// The `ps` listing for the same two processes, used where the code lists processes with ps (not Windows).
-const PS_LISTING = "  4120 /usr/bin/devenv.exe\n  9001 /usr/bin/MyApp.exe\n";
-
 // A session as the debugger reports it, with the DAP exception filters the initialize reply carried.
 function fakeSession(id = "s1") {
     return {
@@ -87,8 +84,17 @@ describe("process list shaping", () => {
 });
 
 describe("processActions", () => {
+    // The fixture is Windows tasklist output, so pretend to be Windows: on other hosts the list would run ps instead.
+    const realPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+    afterEach(() => {
+        if (realPlatform) {
+            Object.defineProperty(process, "platform", realPlatform);
+        }
+    });
+
     beforeEach(() => {
-        fake.stdout = process.platform === "win32" ? TASKLIST : PS_LISTING;
+        Object.defineProperty(process, "platform", { value: "win32" });
+        fake.stdout = TASKLIST;
         fake.commands.length = 0;
         state.activeDebugSession = undefined;
         startDebugging.mockClear();
