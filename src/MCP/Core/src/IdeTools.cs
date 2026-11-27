@@ -47,6 +47,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeTestRunService.NormalizeMode(RepoSettings.Resolve(options.Value, ResolveSolution(solutionPath)).Options.IdeTestRunMode);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List running IDE instances (currently Visual Studio) with their process id, solution, git branch and worktree. " +
                  "Pass solutionPath to add a check: whether the solution is open, and whether an instance is open on the expected branch and worktree " +
                  "(default: the branch and worktree the solution's files are on). The check's ok is true when a matching instance is open.")]
@@ -57,6 +58,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         InstanceCheck.Apply(IdeInstanceRouter.ListInstances(), solutionPath, expectedBranch, expectedWorktree);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set the startup project of the solution in an IDE instance. " +
                  "Pass solutionPath to choose the instance when several are open.")]
     public Task<string> IdeSetStartupProject(
@@ -68,6 +70,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("setStartupProject", new { project }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Open a file in an IDE instance and move the caret to an optional 1-based line. Pass solutionPath when several instances are open.")]
     public Task<string> IdeOpenDocument(
         [Description("Full path of the file")] string file,
@@ -79,12 +82,14 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("openDocument", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Open a solution in Visual Studio by launching devenv with the .sln path. Works even when the IDE bridge is not answering.")]
     public Task<string> IdeOpenSolution(
         [Description("Full path of the .sln")] string solutionPath,
         CancellationToken ct = default) => _opener.OpenAsync(solutionPath, ct);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Start debugging the solution in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeStartDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -96,6 +101,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
             : IdeInstanceRouter.CallAsync("startDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Stop debugging in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeStopDebugging(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -105,6 +111,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("stopDebugging", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run all tests in the solution. The server setting IdeTestRunMode picks the method: 'TestExplorer' " +
                  "(default) triggers Test Explorer in the IDE; 'DotnetTest' runs dotnet test with a TRX file. " +
                  "Pass solutionPath when several instances are open. Use IdeGetTestResults for the outcome. " +
@@ -138,6 +145,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Format every C# file of the solution with the IDE's Format Document command, saving each one. Opens each file.")]
     public Task<string> IdeFormatSolution(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -231,6 +239,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Go to the definition of the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. Moves the IDE's active document and caret. Returns the IDE state, not the target location. Visual Studio only.")]
     public Task<string> IdeGoToDefinition(
         [Description("Full path of the file")] string file,
@@ -243,6 +252,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("goToDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Find all references to the symbol at file:line:column in an IDE instance. Places the caret, then runs the IDE command. The results open in the IDE's Find All References window, which this tool does not read.")]
     public Task<string> IdeFindAllReferences(
         [Description("Full path of the file")] string file,
@@ -255,6 +265,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("findAllReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Get the outcome of the newest test run for the solution. In 'TestExplorer' mode (default) it reads the IDE's Tests output pane: " +
                  "counts, failing test names and failure_details with each failure's message. In 'DotnetTest' mode it reads the run's TRX file, " +
                  "which also covers TRX files written by other test runs in the solution's TestResults folder.")]
@@ -276,6 +287,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Get the counts of the newest finished Test Explorer run, read from the Visual Studio Tests output pane. " +
                  "Works in TestExplorer mode, where no TRX is written. failures lists the tests the runner marked [FAIL] in that run; it is empty when the pane has no such lines.")]
     public async Task<string> IdeGetTestSummary(
@@ -292,6 +304,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Search the lines of an IDE output pane for a regex pattern. Returns the matching lines.")]
     public Task<string> IdeSearchOutput(
         [Description("Regex pattern to match against each output line")] string pattern,
@@ -303,6 +316,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("searchOutput", new { pattern, pane }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Clear an output pane in an IDE instance.")]
     public Task<string> IdeClearOutput(
         [Description("Output pane name, e.g. 'Build' or 'Debug'")] string pane = "Build",
@@ -313,6 +327,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("clearOutput", new { pane }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Format the active document in an IDE instance. Pass solutionPath when several instances are open.")]
     public Task<string> IdeFormatDocument(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -322,6 +337,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("formatDocument", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Build the solution in an IDE instance and report whether it succeeded. " +
                  "Pass solutionPath when several instances are open. Use IdeGetBuildDiagnostics for the errors.")]
     public async Task<string> IdeBuild(
@@ -355,6 +371,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read build errors and warnings from an IDE instance's Error List (the last build's results).")]
     public Task<string> IdeGetBuildDiagnostics(
         [Description("'error', 'warning', or 'all' (default)")] string severity = "all",
@@ -365,6 +382,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("getBuildDiagnostics", new { severity }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run Visual Studio's Code Cleanup on the active document of an IDE instance.")]
     public Task<string> IdeCodeCleanup(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -374,6 +392,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("codeCleanup", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read the last lines of an IDE output pane, e.g. 'Build' or 'Debug'. For a filtered, deduplicated summary, use LogQuery with a vsout: channel.")]
     public Task<string> IdeGetOutput(
         [Description("Output pane name, e.g. 'Build' or 'Debug'")] string pane = "Build",
@@ -385,6 +404,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("getOutput", new { pane, maxLines }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read local variables in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint.")]
     public Task<string> IdeGetLocals(
         [Description("Maximum number of variables to return")] int maxItems = 100,
@@ -395,6 +415,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("getLocals", new { maxItems }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Check the bridge health of an IDE instance: whether its listener is running, when it started, " +
                  "when it last handled a request, how many requests it has handled, and its solution. " +
                  "Answered even while the IDE is busy.")]
@@ -406,6 +427,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("health", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the solution build configurations (e.g. Debug, Release) of an IDE instance and the active one.")]
     public Task<string> IdeListConfigurations(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -415,6 +437,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listConfigurations", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set the active build configuration (e.g. Debug or Release) of an IDE instance's solution.")]
     public Task<string> IdeSetConfiguration(
         [Description("Configuration name, e.g. 'Debug' or 'Release'")] string configuration,
@@ -425,6 +448,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("setConfiguration", new { configuration }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Clean the solution in an IDE instance using the active configuration.")]
     public Task<string> IdeClean(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -434,6 +458,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("clean", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Publish the startup project of an IDE instance with the IDE's publish command, using the active configuration.")]
     public Task<string> IdePublish(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -443,6 +468,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("publish", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [DangerousTool]
     [Description("Kill a process that an IDE instance started for clean or publish. Refuses any other process id.")]
     public Task<string> IdeKillProcess(
         [Description("Process id returned by IdeClean or IdePublish")] int pid,
@@ -453,6 +479,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("killProcess", new { pid }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Launch a Visual Studio instance with a solution open. Reuses an instance that already has it open. " +
                  "Waits for the instance's bridge to come up. Launches elevated (UAC prompt) only for a solution with a project the repo lists as needing " +
                  "administrator rights, or when this user's mode for the repo is always; a running non-elevated instance of such a solution is not reused " +
@@ -464,6 +491,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceLifecycle.LaunchAsync(solutionPath, ct, relaunchElevated);
 
     [McpServerTool]
+    [DangerousTool]
     [Description("Save all documents and then kill a Visual Studio instance. Refuses, killing nothing, if any document is still unsaved.")]
     public Task<string> IdeKillInstance(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -471,6 +499,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceLifecycle.KillAsync(solutionPath, ct);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set a breakpoint at a file and line in an IDE instance.")]
     public Task<string> IdeSetBreakpoint(
         [Description("Full path of the source file")] string file,
@@ -482,6 +511,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("setBreakpoint", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Remove breakpoints at a file and line in an IDE instance.")]
     public Task<string> IdeRemoveBreakpoint(
         [Description("Full path of the source file")] string file,
@@ -493,6 +523,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("removeBreakpoint", new { file, line }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List breakpoints set in an IDE instance.")]
     public Task<string> IdeListBreakpoints(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -502,6 +533,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listBreakpoints", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Step the debugger in an IDE instance: 'over', 'into', or 'out'. The debugger must be stopped at a breakpoint.")]
     public Task<string> IdeStep(
         [Description("'over', 'into', or 'out'")] string mode,
@@ -512,6 +544,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("step", new { mode }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Get the debugger mode (design, run, or break) and the current function in an IDE instance.")]
     public Task<string> IdeGetDebugState(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -521,6 +554,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("debugState", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Evaluate an expression in the current stack frame of an IDE instance. The debugger must be stopped at a breakpoint.")]
     public Task<string> IdeEvaluate(
         [Description("C# expression to evaluate, e.g. 'items.Count'")] string expression,
@@ -531,6 +565,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("evaluate", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a watch expression to an IDE instance's watch list. Watches are kept by the extension, not the Watch window.")]
     public Task<string> IdeAddWatch(
         [Description("Expression to watch")] string expression,
@@ -541,6 +576,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("addWatch", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Remove a watch expression from an IDE instance's watch list.")]
     public Task<string> IdeRemoveWatch(
         [Description("Expression to remove")] string expression,
@@ -551,6 +587,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("removeWatch", new { expression }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List an IDE instance's watch expressions with their current values (when stopped at a breakpoint).")]
     public Task<string> IdeListWatches(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -560,6 +597,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listWatches", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the processes the IDE's debugger can attach to (local processes), with pid and name. Read-only.")]
     public Task<string> IdeListProcesses(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -569,6 +607,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listProcesses", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the processes the IDE's debugger is currently attached to. Read-only.")]
     public Task<string> IdeListDebuggedProcesses(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -578,6 +617,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listDebuggedProcesses", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the threads of the debugged process with their ids, and the current thread. Empty unless the debugger is in break mode. Read-only.")]
     public Task<string> IdeListThreads(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -587,6 +627,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listThreads", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the debugger's exception settings, grouped as the debugger groups them, with break-when-thrown and break-when-user-unhandled. Read-only.")]
     public Task<string> IdeListExceptions(
         [Description("Optional: only this exception group, for example 'Common Language Runtime Exceptions'. The full list is large; name a group when you can.")] string? group = null,
@@ -597,6 +638,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listExceptions", new { group }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the stack frames of the current thread (index, function, return type). Empty unless the debugger is in break mode. Read-only.")]
     public Task<string> IdeListStackFrames(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -606,6 +648,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listStackFrames", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set the condition, hit-count type, or hit count of the breakpoint(s) at a file and line. Re-adds the breakpoint, so hit counts reset. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetBreakpointCondition(
         [Description("Full path of the source file")] string file,
@@ -621,6 +664,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("setBreakpointCondition", new { file, line, condition, hitCountType, hitCount, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Enable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeEnableBreakpoint(
         [Description("Full path of the source file")] string file,
@@ -633,6 +677,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("enableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Disable the breakpoint(s) at a file and line. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeDisableBreakpoint(
         [Description("Full path of the source file")] string file,
@@ -645,6 +690,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("disableBreakpoint", new { file, line, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Attach the debugger to one local process by pid. Without confirm it only returns the target. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeAttachProcess(
         [Description("Process id from ide_list_processes")] int pid,
@@ -656,6 +702,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("attachProcess", new { pid, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Detach the debugger from every attached process. Without confirm it only lists what would be detached. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeDetachAll(
         [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
@@ -666,6 +713,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("detachAll", new { confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Search the text of files: the solution, one project, or the open documents. Managed search over files on disk; read-only. Capped at 500 matches.")]
     public Task<string> IdeFindInFiles(
         [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
@@ -680,6 +728,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("findInFiles", new { pattern, matchCase, useRegex, scope, project }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Replace text in files (solution, project, or open documents). Without confirm it only counts matches per file and writes nothing. Open documents with unsaved changes are skipped. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeReplaceInFiles(
         [Description("Text to find, or a regular expression when useRegex is true")] string pattern,
@@ -696,6 +745,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("replaceInFiles", new { pattern, replacement, matchCase, useRegex, scope, project, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the open documents with saved state and read-only flag. Read-only.")]
     public Task<string> IdeListDocuments(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -705,6 +755,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listDocuments", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Save an open document. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSaveDocument(
         [Description("Full path of the open document")] string file,
@@ -716,6 +767,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("saveDocument", new { file, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Close an open document. A document with unsaved changes is refused unless discardChanges is also true. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeCloseDocument(
         [Description("Full path of the open document")] string file,
@@ -728,6 +780,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("closeDocument", new { file, discardChanges, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Apply several range edits in one IDE undo group, so they undo as one step. Each edit gives start and end line and column (1-based) and new text. Without confirm it lists the edits. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeUndoGroup(
         [Description("Name of the undo group shown in the IDE")] string name,
@@ -740,6 +793,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("undoGroup", new { name, edits, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the code elements (namespaces, types, members) of one file with line ranges. Read-only.")]
     public Task<string> IdeListCodeElements(
         [Description("Full path of the source file")] string file,
@@ -750,6 +804,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listCodeElements", new { file }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read named properties of a project (for example TargetFramework, OutputType). Unknown names return null. Read-only.")]
     public Task<string> IdeProjectProperties(
         [Description("Project name, as shown in Solution Explorer")] string project,
@@ -761,6 +816,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("projectProperties", new { project, names }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the item templates Visual Studio offers in Add New Item (Class, Interface, Razor Component, and so on), with name, description, language, category and path. Pass a path as the template of ide_add_project_item in mode fromNew. Read-only. Visual Studio only.")]
     public Task<string> IdeListItemTemplates(
         [Description("Optional: text to find in the template name or description, ignoring case")] string? filter = null,
@@ -773,6 +829,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listItemTemplates", new { filter, language, limit }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a file to a project: mode fromFile adds an existing file; mode fromNew creates one from a template path (find one with ide_list_item_templates). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeAddProjectItem(
         [Description("Project name")] string project,
@@ -787,6 +844,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("addProjectItem", new { project, file, mode, template, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Remove a file from a project. The file stays on disk. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeRemoveProjectItem(
         [Description("Project name")] string project,
@@ -799,6 +857,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("removeProjectItem", new { project, file, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Close the solution. Refused while documents have unsaved changes unless saveFirst is true. Without confirm it lists the dirty documents and the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeCloseSolution(
         [Description("Save dirty documents before closing. Default false.")] bool saveFirst = false,
@@ -810,6 +869,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("closeSolution", new { saveFirst, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the items in the Visual Studio Task List window (category, text, file, line). Read-only.")]
     public Task<string> IdeListTasks(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -819,6 +879,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("listTasks", new { }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Set the status bar text of the IDE (empty clears it). Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetStatus(
         [Description("Status text; empty clears it")] string text,
@@ -830,6 +891,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("setStatus", new { text, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Show an info bar in the IDE's main window with a message and optional button labels. Buttons do not report clicks. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeShowInfoBar(
         [Description("Message text")] string text,
@@ -842,6 +904,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("showInfoBar", new { text, actions = (actions ?? Array.Empty<string>()).Select(label => new { label }), confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Write an entry to the Visual Studio activity log (ActivityLog.xml), or in VS Code to the AiDevHelpers output channel. Level is Error, Warning, or Information. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeWriteActivityLog(
         [Description("Error, Warning, or Information")] string level,
@@ -855,6 +918,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("writeActivityLog", new { level, source, message, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read one IDE setting by its key path: a Visual Studio setting path, or in VS Code a dotted setting name such as editor.tabSize.Returns found:false when the setting does not exist. Read-only.")]
     public Task<string> IdeGetSetting(
         [Description("Setting key path")] string key,
@@ -865,6 +929,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("getSetting", new { key }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a task to the Visual Studio Task List under the bridge's own provider. Category is Error, Warning, or Message. Without confirm it only returns the plan. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeAddTask(
         [Description("Task text")] string text,
@@ -879,6 +944,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("addTask", new { text, file, line, category, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Remove every task this bridge added to the Task List. Tasks from other tools are not touched. Without confirm it only reports the count. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeClearTasks(
         [Description("Set true to apply the change. Default false returns the plan only.")] bool confirm = false,
@@ -889,6 +955,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("clearTasks", new { confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Find every reference to the symbol at a file position, across the solution, using Roslyn. Sees unsaved editor edits. Read-only.")]
     public Task<string> IdeSemanticReferences(
         [Description("Full path of the source file")] string file,
@@ -901,6 +968,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("semanticReferences", new { file, line, column }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Find where the symbol at a file position is declared in source, using Roslyn. Sees unsaved editor edits. Read-only.")]
     public Task<string> IdeSemanticDefinition(
         [Description("Full path of the source file")] string file,
@@ -913,6 +981,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("semanticDefinition", new { file, line, column }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Rename the symbol at a file position everywhere in the solution, using Roslyn. Without confirm it only lists the files that would change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeRenameSymbol(
         [Description("Full path of the source file")] string file,
@@ -927,6 +996,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         IdeInstanceRouter.CallAsync("renameSymbol", new { file, line, newName, column, confirm }, solutionPath, ct, ide, instancePid);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Replace one C# method using Roslyn, with checks. The method at the position is replaced by newMethodText (one full method declaration). The edit is refused if it adds compile errors, or if the signature changes and any reference (from ide_semantic_references) has no entry in callerEdits. Each caller edit names a reference by file, line and column and gives the text that replaces the invocation (or the bare name for a method group or nameof). A signature change on a method that overrides, implements or is overridden is refused. If the method has a /// doc comment, its param, typeparam and returns tags are updated to the new signature in the comment's own layout; a new parameter needs its text in docs (the tool never invents text), and newSummary replaces the summary when the purpose changed. Roslyn cannot see reflection, strings, XAML or projects outside the solution, so also search the name with ide_find_in_files. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeEditMethod(
         [Description("Full path of the source file")] string file,
@@ -951,6 +1021,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Convert a member's shape, using Roslyn, with checks. kind \"field-to-property\" turns the private field at a line into an auto property of the same accessibility, with the name's first letter upper-cased and underscores dropped, and redirects its uses to the property; refused for a static, readonly, const or multi-variable field, a name clash, or a use passed by ref or out. kind \"null-guards\" adds an if (p == null) throw ArgumentNullException check for each reference-typed parameter at the top of the method's block body. kind \"expression-to-block\" and \"block-to-expression\" convert a method's body between => e; and a block of one return. kind \"var-to-explicit\" and \"explicit-to-var\" change a local declaration's type when the initializer has exactly that type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeConvert(
         [Description("Full path of the source file")] string file,
@@ -970,6 +1041,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Delete the unused members and types that ide_find_unused reported and a person confirmed, in one change, using Roslyn, with checks. items is an array of {file, line, kind}, kind \"member\" (default) or \"type\". Each item is deleted with the checked delete rules (no references left, tests that call it refused unless named). The first refusal stops the whole change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeRemoveUnused(
         [Description("The items to delete: array of {file, line, kind}")] object[] items,
@@ -985,6 +1057,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Edit the XML doc comment of the method at a line, using Roslyn, with no code change. summary replaces the summary text; docs gives {tag, name, text} entries for param, typeparam or returns tags, each replacing that tag's text in the comment's own layout. Text is never invented: a tag not given keeps its text. Refused when the method has no doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeUpdateDocs(
         [Description("Full path of the source file")] string file,
@@ -1003,6 +1076,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Check the XML doc comments of the methods in a file against their signatures, using Roslyn. Reports a parameter or type parameter with no tag, a param or typeparam tag that names nothing, and a non-void method with no returns tag, with the line of each doc comment. Read only. Visual Studio only.")]
     public async Task<string> IdeCheckDocs(
         [Description("Full path of the source file")] string file,
@@ -1016,6 +1090,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Extract an interface from the class or struct at a line, using Roslyn, with checks. members names its public, non-static methods and properties, which become the interface's members as signatures. The interface is written to I<interfaceName>.cs beside the type's file and the type adds it to its base list. Refused for a member that is not public and non-static, a name already taken, or an interface already implemented. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractInterface(
         [Description("Full path of the source file")] string file,
@@ -1034,6 +1109,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Extract an expression into a named local or constant, using Roslyn, with checks. expression is its exact text, which must occur once on the line. kind \"variable\" declares var name = expression; before the statement that uses it and uses the name; kind \"constant\" declares const with the expression's type, and needs an expression the compiler folds to a constant. Refused for an expression inside a lambda or anonymous method, one not in a block statement, or a text that occurs more than once. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractValue(
         [Description("Full path of the source file")] string file,
@@ -1053,6 +1129,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Inline a method, using Roslyn, with checks: each call is replaced by the method's body with the arguments substituted, and the method is deleted. Only a value-returning, non-async method whose body is one return expression or an expression body is inlined. Refused for a recursive method, a method that overrides, implements or is overridden, an interface member, params, ref or out parameters, a reference that is not a plain call, and an argument that is not a literal or name where its parameter is used twice. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeInlineMethod(
         [Description("Full path of the source file")] string file,
@@ -1070,6 +1147,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Extract a run of whole statements in one block into a new private method, using Roslyn, with checks. The parameters are the variables the run reads from outside it; the return value is the one variable it writes that is used after it. The statements are replaced by a call and the new method goes after the enclosing method. Refused for more than one value used after the run, for return, yield, break or continue in it, for a range that is not whole statements of one block, or for a name already taken. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractMethod(
         [Description("Full path of the source file")] string file,
@@ -1089,6 +1167,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the code actions offered at a line, using Roslyn. Only the fix for a missing type name is computed: adding a using directive for a type in a namespace the file does not import. Each result has an id to pass to ide_apply_code_action. The IDE's own fixes are not listed. Read only. Visual Studio only.")]
     public async Task<string> IdeListCodeActions(
         [Description("Full path of the source file")] string file,
@@ -1103,6 +1182,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Apply a code action listed by ide_list_code_actions at a line, with the standard checks. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeApplyCodeAction(
         [Description("Full path of the source file")] string file,
@@ -1120,6 +1200,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Move the named members of a partial class, struct or record's part at a line into a new part in a new file named Type.<suffix>.cs beside the part's file, using Roslyn, with checks. The new part repeats the type's access modifiers, keyword and name, and copies the file's usings and namespace. Refused for a member name that is not in the part, or a file that already exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeExtractPartial(
         [Description("Full path of the file holding the part")] string file,
@@ -1138,6 +1219,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Merge the parts of a partial class, struct or record into the part at a line, using Roslyn, with checks. The other parts' members move to the end of that part, their usings the part's file lacks are added, and their declarations are removed; a part that was alone in its file takes the file with it. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeMergePartial(
         [Description("Full path of a file holding one part of the type")] string file,
@@ -1154,6 +1236,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change a file's layout, using Roslyn, with checks. action \"split\" moves the top-level type at line out of a file that holds several types into its own file named after it, beside the original, with the original's usings and namespace. action \"rename\" renames a file that holds exactly one type to that type's name. Refused when the target file exists. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeOrganizeFile(
         [Description("Full path of the source file")] string file,
@@ -1171,6 +1254,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Move a method, property or field to another type in the solution, using Roslyn, with checks. toType is the destination type's name (or its full display name when the simple name is ambiguous). The member's text and doc comment move to the end of the destination. References qualified by the source type's name are renamed to the destination; other references need a callerEdits entry each. Refused for an override, implementation or implemented member, and for a move that stops compiling in its new place. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeMoveMember(
         [Description("Full path of the source file")] string file,
@@ -1192,6 +1276,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add Equals, GetHashCode or ToString to the class, struct or record that contains a line, using Roslyn, with checks. kind is \"equals\", \"hashcode\" or \"tostring\"; members names the fields and properties it uses. Refused when the type already declares that member. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeGenerateMembers(
         [Description("Full path of the source file")] string file,
@@ -1210,6 +1295,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a constructor to the class, struct or record that contains a line, using Roslyn, with checks. members names the fields and properties it takes and assigns (in order); each parameter is the member name with the first letter lower-cased. accessibility defaults to public. Refused for a member with no setter, an unknown member, or a constructor that already takes the same parameter types. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeGenerateConstructor(
         [Description("Full path of the source file")] string file,
@@ -1228,6 +1314,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change the modifiers and base list of the class, struct or record at a line, using Roslyn, with checks. modifiers replaces the whole set, such as \"public sealed\" or \"internal static partial\"; for a partial type it must include partial and applies to every part. baseList replaces the base class and interfaces of the part at the line, such as [\"Base\", \"IDisposable\"]. Adding abstract or static is refused while the type is used. Narrowing access and other breaking uses are refused by the checks. Attributes, type parameters and constraints are not changed. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeEditType(
         [Description("Full path of the source file")] string file,
@@ -1250,6 +1337,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add stubs to the class, struct or record that contains a line, using Roslyn, with checks. mode \"interface\" stubs every member of its interfaces that nothing implements yet; mode \"override\" overrides the members named in members (virtual or abstract members of its base classes). explicit true writes the interface stubs as explicit implementations. Each stub throws System.NotImplementedException. The stubs go at the end of the type. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeImplementMembers(
         [Description("Full path of the source file")] string file,
@@ -1269,6 +1357,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a new type (class, struct, record, interface, enum or delegate) in its own file beside anchorFile, using Roslyn, with checks. declaration is the type's full C# text without a doc comment or usings. The file takes the anchor's project and namespace unless namespace is given. usings, summary and attributes are written around the declaration in the file's own layout. Refused when a type of the same name exists or a file is already at the path. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeAddType(
         [Description("Full path of an existing source file in the target project; the new file goes beside it")] string anchorFile,
@@ -1290,6 +1379,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a method, property, event or indexer to an interface, using Roslyn, with checks. declaration is its full C# text. Every type that implements the interface would lack the member, so the reply lists each implementer and the change is refused while there are any. Without confirm it only returns the checks. Visual Studio only.")]
     public async Task<string> IdeAddInterfaceMember(
         [Description("Full path of the source file")] string file,
@@ -1307,6 +1397,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add a member to an enum, using Roslyn, with checks. name is the member's name and value an optional constant expression. The member goes after the last member, in the enum's own comma layout. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeAddEnumMember(
         [Description("Full path of the source file")] string file,
@@ -1325,6 +1416,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change the value of the enum member at a line, using Roslyn, with checks. A [Flags] enum's values are bits, and an enum that looks persisted (it has attributes, or is public) may be stored by number, so those refuse a value change unless allowValueChange is true. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeEditEnumMember(
         [Description("Full path of the source file")] string file,
@@ -1343,6 +1435,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change a method's parameter list with Roslyn, and rewrite every call site to match, with checks. parameters is the new list in order, each {declaration, fromOld, valueForCallers}: declaration is the parameter as written in the new signature (such as \"int b\" or \"CancellationToken ct = default\"); fromOld is the index of the old parameter it keeps (omit it for a new parameter); valueForCallers is the argument every existing call gets for a new parameter (an expression, or default). A new parameter without a default needs valueForCallers. A removed parameter's argument is dropped only when it has no side effects. Calls it cannot rewrite (method groups, delegates, constructors, attributes, params) refuse the change and are listed as uncovered. A method that overrides, implements or is overridden is refused. The doc comment's param tags follow, as in ide_edit_method, and docs needs an entry for each new parameter when the method has a doc comment. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeChangeSignature(
         [Description("Full path of the source file")] string file,
@@ -1365,6 +1458,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add one parameter to a method and thread it up its callers, using Roslyn, with checks. declaration is the parameter as written (for example \"CancellationToken ct = default\"). Each call passes the caller's own parameter of the same type when it has one; a caller within depth levels gets the parameter too and passes it on; any call above that passes valueAtTop (a literal or expression such as CancellationToken.None). depth defaults to 1 (the direct callers). Every method it changes is listed in the reply. Overrides, implementations, params methods and calls that cannot be rewritten refuse the change. Doc comments are not updated (the reply warns). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method with coverage; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeThreadParameter(
         [Description("Full path of the source file")] string file,
@@ -1386,6 +1480,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add one C# method to the type that contains a line, using Roslyn, with checks. The new method goes at the end of the type, or after the member at afterLine. If neighbouring methods have /// doc comments, the new one gets a doc comment in the same layout from newSummary and docs (a {tag, name, text} entry for each parameter, type parameter and a non-void return); the tool never invents text and warns when it is missing. The file is formatted, a new compile error refuses the edit, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeAddMethod(
         [Description("Full path of the source file")] string file,
@@ -1408,6 +1503,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add an overload of the method at a line, using Roslyn, with checks. The overload has the same name, goes after the method's last overload, and gets a doc comment like the original's (newSummary and docs supply the text; the tool never invents it). It is refused if it changes which method any existing call binds to, if the file then has a new compile error, or if its signature matches an existing method. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the method (or the affected test projects when none do) with coverage and returns each test's status and the method's line coverage in test_run; pass runTests false to skip. Visual Studio only.")]
     public async Task<string> IdeAddOverload(
         [Description("Full path of the source file")] string file,
@@ -1429,6 +1525,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("TDD step 1: add a test and the method it tests, then run the test to show it red. The method goes into the type at methodFile:methodLine; give it without a body (ending in ;) and it is added as a stub that throws NotImplementedException, so the test compiles and fails. The test goes into the class at testFile:testLine (testMethodText includes its attribute). The two must be in different files. Both are formatted and checked like ide_add_method. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the new test runs with coverage and tdd.status says red (failed, as wanted), green (it passed before the method existed, so it may not test anything) or not_run. Visual Studio only.")]
     public async Task<string> IdeTddAddTest(
         [Description("Full path of the test file")] string testFile,
@@ -1453,6 +1550,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("TDD step 2: replace the body of a test, then run it and return its result. newBody is a block or the statements of the new body; the test's attribute and signature stay. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied the test runs, and tdd.status says red or green. Give targetFile and targetLine (a line inside the method under test) to also get that method's line coverage. Then implement the method with ide_edit_method, which runs the tests that call it. Visual Studio only.")]
     public async Task<string> IdeTddUpdateTest(
         [Description("Full path of the test file")] string file,
@@ -1473,6 +1571,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List C# members and types with no references, for review before deleting them: private and internal ones by default, public ones when includePublic is true (other assemblies may use public ones). Read only. Each entry gives its kind, name, file and line, and a confidence: members with attributes, interfaces or constructors may be used by reflection, serialization or dependency injection, and are marked low. Feeds ide_delete_member and ide_delete_type. Visual Studio only.")]
     public async Task<string> IdeListUnused(
         [Description("Optional: one project's name. Default: every project in the solution.")] string? project = null,
@@ -1484,6 +1583,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         await IdeInstanceRouter.CallAsync("listUnused", new { project, includePublic }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Delete one C# member (method, property, field, event, constructor, operator, indexer, enum member or interface member) using Roslyn, with checks. Refused while any reference remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the call, use an empty value only where that leaves valid code). Refused when the member overrides or implements another member, when an interface member has implementers, and when tests call it unless their names are given in deleteTests (those tests are not deleted). Removes the member and its doc comment. A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeDeleteMember(
         [Description("Full path of the source file")] string file,
@@ -1504,6 +1604,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Delete one C# type (class, struct, interface, record or enum, top-level or nested) using Roslyn, with checks. Refused while any reference outside the type remains: give a callerEdits entry for each (file, line, column from ide_semantic_references; newText replaces the reference). Refused while tests call it unless their names are in deleteTests (those tests are not deleted). With deleteFile true, the file is deleted too when the type was its only declaration (SDK-style projects only). A new compile error refuses the change. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Visual Studio only.")]
     public async Task<string> IdeDeleteType(
         [Description("Full path of the file that declares the type")] string file,
@@ -1525,6 +1626,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Rename a namespace across the solution, using Roslyn, with checks. The namespace and every namespace under it change: each declaration, using, qualified name, alias and cref that spells it out. It is refused if the name is not a valid dotted name, if no source file declares the namespace, if it is also declared in a referenced assembly, if a type in it would collide with a type already in the new namespace, if a declaration is a block nested inside another namespace block, or if code names it relative to an enclosing namespace (those references need callerEdits entries with file, line, column and newText). Strings that still mention the old name are listed in string_mentions and not changed. A new compile error refuses the change; new warnings and notices are returned. When the project's folders follow its namespaces, files that no longer match are warned about, or moved when moveFiles is true (SDK-style projects only; ask the user first). Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
     public async Task<string> IdeRenameNamespace(
         [Description("The namespace to rename, such as Company.Product.Old")] string oldNamespace,
@@ -1544,6 +1646,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Move one top-level type to another namespace, using Roslyn, with checks. The type's declaration moves, every qualified use is rewritten, and code that used the type by its simple name gets a using for the new namespace; the moved type gets the usings it used to have implicitly, and usings of the old namespace that nothing needs any more are removed. It is refused if the new name is not valid, the type is nested or in the global namespace, its file also declares other types (or a partial part's file does), a type of that name already exists in the new namespace, or code names the type relative to an enclosing namespace (those need callerEdits entries). A new compile error refuses the change. The same moveFiles rule as ide_rename_namespace applies. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the affected test projects. Visual Studio only.")]
     public async Task<string> IdeMoveType(
         [Description("Full path of the file that declares the type")] string file,
@@ -1564,6 +1667,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Add one or more fields or properties to the type that contains a line, using Roslyn, with checks. For an indexer, an event, an event field or a delegate, give its full C# text as declaration (only that one member; name and type are optional and unused). For each field or property you give its name, type, accessibility (always required: public, internal, protected, private, protected internal or private protected) and how it is backed: auto ({ get; set; }), field (a private backing field and a property over it), readonly-field, field-only (a plain field) or expression (a get-only property computed from initializer). Also setter (set, init, none, or \"private set\" style), required, initializer, attributes (for example \"Required\" or \"JsonProperty(\\\"x\\\")\") and summary. They go after the type's last field or property, in its layout, with doc comments in the neighbours' style when they have them. The file is formatted, a new compile error refuses the change, and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the type's members, if any. Visual Studio only.")]
     public async Task<string> IdeAddMember(
         [Description("Full path of the source file")] string file,
@@ -1578,6 +1682,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
         await IdeInstanceRouter.CallAsync("addMember", new { file, line, members, confirm, planHash }, solutionPath, ct, ide, instancePid).ConfigureAwait(false);
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change an existing field or property, whatever its accessibility, using Roslyn, with checks. Set only what changes: newType, accessibility, setter (set, init, none, \"private set\" style), required, backing (auto or field: swap between an auto property and a property over a private field), addAttributes, removeAttributes, newSummary, or newName. Every reference is checked: a change to the type, accessibility, setter or required needs a callerEdits entry (file, line, column from ide_semantic_references, and newText for the invocation or name) for each reference, or it is refused; a rename updates its references itself and must be a call of its own; attribute, backing and summary changes touch no reference. A change on a property that overrides or implements another member is refused. A new compile error refuses the change. The file is formatted and new warnings and notices are returned. Without confirm it only returns the checks. Show them to the user and get their yes before setting confirm to true. Once applied it runs the tests that call the member, with coverage. Visual Studio only.")]
     public async Task<string> IdeEditMember(
         [Description("Full path of the source file")] string file,
@@ -1609,6 +1714,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Make sure this server holds an events subscription to a Visual Studio instance. Subscriptions are also made automatically for every running instance, so this is only needed if one was closed. Returns the instance pid. Read events with ide_read_events.")]
     public async Task<string> IdeSubscribeEvents(
         [Description("Optional: full path of the solution to target")] string? solutionPath = null,
@@ -1630,6 +1736,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read events from a Visual Studio instance, after a sequence number (0 for everything kept). Events are kept for the last 500 per instance from the time this server started. Events: solutionOpened, solutionClosing, buildBegin, buildDone, enterBreakMode, enterRunMode, contextChanged, documentSaved, documentOpened, documentClosing. Read-only.")]
     public string IdeReadEvents(
         [Description("Optional: process id of the instance. Needed when more than one instance is subscribed.")] int? instancePid = null,
@@ -1658,6 +1765,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Stop this server's events subscription to one instance. Automatic subscription resumes on the next check unless the instance is closed.")]
     public string IdeUnsubscribeEvents(
         [Description("Process id of the instance")] int instancePid)
@@ -1667,6 +1775,7 @@ internal sealed class IdeTools(IOptions<IdeToolsOptions> options, IElevRunner? e
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Change the break-when-thrown and/or break-when-user-unhandled setting of one debugger exception. Without confirm it only returns the change. Show the plan to the user and get their yes before setting confirm to true.")]
     public Task<string> IdeSetExceptionBreak(
         [Description("Exception group name, as listed by ide_list_exceptions")] string group,

@@ -19,6 +19,7 @@ internal sealed class ExtensionTools
         ])));
 
     [McpServerTool]
+    [SafeTool]
     [Description("List installed VS Code extensions (ide = VsCode). Visual Studio listing is not available yet.")]
     public static async Task<string> ExtensionList(
         [Description("VsCode or VisualStudio")] string ide,
@@ -39,6 +40,7 @@ internal sealed class ExtensionTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Describe an extension. VsCode reads the installed package.json; VisualStudio queries the Marketplace.")]
     public static async Task<string> ExtensionInfo(
         [Description("VsCode or VisualStudio")] string ide,
@@ -59,6 +61,7 @@ internal sealed class ExtensionTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan an extension add. Returns the exact command and a token. Nothing is installed until extension_add_confirm is called with the token and the user has approved it.")]
     public static async Task<string> ExtensionAddPlan(
         [Description("VsCode or VisualStudio")] string ide,
@@ -82,6 +85,7 @@ internal sealed class ExtensionTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run a planned extension add. Use only after the user has approved the command returned by extension_add_plan.")]
     public static async Task<string> ExtensionAddConfirm(
         [Description("Token returned by extension_add_plan")] string token,
@@ -92,6 +96,7 @@ internal sealed class ExtensionTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Recommend the official C# extensions (C# Dev Kit, C#) in the folder's .vscode/extensions.json. " +
                  "When C# Dev Kit is installed, also write dotnet.defaultSolution to .vscode/settings.json. Existing keys are kept.")]
     public static async Task<string> ExtensionWorkspaceSetup(
@@ -110,6 +115,7 @@ internal sealed class ExtensionTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("List the Visual Studio installs on this machine (stable and prerelease) with their MSBuild path and whether the VSSDK targets " +
                  "a VSIX build needs are present. vsSdkTargetsPath is null when the extension development workload is missing.")]
     public static async Task<string> BuildEnv(CancellationToken ct = default)

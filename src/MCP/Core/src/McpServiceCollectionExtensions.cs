@@ -129,3 +129,21 @@ public static class McpServiceCollectionExtensions
             .WithTools<DotnetDiagTools>();
     }
 }
+
+/// <summary>
+/// Marks an MCP tool that only reads or changes nothing outside the chat. Every tool carries exactly one of <see cref="SafeToolAttribute"/>
+/// or <see cref="DangerousToolAttribute"/>; a test fails for a tool with neither.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class SafeToolAttribute : Attribute
+{
+}
+
+/// <summary>
+/// Marks an MCP tool that runs commands, kills processes or changes the machine. Over HTTP it needs the person's confirmation
+/// before it runs (unit 1c of docs/plans/2026-11-26-tray-service.md).
+/// </summary>
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class DangerousToolAttribute : Attribute
+{
+}
