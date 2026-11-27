@@ -173,4 +173,6 @@
   <data name="WorkloadDone" xml:space="preserve"><value>Installed the {0} workload.</value></data>
   <data name="WorkloadFailed" xml:space="preserve"><value>The workload install failed (exit {0}): {1}</value></data>
   <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
+  <data name="ContainerUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'logs', 'start', 'stop', 'restart' or 'exec'.</value></data>
+  <data name="WslUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'health', 'run' or 'debug_setup'.</value></data>
 </root>

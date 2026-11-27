@@ -16,6 +16,7 @@ public sealed class SelfTestCoverageTests
         ("ModelServerTools", "ModelServerHelper"),
         ("FileEditTools", "FileEditHelper"),
         ("ContainerTools", "ContainerHelper"),
+        ("WslTools", "WslHelper"),
         ("ConfigTools", "ConfigHelper"),
         ("ErrorTools", "ErrorHelper"),
         ("ExtensionTools", "ExtensionsHelper"),

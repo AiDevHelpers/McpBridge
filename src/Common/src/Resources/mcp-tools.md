@@ -155,6 +155,13 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | --- | --- |
 | `file_edit` | Apply, insert, delete, rename, or roll back a text edit in a file inside the workspace root. A byte-exact backup is written to .aidevhelpers/backups before every write; dryRun=true validates without writing. The file's encoding (BOM) is kept. root defaults to the git repo of the server's current folder. |
 
+## WSL and containers
+
+| Tool | Purpose |
+| --- | --- |
+| `wsl` | WSL distributions: status (distros, default, state), health (OS, kernel, user, apt and sudo usable), run (one bash command line in the distro, timeoutSeconds 1-600; runs arbitrary commands), debug_setup (dotnet, python or node launch configuration; write=true creates .vscode/launch.json only when absent). |
+| `container` | Docker or Podman: status, logs (tailLines, errorLinesOnly), start, stop, restart, exec (one shell command in the container; runs arbitrary commands). runtime picks docker or podman; omitted, docker is tried first. |
+
 ## Model server
 
 | Tool | Purpose |

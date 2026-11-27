@@ -93,6 +93,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ModelServerTools>()
             .WithTools<FileEditTools>()
             .WithTools<ContainerTools>()
+            .WithTools<WslTools>()
             .WithTools<LintTools>()
             .WithTools<LocalizationTools>()
             .WithTools<PreferredIdeTools>()

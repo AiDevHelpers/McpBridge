@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>AiDevHelpers.Helpers.WslHelper</PackageId>
+    <IsPackable>true</IsPackable>
+    <Authors>AiDevHelpers</Authors>
+    <RepositoryUrl>https://github.com/AiDevHelpers/McpBridge</RepositoryUrl>
+    <Description>AiDevHelpers WslHelper library: status, health, run and debug_setup for WSL distributions.</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Common\src\AiDevHelpers.Common.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />
+  </ItemGroup>
+</Project>

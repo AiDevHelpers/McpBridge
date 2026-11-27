@@ -14,6 +14,16 @@ RoslynHelper|Project did not load and MSBuild reported no diagnostic.
 ConfigHelper|Remote Debugger
 ExtensionsHelper|Microsoft Visual Studio
 
+# WSL health probe: a bash script run inside the distro, not UI text.
+WslHelper|printf 'KERNEL=%s\\n' "$(uname -sr)"; 
+WslHelper|printf 'USER=%s\\n' "$(id -un)"; 
+WslHelper|( . /etc/os-release 2>/dev/null; printf 'OS=%s\\n' "$PRETTY_NAME" ); 
+WslHelper|if command -v apt-get >/dev/null 2>&1; then printf 'APT=1\\n'; else printf 'APT=0\\n'; fi; 
+WslHelper|if sudo -n true >/dev/null 2>&1; then printf 'SUDO=1\\n'; else printf 'SUDO=0\\n'; fi
+WslHelper|test -x \"$HOME/.vsdbg/vsdbg\" && echo READY || echo MISSING
+WslHelper|python3 -c 'import debugpy' >/dev/null 2>&1 && echo READY || echo MISSING
+WslHelper|command -v node >/dev/null 2>&1 && echo READY || echo MISSING
+
 # Step labels for the gate. They name the command that runs, so they stay in code with it.
 GateHelper|dotnet outdated
 GateHelper|dotnet clean

@@ -14,7 +14,7 @@ internal sealed class SelfTestTools
     /// <summary>Helper names without the AiDevHelpers.Helpers. prefix. Each has an embedded AiDevHelpers.SelfTest.md.</summary>
     public static readonly string[] HelperNames =
     [
-        "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "FileEditHelper", "ContainerHelper", "LintHelper", "LocalizationHelper", "LogHelper",
+        "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "FileEditHelper", "ContainerHelper", "WslHelper", "LintHelper", "LocalizationHelper", "LogHelper",
         "ModelServerHelper", "OutputHelper", "PackageHelper", "ProjectHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
         ScriptHelperName,
     ];

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InvalidDistroName" xml:space="preserve"><value>Invalid distro name '{0}'. Use letters, digits, '.', '_' or '-', starting with a letter or digit.</value></data>
+  <data name="NoDistroRegistered" xml:space="preserve"><value>No WSL distribution is registered. Install one, e.g. `wsl --install -d Ubuntu`.</value></data>
+  <data name="NoDefaultDistro" xml:space="preserve"><value>No default WSL distribution is marked in `wsl -l -v`. Pass distro explicitly.</value></data>
+  <data name="ListFailed" xml:space="preserve"><value>wsl.exe -l -v failed (exit {0}): {1}</value></data>
+  <data name="LaunchFailed" xml:space="preserve"><value>Could not start wsl.exe: {0}</value></data>
+  <data name="CommandRequired" xml:space="preserve"><value>command is required and must not be empty.</value></data>
+  <data name="TimeoutInvalid" xml:space="preserve"><value>timeoutSeconds must be between 1 and 600.</value></data>
+  <data name="RunTimedOut" xml:space="preserve"><value>Command timed out after {0} seconds. The process tree was killed; the command may have partly run.</value></data>
+  <data name="ProbeExitCode" xml:space="preserve"><value>Probe exited with code {0}.</value></data>
+  <data name="ProbeTimedOut" xml:space="preserve"><value>The probe timed out.</value></data>
+  <data name="HealthNoKernel" xml:space="preserve"><value>Probe ran but returned no kernel information.</value></data>
+  <data name="RuntimeUnknown" xml:space="preserve"><value>Unknown runtime '{0}'. Use dotnet, python or node.</value></data>
+  <data name="ProgramPathRequired" xml:space="preserve"><value>programPath is required.</value></data>
+  <data name="WriteNeedsWorkspace" xml:space="preserve"><value>write requires workspaceRoot.</value></data>
+  <data name="WorkspaceNotFolder" xml:space="preserve"><value>workspaceRoot '{0}' is not an existing folder.</value></data>
+  <data name="VscodeIsLink" xml:space="preserve"><value>'{0}' is a link or junction; refusing to write launch.json through it.</value></data>
+  <data name="VscodeNotFolder" xml:space="preserve"><value>'{0}' exists and is not a folder.</value></data>
+  <data name="LaunchConfigWriteFailed" xml:space="preserve"><value>Could not write '{0}': {1}</value></data>
+  <data name="DotNetReady" xml:space="preserve"><value>vsdbg is installed at ~/.vsdbg/vsdbg.</value></data>
+  <data name="DotNetMissing" xml:space="preserve"><value>vsdbg (.NET debugger) is not installed in this distro.</value></data>
+  <data name="DotNetInstallHint" xml:space="preserve"><value>install the .NET debugger vsdbg into ~/.vsdbg by running: curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l ~/.vsdbg</value></data>
+  <data name="PythonReady" xml:space="preserve"><value>debugpy is importable.</value></data>
+  <data name="PythonMissing" xml:space="preserve"><value>debugpy is not installed for python3 in this distro.</value></data>
+  <data name="PythonInstallHint" xml:space="preserve"><value>install debugpy by running: python3 -m pip install --user debugpy</value></data>
+  <data name="NodeReady" xml:space="preserve"><value>node is on PATH; the built-in inspector is available.</value></data>
+  <data name="NodeMissing" xml:space="preserve"><value>node is not installed in this distro.</value></data>
+  <data name="NodeInstallHint" xml:space="preserve"><value>install Node.js, e.g. via apt: apt-get install -y nodejs npm</value></data>
+</root>

@@ -44,7 +44,7 @@ internal sealed class ContainerTools
                 case "exec":
                     return Json(await Service.ExecAsync(containerName, command ?? "", timeoutSeconds, runtime, ct));
                 default:
-                    return Json(new { ok = false, error = "Unknown action. Use 'status', 'logs', 'start', 'stop', 'restart' or 'exec'." });
+                    return Json(new { ok = false, error = Strings.Get("ContainerUnknownAction") });
             }
         }
         catch (OperationCanceledException)

@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\..\Helpers\BookmarkHelper\src\AiDevHelpers.Helpers.BookmarkHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\ConfigHelper\src\AiDevHelpers.Helpers.ConfigHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\ErrorHelper\src\AiDevHelpers.Helpers.ErrorHelper.csproj" />
+    <ProjectReference Include="..\..\..\Helpers\WslHelper\src\AiDevHelpers.Helpers.WslHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\ContainerHelper\src\AiDevHelpers.Helpers.ContainerHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\FileEditHelper\src\AiDevHelpers.Helpers.FileEditHelper.csproj" />
     <ProjectReference Include="..\..\..\Helpers\ModelServerHelper\src\AiDevHelpers.Helpers.ModelServerHelper.csproj" />
