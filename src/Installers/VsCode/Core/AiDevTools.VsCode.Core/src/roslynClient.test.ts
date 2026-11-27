@@ -34,7 +34,7 @@ describe("Roslyn helper client", () => {
         const transport = recordingTransport("");
         const client = new RoslynHelperClient(() => undefined, transport);
 
-        await expect(client.runAction("editMethod", {})).rejects.toThrow(/No Roslyn helper is running/);
+        await expect(client.runAction("editMethod", {})).rejects.toThrow(/No net10 Roslyn helper is running/);
         expect(transport.sent).toHaveLength(0);
     });
 
@@ -43,6 +43,19 @@ describe("Roslyn helper client", () => {
         const client = new RoslynHelperClient(() => manifest, transport);
 
         await expect(client.runAction("editMethod", {})).rejects.toThrow("Unknown action: nope.");
+    });
+
+    test("a net48 action asks for the net48 helper, and says so when none runs", async () => {
+        const asked: string[] = [];
+        const transport = recordingTransport(JSON.stringify({ ok: true, pid: 4321, result: {} }));
+        const client = new RoslynHelperClient((framework) => { asked.push(framework); return framework === "net48" ? { ...manifest, pipeName: "AiDevHelpers.Roslyn48.4321" } : undefined; }, transport);
+
+        await client.runAction("editMethod", {}, "net48");
+        expect(asked).toEqual(["net48"]);
+        expect(transport.sent[0].pipeName).toBe("AiDevHelpers.Roslyn48.4321");
+
+        const none = new RoslynHelperClient(() => undefined, recordingTransport(""));
+        await expect(none.runAction("editMethod", {}, "net48")).rejects.toThrow(/No net48 Roslyn helper is running/);
     });
 
     test("the routed set is the shared helper edit actions", () => {
