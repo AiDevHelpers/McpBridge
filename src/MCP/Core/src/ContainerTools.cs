@@ -12,6 +12,7 @@ internal sealed class ContainerTools
     private static readonly ContainerService Service = new();
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Docker or Podman container actions. action: 'status' (state, health, exit code), 'logs' (tailLines, errorLinesOnly), " +
         "'start', 'stop', 'restart', or 'exec' (one shell command via /bin/sh -c inside the container, timeoutSeconds 1-600). " +

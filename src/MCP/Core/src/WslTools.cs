@@ -14,6 +14,7 @@ internal sealed class WslTools
     private static readonly JsonSerializerOptions Options = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "WSL actions. action: 'status' (distros, default, state), 'health' (OS, kernel, user, apt and sudo usable), " +
         "'run' (one bash command line via /bin/bash -c in the distro, timeoutSeconds 1-600), or 'debug_setup' " +
