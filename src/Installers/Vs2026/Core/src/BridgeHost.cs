@@ -140,6 +140,18 @@ public sealed class BridgeHost : IDisposable
     private void OnDocumentClosing(Document document) => _events.Publish("documentClosing", new { file = document.FullName });
 #pragma warning restore VSTHRD010
 
+    // Set by "quiesce". Once set, new actions are refused so the server can stop or restart without this instance changing under it.
+    private volatile bool _quiesced;
+
+    // The MCP server asks each instance to stop taking actions before it stops or restarts. Requests are served one at a time, so this
+    // reply comes after the action that is running has finished: that is the "finish the step, then report back" step.
+    private object Quiesce()
+    {
+        _quiesced = true;
+        _events.Publish("serverStopping", new { pid = _pid });
+        return new { quiesced = true, pid = _pid };
+    }
+
     // The MCP server sends its global dialog settings here. Only values that differ are applied, and a change is published as settingsChanged.
     private object Configure(IdeActions actions, JsonElement args)
     {
@@ -184,7 +196,11 @@ public sealed class BridgeHost : IDisposable
 #pragma warning disable VSTHRD010 // _runOnMainThread marshals the call onto the UI thread before Invoke runs.
             (action, args) => action == "configure"
                 ? Task.FromResult<object>(Configure(actions, args))
-                : _runOnMainThread(() => actions.Invoke(action, args)),
+                : action == "quiesce"
+                    ? Task.FromResult<object>(Quiesce())
+                    : _quiesced
+                        ? Task.FromException<object>(new InvalidOperationException("The MCP server is stopping; this instance takes no new actions."))
+                        : _runOnMainThread(() => actions.Invoke(action, args)),
 #pragma warning restore VSTHRD010
             () => _solutionPath,
             new DebugBridgeLogger());
