@@ -23,7 +23,7 @@ internal static class RepoSettings
     private const string SectionName = "IdeTools";
 
     /// <summary>The IdeTools keys a repo file may set.</summary>
-    private static readonly string[] OverridableKeys = [nameof(IdeToolsOptions.IdeTestRunMode)];
+    private static readonly string[] OverridableKeys = [nameof(IdeToolsOptions.IdeTestRunMode), nameof(IdeToolsOptions.ToolsetPath)];
 
     public static RepoSettingsResult Resolve(IdeToolsOptions global, string? solutionPath)
     {
@@ -33,7 +33,10 @@ internal static class RepoSettings
             IdeTestRunMode = global.IdeTestRunMode,
             AutoDismissDialogs = global.AutoDismissDialogs,
             ActionTimeoutSeconds = global.ActionTimeoutSeconds,
+            ToolsetPath = ToolsetPaths.Normalize(global.ToolsetPath),
+            AllowedToolsetPaths = global.AllowedToolsetPaths,
         };
+        var allowedPaths = ToolsetPaths.Allowed(global.AllowedToolsetPaths);
         var warnings = new List<string>();
         var allowAll = false;
 
@@ -71,6 +74,19 @@ internal static class RepoSettings
                     if (!OverridableKeys.Contains(property.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         warnings.Add(Strings.Format("RepoSettingIgnored", property.Name, file));
+                    }
+                    else if (property.Value.ValueKind == JsonValueKind.String
+                        && property.Name.Equals(nameof(IdeToolsOptions.ToolsetPath), StringComparison.OrdinalIgnoreCase))
+                    {
+                        var chosen = property.Value.GetString() ?? "";
+                        if (ToolsetPaths.IsKnown(chosen) && allowedPaths.Contains(chosen))
+                        {
+                            effective.ToolsetPath = chosen;
+                        }
+                        else
+                        {
+                            warnings.Add(Strings.Format("RepoToolsetPathRefused", chosen, file));
+                        }
                     }
                     else if (property.Value.ValueKind == JsonValueKind.String)
                     {

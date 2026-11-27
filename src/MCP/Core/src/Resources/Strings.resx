@@ -175,6 +175,7 @@
   <data name="SamplingNotSupported" xml:space="preserve"><value>The connected client does not support sampling, so translation is not available.</value></data>
   <data name="ContainerUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'logs', 'start', 'stop', 'restart' or 'exec'.</value></data>
   <data name="WslUnknownAction" xml:space="preserve"><value>Unknown action. Use 'status', 'health', 'run' or 'debug_setup'.</value></data>
+  <data name="RepoToolsetPathRefused" xml:space="preserve"><value>The repo file set toolsetPath '{0}' in {1}, which is unknown or not allowed by the server. The server default is used.</value></data>
   <data name="TokenOtherSession" xml:space="preserve"><value>refused: this token was planned in another chat session.</value></data>
   <data name="ApprovalRefused" xml:space="preserve"><value>refused: this dangerous tool needs the person's yes on the tray for this call. Nothing ran.</value></data>
   <data name="AgentToolReplyLimit" xml:space="preserve"><value>Tool replies are fitted to about {0} tokens for this client. When a reply is cut short, ask again with a narrower request (a single file, test, or log range) to get the rest.</value></data>

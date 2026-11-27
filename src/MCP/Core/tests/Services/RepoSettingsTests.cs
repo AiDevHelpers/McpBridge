@@ -60,6 +60,65 @@ public sealed class RepoSettingsTests : IDisposable
     }
 
     [Fact]
+    public void RepoToolsetPathOverridesTheGlobalDefault()
+    {
+        var sln = Solution();
+        WriteSettings("""{"IdeTools":{"ToolsetPath":"VsCode"}}""");
+
+        var result = RepoSettings.Resolve(new IdeToolsOptions { ToolsetPath = "Standalone" }, sln);
+
+        Assert.Equal("VsCode", result.Options.ToolsetPath);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void GlobalToolsetPathIsUsedWhenTheRepoIsSilent()
+    {
+        var sln = Solution();
+        WriteSettings("""{"IdeTools":{}}""");
+
+        var result = RepoSettings.Resolve(new IdeToolsOptions { ToolsetPath = "VisualStudio" }, sln);
+
+        Assert.Equal("VisualStudio", result.Options.ToolsetPath);
+    }
+
+    [Fact]
+    public void UnknownRepoToolsetPathIsRefusedAndFallsBackToGlobal()
+    {
+        var sln = Solution();
+        WriteSettings("""{"IdeTools":{"ToolsetPath":"Ruby"}}""");
+
+        var result = RepoSettings.Resolve(new IdeToolsOptions { ToolsetPath = "VsCode" }, sln);
+
+        Assert.Equal("VsCode", result.Options.ToolsetPath);
+        Assert.Single(result.Warnings);
+    }
+
+    [Fact]
+    public void RepoToolsetPathOutsideTheServerAllowListIsRefused()
+    {
+        var sln = Solution();
+        WriteSettings("""{"IdeTools":{"ToolsetPath":"Standalone"}}""");
+
+        var result = RepoSettings.Resolve(
+            new IdeToolsOptions { ToolsetPath = "VsCode", AllowedToolsetPaths = ["VsCode", "VisualStudio"] }, sln);
+
+        Assert.Equal("VsCode", result.Options.ToolsetPath);
+        Assert.Single(result.Warnings);
+    }
+
+    [Fact]
+    public void EmptyToolsetPathResolvesToStandalone()
+    {
+        var sln = Solution();
+        WriteSettings("""{"IdeTools":{}}""");
+
+        var result = RepoSettings.Resolve(new IdeToolsOptions(), sln);
+
+        Assert.Equal("Standalone", result.Options.ToolsetPath);
+    }
+
+    [Fact]
     public void NoRepoFolder_UsesGlobal()
     {
         var sln = Solution();

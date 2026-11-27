@@ -11,4 +11,10 @@ public sealed class IdeToolsOptions
 
     /// <summary>Global only. Seconds an IDE action may wait on the UI thread before the bridge replies with an error and reports a dialog.</summary>
     public int ActionTimeoutSeconds { get; set; } = 60;
+
+    /// <summary>The server default toolset path: "VisualStudio", "VsCode" or "Standalone". Empty or unknown means Standalone. A repo file may override it.</summary>
+    public string ToolsetPath { get; set; } = "";
+
+    /// <summary>Global only. The paths a repo file may choose. Empty means all three.</summary>
+    public string[] AllowedToolsetPaths { get; set; } = [];
 }
