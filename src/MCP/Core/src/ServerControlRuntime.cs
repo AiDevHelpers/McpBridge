@@ -203,6 +203,10 @@ public static class ApprovalWire
 {
     public const string PipeNamePrefix = "AiDevHelpers.Approval.";
 
+    /// <summary>The pipe name for the signed-in user. Both the MCP server and the tray run as that user, so they agree on it without config.</summary>
+    public static string PipeNameForCurrentUser() =>
+        PipeNamePrefix + System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;
+
     public static string Encode(ApprovalRequest request) =>
         System.Text.Json.JsonSerializer.Serialize(new { nonce = request.Nonce, tool = request.ToolName, argumentsHash = request.ArgumentsHash, expiresUtc = request.ExpiresUtc });
 

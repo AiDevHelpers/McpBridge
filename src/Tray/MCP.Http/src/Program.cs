@@ -28,8 +28,9 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
     options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
 });
 
-// Dangerous tools need the person's yes on the tray (unit 1c). The tray is not built yet, so no answer comes and they are refused.
-builder.Services.AddSingleton<IApprovalChannel>(new NoTrayApprovalChannel());
+// Dangerous tools need the person's yes on the tray, over the per-user approval pipe. With no tray running there is no pipe, the
+// connect fails, and the call is refused (fail closed).
+builder.Services.AddSingleton<IApprovalChannel>(new ApprovalPipeChannel(ApprovalWire.PipeNameForCurrentUser()));
 var app = builder.Build();
 
 app.Use(async (context, next) =>
@@ -80,12 +81,6 @@ public static class PortConflictReport
         cause,
         atUtc = DateTime.UtcNow,
     });
-}
-
-/// <summary>The approval channel until the tray exists: it never answers, so every dangerous call is refused (fail closed).</summary>
-public sealed class NoTrayApprovalChannel : IApprovalChannel
-{
-    public Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct) => Task.FromResult<ApprovalReply?>(null);
 }
 
 /// <summary>The request checks. Pure, so the tests run them without a server.</summary>

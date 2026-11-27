@@ -1,6 +1,6 @@
 # Windows service + login tray app + one HTTP MCP
 
-Branch from `wip`; PRs and merges into `wip`. Status (2026-11-27): units 1a to 4 are merged to `wip` (PR #109, merge commit 7992942). Where wip and this branch built the same unit, wip's version is kept: `ApprovalGate` and attributes (MCP.Core), `McpSupervisor` (Host), the tray health and service readers (Tray). Our duplicates were removed. Not on wip: the tray side of the approval pipe (unit 5 scope); until then wip's `NoTrayApprovalChannel` refuses dangerous tools over HTTP. Phase 0 done except spikes B and C. Unit 5 is on hold.
+Branch from `wip`; PRs and merges into `wip`. Status (2026-11-27): units 1a to 4 are merged to `wip` (PR #109, merge commit 7992942). Where wip and this branch built the same unit, wip's version is kept: `ApprovalGate` and attributes (MCP.Core), `McpSupervisor` (Host), the tray health and service readers (Tray). Our duplicates were removed. The tray side of the approval pipe (`ApprovalPipeHost`) and MCP.Http's use of it (`ApprovalPipeChannel`, replacing `NoTrayApprovalChannel`) are in PR #123. The tray shell that runs the host is unit 5, so until then dangerous tools are refused over HTTP. Phase 0 done except spikes B and C. Unit 5 is on hold.
 
 ## Decisions (user, 2026-11-26)
 - SCM Windows Service (LocalSystem) supervises one **HTTP MCP** and applies updates; a per-user WPF tray app starts at login. The service stays, despite two reviewers calling it avoidable; Spike A (below) re-prices it before unit 3.
