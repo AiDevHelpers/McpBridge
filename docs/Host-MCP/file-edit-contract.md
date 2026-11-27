@@ -1,7 +1,7 @@
 # file_edit contract
 
 Behavior ported from TokenSaver `PatchEngine` (`TokenSaver.CodeHelper/Patching/PatchEngine.cs`) and `CodeHelperTools.EditFile`.
-Differences by design: results are JSON (`{ok, error, ...}`), no re-indexing, backup folder `.aidevtools/backups`.
+Differences by design: results are JSON (`{ok, error, ...}`), no re-indexing, backup folder `.aidevhelpers/backups`.
 
 ## Tool
 `file_edit(action, filePath?, root?, dryRun?, description?, ...)`. `action` is trimmed and case-insensitive. Unknown action:
@@ -23,7 +23,7 @@ Missing parameter text: "<name> is required for action '<action>'." Applies to f
 3. Read bytes; detect encoding: UTF-8 BOM, UTF-16 LE BOM, UTF-16 BE BOM, else UTF-8 without BOM. Encoding is kept on write.
 4. Apply the operation in memory. Error: no write.
 5. `dryRun=true`: return `ok=true`, `dryRun=true`, `linesChanged`; write nothing and create no backup.
-6. Backup: byte-exact copy to `<root>/.aidevtools/backups/<yyyyMMdd_HHmmss_fff>_<6 hex>_<path with / \ : replaced by _>`. Created with `CreateNew`. Failure: "Backup failed: <msg>", file untouched.
+6. Backup: byte-exact copy to `<root>/.aidevhelpers/backups/<yyyyMMdd_HHmmss_fff>_<6 hex>_<path with / \ : replaced by _>`. Created with `CreateNew`. Failure: "Backup failed: <msg>", file untouched.
 7. Atomic write: temp file `<file>.<guid>.tmp` in the same folder, then `File.Replace`, retried up to 5 times with 25 ms steps on `IOException`. Temp file is always removed.
 8. Result: `ok`, `filePath`, `linesChanged`, `backupPath`, `description`.
 
@@ -39,4 +39,4 @@ Missing parameter text: "<name> is required for action '<action>'." Applies to f
 The engine supports a batch that stops at the first failure. The tool exposes single operations only.
 
 ## Config
-`RequireAnchorMatch` (default true). Backup folder name fixed at `.aidevtools/backups` in v1.
+`RequireAnchorMatch` (default true). Backup folder name fixed at `.aidevhelpers/backups` in v1.

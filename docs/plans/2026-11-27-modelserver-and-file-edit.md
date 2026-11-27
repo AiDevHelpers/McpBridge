@@ -29,7 +29,7 @@ Sonnet review 2026-11-27 folded in (findings noted per unit).
 - [x] U1. Contracts. `docs/Host-MCP/model-server-contract.md` and `file-edit-contract.md` from the source files above: endpoints (`/api/capacity`,
   `/api/tags`, `/api/ps`, router `/health`, `/health/ready`), defaults, error text, EditFile actions (trimmed, case-insensitive), `position` default after,
   dryRun, occurrence errors, RequireAnchorMatch, BOM/encoding, atomic write, backup naming. Done: every action/endpoint documented, checked against source.
-- [ ] U2. Workspace path guard in `FileEditHelper` (new project). Failing tests first (ported from `PatchEngineTests`): `..` escape, absolute outside root,
+- [x] U2. (done: red run = CS0103 `WorkspacePathGuard` missing, then 9/9 green; root is an explicit argument, repo-root lookup happens in the tool in U6) Workspace path guard in `FileEditHelper` (new project). Failing tests first (ported from `PatchEngineTests`): `..` escape, absolute outside root,
   no root known, junction/symlink escape, rollback source not in backup root, rollback target outside root. Root comes from a `root` param, else
   `RepoSettingsFile.FindRepoRootFromFolder`. Done: red then green.
 - [ ] U3. `ModelServerHelper` + tests: discovery rules above, health, capacity parse (`gpu.detected`, `Math.Max(1,…)`), non-2xx, malformed JSON, `/api/ps` failure
@@ -37,7 +37,7 @@ Sonnet review 2026-11-27 folded in (findings noted per unit).
 - [ ] U4. `ModelServerTools` (`model_server_status`, `model_server_capacity`): tool tests (ok/error JSON), self-test entries, `mcp-tools.md`.
 - [ ] U5. `FileEditHelper` edit engine + tests: apply (occurrence 0/N, not found), insert before/after (+anchor fallback when not required), delete literal/regex
   (Multiline, "Invalid regex"), rename (whole word; comment lines skipped unless `replaceInComments`), rollback, dryRun writes nothing, backup per write with
-  ms+guid name, BOM/UTF-16 preserved, atomic write with `File.Replace` retry and no `.tmp` left, batch stops at first failure. Backup folder `.aidevtools/backups`.
+  ms+guid name, BOM/UTF-16 preserved, atomic write with `File.Replace` retry and no `.tmp` left, batch stops at first failure. Backup folder `.aidevhelpers/backups`.
 - [ ] U6. `FileEditTools` (`file_edit`, `action` param, EditFile parameters, JSON results): tool tests, self-test entries, `mcp-tools.md`.
 - [ ] U7. Docs and gates: `docs/features.md`, `docs/self_test.md`, repo docs naming `mcp__TokenSaver__edit_file`, dogfood tool-use rows; lite gate
   (`.claude/reference/lite-gate.md`, includes `project_audit`); full gate before any PR to dev/main.

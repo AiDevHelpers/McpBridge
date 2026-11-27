@@ -60,6 +60,10 @@
     <Project Path="src/Helpers/BookmarkHelper/src/AiDevHelpers.Helpers.BookmarkHelper.csproj" />
     <Project Path="src/Helpers/BookmarkHelper/tests/AiDevHelpers.Helpers.BookmarkHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/FileEditHelper/">
+    <Project Path="src/Helpers/FileEditHelper/src/AiDevHelpers.Helpers.FileEditHelper.csproj" />
+    <Project Path="src/Helpers/FileEditHelper/tests/AiDevHelpers.Helpers.FileEditHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/TerminalControl/">
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />
