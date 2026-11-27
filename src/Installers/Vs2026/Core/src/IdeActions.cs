@@ -142,6 +142,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalBool(args, "useRegex") == true,
             OptionalString(args, "scope") ?? "solution",
             OptionalString(args, "project")),
+        "replaceInFile" => ReplaceInFile(args),
         "replaceInFiles" => ReplaceInFiles(
             RequireString(args, "pattern"),
             RequireString(args, "replacement"),
@@ -1460,6 +1461,37 @@ public sealed class IdeActions(DTE2 dte)
 
     // Counts matches per file without writing. Applied: writes the replacement to each file that has matches, except files open
     // with unsaved changes, which are reported as skipped. Per-file write errors are reported in failed, not thrown.
+    // One file, through FileEditEngine (backup, BOM, atomic write). Without confirm it only plans.
+    private object ReplaceInFile(JsonElement args)
+    {
+        var file = RequireString(args, "file");
+        if (!args.TryGetProperty("edits", out var editsJson) || editsJson.ValueKind != JsonValueKind.Array || editsJson.GetArrayLength() == 0)
+        {
+            throw new ArgumentException("missing argument: edits");
+        }
+
+        var edits = new List<FileEditEngine.Edit>();
+        foreach (var edit in editsJson.EnumerateArray())
+        {
+            var occurrence = edit.TryGetProperty("occurrence", out var o) && o.ValueKind == JsonValueKind.Number ? o.GetInt32() : 0;
+            edits.Add(new FileEditEngine.Edit(
+                edit.GetProperty("oldText").GetString() ?? string.Empty,
+                edit.GetProperty("newText").GetString() ?? string.Empty,
+                occurrence));
+        }
+
+        var root = OptionalString(args, "root") ?? Path.GetDirectoryName(dte.Solution.FullName);
+        if (string.IsNullOrEmpty(root))
+        {
+            throw new InvalidOperationException("No solution is open.");
+        }
+
+        var result = FileEditEngine.Replace(root, file, edits, OptionalBool(args, "confirm") == true);
+        return result.Applied
+            ? new { planned = false, file = result.File, linesChanged = result.LinesChanged, backupPath = result.BackupPath }
+            : (object)new { planned = true, file = result.File, matches = result.Matches, wouldWrite = true };
+    }
+
     private object ReplaceInFiles(string pattern, string replacement, bool matchCase, bool useRegex, string scope, string? projectName, bool confirm)
     {
         var regex = BuildSearchPattern(pattern, matchCase, useRegex);
