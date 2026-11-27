@@ -4,7 +4,7 @@ using System.Resources;
 namespace AiDevHelpers.Helpers.RoslynHelper;
 
 /// <summary>Text the helper returns to its caller, read from Resources/Strings.resx so it can be localized.</summary>
-internal static class Strings
+public static class Strings
 {
     private static readonly ResourceManager Manager = new("AiDevHelpers.Helpers.RoslynHelper.Resources.Strings", typeof(Strings).Assembly);
 

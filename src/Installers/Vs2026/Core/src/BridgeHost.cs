@@ -199,7 +199,7 @@ public sealed class BridgeHost : IDisposable
                 : action == "quiesce"
                     ? Task.FromResult<object>(Quiesce())
                     : _quiesced
-                        ? Task.FromException<object>(new InvalidOperationException("The MCP server is stopping; this instance takes no new actions."))
+                        ? Task.FromException<object>(new InvalidOperationException(Strings.Get("QuiesceRefused")))
                         : _runOnMainThread(() => actions.Invoke(action, args)),
 #pragma warning restore VSTHRD010
             () => _solutionPath,

@@ -33,7 +33,7 @@ public static class PlanApplier
             var after = planned.GetDocument(documentId);
             if (before?.FilePath is null)
             {
-                return Refused($"Changed document has no file on disk: {documentId}.");
+                return Refused(Strings.Format("ChangedDocumentNoFile", documentId));
             }
 
             var afterText = await after.GetTextAsync(cancellationToken).ConfigureAwait(false);

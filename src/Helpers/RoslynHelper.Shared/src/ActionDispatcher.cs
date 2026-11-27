@@ -35,7 +35,7 @@ public sealed class ActionDispatcher
     {
         if (!_handlers.TryGetValue(action, out var handler))
         {
-            throw new InvalidOperationException($"Unknown action: {action}.");
+            throw new InvalidOperationException(Strings.Format("UnknownAction", action));
         }
 
         return handler(args);
