@@ -150,6 +150,12 @@ public static class UserSession
 
     // Forwarded to NativeMethods; UserToken releases its handle through this.
     internal static bool CloseHandle(IntPtr handle) => NativeMethods.CloseHandle(handle);
+
+    public static uint ChooseConsoleUserSession(uint consoleSession, Func<uint, bool> hasUser)
+    {
+        ArgumentNullException.ThrowIfNull(hasUser);
+        return consoleSession != NoSession && hasUser(consoleSession) ? consoleSession : NoSession;
+    }
 }
 
 /// <summary>A primary user token. Dispose it when the processes started with it are no longer needed.</summary>
