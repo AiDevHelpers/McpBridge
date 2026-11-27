@@ -35,6 +35,7 @@ const unsupported: Record<string, string> = {
     addTask: "Task List is unsupported in v1 (plan answer 4)",
     clearTasks: "Task List is unsupported in v1 (plan answer 4)",
     listOutputPanes: "VS Code's API cannot enumerate output channels",
+    listItemTemplates: "Visual Studio item templates have no VS Code equivalent to list",
     testHotReloadState: "VS-only name; VS Code serves hotReloadState",
     // Roslyn refactorings run on the C# engines, which VS Code cannot host (plan answer 1).
     checkDocs: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
