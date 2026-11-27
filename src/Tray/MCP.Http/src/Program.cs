@@ -3,6 +3,7 @@
 using System.Reflection;
 using AiDevHelpers.MCP.Core;
 using AiDevHelpers.MCP.Core.Services;
+using TokenSaver.AgentHelpers.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var port = builder.Configuration.GetValue("Http:Port", 5058);
@@ -11,6 +12,18 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
 {
     // Stateful sessions: the plan-then-confirm tokens and the log subscriptions are per session (see the plan's static-state audit).
     options.Stateless = false;
+    // Each session gets the server instructions for its caller (AiDevHelpers.AgentHelpers), from the request headers.
+    options.ConfigureSessionOptions = (httpContext, serverOptions, _) =>
+    {
+        var registry = httpContext.RequestServices.GetRequiredService<AgentAdapterRegistry>();
+        var caller = AgentFormatting.CallerFrom(
+            null,
+            null,
+            httpContext.Request.Headers["X-Model-Hint"].FirstOrDefault() ?? httpContext.Request.Headers["X-LLM-Model"].FirstOrDefault(),
+            httpContext.Request.Headers.UserAgent.ToString());
+        serverOptions.ServerInstructions = AgentFormatting.Instructions(AgentFormatting.FormatFor(registry, caller));
+        return Task.CompletedTask;
+    };
     // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
     options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
 });
