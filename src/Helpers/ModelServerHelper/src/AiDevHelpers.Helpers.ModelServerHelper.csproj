@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackageId>AiDevHelpers.Helpers.ModelServerHelper</PackageId>
+    <IsPackable>true</IsPackable>
+    <Authors>AiDevHelpers</Authors>
+    <RepositoryUrl>https://github.com/AiDevHelpers/McpBridge</RepositoryUrl>
+    <Description>AiDevHelpers ModelServerHelper library: client for the SimpleModelServer router: status and capacity.</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Update="Nerdbank.GitVersioning" Version="3.10.94" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SelfTest.md" LogicalName="AiDevHelpers.SelfTest.md" />
+  </ItemGroup>
+</Project>

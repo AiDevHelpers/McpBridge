@@ -13,6 +13,11 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - Navigation: open documents, go to definition, find references.
 - Output panes and named output channels; bookmarks (Visual Studio).
 
+## Files and model server (no IDE needed)
+
+- `file_edit`: apply, insert, delete, rename and rollback text edits inside a workspace root, with a byte-exact backup before every write, an atomic write and the file's BOM kept. See [Host-MCP/file-edit-contract.md](Host-MCP/file-edit-contract.md).
+- `model_server_status`, `model_server_capacity`: read the SimpleModelServer router over HTTP (loopback only). See [Host-MCP/model-server-contract.md](Host-MCP/model-server-contract.md).
+
 ## Terminal sessions
 
 - `terminal_session`: visible Windows Terminal tabs or headless service-account sessions, with elevated sessions. See [terminal-session-contract.md](terminal-session-contract.md).

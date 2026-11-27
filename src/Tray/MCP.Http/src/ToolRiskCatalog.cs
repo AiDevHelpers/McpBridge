@@ -21,6 +21,7 @@ public static class ToolRiskCatalog
 {
     private static readonly HashSet<string> DangerousTools = new(StringComparer.Ordinal)
     {
+        "file_edit",
         "terminal_session",
         "script_run",
         "run_elevated_script",
@@ -124,6 +125,8 @@ public static class ToolRiskCatalog
         "ide_list_exceptions",
         "ide_list_instances",
         "ide_list_item_templates",
+        "model_server_status",
+        "model_server_capacity",
         "ide_list_processes",
         "ide_list_stack_frames",
         "ide_list_tasks",

@@ -7,6 +7,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using ModelContextProtocol.Server;
+using TokenSaver.AgentHelpers.Anthropic;
+using TokenSaver.AgentHelpers.Core.Extensions;
+using TokenSaver.AgentHelpers.Core.Services;
+using TokenSaver.AgentHelpers.DeepSeek;
+using TokenSaver.AgentHelpers.OpenSource;
+using TokenSaver.AgentHelpers.Qwen;
 
 namespace AiDevHelpers.MCP.Core;
 
@@ -64,6 +70,16 @@ public static class McpServiceCollectionExtensions
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.RepoOpenService>();
         services.AddHostedService<AiDevHelpers.MCP.Core.Services.EventAutoSubscribeService>();
 
+        // Caller-aware formatting (AiDevHelpers.AgentHelpers): the model adapter and client adapter for each caller.
+        services.AddAgentHelpers()
+            .AddAdapter<AnthropicAgentAdapter>()
+            .AddAdapter<DeepSeekAgentAdapter>()
+            .AddAdapter<QwenAgentAdapter>()
+            .AddAdapter<OpenSourceAgentAdapter>()
+            .AddAdapter<CopilotClientAdapter>()
+            .AddAdapter<CursorClientAdapter>()
+            .AddAdapter<ContinueClientAdapter>();
+
         return services
             .AddMcpServer()
             .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
@@ -119,6 +135,19 @@ public static class McpServiceCollectionExtensions
                     PlanOwnership.RecordFrom(block.Text, sessionId);
                 }
 
+                // Fit the text to this caller's token budget (AgentHelpers). Runs after the plan tokens are recorded, so a cut never hides one.
+                var registry = context.Services?.GetService<AgentAdapterRegistry>();
+                if (registry is not null)
+                {
+                    var caller = AgentFormatting.CallerFrom(context.Server.ClientInfo?.Name, context.Server.ClientInfo?.Version, null, null);
+                    var format = AgentFormatting.FormatFor(registry, caller);
+                    result.Content = result.Content
+                        .Select(block => block is ModelContextProtocol.Protocol.TextContentBlock text
+                            ? new ModelContextProtocol.Protocol.TextContentBlock { Text = AgentFormatting.Fit(text.Text, format) }
+                            : block)
+                        .ToList();
+                }
+
                 return result;
             }))
             .WithResources<McpDocumentationResources>()
@@ -128,6 +157,8 @@ public static class McpServiceCollectionExtensions
             .WithTools<ExtensionTools>()
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
+            .WithTools<ModelServerTools>()
+            .WithTools<FileEditTools>()
             .WithTools<LintTools>()
             .WithTools<LocalizationTools>()
             .WithTools<PreferredIdeTools>()
