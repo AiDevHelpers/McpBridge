@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Http;
+using System.Reactive.Linq;
+using System.ServiceProcess;
 
 namespace AiDevHelpers.Tray;
 
@@ -46,6 +48,54 @@ public static class HealthPoller
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
         {
             return new HealthSnapshot(TrayConnection.Disconnected, ex.GetType().Name);
+        }
+    }
+}
+
+/// <summary>
+/// The MCP server's state as a stream: read every interval, emitted only when it changes, and the latest value replayed to a new
+/// subscriber. A subscriber that stops ends the polling.
+/// </summary>
+public static class HealthFeed
+{
+    public static IObservable<HealthSnapshot> Watch(HttpMessageHandler handler, Uri healthz, Func<string?> readStatusFile, TimeSpan interval) =>
+        Observable.Interval(interval)
+            .SelectMany(_ => Observable.FromAsync(ct => HealthPoller.ReadOnceAsync(handler, healthz, readStatusFile, ct)))
+            .DistinctUntilChanged(snapshot => snapshot.State)
+            .Replay(1)
+            .RefCount();
+}
+
+/// <summary>The Windows service's state, as the tray shows it.</summary>
+public enum ServiceState
+{
+    Running,
+    Stopped,
+    Transitioning,
+    NotInstalled,
+}
+
+/// <summary>Reads the AiDevHelpers service's state from the Service Control Manager. A standard user can read it; changing it needs administrator rights.</summary>
+public static class ServiceStatus
+{
+    public static ServiceState Map(ServiceControllerStatus? status) => status switch
+    {
+        null => ServiceState.NotInstalled,
+        ServiceControllerStatus.Running => ServiceState.Running,
+        ServiceControllerStatus.Stopped => ServiceState.Stopped,
+        _ => ServiceState.Transitioning,
+    };
+
+    public static ServiceState Read(string serviceName)
+    {
+        try
+        {
+            using var controller = new ServiceController(serviceName);
+            return Map(controller.Status);
+        }
+        catch (InvalidOperationException)
+        {
+            return ServiceState.NotInstalled;
         }
     }
 }
