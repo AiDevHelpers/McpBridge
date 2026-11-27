@@ -27,7 +27,13 @@ internal static class RepoSettings
 
     public static RepoSettingsResult Resolve(IdeToolsOptions global, string? solutionPath)
     {
-        var effective = new IdeToolsOptions { IdeTestRunMode = global.IdeTestRunMode };
+        // The dialog settings are global only: a repo file that sets them gets the "ignored" warning.
+        var effective = new IdeToolsOptions
+        {
+            IdeTestRunMode = global.IdeTestRunMode,
+            AutoDismissDialogs = global.AutoDismissDialogs,
+            ActionTimeoutSeconds = global.ActionTimeoutSeconds,
+        };
         var warnings = new List<string>();
         var allowAll = false;
 

@@ -64,7 +64,7 @@ public static class Program
                     manifestFolder = args[++i];
                     break;
                 default:
-                    error = $"Unknown or incomplete argument: {args[i]}";
+                    error = AiDevHelpers.Helpers.RoslynHelper.Strings.Format("UnknownArgument", args[i]);
                     return false;
             }
         }

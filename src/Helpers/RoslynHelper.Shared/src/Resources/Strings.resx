@@ -18,4 +18,12 @@
   <data name="LineOutsideFile" xml:space="preserve"><value>Line {0} is outside {1}.</value></data>
   <data name="NoSymbolAtPosition" xml:space="preserve"><value>No symbol at that position.</value></data>
   <data name="RenameNotApplied" xml:space="preserve"><value>The rename was not applied.</value></data>
+  <data name="UnknownAction" xml:space="preserve"><value>Unknown action: {0}.</value></data>
+  <data name="ChangedDocumentNoFile" xml:space="preserve"><value>Changed document has no file on disk: {0}.</value></data>
+  <data name="LoadSolutionNeedsPath" xml:space="preserve"><value>loadSolution needs a solutionPath.</value></data>
+  <data name="SolutionNotFound" xml:space="preserve"><value>Solution not found: {0}.</value></data>
+  <data name="NoVisualStudioMsBuild" xml:space="preserve"><value>No Visual Studio with MSBuild found. Install Visual Studio to load net48 solutions.</value></data>
+  <data name="NoDotnetSdk" xml:space="preserve"><value>No .NET 10 SDK found. Install the .NET 10 SDK to load solutions.</value></data>
+  <data name="UnknownArgument" xml:space="preserve"><value>Unknown or incomplete argument: {0}</value></data>
+  <data name="ProjectNoDiagnostic" xml:space="preserve"><value>Project did not load and MSBuild reported no diagnostic.</value></data>
 </root>

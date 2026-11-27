@@ -26,6 +26,9 @@ public sealed class IdeActions(DTE2 dte)
     // Watch expressions for this instance. Kept here (not in the Watch window) and evaluated on read.
     private readonly List<string> _watches = [];
 
+    /// <summary>True (default) answers the IDE's dialogs with its defaults during each action. Set by the MCP server's "configure" action.</summary>
+    public bool AutoDismissDialogs { get; set; } = true;
+
     public object Invoke(string action, JsonElement args)
     {
         // Callers switch to the UI thread first (BridgePackage); this asserts it at runtime.
@@ -33,6 +36,11 @@ public sealed class IdeActions(DTE2 dte)
 
         // Modal prompts (line endings, reload, save) would freeze the UI thread and the bridge with it. Suppressing UI for the
         // duration of one action lets the IDE answer with its defaults instead of waiting. Restored afterwards.
+        if (!AutoDismissDialogs)
+        {
+            return InvokeOnUiThread(action, args);
+        }
+
         var previous = dte.SuppressUI;
         dte.SuppressUI = true;
         try

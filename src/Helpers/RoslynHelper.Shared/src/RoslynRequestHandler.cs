@@ -45,7 +45,7 @@ public sealed class RoslynRequestHandler
     private async Task<object> LoadSolutionAsync(JsonElement args)
     {
         var solutionPath = args.GetProperty("solutionPath").GetString()
-            ?? throw new InvalidOperationException("loadSolution needs a solutionPath.");
+            ?? throw new InvalidOperationException(Strings.Get("LoadSolutionNeedsPath"));
         var loaded = await _loader.LoadAsync(solutionPath).ConfigureAwait(false);
         _solution = loaded.Solution;
         return new
