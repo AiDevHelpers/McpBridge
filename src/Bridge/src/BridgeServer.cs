@@ -161,7 +161,15 @@ public sealed class BridgeServer : IDisposable
             }
 
             var args = root.TryGetProperty("args", out var a) ? a.Clone() : default;
-            var result = await _invoke(action, args).ConfigureAwait(false);
+            var call = _invoke(action, args);
+            var finished = await Task.WhenAny(call, Task.Delay(ActionLimit)).ConfigureAwait(false);
+            if (finished != call)
+            {
+                // The UI thread did not answer in time, usually because a dialog is open. Reply with that instead of holding the caller.
+                return JsonSerializer.Serialize(new { ok = false, pid = System.Diagnostics.Process.GetCurrentProcess().Id, error = "The IDE did not answer in time; a dialog may be open." });
+            }
+
+            var result = await call.ConfigureAwait(false);
             return JsonSerializer.Serialize(new { ok = true, pid = System.Diagnostics.Process.GetCurrentProcess().Id, result });
         }
         catch (Exception ex)
@@ -174,6 +182,9 @@ public sealed class BridgeServer : IDisposable
     // Answered without touching Visual Studio, so it reports even when the UI thread is busy.
     /// <summary>True while the UI thread answers the watchdog's ping. Set by the host; defaults to true when no host sets it.</summary>
     public Func<bool>? UiResponsive { get; set; }
+
+    /// <summary>How long one action may take on the IDE's UI thread before the caller gets an error. Default 60 seconds.</summary>
+    public TimeSpan ActionLimit { get; set; } = TimeSpan.FromSeconds(60);
 
     private object Health() => new
     {
