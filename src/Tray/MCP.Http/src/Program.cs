@@ -3,10 +3,12 @@
 using System.Reflection;
 using AiDevHelpers.MCP.Core;
 using AiDevHelpers.MCP.Core.Services;
+using AiDevHelpers.MCP.Http;
 using TokenSaver.AgentHelpers.Core.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var port = builder.Configuration.GetValue("Http:Port", 5058);
+var sessions = new SessionCounter();
 builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
 builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(options =>
 {
@@ -26,6 +28,21 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
     };
     // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
     options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
+    // Counts the running sessions for /healthz; the session itself runs as before. RunSessionHandler is an SDK preview API (MCPEXP002).
+#pragma warning disable MCPEXP002
+    options.RunSessionHandler = async (_, server, ct) =>
+    {
+        sessions.Enter();
+        try
+        {
+            await server.RunAsync(ct);
+        }
+        finally
+        {
+            sessions.Exit();
+        }
+    };
+#pragma warning restore MCPEXP002
 });
 
 // Dangerous tools need the person's yes on the tray, over the per-user approval pipe. With no tray running there is no pipe, the
@@ -55,6 +72,7 @@ app.MapGet("/healthz", () => Results.Json(new
     ok = true,
     pid = Environment.ProcessId,
     version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
+    sessions = sessions.Count,
 }));
 app.MapMcp("/mcp");
 try
