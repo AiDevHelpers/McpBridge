@@ -39,7 +39,7 @@ Sonnet review 2026-11-27 folded in (findings noted per unit).
   (Multiline, "Invalid regex"), rename (whole word; comment lines skipped unless `replaceInComments`), rollback, dryRun writes nothing, backup per write with
   ms+guid name, BOM/UTF-16 preserved, atomic write with `File.Replace` retry and no `.tmp` left, batch stops at first failure. Backup folder `.aidevhelpers/backups`.
 - [x] U6. (done: helper `FileEditService` validates requests, red = CS0246 then 58/58 helper tests green; MCP.Core.Tests 381/382, the 1 failure is the same pre-existing RoslynHelper one) `FileEditTools` (`file_edit`, `action` param, EditFile parameters, JSON results): tool tests, self-test entries, `mcp-tools.md`.
-- [ ] U7. Docs and gates: `docs/features.md`, `docs/self_test.md`, repo docs naming `mcp__TokenSaver__edit_file`, dogfood tool-use rows; lite gate
+- [x] U7. (done: features.md, ide-bridge.md, mcp-tools.md, README, ci.yml updated; no repo doc named `mcp__TokenSaver__edit_file`, so nothing to repoint. Lite gate run with aidevtools tools: lint_check, resx_check, string_scan, localization_sync_check all 0 findings; test_affected 0 (all committed); build via `dotnet build` of src/MCP/Server succeeded and tests via `dotnet test` (helper 58/58 + 23/23, MCP.Core 381/382, the 1 failure pre-existing on wip); `ide_build`/`ide_run_tests` not run: no VS instance open; `project_audit` is not in this session's tool list; dogfood log updated. Full gate not run: it is for a PR to dev/main) Docs and gates: `docs/features.md`, `docs/self_test.md`, repo docs naming `mcp__TokenSaver__edit_file`, dogfood tool-use rows; lite gate
   (`.claude/reference/lite-gate.md`, includes `project_audit`); full gate before any PR to dev/main.
 
 ## Rules
