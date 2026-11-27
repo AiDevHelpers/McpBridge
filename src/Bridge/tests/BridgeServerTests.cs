@@ -101,6 +101,23 @@ public sealed class BridgeServerTests
     }
 
     [Fact]
+    public async Task AnActionThatNeverReturnsRepliesWithAnErrorInsteadOfHanging()
+    {
+        var pipe = NewPipeName();
+        using var server = new BridgeServer(pipe, (_, _) => new TaskCompletionSource<object>().Task, () => null, new SilentLogger())
+        {
+            ActionLimit = TimeSpan.FromMilliseconds(200),
+        };
+        server.Start();
+
+        var reply = await SendWithRetryAsync(pipe, "{\"action\":\"health_blocked\"}");
+
+        Assert.NotNull(reply);
+        Assert.Contains("\"ok\":false", reply, StringComparison.Ordinal);
+        Assert.Contains("did not answer in time", reply, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void StartTwice_DoesNotStartASecondListener()
     {
         var pipe = NewPipeName();
