@@ -63,7 +63,10 @@ Status: draft, Sonnet review folded in, awaiting approval to start.
     - `wsl run "echo live-ok; uname -r"`: OK. Exit 0, stdout `live-ok` and kernel `6.18.58.1-microsoft-standard-WSL2`, cold start 5.3 s.
     - `container detect`: runtime `docker` (28.4.0). Podman not installed, so no Podman live check (NOT RUN).
     - `container status` on a missing name: returned the Docker Desktop daemon-down error (no elevated pipe access, `//./pipe/docker_engine` missing). The error path works; a running-container status check is NOT RUN (daemon down).
-  - Still open: docs (`features.md`, `self_test.md`), dogfood log, lite and full gates.
+  - Docs: `docs/features.md` updated with `container` and `wsl`. `docs/self_test.md` does not exist in this repo; self-test coverage lives in each helper's `SelfTest.md` and is checked by `SelfTestCoverageTests`.
+  - Lite gate: `lint_check` 0 findings; `string_scan` only the WslService probe lines (allowlisted); `test_affected` 4 projects; `resx_check` reports unused keys that are read through variables (false positives). `dotnet test`: WslHelper 51/51, ContainerHelper 40/40, MCP.Core 388/389, the one failure is the pre-existing `HardCodedStringTests` RoslynHelper/ActionDispatcher.cs:18 case.
+  - Dogfood log: entry appended to `~/.claude/docs/dogfood.md`.
+  - Still open: full gate (required before any PR to dev or main; no PR opened).
 
 ## Follow-ups (not in this plan)
 - `wsl do`, `model_route`, `diff_summarize`, `clean_and_chat` after a generate/chat call exists on `ModelServerHelper`.
