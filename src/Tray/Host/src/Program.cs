@@ -15,7 +15,14 @@ internal sealed class SpikeWorker(ILogger<SpikeWorker> log) : BackgroundService
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var session = UserSession.ActiveConsoleSession();
+        // The console session when a user is logged on there, otherwise the first logged-on session (an RDP user).
+        var session = UserSession.ChooseConsoleUserSession(
+            UserSession.ActiveConsoleSession(),
+            candidate => UserSession.GetUserSid(candidate) is not null);
+        if (session == UserSession.NoSession)
+        {
+            session = UserSession.FindFirstLoggedOnSession();
+        }
         log.LogInformation("Console session {Session}; starting {Exe}", session, Exe);
         var process = UserProcess.Start(new UserProcessStartInfo(Exe, string.Empty, session, Path.GetDirectoryName(Exe)));
         log.LogInformation("Started pid {Pid}", process?.Id);
