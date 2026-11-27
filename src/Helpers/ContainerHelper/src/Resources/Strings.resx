@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="InvalidName" xml:space="preserve"><value>Invalid container name '{0}'. Use letters, digits, '.', '_' or '-', starting with a letter or digit.</value></data>
+  <data name="RuntimeUnknown" xml:space="preserve"><value>Unknown runtime '{0}'. Use docker or podman.</value></data>
+  <data name="RuntimeNotFound" xml:space="preserve"><value>No container runtime found; install Docker or Podman.</value></data>
+  <data name="RuntimeNotInstalled" xml:space="preserve"><value>Runtime '{0}' is not installed or not on PATH.</value></data>
+  <data name="CliFailed" xml:space="preserve"><value>{0} CLI is installed but failed (exit {1}): {2}</value></data>
+  <data name="DockerDaemonDown" xml:space="preserve"><value>Docker is installed but the daemon is not running (start Docker Desktop): {0}</value></data>
+  <data name="PodmanDaemonDown" xml:space="preserve"><value>Podman is installed but no machine is running (run: podman machine start): {0}</value></data>
+  <data name="ContainerNotFound" xml:space="preserve"><value>Container '{0}' not found: {1}</value></data>
+  <data name="StateUnreadable" xml:space="preserve"><value>Could not read the state of container '{0}'.</value></data>
+  <data name="TailLinesInvalid" xml:space="preserve"><value>tailLines must be 1 or greater.</value></data>
+  <data name="CommandRequired" xml:space="preserve"><value>command is required and must not be empty.</value></data>
+  <data name="TimeoutInvalid" xml:space="preserve"><value>timeoutSeconds must be between 1 and 600.</value></data>
+  <data name="ActionFailed" xml:space="preserve"><value>{0} {1} {2} failed (exit {3}): {4}</value></data>
+  <data name="LaunchFailed" xml:space="preserve"><value>Could not start {0}: {1}</value></data>
+  <data name="ExecTimedOut" xml:space="preserve"><value>Command timed out after {0} seconds. The client was killed; the command may still be running in the container.</value></data>
+</root>

@@ -68,6 +68,10 @@
     <Project Path="src/Helpers/ModelServerHelper/src/AiDevHelpers.Helpers.ModelServerHelper.csproj" />
     <Project Path="src/Helpers/ModelServerHelper/tests/AiDevHelpers.Helpers.ModelServerHelper.Tests.csproj" />
   </Folder>
+  <Folder Name="/Helpers/ContainerHelper/">
+    <Project Path="src/Helpers/ContainerHelper/src/AiDevHelpers.Helpers.ContainerHelper.csproj" />
+    <Project Path="src/Helpers/ContainerHelper/tests/AiDevHelpers.Helpers.ContainerHelper.Tests.csproj" />
+  </Folder>
   <Folder Name="/Helpers/TerminalControl/">
     <Project Path="src/Helpers/TerminalControl/src/AiDevHelpers.Helpers.TerminalControl.csproj" />
     <Project Path="src/Helpers/TerminalControl/tests/AiDevHelpers.Helpers.TerminalControl.Tests.csproj" />

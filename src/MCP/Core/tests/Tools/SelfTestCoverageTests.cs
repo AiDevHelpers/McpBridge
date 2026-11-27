@@ -15,6 +15,7 @@ public sealed class SelfTestCoverageTests
         ("BookmarkTools", "BookmarkHelper"),
         ("ModelServerTools", "ModelServerHelper"),
         ("FileEditTools", "FileEditHelper"),
+        ("ContainerTools", "ContainerHelper"),
         ("ConfigTools", "ConfigHelper"),
         ("ErrorTools", "ErrorHelper"),
         ("ExtensionTools", "ExtensionsHelper"),
