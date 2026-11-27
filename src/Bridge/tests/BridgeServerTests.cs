@@ -118,7 +118,7 @@ public sealed class BridgeServerTests
     }
 
     [Fact]
-    public void ATimedOutActionIsReportedByName()
+    public async Task ATimedOutActionIsReportedByName()
     {
         string? reported = null;
         var pipe = NewPipeName();
@@ -128,7 +128,7 @@ public sealed class BridgeServerTests
             ActionTimedOut = action => reported = action,
         };
         named.Start();
-        _ = SendWithRetryAsync(pipe, "{\"action\":\"stuck\"}").GetAwaiter().GetResult();
+        _ = await SendWithRetryAsync(pipe, "{\"action\":\"stuck\"}");
 
         Assert.Equal("stuck", reported);
     }

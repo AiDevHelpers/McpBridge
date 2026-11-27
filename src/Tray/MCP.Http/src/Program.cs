@@ -10,7 +10,8 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
 {
     // Stateful sessions: the plan-then-confirm tokens and the log subscriptions are per session (see the plan's static-state audit).
     options.Stateless = false;
-    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
+    options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
 });
 
 var app = builder.Build();
@@ -39,7 +40,31 @@ app.MapGet("/healthz", () => Results.Json(new
     version = Assembly.GetExecutingAssembly().GetName().Version?.ToString(),
 }));
 app.MapMcp("/mcp");
-await app.RunAsync();
+try
+{
+    await app.RunAsync();
+}
+catch (IOException ex)
+{
+    // The listener could not bind (usually the port is taken). No /healthz can answer, so the cause goes to a file the tray reads.
+    var folder = Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "mcp-http");
+    Directory.CreateDirectory(folder);
+    File.WriteAllText(Path.Combine(folder, "status.json"), PortConflictReport.Json(port, ex.Message));
+    throw;
+}
+
+/// <summary>The status file written when the listener cannot bind. Pure, so the tests check its shape without a server.</summary>
+public static class PortConflictReport
+{
+    public static string Json(int port, string cause) => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        ok = false,
+        state = "portConflict",
+        port,
+        cause,
+        atUtc = DateTime.UtcNow,
+    });
+}
 
 /// <summary>The request checks. Pure, so the tests run them without a server.</summary>
 public static class HttpGuard
