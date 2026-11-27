@@ -145,6 +145,26 @@ public static class PlanActions
             return NamespaceEngine.RenameAsync(solution, ArgumentParsers.RequireString(a, "oldNamespace"), ArgumentParsers.RequireString(a, "newNamespace"),
                 ArgumentParsers.OptionalBool(a, "moveFiles") == true, ArgumentParsers.ParseCallerEdits(a));
         }));
+
+        dispatcher.Register("tddAddTest", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            var testFile = ArgumentParsers.RequireString(a, "testFile");
+            var testLine = ArgumentParsers.RequireInt(a, "testLine");
+            var testText = ArgumentParsers.RequireString(a, "testMethodText");
+            var methodFile = ArgumentParsers.RequireString(a, "methodFile");
+            var methodLine = ArgumentParsers.RequireInt(a, "methodLine");
+            var methodText = ArgumentParsers.RequireString(a, "methodText");
+            var docs = ArgumentParsers.ParseDocUpdates(a);
+            var members = ArgumentParsers.ParseMemberSpecs(a);
+            return MemberPlanning.WithMembersAsync(solution, methodFile, methodLine, members, (s, shift, baseline) =>
+                TddEngine.StartAsync(s, testFile, testLine, testText, methodFile, shift(methodLine), methodText, docs, baseline));
+        }));
+
+        dispatcher.Register("tddUpdateTest", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return TddEngine.UpdateTestAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "newBody"), ArgumentParsers.OptionalString(a, "targetFile"), ArgumentParsers.OptionalInt(a, "targetLine"));
+        }));
     }
 
     // addMethod and addOverload share one planner: a method added to the type at a line, or an overload of the method at that line.
