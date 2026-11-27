@@ -25,7 +25,7 @@ jobs:
 
       - name: Restore
         env:
-          AIDEVHELPERS_NUGET_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AIDEVHELPERS_NUGET_TOKEN: ${{ secrets.AIDEVHELPERS_PACKAGES_TOKEN }}
         run: dotnet restore AiDevHelpers.slnx
 
       - name: Build
