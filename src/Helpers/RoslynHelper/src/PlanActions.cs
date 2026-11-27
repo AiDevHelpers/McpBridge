@@ -106,6 +106,25 @@ public static class PlanActions
             return GenerateConstructorEngine.PlanAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
                 ArgumentParsers.StringList(a, "members").ToList(), ArgumentParsers.OptionalString(a, "accessibility") ?? "public");
         }));
+
+        dispatcher.Register("addEnumMember", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return EnumMemberEngine.AddAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "name"), ArgumentParsers.OptionalString(a, "value"));
+        }));
+
+        dispatcher.Register("editEnumMember", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return EnumMemberEngine.EditValueAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.RequireString(a, "value"), ArgumentParsers.OptionalBool(a, "allowValueChange") == true);
+        }));
+
+        dispatcher.Register("threadParameter", args => RunAsync(args, current, setCurrent, (solution, a) =>
+        {
+            return ThreadParameterEngine.PlanAsync(solution, ArgumentParsers.RequireString(a, "file"), ArgumentParsers.RequireInt(a, "line"),
+                ArgumentParsers.OptionalInt(a, "column") ?? 1, ArgumentParsers.RequireString(a, "declaration"),
+                ArgumentParsers.RequireString(a, "valueAtTop"), ArgumentParsers.OptionalInt(a, "depth") ?? 1);
+        }));
     }
 
     // addMethod and addOverload share one planner: a method added to the type at a line, or an overload of the method at that line.
