@@ -35,6 +35,7 @@ public static class McpServiceCollectionExtensions
     public static IMcpServerBuilder AddAiDevHelpersMcp(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
+        services.AddSingleton<AiDevHelpers.MCP.Core.Services.ToolsetSessionLock>();
         services.Configure<ScriptWatchOptions>(configuration.GetSection("ScriptWatch"));
         services.AddSingleton<ScriptRunTracker>(_ => new ScriptRunTracker());
         services.AddSingleton(sp => new ScriptRunService(
@@ -110,6 +111,19 @@ public static class McpServiceCollectionExtensions
                         IsError = true,
                         Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = Strings.Get("TokenOtherSession") }],
                     };
+                }
+
+                // Lock this session to its repo's toolset path at the first call that finds a repo. Routing by the locked path comes next.
+                var toolsetLocks = context.Services?.GetService<AiDevHelpers.MCP.Core.Services.ToolsetSessionLock>();
+                var toolsetOptions = context.Services?.GetService<Microsoft.Extensions.Options.IOptions<AiDevHelpers.MCP.Core.Services.IdeToolsOptions>>();
+                if (toolsetLocks is not null && toolsetOptions is not null)
+                {
+                    AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.LockFor(
+                        toolsetLocks,
+                        sessionId,
+                        toolsetOptions.Value,
+                        AiDevHelpers.MCP.Core.Services.ToolsetRepoDiscovery.ExplicitRepoArgument(context.Params?.Arguments),
+                        Directory.GetCurrentDirectory());
                 }
 
                 // A dangerous tool needs the person's yes on the tray for this exact call. Only a host that registers a channel (HTTP) asks;
