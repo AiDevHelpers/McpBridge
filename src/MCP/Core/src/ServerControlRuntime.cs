@@ -196,6 +196,92 @@ public static class ToolClassification
 }
 
 /// <summary>
+/// The wire format of an approval over the approval pipe: one JSON line each way. The MCP server writes a request; the tray writes a reply
+/// that echoes the nonce and the argument hash. Both sides use this one class, so the contract is in one place.
+/// </summary>
+public static class ApprovalWire
+{
+    public const string PipeNamePrefix = "AiDevHelpers.Approval.";
+
+    public static string Encode(ApprovalRequest request) =>
+        System.Text.Json.JsonSerializer.Serialize(new { nonce = request.Nonce, tool = request.ToolName, argumentsHash = request.ArgumentsHash, expiresUtc = request.ExpiresUtc });
+
+    public static string Encode(ApprovalReply reply) =>
+        System.Text.Json.JsonSerializer.Serialize(new { nonce = reply.Nonce, argumentsHash = reply.ArgumentsHash, approved = reply.Approved });
+
+    public static ApprovalRequest? DecodeRequest(string line)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            return new ApprovalRequest(
+                root.GetProperty("nonce").GetString() ?? string.Empty,
+                root.GetProperty("tool").GetString() ?? string.Empty,
+                root.GetProperty("argumentsHash").GetString() ?? string.Empty,
+                root.GetProperty("expiresUtc").GetDateTime());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+
+    public static ApprovalReply? DecodeReply(string line)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(line);
+            var root = doc.RootElement;
+            return new ApprovalReply(
+                root.GetProperty("nonce").GetString() ?? string.Empty,
+                root.GetProperty("argumentsHash").GetString() ?? string.Empty,
+                root.GetProperty("approved").GetBoolean());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            return null;
+        }
+    }
+}
+
+/// <summary>The MCP side of the approval pipe: connects, sends the request, and reads the reply. No pipe, or no reply, is no answer.</summary>
+public sealed class ApprovalPipeChannel(string pipeName) : IApprovalChannel
+{
+    public async Task<ApprovalReply?> RequestAsync(ApprovalRequest request, CancellationToken ct)
+    {
+        await using var pipe = new System.IO.Pipes.NamedPipeClientStream(".", pipeName, System.IO.Pipes.PipeDirection.InOut, System.IO.Pipes.PipeOptions.Asynchronous);
+        await pipe.ConnectAsync(ct).ConfigureAwait(false);
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        await writer.WriteLineAsync(ApprovalWire.Encode(request)).ConfigureAwait(false);
+        var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+        return line is null ? null : ApprovalWire.DecodeReply(line);
+    }
+}
+
+/// <summary>The tray side of the approval pipe: reads one request, asks the person through <paramref name="decide"/>, and replies with
+/// the request's nonce and hash. A request it cannot read gets no reply.</summary>
+public static class ApprovalPipeServer
+{
+    public static async Task ServeOnceAsync(System.IO.Pipes.NamedPipeServerStream pipe, Func<ApprovalRequest, Task<bool>> decide, CancellationToken ct)
+    {
+        await pipe.WaitForConnectionAsync(ct).ConfigureAwait(false);
+        using var reader = new StreamReader(pipe, Encoding.UTF8, false, 1024, leaveOpen: true);
+        using var writer = new StreamWriter(pipe, new UTF8Encoding(false), 1024, leaveOpen: true) { AutoFlush = true };
+        var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
+        var request = line is null ? null : ApprovalWire.DecodeRequest(line);
+        if (request is null)
+        {
+            return;
+        }
+
+        var approved = await decide(request).ConfigureAwait(false);
+        await writer.WriteLineAsync(ApprovalWire.Encode(new ApprovalReply(request.Nonce, request.ArgumentsHash, approved))).ConfigureAwait(false);
+    }
+}
+
+/// <summary>
 /// Watches the shared control state. On a change it tells this process's client (a log notification), and on a switch to
 /// <c>closing</c> it stops the process after a short pause so the update can replace its files. A server that starts while
 /// the state is already paused or closing refuses calls but keeps running.
