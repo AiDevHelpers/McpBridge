@@ -19,6 +19,7 @@ internal sealed class RepoSetupTools(IElevScanner scanner, GitHubService gitHub)
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
     [McpServerTool]
+    [SafeTool]
     [Description(
         "Repo setup, read only. action 'scan': find projects and launch scripts in the repo that need administrator rights (app.manifest " +
         "requireAdministrator, elevation markers in the scripts a launch or debug configuration runs), the repo's CI branches and checks, " +

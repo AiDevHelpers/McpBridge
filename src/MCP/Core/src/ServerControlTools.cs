@@ -10,6 +10,7 @@ namespace AiDevHelpers.MCP.Core.Tools;
 internal sealed class ServerControlTools
 {
     [McpServerTool]
+    [SafeTool]
     [Description("Set the control state for every aidevtools server on this machine. state: paused (tool calls are refused and each chat is told), " +
                  "closing (servers exit so an update can replace their files), or running (resume). The update order is paused, closing, update, running.")]
     public static string ServerControlSet(
@@ -28,6 +29,7 @@ internal sealed class ServerControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Read the control state shared by every aidevtools server on this machine.")]
     public static string ServerControlStatus()
     {

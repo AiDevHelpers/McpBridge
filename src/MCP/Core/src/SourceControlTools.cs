@@ -42,6 +42,7 @@ internal sealed class SourceControlTools
     private static readonly GitHubService GitHub = new(new ProcessGhRunner());
 
     [McpServerTool]
+    [SafeTool]
     [Description("Branch, upstream, ahead and behind counts, and changed paths for a git repo folder.")]
     public static async Task<string> GitStatus(
         [Description("Repo folder, e.g. the folder that holds the .sln")] string repoPath,
@@ -86,6 +87,7 @@ internal sealed class SourceControlTools
         && string.Equals(Path.GetFullPath(i.SolutionPath), fullPath, StringComparison.OrdinalIgnoreCase));
 
     [McpServerTool]
+    [SafeTool]
     [Description("Diff of the working tree (or the staged changes when staged is true), optionally for one path.")]
     public static async Task<string> GitDiff(
         [Description("Repo folder")] string repoPath,
@@ -97,6 +99,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
                  "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. " +
                  "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
@@ -135,6 +138,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Run a write planned by git_plan, once. The token is single use.")]
     public static async Task<string> GitConfirm(
         [Description("Token returned by git_plan")] string token)
@@ -144,6 +148,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("Status of each CI check of a pull request, read through the GitHub CLI (gh). Read only. " +
                  "bucket is pass, fail, pending, skipping or cancel. Use it instead of waiting in a loop.")]
     public static async Task<string> PrChecks(
@@ -168,6 +173,7 @@ internal sealed class SourceControlTools
     }
 
     [McpServerTool]
+    [SafeTool]
     [Description("The first failing CI job of a pull request and the error lines of its log, through gh. Read only. " +
                  "When no line looks like an error, the end of the log is returned. maxLines caps the lines.")]
     public static async Task<string> CiFailure(

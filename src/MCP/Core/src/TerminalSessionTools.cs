@@ -37,6 +37,7 @@ internal sealed class TerminalSessionTools
     }
 
     [McpServerTool]
+    [DangerousTool]
     [Description(
         "Run commands in a terminal session. action: open (create a session with launchMode InteractiveUser " +
         "(visible on the user's desktop, default) or ServiceAccount (headless, under the service account) and a first tab; " +

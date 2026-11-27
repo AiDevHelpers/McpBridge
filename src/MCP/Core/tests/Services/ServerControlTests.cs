@@ -120,6 +120,36 @@ public sealed class ServerControlTests : IDisposable
     }
 
     [Fact]
+    public void EveryMcpToolIsClassifiedAsSafeOrDangerous()
+    {
+        var assembly = typeof(McpServiceCollectionExtensions).Assembly;
+        var unclassified = new List<string>();
+        var dangerous = new List<string>();
+        foreach (var type in assembly.GetTypes().Where(t => t.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolTypeAttribute), false).Length > 0))
+        {
+            foreach (var method in type.GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Static)
+                         .Where(m => m.GetCustomAttributes(typeof(ModelContextProtocol.Server.McpServerToolAttribute), false).Length > 0))
+            {
+                var safe = method.GetCustomAttributes(typeof(SafeToolAttribute), false).Length;
+                var danger = method.GetCustomAttributes(typeof(DangerousToolAttribute), false).Length;
+                if (safe + danger != 1)
+                {
+                    unclassified.Add($"{type.Name}.{method.Name}");
+                }
+                else if (danger == 1)
+                {
+                    dangerous.Add($"{type.Name}.{method.Name}");
+                }
+            }
+        }
+
+        Assert.Empty(unclassified);
+        Assert.Contains("IdeTools.IdeKillProcess", dangerous);
+        Assert.Contains("TerminalSessionTools.TerminalSession", dangerous);
+        Assert.Contains("ScriptRunTools.ScriptRun", dangerous);
+    }
+
+    [Fact]
     public void ATokenPlannedInOneSessionCannotBeUsedFromAnother()
     {
         var token = "plan-" + Guid.NewGuid().ToString("N");

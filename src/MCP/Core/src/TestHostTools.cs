@@ -19,6 +19,7 @@ internal sealed class TestHostTools
     internal sealed record HostRef(int Pid, DateTime StartUtc, string Name);
 
     [McpServerTool]
+    [SafeTool]
     [Description("List test host processes (testhost.exe) that are still running, such as ones a run left holding the test outputs. " +
                  "Read only. Returns a token for test_hosts_stop, which kills only these processes.")]
     public static string TestHostsList()
@@ -41,6 +42,7 @@ internal sealed class TestHostTools
     }
 
     [McpServerTool]
+    [DangerousTool]
     [Description("Stop the test hosts listed by test_hosts_list, once, with the token it returned. Call it only after the user agreed in chat. " +
                  "Each pid is killed only if it still has the start time the list recorded.")]
     public static string TestHostsStop(
