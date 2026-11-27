@@ -13,7 +13,9 @@ Status: draft, awaiting approval to start. Follows the decision "full bridge eng
 - `oldText` must match (`RequireAnchorMatch` default true); `occurrence` 0 = all, N = the Nth.
 - `root` is the repo root; the path must stay under it (`WorkspacePathGuard` rules, including links and junctions).
 
-## Units (each: failing test first, build, test, commit, push)
+## Units (each: failing test first, build, test, commit, pull wip, retest, push)
+
+Rule (2026-11-27): at the end of each unit, fetch and merge `origin/wip` into the branch, resolve conflicts, rerun that unit's tests, then push. Push only after the pull.
 - **U1. Contract.** `conformance/protocol.md` and `conformance/fixtures.json`: `replaceInFile` arguments (`file`, `edits` of `{oldText, newText, occurrence}`, `confirm`), the plan reply (`planned`, per-file match count, no write), the applied reply (`backupPath`, `linesChanged`), and the refusals (outside root, no match, BOM error). Done when the fixtures cover each refusal.
 - **U2. VS Code bridge.** `src/Installers/VsCode/Installer/AiDevTools.VsCode/src/ideActions.ts`: `replaceInFile` in the same `switch` style as `replaceInFiles`, plus the engine in a new `fileEdit.ts`. Tests in `*.test.ts` against the fixtures. Gate: `npm test` for the extension.
 - **U3. Visual Studio bridge.** `src/Installers/Vs2026/Core/src/IdeActions.cs`: `replaceInFile` and the engine in a new C# file. Tests in `VsParityTests` style. Gate: needs the VS MSBuild (`dotnet build` cannot load the net48 tasks; see the dogfood log). If that MSBuild is not available here, stop at U3 and report NOT RUN.

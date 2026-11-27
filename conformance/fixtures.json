@@ -238,5 +238,15 @@
     "request": { "action": "listExceptions" },
     "ok": false,
     "reply_keys": ["ok", "pid", "error"]
+  },
+  "replace_in_file_missing_file_refused": {
+    "request": { "action": "replaceInFile", "args": { "edits": [] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
+  },
+  "replace_in_file_outside_root_refused": {
+    "request": { "action": "replaceInFile", "args": { "file": "C:\\__no_such__\\a.txt", "edits": [{ "oldText": "a", "newText": "b" }] } },
+    "ok": false,
+    "reply_keys": ["ok", "pid", "error"]
   }
 }

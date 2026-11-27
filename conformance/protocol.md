@@ -89,6 +89,22 @@ A call that can't reach an instance within 60 seconds gets an error reply. An in
 - `fixtures.json` runs each entry against the bridge's generic handler. An entry checks the reply shape
   (`ok`, `reply_keys`), not the action's result, so action results are tested in each bridge's own tests.
 
+## replaceInFile (single file edit)
+
+Used by `file_edit` on the VisualStudio and VsCode toolset paths. The same rules as `FileEditHelper`: a byte-exact backup,
+the BOM kept, an atomic write, and a batch that stops at the first failure.
+
+- Args: `file` (required, relative to the repo root or absolute under it), `edits` (required array, at least one of
+  `{ "oldText", "newText", "occurrence"? }`; occurrence 0 = all matches, N = the Nth), `confirm` (default false),
+  `root` (the repo root; defaults to the solution's repo).
+- Plan reply (`confirm` not true): `{"ok":true,"pid":N,"result":{"planned":true,"file":...,"matches":N,"wouldWrite":true}}`.
+  Nothing is written.
+- Applied reply (`confirm` true): `{"ok":true,"pid":N,"result":{"planned":false,"file":...,"linesChanged":N,"backupPath":...}}`.
+- Refusals (`ok:false` with `error`): missing `file` or `edits`; the path is outside `root`, or goes through a link or junction;
+  an `oldText` with no match when anchor matching is required; a file that is not valid in its BOM encoding.
+- A bridge that does not implement the action answers the generic refusal (see Fixtures). The engine's own tests live in
+  each bridge's test project, not in the shared fixtures, because the shared harness answers every action with a refusal.
+
 ## Events pipe
 
 Served by Visual Studio and by VS Code. Separate from the request pipe, which is unchanged (one request, one reply).
