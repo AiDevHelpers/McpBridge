@@ -68,7 +68,7 @@ public static class McpServiceCollectionExtensions
             .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
             {
                 // Remember this chat's server so a control change can be pushed to it, and refuse calls while not running.
-                AiDevHelpers.MCP.Core.Services.ControlSession.Server = context.Server;
+                AiDevHelpers.MCP.Core.Services.ControlSession.Remember(context.Server);
                 var refusal = AiDevHelpers.MCP.Core.Services.ServerControlGate.Refusal(
                     context.Params?.Name,
                     AiDevHelpers.MCP.Core.Services.ServerControl.Read());

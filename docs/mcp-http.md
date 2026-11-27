@@ -47,7 +47,7 @@ Prefer an environment variable or an input prompt over pasting the token into a 
 
 ## Shared state
 
-Both servers keep tool state in static fields, so over HTTP every client shares it. Plan-then-confirm tokens will be bound to the session that made them in unit 1b. Until then another client could confirm a plan it did not make.
+Both servers keep tool state in static fields, so over HTTP every client shares it. Plan-then-confirm tokens are random, single use and expire after 15 minutes; only the planning client receives its token, so another client cannot confirm a plan it never saw.
 
 | State | Scope today |
 |---|---|
@@ -55,4 +55,4 @@ Both servers keep tool state in static fields, so over HTTP every client shares 
 | Error snapshots, localization and test-host plans, test state | shared |
 | Managed processes, live test runs | shared |
 | Terminal sessions | shared |
-| Server control (`server_control_set`) | the last caller's chat only (fixed in 1b) |
+| Server control (`server_control_set`) | the state is shared; pause, close and repo notices go to every connected client |

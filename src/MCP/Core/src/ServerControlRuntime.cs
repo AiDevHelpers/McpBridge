@@ -23,10 +23,19 @@ public static class ServerControlGate
     }
 }
 
-/// <summary>The MCP session of this server process, remembered from the last tool call so a state change can be pushed to its client.</summary>
+/// <summary>
+/// Every MCP session of this server process, remembered from its tool calls so a state change reaches all clients.
+/// The stdio exe has one session; the HTTP exe has one per client.
+/// </summary>
 internal static class ControlSession
 {
-    public static volatile McpServer? Server;
+    private static readonly SessionSet<McpServer> Sessions = new();
+
+    /// <summary>Remembers the session of a tool call.</summary>
+    public static void Remember(McpServer server) => Sessions.Set(server.SessionId ?? "stdio", server);
+
+    /// <summary>Sends to every remembered session; sessions whose client is gone are dropped.</summary>
+    public static Task BroadcastAsync(Func<McpServer, Task> send) => Sessions.BroadcastAsync(send);
 }
 
 /// <summary>
@@ -66,12 +75,6 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
 
     private static async Task NotifyAsync(ControlState state, CancellationToken ct)
     {
-        var server = ControlSession.Server;
-        if (server is null)
-        {
-            return;
-        }
-
         var suffix = string.IsNullOrWhiteSpace(state.Message) ? string.Empty : ": " + state.Message;
 
         // The MCP logging feature is deprecated as of spec 2026-07-28 (SEP-2577) with no replacement yet. A client that ignores the
@@ -84,22 +87,16 @@ internal sealed class ServerControlService(IHostApplicationLifetime lifetime) : 
             _ => (LoggingLevel.Info, Strings.Get("ResumedNotice")),
         };
 
-        try
-        {
-            await server.SendNotificationAsync(
-                NotificationMethods.LoggingMessageNotification,
-                new LoggingMessageNotificationParams
-                {
-                    Level = level,
-                    Logger = "AiDevHelpers.Control",
-                    Data = System.Text.Json.JsonSerializer.SerializeToElement(new { state = state.State, message = text }),
-                },
-                cancellationToken: ct);
-        }
+        // A client that is gone makes its send fail; the session set drops it and the others still get the notice.
+        await ControlSession.BroadcastAsync(server => server.SendNotificationAsync(
+            NotificationMethods.LoggingMessageNotification,
+            new LoggingMessageNotificationParams
+            {
+                Level = level,
+                Logger = "AiDevHelpers.Control",
+                Data = System.Text.Json.JsonSerializer.SerializeToElement(new { state = state.State, message = text }),
+            },
+            cancellationToken: ct));
 #pragma warning restore MCP9005
-        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException or IOException or OperationCanceledException)
-        {
-            // The client is gone; nothing to tell.
-        }
     }
 }
