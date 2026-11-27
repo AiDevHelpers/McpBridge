@@ -13,6 +13,8 @@ public sealed class SelfTestCoverageTests
     private static readonly (string ToolClass, string Helper)[] ToolToHelper =
     [
         ("BookmarkTools", "BookmarkHelper"),
+        ("ModelServerTools", "ModelServerHelper"),
+        ("FileEditTools", "FileEditHelper"),
         ("ConfigTools", "ConfigHelper"),
         ("ErrorTools", "ErrorHelper"),
         ("ExtensionTools", "ExtensionsHelper"),

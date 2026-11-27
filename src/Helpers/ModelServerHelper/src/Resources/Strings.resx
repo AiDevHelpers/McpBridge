@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="NotReachable" xml:space="preserve"><value>SimpleModelServer router is not reachable at {0}.</value></data>
+  <data name="NoModels" xml:space="preserve"><value>SimpleModelServer router is reachable but no models are pulled.</value></data>
+  <data name="HealthyIdle" xml:space="preserve"><value>SimpleModelServer router is up with {0} model(s) available, but idle: none currently loaded in VRAM.</value></data>
+  <data name="HealthyLoaded" xml:space="preserve"><value>SimpleModelServer router is healthy. {0}/{1} model(s) loaded in VRAM.</value></data>
+</root>

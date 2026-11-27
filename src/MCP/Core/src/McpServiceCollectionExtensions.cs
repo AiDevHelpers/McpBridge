@@ -157,6 +157,8 @@ public static class McpServiceCollectionExtensions
             .WithTools<ExtensionTools>()
             .WithTools<TestingTools>()
             .WithTools<BookmarkTools>()
+            .WithTools<ModelServerTools>()
+            .WithTools<FileEditTools>()
             .WithTools<LintTools>()
             .WithTools<LocalizationTools>()
             .WithTools<PreferredIdeTools>()
