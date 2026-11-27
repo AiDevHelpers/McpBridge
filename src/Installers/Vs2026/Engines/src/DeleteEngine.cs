@@ -151,8 +151,15 @@ internal static class DeleteEngine
         plan.Files.AddRange(changes.Keys.Select(id => solution.GetDocument(id)!.FilePath ?? id.ToString()));
         plan.DeclarationCount = 1;
 
-        // The file goes only when this type was the file's only declaration.
-        if (deleteFile && target.Declaration.Parent is CompilationUnitSyntax unit && unit.Members.Count == 1)
+        // The file goes only when this type was the file's only declaration. A file-scoped namespace is the usual shape, so its members count too.
+        static bool OnlyDeclarationInFile(SyntaxNode declaration) => declaration.Parent switch
+        {
+            CompilationUnitSyntax unit => unit.Members.Count == 1,
+            FileScopedNamespaceDeclarationSyntax ns => ns.Members.Count == 1 && ns.Parent is CompilationUnitSyntax root && root.Members.Count == 1,
+            _ => false,
+        };
+
+        if (deleteFile && OnlyDeclarationInFile(target.Declaration))
         {
             var document = solution.GetDocument(target.DocumentId)!;
             if (document.FilePath is not null)
