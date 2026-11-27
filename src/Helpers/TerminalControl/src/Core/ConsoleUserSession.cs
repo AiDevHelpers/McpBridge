@@ -1,12 +1,9 @@
 namespace AiDevHelpers.Helpers.TerminalControl.Core;
 
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Security.Principal;
 using AiDevHelpers.Helpers.TerminalControl.Contracts;
 using AiDevHelpers.Helpers.WindowsSession;
-using static AiDevHelpers.Helpers.TerminalControl.Core.NativeMethods;
 
 /// <summary>
 /// Starts a terminal in the logged-on user's session. Needed when the host runs as LocalSystem: a LocalSystem
@@ -20,8 +17,6 @@ public sealed class ConsoleUserTerminalLauncher : ITerminalProcessLauncher
 
 public static class ConsoleUserSession
 {
-    private const uint CreateUnicodeEnvironment = 0x00000400;
-
     /// <summary>True when this process runs as LocalSystem.</summary>
     public static bool RunningAsLocalSystem() => UserSession.IsRunningAsLocalSystem();
 
@@ -41,45 +36,7 @@ public static class ConsoleUserSession
             throw new InvalidOperationException(Strings.Get("NoActiveUserSession"));
         }
 
-        using var token = UserSession.OpenPrimaryToken(sessionId, bindToSession: true);
-        IntPtr environment = IntPtr.Zero;
-        try
-        {
-            if (!UserSession.TryCreateEnvironmentBlock(token, out environment))
-            {
-                environment = IntPtr.Zero;
-            }
-
-            var startup = new STARTUPINFO
-            {
-                cb = Marshal.SizeOf<STARTUPINFO>(),
-                lpDesktop = "winsta0\\default",
-            };
-
-            var commandLine = $"\"{fileName}\" {arguments}" + "\0";
-            if (!CreateProcessAsUserW(token.Handle, null, commandLine.ToCharArray(), IntPtr.Zero, IntPtr.Zero, false,
-                    CreateUnicodeEnvironment, environment, null, ref startup, out var info))
-            {
-                throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("CreateProcessAsUserFailed"));
-            }
-
-            _ = CloseHandle(info.hThread);
-            _ = CloseHandle(info.hProcess);
-            try
-            {
-                return Process.GetProcessById((int)info.dwProcessId);
-            }
-            catch (ArgumentException)
-            {
-                // The process already exited (wt.exe hands off to its window process). Liveness is
-                // best-effort, so a null handle is acceptable here.
-                return null;
-            }
-        }
-        finally
-        {
-            UserSession.DestroyEnvironmentBlock(environment);
-        }
+        return UserProcess.Start(new UserProcessStartInfo(fileName, arguments, sessionId));
     }
 
 }
