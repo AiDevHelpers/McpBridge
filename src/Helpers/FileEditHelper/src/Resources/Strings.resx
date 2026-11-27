@@ -8,4 +8,21 @@
   <data name="NoWorkspaceRoot" xml:space="preserve"><value>No workspace root is known for this session. Pass 'root'.</value></data>
   <data name="InvalidPath" xml:space="preserve"><value>Invalid path: {0}</value></data>
   <data name="PathOutsideRoot" xml:space="preserve"><value>Path '{0}' is outside the workspace root '{1}'.</value></data>
+  <data name="FileNotFound" xml:space="preserve"><value>File not found: {0}</value></data>
+  <data name="CouldNotRead" xml:space="preserve"><value>Could not read file: {0}</value></data>
+  <data name="UnknownOperation" xml:space="preserve"><value>Unknown operation type: {0}</value></data>
+  <data name="BackupFailed" xml:space="preserve"><value>Backup failed: {0}</value></data>
+  <data name="WriteFailed" xml:space="preserve"><value>Write failed: {0}</value></data>
+  <data name="NotABackup" xml:space="preserve"><value>'{0}' is not a backup written by file_edit.</value></data>
+  <data name="BackupNotFound" xml:space="preserve"><value>Backup not found: {0}</value></data>
+  <data name="OldTextEmpty" xml:space="preserve"><value>OldText must not be empty.</value></data>
+  <data name="AnchorNotFound" xml:space="preserve"><value>Anchor not found in {0}: '{1}'</value></data>
+  <data name="OccurrenceNotFound" xml:space="preserve"><value>Occurrence {0} of anchor not found in {1}.</value></data>
+  <data name="AnchorEmpty" xml:space="preserve"><value>Anchor must not be empty.</value></data>
+  <data name="PatternEmpty" xml:space="preserve"><value>Pattern must not be empty.</value></data>
+  <data name="InvalidRegex" xml:space="preserve"><value>Invalid regex: {0}</value></data>
+  <data name="RegexTimeout" xml:space="preserve"><value>The regex took too long and was stopped.</value></data>
+  <data name="PatternNotFound" xml:space="preserve"><value>Pattern not found in {0}: '{1}'</value></data>
+  <data name="NamesEmpty" xml:space="preserve"><value>OldName and NewName must not be empty.</value></data>
+  <data name="NameNotFound" xml:space="preserve"><value>'{0}' not found in {1}.</value></data>
 </root>
