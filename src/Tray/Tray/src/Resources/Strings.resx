@@ -5,8 +5,4 @@
   <resheader name="reader"><value>System.Resources.NetResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.NetResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="ApprovalPipeBusy" xml:space="preserve"><value>Another process already serves the approval pipe, so dangerous tool calls cannot be confirmed.</value></data>
-  <data name="NoEndpointRecord" xml:space="preserve"><value>The HTTP MCP has not written its endpoint record.</value></data>
-  <data name="EndpointRecordInvalid" xml:space="preserve"><value>The HTTP MCP endpoint record is not valid.</value></data>
-  <data name="ListenerPidMismatch" xml:space="preserve"><value>The process listening on the MCP port is not the one that wrote the endpoint record.</value></data>
-  <data name="HealthCheckFailed" xml:space="preserve"><value>The HTTP MCP did not answer its health check.</value></data>
 </root>
