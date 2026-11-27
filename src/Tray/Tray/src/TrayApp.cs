@@ -27,7 +27,8 @@ public sealed class TrayApp : IDisposable
     private readonly InstancesViewModel _instances;
     private readonly OpenFileWatcher _openFiles;
     private readonly InstanceActions _actions;
-    private StatusWindow? _window;
+    private readonly StatusWindow _window;
+    private readonly Window _menuOwner;
     private TrayIconState? _previous;
 
     public TrayApp()
@@ -78,6 +79,37 @@ public sealed class TrayApp : IDisposable
             Icon = _icons[TrayIconState.Disconnected],
         };
         _icon.TrayLeftMouseUp += (_, _) => ShowStatus();
+
+        // The main window: created once; closing it hides it, minimizing follows the start setting.
+        _window = new StatusWindow(_status, _instances);
+        _window.CloseRequested += row => _ = CloseInstanceAsync(row);
+        var settings = TraySettings.Read(TraySettings.DefaultPath);
+        _window.SetMode(settings.Startup);
+        _window.StartupChanged += mode => TraySettings.Write(TraySettings.DefaultPath, mode);
+        switch (settings.Startup)
+        {
+            case StartupMode.Open:
+                ShowStatus();
+                break;
+            case StartupMode.Minimized:
+                _window.Show();
+                _window.WindowState = WindowState.Minimized;
+                break;
+        }
+
+        // A hidden owner window, activated on right-click, so the context menu opens and closes as a menu should.
+        _menuOwner = new Window
+        {
+            Width = 0,
+            Height = 0,
+            WindowStyle = WindowStyle.None,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            Left = -32000,
+            Top = -32000,
+        };
+        _menuOwner.Show();
+        _icon.TrayRightMouseUp += (_, _) => _menuOwner.Activate();
         _icon.ForceCreate();
     }
 
@@ -140,11 +172,6 @@ public sealed class TrayApp : IDisposable
 
     private void ShowStatus()
     {
-        if (_window is null)
-        {
-            _window = new StatusWindow(_status, _instances);
-            _window.CloseRequested += row => _ = CloseInstanceAsync(row);
-        }
         _window.Show();
         _window.Activate();
     }
@@ -155,7 +182,11 @@ public sealed class TrayApp : IDisposable
         var open = new MenuItem { Header = Strings.Get("OpenStatus") };
         open.Click += (_, _) => ShowStatus();
         var exit = new MenuItem { Header = Strings.Get("ExitTray") };
-        exit.Click += (_, _) => Application.Current.Shutdown();
+        exit.Click += (_, _) =>
+        {
+            _window.AllowClose();
+            Application.Current.Shutdown();
+        };
         menu.Items.Add(open);
         menu.Items.Add(exit);
         return menu;
