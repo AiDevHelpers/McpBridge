@@ -25,6 +25,7 @@ public sealed class TrayApp : IDisposable
     private readonly CancellationTokenSource _stop = new();
     private readonly Dictionary<TrayIconState, System.Drawing.Icon> _icons;
     private readonly InstancesViewModel _instances;
+    private readonly OpenFileWatcher _openFiles;
     private StatusWindow? _window;
     private TrayIconState? _previous;
 
@@ -48,8 +49,13 @@ public sealed class TrayApp : IDisposable
 
         // The IDE instances: read off the UI thread every 5 s, validated, turned into rows, then bound on the UI thread.
         var rowBuilder = new InstanceRowBuilder(InstanceProcessFacts.StartedAt, InstanceProcessFacts.OwnerOf, GitWorktree.RootFor, GitWorktree.BranchFor);
-        var rows = InstanceFeed.Watch(ValidInstances, TimeSpan.FromSeconds(5), TaskPoolScheduler.Default)
-            .Select(list => (IReadOnlyList<InstanceRow>)list.Select(rowBuilder.Build).OfType<InstanceRow>().ToList());
+        _openFiles = new OpenFileWatcher((pipe, onEvent, ct) =>
+            InstanceEventsClient.RunAsync(pipe, onEvent, TimeSpan.FromSeconds(45), _ => { }, ct));
+        var instanceList = InstanceFeed.Watch(ValidInstances, TimeSpan.FromSeconds(5), TaskPoolScheduler.Default).Replay(1).RefCount();
+        _feeds.Add(instanceList.Subscribe(list => _openFiles.Sync(list)));
+        var rows = instanceList
+            .Select(list => (IReadOnlyList<InstanceRow>)list.Select(rowBuilder.Build).OfType<InstanceRow>().ToList())
+            .CombineLatest(_openFiles.Snapshots, (instanceRows, files) => InstanceRowFiles.WithFiles(instanceRows, files));
         _instances = new InstancesViewModel(rows, ui);
         _status.PropertyChanged += (_, e) =>
         {
@@ -79,6 +85,7 @@ public sealed class TrayApp : IDisposable
         _feeds.Dispose();
         _status.Dispose();
         _instances.Dispose();
+        _openFiles.Dispose();
         _icon.Dispose();
         foreach (var icon in _icons.Values)
         {

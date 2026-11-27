@@ -71,8 +71,10 @@ public static class InstanceValidator
 }
 
 /// <summary>One row of the IDE Instances page. The *Text properties are what the grid shows, with the localized fallbacks.</summary>
-public sealed record InstanceRow(int Pid, string Ide, string? Repo, string? Branch, string Path, DateTime? Started, string? User)
+public sealed record InstanceRow(int Pid, string Ide, string? Repo, string? Branch, string Path, DateTime? Started, string? User, string? OpenFile = null)
 {
+    public string OpenFileText => OpenFile ?? Strings.Get("UnknownFile");
+
     public string RepoText => Repo ?? Strings.Get("NotARepo");
 
     public string BranchText => Branch ?? string.Empty;
@@ -80,6 +82,13 @@ public sealed record InstanceRow(int Pid, string Ide, string? Repo, string? Bran
     public string StartedText => Started is { } started ? started.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture) : string.Empty;
 
     public string UserText => User ?? string.Empty;
+}
+
+/// <summary>Puts the open file from the watcher onto each row. A row whose instance has no reading keeps no file.</summary>
+public static class InstanceRowFiles
+{
+    public static IReadOnlyList<InstanceRow> WithFiles(IReadOnlyList<InstanceRow> rows, IReadOnlyDictionary<int, string?> files) =>
+        rows.Select(row => row with { OpenFile = files.TryGetValue(row.Pid, out var file) ? file : null }).ToList();
 }
 
 /// <summary>

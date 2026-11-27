@@ -17,6 +17,7 @@ public partial class StatusWindow : Window
         RepoColumn.Header = Strings.Get("ColRepo");
         BranchColumn.Header = Strings.Get("ColBranch");
         PathColumn.Header = Strings.Get("ColPath");
+        OpenFileColumn.Header = Strings.Get("ColOpenFile");
         StartedColumn.Header = Strings.Get("ColStarted");
         PidColumn.Header = Strings.Get("ColPid");
         UserColumn.Header = Strings.Get("ColUser");
