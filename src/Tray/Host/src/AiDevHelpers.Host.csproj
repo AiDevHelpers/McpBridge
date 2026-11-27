@@ -14,6 +14,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\Helpers\WindowsSession\src\AiDevHelpers.Helpers.WindowsSession.csproj" />
+    <ProjectReference Include="..\..\Mcp.Client\src\AiDevHelpers.Mcp.Client.csproj" />
   </ItemGroup>
 
   <ItemGroup>

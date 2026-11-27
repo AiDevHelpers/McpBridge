@@ -70,7 +70,8 @@ public sealed class HttpHealthProbeTests : IDisposable
                 var request = Encoding.ASCII.GetString(buffer, 0, read);
                 var authorized = request.Contains("Authorization: Bearer " + expectedToken, StringComparison.OrdinalIgnoreCase);
                 var status = authorized ? statusWhenAuthorized : 401;
-                var response = $"HTTP/1.1 {status} X\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                var body = authorized ? "{\"status\":\"ok\",\"version\":\"1\",\"pid\":1,\"port\":1}" : string.Empty;
+                var response = $"HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {body.Length}\r\nConnection: close\r\n\r\n{body}";
                 await stream.WriteAsync(Encoding.ASCII.GetBytes(response));
             }
         });

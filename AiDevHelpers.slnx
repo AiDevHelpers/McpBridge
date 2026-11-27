@@ -118,6 +118,10 @@
     <Project Path="src/Tray/MCP.Http/src/AiDevHelpers.MCP.Http.csproj" />
     <Project Path="src/Tray/MCP.Http/tests/AiDevHelpers.MCP.Http.Tests.csproj" />
   </Folder>
+  <Folder Name="/Tray/Mcp.Client/">
+    <Project Path="src/Tray/Mcp.Client/src/AiDevHelpers.Mcp.Client.csproj" />
+    <Project Path="src/Tray/Mcp.Client/tests/AiDevHelpers.Mcp.Client.Tests.csproj" />
+  </Folder>
   <Folder Name="/Tray/Host/">
     <Project Path="src/Tray/Host/src/AiDevHelpers.Host.csproj" />
     <Project Path="src/Tray/Host/tests/AiDevHelpers.Host.Tests.csproj" />
