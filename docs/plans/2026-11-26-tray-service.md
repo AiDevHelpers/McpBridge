@@ -2,6 +2,17 @@
 
 Branch from `wip`; PRs and merges into `wip`. Status (2026-11-27): units 1a to 4 are merged to `wip` (PR #109, merge commit 7992942). Where wip and this branch built the same unit, wip's version is kept: `ApprovalGate` and attributes (MCP.Core), `McpSupervisor` (Host), the tray health and service readers (Tray). Our duplicates were removed. The tray side of the approval pipe (`ApprovalPipeHost`) and MCP.Http's use of it (`ApprovalPipeChannel`, replacing `NoTrayApprovalChannel`) are in PR #123. The tray shell that runs the host is unit 5, so until then dangerous tools are refused over HTTP. Phase 0 done except spikes B and C. Unit 5 is on hold.
 
+## Open items (2026-11-27)
+
+Outside the unit list, these are still open:
+- Unit 5: visual check of the tray icon and windows; XAML text not localized.
+- CI: the `build-and-test` run on the merged unit 5 branch was still in progress at last check; no run seen for `wip` `41d0151`.
+- Spike B (per-client checks) and Spike C (WPF dispatcher scheduler): not run.
+- Unit 3: elevated install and uninstall of the service scripts: not run.
+- Tray port: hardcoded to 5058 in `TrayApp`; should read `Http:Port`.
+- Unit 10b: needs the user to create the signing key and protected GitHub environment.
+- Cleanup: stale worktrees (`tray-merge`, `changelog-cleanup`, `tray-unit5`, `tray-unit6`), merged branches (`feature/tray-next`, `feat/tray-unit5`, `chore/changelog-tray-cleanup`, `chore/tray-unit5-strings`), and the untracked `src/Tray/MCP.Http/src/Properties/` folder.
+
 ## Decisions (user, 2026-11-26)
 - SCM Windows Service (LocalSystem) supervises one **HTTP MCP** and applies updates; a per-user WPF tray app starts at login. The service stays, despite two reviewers calling it avoidable; Spike A (below) re-prices it before unit 3.
 - One HTTP MCP instance serves every IDE and chat client (`AiDevHelpers.MCP.Http`, streamable HTTP). The stdio exe stays for clients that need it.
