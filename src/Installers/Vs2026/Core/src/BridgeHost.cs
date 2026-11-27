@@ -154,6 +154,8 @@ public sealed class BridgeHost : IDisposable
             () => _solutionPath,
             new DebugBridgeLogger());
         _server.UiResponsive = () => _uiResponsive;
+        // An action that never answers usually means a dialog is open on the UI thread. Name the dialogs so the client can act.
+        _server.ActionTimedOut = action => _events.Publish("dialogBlocking", new { action, dialogs = DialogWindows.OpenTitles(_pid) });
         BridgeControl.Attach(_server, _pid, pipeName, () => _solutionPath);
         BridgeControl.Start();
 

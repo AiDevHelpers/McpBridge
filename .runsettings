@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Visual Studio picks this up from the solution folder. The Tpm tests need administrator rights and a TPM,
+     and the Admin and Manual tests need an elevated session, a service install or a person at the desktop,
      so dotnet test skips them. Test Explorer ignores this filter; the key-creation test skips itself when not elevated.
      The full gate runs them elevated through scripts/gate-tpm.ps1. -->
 <RunSettings>
   <RunConfiguration>
-    <TestCaseFilter>Category!=Tpm</TestCaseFilter>
+    <TestCaseFilter>Category!=Tpm&amp;Category!=Admin&amp;Category!=Manual</TestCaseFilter>
   </RunConfiguration>
 </RunSettings>

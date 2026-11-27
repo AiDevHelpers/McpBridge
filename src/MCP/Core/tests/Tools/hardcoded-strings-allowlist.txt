@@ -3,6 +3,9 @@
 # Folder names on disk.
 # RoslynHelper protocol errors returned to the bridge caller; developer-facing, not UI text.
 RoslynHelper|Unknown or incomplete argument: {args[i]}
+RoslynHelper|Action already registered: {action}.
+RoslynHelper|No solution is loaded. Call loadSolution first.
+RoslynHelper|The plan was not applied.
 RoslynHelper|Unknown action: {action}.
 RoslynHelper|Changed document has no file on disk: {documentId}.
 RoslynHelper|Plan removes {before.FilePath}; the helper does not delete files in this step.
