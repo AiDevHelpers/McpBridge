@@ -96,6 +96,23 @@ public static class McpServiceCollectionExtensions
                     };
                 }
 
+                // A dangerous tool needs the person's yes on the tray for this exact call. Only a host that registers a channel (HTTP) asks;
+                // stdio registers none and keeps its behaviour.
+                var approvalChannel = context.Services?.GetService<IApprovalChannel>();
+                var toolName = context.Params?.Name;
+                if (approvalChannel is not null && ToolClassification.IsDangerous(toolName))
+                {
+                    var argumentsJson = System.Text.Json.JsonSerializer.Serialize(context.Params?.Arguments);
+                    if (!await ApprovalGate.ApproveAsync(approvalChannel, toolName!, argumentsJson, () => DateTime.UtcNow, ct).ConfigureAwait(false))
+                    {
+                        return new ModelContextProtocol.Protocol.CallToolResult
+                        {
+                            IsError = true,
+                            Content = [new ModelContextProtocol.Protocol.TextContentBlock { Text = Strings.Get("ApprovalRefused") }],
+                        };
+                    }
+                }
+
                 var result = await next(context, ct);
                 foreach (var block in result.Content.OfType<ModelContextProtocol.Protocol.TextContentBlock>())
                 {
