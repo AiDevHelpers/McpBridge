@@ -149,6 +149,12 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `bookmark_remove` | Remove a Visual Studio bookmark by id. |
 | `bookmark_set` | Set a Visual Studio bookmark at a line. file must be a full path; line is 1-based; name is optional. |
 
+## File edit
+
+| Tool | Purpose |
+| --- | --- |
+| `file_edit` | Apply, insert, delete, rename, or roll back a text edit in a file inside the workspace root. A byte-exact backup is written to .aidevhelpers/backups before every write; dryRun=true validates without writing. The file's encoding (BOM) is kept. root defaults to the git repo of the server's current folder. |
+
 ## Model server
 
 | Tool | Purpose |

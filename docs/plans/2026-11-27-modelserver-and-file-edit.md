@@ -38,7 +38,7 @@ Sonnet review 2026-11-27 folded in (findings noted per unit).
 - [x] U5. (done: red = CS0246 `FileEditEngine` missing, then 42/42 green incl. guard tests; rollback source must be inside the backup folder, stricter than TokenSaver which also accepted any workspace file) `FileEditHelper` edit engine + tests: apply (occurrence 0/N, not found), insert before/after (+anchor fallback when not required), delete literal/regex
   (Multiline, "Invalid regex"), rename (whole word; comment lines skipped unless `replaceInComments`), rollback, dryRun writes nothing, backup per write with
   ms+guid name, BOM/UTF-16 preserved, atomic write with `File.Replace` retry and no `.tmp` left, batch stops at first failure. Backup folder `.aidevhelpers/backups`.
-- [ ] U6. `FileEditTools` (`file_edit`, `action` param, EditFile parameters, JSON results): tool tests, self-test entries, `mcp-tools.md`.
+- [x] U6. (done: helper `FileEditService` validates requests, red = CS0246 then 58/58 helper tests green; MCP.Core.Tests 381/382, the 1 failure is the same pre-existing RoslynHelper one) `FileEditTools` (`file_edit`, `action` param, EditFile parameters, JSON results): tool tests, self-test entries, `mcp-tools.md`.
 - [ ] U7. Docs and gates: `docs/features.md`, `docs/self_test.md`, repo docs naming `mcp__TokenSaver__edit_file`, dogfood tool-use rows; lite gate
   (`.claude/reference/lite-gate.md`, includes `project_audit`); full gate before any PR to dev/main.
 

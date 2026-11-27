@@ -25,4 +25,7 @@
   <data name="PatternNotFound" xml:space="preserve"><value>Pattern not found in {0}: '{1}'</value></data>
   <data name="NamesEmpty" xml:space="preserve"><value>OldName and NewName must not be empty.</value></data>
   <data name="NameNotFound" xml:space="preserve"><value>'{0}' not found in {1}.</value></data>
+  <data name="UnknownAction" xml:space="preserve"><value>Unknown action. Use 'apply', 'insert', 'delete', 'rename', or 'rollback'.</value></data>
+  <data name="ParamRequired" xml:space="preserve"><value>{0} is required for action '{1}'.</value></data>
+  <data name="BadPosition" xml:space="preserve"><value>position must be 'before' or 'after', not '{0}'.</value></data>
 </root>
