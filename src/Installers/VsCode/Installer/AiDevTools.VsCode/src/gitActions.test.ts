@@ -1,4 +1,8 @@
 import { join } from "node:path";
+
+// Windows-style roots on Windows, POSIX roots elsewhere, so the absolute-path checks hold on the CI runner.
+const ROOT = process.platform === "win32" ? "F:/work/app" : "/work/app";
+const OTHER = process.platform === "win32" ? "F:/other" : "/other";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // A fake VS Code git extension, recording every call the actions make.
@@ -16,14 +20,14 @@ vi.mock("vscode", () => ({
     Uri: { file: (p: string) => ({ fsPath: p }) },
 }));
 
-function fakeRepo(root = "F:/work/app") {
+function fakeRepo(root = ROOT) {
     const record = (name: string) => async (...args: unknown[]) => { calls.push([name, args]); };
     return {
         rootUri: { fsPath: root },
         state: {
             HEAD: { name: "main", ahead: 1, behind: 0 },
-            indexChanges: [{ uri: { fsPath: "F:/work/app/a.cs" }, status: 0 }],
-            workingTreeChanges: [{ uri: { fsPath: "F:/work/app/b.cs" }, status: 3 }],
+            indexChanges: [{ uri: { fsPath: `${ROOT}/a.cs` }, status: 0 }],
+            workingTreeChanges: [{ uri: { fsPath: `${ROOT}/b.cs` }, status: 3 }],
         },
         add: record("add"),
         commit: record("commit"),
@@ -52,15 +56,15 @@ describe("git actions", () => {
 
         expect(status.branch).toBe("main");
         expect(status.changes).toEqual([
-            { path: "F:/work/app/a.cs", index: "A", worktree: " " },
-            { path: "F:/work/app/b.cs", index: " ", worktree: "M" },
+            { path: `${ROOT}/a.cs`, index: "A", worktree: " " },
+            { path: `${ROOT}/b.cs`, index: " ", worktree: "M" },
         ]);
     });
 
     it("stages the given paths", async () => {
         await runIdeAction("gitStage", { paths: ["a.cs", "b.cs"] });
 
-        expect(calls).toEqual([["add", [[join("F:/work/app", "a.cs"), join("F:/work/app", "b.cs")]]]]);
+        expect(calls).toEqual([["add", [[join(ROOT, "a.cs"), join(ROOT, "b.cs")]]]]);
     });
 
     it("commits with the message", async () => {
@@ -92,9 +96,11 @@ describe("git actions", () => {
     });
 
     it("picks the repository whose root matches repoPath", async () => {
-        repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
+        repos = [fakeRepo(OTHER), fakeRepo(ROOT)];
 
-        await runIdeAction("gitCommit", { message: "m", repoPath: "f:/WORK/app" });
+        // Windows matches the root case-insensitively; elsewhere the path must match exactly.
+        const repoPath = process.platform === "win32" ? "f:/WORK/app" : ROOT;
+        await runIdeAction("gitCommit", { message: "m", repoPath });
 
         expect(calls).toEqual([["commit", ["m"]]]);
     });
@@ -112,18 +118,18 @@ describe("git actions", () => {
     });
 
     it("stages the approved paths, resolved against the repository named by repoPath", async () => {
-        repos = [fakeRepo("F:/other"), fakeRepo("F:/work/app")];
+        repos = [fakeRepo(OTHER), fakeRepo(ROOT)];
 
-        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: ["src/a.cs", "b.txt"] });
+        await runIdeAction("gitStage", { repoPath: ROOT, paths: ["src/a.cs", "b.txt"] });
 
-        expect(calls).toEqual([["add", [[join("F:/work/app", "src/a.cs"), join("F:/work/app", "b.txt")]]]]);
+        expect(calls).toEqual([["add", [[join(ROOT, "src/a.cs"), join(ROOT, "b.txt")]]]]);
     });
 
     it("keeps an absolute path as given when staging", async () => {
-        repos = [fakeRepo("F:/work/app")];
-        const absolute = join("F:/work/app", "c.txt");
+        repos = [fakeRepo(ROOT)];
+        const absolute = join(ROOT, "c.txt");
 
-        await runIdeAction("gitStage", { repoPath: "F:/work/app", paths: [absolute] });
+        await runIdeAction("gitStage", { repoPath: ROOT, paths: [absolute] });
 
         expect(calls).toEqual([["add", [[absolute]]]]);
     });
@@ -131,7 +137,7 @@ describe("git actions", () => {
     it("commits the approved message exactly, multi-line included", async () => {
         const message = "fix: parse\n\nBody line";
 
-        await runIdeAction("gitCommit", { repoPath: "F:/work/app", message });
+        await runIdeAction("gitCommit", { repoPath: ROOT, message });
 
         expect(calls).toEqual([["commit", [message]]]);
     });

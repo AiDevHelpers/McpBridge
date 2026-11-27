@@ -44,6 +44,9 @@ const TASKLIST = [
     "INFO: No tasks are running which match the specified criteria.",
 ].join("\r\n");
 
+// The `ps` listing for the same two processes, used where the code lists processes with ps (not Windows).
+const PS_LISTING = "  4120 /usr/bin/devenv.exe\n  9001 /usr/bin/MyApp.exe\n";
+
 // A session as the debugger reports it, with the DAP exception filters the initialize reply carried.
 function fakeSession(id = "s1") {
     return {
@@ -85,7 +88,7 @@ describe("process list shaping", () => {
 
 describe("processActions", () => {
     beforeEach(() => {
-        fake.stdout = TASKLIST;
+        fake.stdout = process.platform === "win32" ? TASKLIST : PS_LISTING;
         fake.commands.length = 0;
         state.activeDebugSession = undefined;
         startDebugging.mockClear();
