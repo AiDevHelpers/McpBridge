@@ -27,7 +27,7 @@ public static class IdeInstanceRouter
     public static async Task<string> CallAsync(string action, object args, string? solutionPath, CancellationToken ct, string? ide = null, int? instancePid = null)
     {
         // Edit actions for a VS Code solution go to its Roslyn helper; everything else keeps the bridge path below.
-        var route = RoslynRouting.Decide(action, ide, solutionPath, RoslynHelperRegistry.FindForSolution);
+        var route = RoslynRouting.Decide(action, ide, solutionPath, FileArgument(args), RoslynHelperRegistry.FindForSolution);
         if (route.Kind == RoslynRouteKind.NoHelper)
         {
             return JsonSerializer.Serialize(new { ide = "VsCode", solution_path = solutionPath, ok = false, error = route.Error });
@@ -95,6 +95,15 @@ public static class IdeInstanceRouter
         }
 
         return await SendAsync(target, action, args, ct);
+    }
+
+    /// <summary>The <c>file</c> argument of an action, when it has one; the routing reads its project's framework.</summary>
+    private static string? FileArgument(object args)
+    {
+        var element = JsonSerializer.SerializeToElement(args);
+        return element.ValueKind == JsonValueKind.Object && element.TryGetProperty("file", out var file) && file.ValueKind == JsonValueKind.String
+            ? file.GetString()
+            : null;
     }
 
     /// <summary>JSON for <c>IdeListInstances</c>: every running instance with its solution.</summary>

@@ -5,9 +5,14 @@ import { fileURLToPath } from "node:url";
 import { execSync } from "node:child_process";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const project = join(here, "..", "..", "..", "..", "..", "Helpers", "RoslynHelper", "src", "AiDevHelpers.Helpers.RoslynHelper.csproj");
-const dest = join(here, "..", "src", "roslyn");
-rmSync(dest, { recursive: true, force: true });
-mkdirSync(dest, { recursive: true });
-execSync(`dotnet publish "${project}" -c Release -o "${dest}"`, { stdio: "inherit" });
-console.log(`Published the Roslyn helper into ${dest}`);
+// Both helpers: the net10 one (SDK-style solutions) and the net48 one (legacy and net48 projects, Framework MSBuild).
+const helpers = [
+    { project: join(here, "..", "..", "..", "..", "..", "Helpers", "RoslynHelper", "src", "AiDevHelpers.Helpers.RoslynHelper.csproj"), dest: join(here, "..", "src", "roslyn") },
+    { project: join(here, "..", "..", "..", "..", "..", "Helpers", "RoslynHelper48", "src", "AiDevHelpers.Helpers.RoslynHelper48.csproj"), dest: join(here, "..", "src", "roslyn48") },
+];
+for (const { project, dest } of helpers) {
+    rmSync(dest, { recursive: true, force: true });
+    mkdirSync(dest, { recursive: true });
+    execSync(`dotnet publish "${project}" -c Release -o "${dest}"`, { stdio: "inherit" });
+    console.log(`Published a Roslyn helper into ${dest}`);
+}
