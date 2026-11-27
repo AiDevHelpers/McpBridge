@@ -5,6 +5,7 @@ using System.Text.Json;
 using AiDevHelpers.MCP.Core;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using ModelContextProtocol.Protocol;
 
 namespace AiDevHelpers.MCP.Http;
 
@@ -12,7 +13,8 @@ namespace AiDevHelpers.MCP.Http;
 /// <param name="Port">The loopback port; 0 picks a free one.</param>
 /// <param name="TokenPath">The bearer token file (see <see cref="TokenStore"/>).</param>
 /// <param name="EndpointPath">The endpoint record (pid, port, version, or the startup error).</param>
-public sealed record HttpHostOptions(int Port, string TokenPath, string EndpointPath);
+/// <param name="Approval">Asks the user to approve dangerous tool calls; null uses the tray's named pipe.</param>
+public sealed record HttpHostOptions(int Port, string TokenPath, string EndpointPath, IApprovalChannel? Approval = null);
 
 /// <summary>The configured port is already taken. The endpoint record carries the same cause.</summary>
 public sealed class PortInUseException(int port) : Exception(Strings.Format("PortInUse", port))
@@ -58,6 +60,9 @@ public static class McpHttpHost
     /// <summary>The default loopback port.</summary>
     public const int DefaultPort = 5757;
 
+    /// <summary>How long the user has to answer a confirmation in the tray before the call is refused.</summary>
+    public static readonly TimeSpan ApprovalTimeout = TimeSpan.FromSeconds(30);
+
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
         WriteIndented = true,
@@ -76,8 +81,27 @@ public static class McpHttpHost
         // 2026-07-28 protocol revision). Stateful stays: ControlSession, log notifications and the McpServer
         // parameters of some tools need a session. Revisit when the clients move to the newer revision.
 #pragma warning disable MCP9006
+        var gate = new ApprovalGate(
+            options.Approval ?? new NamedPipeApprovalChannel(NamedPipeApprovalChannel.DefaultPipeName, NamedPipeApprovalChannel.IsTrayInThisFolder, TimeSpan.FromSeconds(2)),
+            ApprovalTimeout);
         builder.Services
             .AddAiDevHelpersMcp(builder.Configuration)
+            .WithRequestFilters(filters => filters.AddCallToolFilter(next => async (context, ct) =>
+            {
+                // Dangerous tools need the user's approval for this exact call; anything unclear refuses it.
+                var arguments = context.Params?.Arguments is { } args ? System.Text.Json.JsonSerializer.Serialize(args) : "{}";
+                var decision = await gate.CheckAsync(context.Params?.Name, arguments, ct);
+                if (!decision.Allowed)
+                {
+                    return new CallToolResult
+                    {
+                        IsError = true,
+                        Content = [new TextContentBlock { Text = decision.Reason ?? Strings.Get("ApprovalDenied") }],
+                    };
+                }
+
+                return await next(context, ct);
+            }))
             .WithHttpTransport(http =>
             {
                 http.Stateless = false;

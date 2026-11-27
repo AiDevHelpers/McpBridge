@@ -25,7 +25,18 @@ Every request must pass, in order:
 
 The server binds to `127.0.0.1` only. `GET /healthz` returns `status`, `version`, `pid` and `port` (same checks apply).
 
-The token is not a boundary against code that already runs as you. Tray confirmation of dangerous tools (unit 1c) is the real control for those.
+The token is not a boundary against code that already runs as you. Tray confirmation of dangerous tools is the real control for those.
+
+## Dangerous tools need your confirmation
+
+A client steered by hostile text (a log line, a build message) could call tools that run commands. Over HTTP these tools ask the tray before each call:
+
+`terminal_session`, `script_run`, `run_elevated_script`, `ide_kill_instance`, `ide_kill_process`, `ide_attach_process`, `ide_evaluate`, `ide_start_debugging`, `tool_install`, `gate_run`, `live_test_start`, `dotnet_diag`, `test_hosts_stop`, `git_confirm`, `extension_add_confirm`, `server_control_set`, `ide_launch_instance`, `ide_reset_instance`, `ide_publish`.
+
+- The list is `ToolRiskCatalog`. A tool that is not listed as safe, including one added later, counts as dangerous, and a test fails until it is classified. Builds and test runs stay safe: they run code from a repository you already opened.
+- Each request carries a fresh nonce and a hash of the call's arguments. The answer must return both, so an approval cannot be reused for other arguments.
+- It fails closed: no tray running, an error, a wrong answer, or no answer within 30 seconds refuses the call.
+- The tray is the pipe server (`AiDevHelpers.Tray.Approval.<your SID>`). The server process must be `AiDevHelpers.Tray.exe` in the same folder as the HTTP exe; another process serving that pipe name gets nothing. The tray itself arrives in the tray unit, so until then these calls are refused over HTTP. The stdio exe is unchanged.
 
 ## Sessions
 
