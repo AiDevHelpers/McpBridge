@@ -15,7 +15,7 @@ internal sealed class SelfTestTools
     public static readonly string[] HelperNames =
     [
         "BookmarkHelper", "ConfigHelper", "ErrorHelper", "ExtensionsHelper", "LintHelper", "LocalizationHelper", "LogHelper",
-        "OutputHelper", "PackageHelper", "ProjectHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
+        "ModelServerHelper", "OutputHelper", "PackageHelper", "ProjectHelper", "GateHelper", "SourceControlHelper", "TerminalControl", "TestingHelper", "WindowsSession",
         ScriptHelperName,
     ];
 

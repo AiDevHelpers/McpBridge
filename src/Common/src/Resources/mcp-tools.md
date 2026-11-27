@@ -149,6 +149,13 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | `bookmark_remove` | Remove a Visual Studio bookmark by id. |
 | `bookmark_set` | Set a Visual Studio bookmark at a line. file must be a full path; line is 1-based; name is optional. |
 
+## Model server
+
+| Tool | Purpose |
+| --- | --- |
+| `model_server_capacity` | SimpleModelServer router capacity: CPU threads, GPU layers, whether a GPU is detected, and how many summary requests may run at once (at least 1). fromFallback is true when the router could not be read. refresh=true skips the 60 second cache. |
+| `model_server_status` | SimpleModelServer router status: whether it is reachable, the models it lists, which are loaded in VRAM, and whether it is healthy. An unreachable router is ok with running=false. |
+
 ## Errors and CI
 
 | Tool | Purpose |
