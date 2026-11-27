@@ -1,6 +1,22 @@
 # Implementation plan: tray unit 6, IDE Instances page
 
-Unit 6 of `docs/plans/2026-11-26-tray-service.md`. Branch from `wip`; PR into `wip`. Status: plan, not started.
+Unit 6 of `docs/plans/2026-11-26-tray-service.md`. Branch from `wip`; PR into `wip`. Status (2026-11-27): in progress on `feat/tray-unit6-instances`, pushed as `761a1eb`, no PR yet.
+
+## Progress (2026-11-27)
+
+- [x] 6.1 Seam: `VsInstanceRegistry.ListRunning(directory, isRunning)`; Bridge tests 110 green (seam tests red then green).
+- [ ] 6.1 Tray source: `IInstanceSource` over the Bridge call, emits on change. Not started.
+- [x] 6.2 `InstanceValidator`: pid, IDE, pipe name, path checks. Tests green (41 Tray tests in total).
+- [x] 6.3 `InstanceRows`: repo, branch, "not a repo", "detached". Tests green.
+- [x] 6.4 Start time: `IProcessInfo`, `SystemProcessInfo`; gone processes dropped. Tests green.
+- [x] 6.5 `InstancesViewModel`: live list, empty message, dispose. Tests green.
+- [ ] 6.6 Page and manual checklist. Not started.
+- [ ] 6.7 Live file path (events client). Protocol field name to confirm against `conformance/protocol.md`. Not started.
+- [ ] 6.8 Docs and changelog. Not started.
+- [ ] 6.9 Close and reset: safety review first (not written yet), then code. Not started.
+- [ ] Lite gate, Release build, PR to `wip`, merge when checks pass. Not started.
+
+Note: the pipe name rule in 6.2 accepts `AiDevHelpers.VS.<pid>` and `AiDevHelpers.VSCode.<pid>` (the form the Bridge test uses), so the check matches what instances write.
 
 ## Goal
 
