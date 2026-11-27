@@ -49,10 +49,11 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - [ ] U11. `execute_step` (plan step execution, from `ManagePlan`): depends on U9's plan storage. Blocked on U9.
 - [ ] U12. Docs and gates: `docs/features.md`, `docs/self_test.md`, dogfood log; lite gate with aidevtools tools; full gate before any PR to dev/main.
 
-## Open questions for the user (asked before U9)
-- `code_work`: where should plan sessions be stored (repo `.aidevhelpers/` or a user-level folder), and should they survive server restarts?
-- `fix_code` format: `ide_format_document` (needs a running Visual Studio) or `dotnet format` through `CommandRunner` (works headless)?
-- U8: may `WorkspacePathGuard` move into `AiDevHelpers.Common`?
+## Answers (2026-11-27)
+- `code_work` storage: repo `.aidevhelpers/`. Sessions survive server restarts (persisted to disk).
+- `fix_code` format: `ide_format_document`. Needs a running Visual Studio instance, so U10 format steps are blocked when no IDE is open.
+- U8: `WorkspacePathGuard` moves into `AiDevHelpers.Common`, with its tests. Unblocks U8 and then U10.
+- U9 and U11 can now be planned in detail (storage and persistence are decided).
 
 ## Rules
 - Each unit: failing test, implement, build, test, commit, push branch. No PR unless the user asks.
