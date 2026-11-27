@@ -94,9 +94,9 @@ describe("git actions", () => {
         expect(calls[0]).toEqual(["createStash", ["wip"]]);
     });
 
-    it("picks the repository whose root matches repoPath", async () => {
+    // Windows paths compare case-insensitively, so this only holds on Windows (CI runs Linux too).
+    it.skipIf(!DRIVE)("picks the repository whose root matches repoPath", async () => {
         repos = [fakeRepo(DRIVE + "/other"), fakeRepo(DRIVE + "/work/app")];
-
         await runIdeAction("gitCommit", { message: "m", repoPath: "f:/WORK/app" });
 
         expect(calls).toEqual([["commit", ["m"]]]);
