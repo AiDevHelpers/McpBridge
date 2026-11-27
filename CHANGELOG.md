@@ -3,6 +3,7 @@
 ## Tray (unreleased)
 
 - The tray reads the HTTP MCP's state (`HealthFeed`: Connected, Disconnected or PortConflict) and the `AiDevHelpers` service state (`ServiceStatus`) without needing administrator rights.
+- The tray's IDE Instances tab lists the running Visual Studio and VS Code instances: IDE, repo, branch, solution or workspace path, start time and user. Rows come from the manifests the bridge already writes, after the tray checks each one (a refused manifest is traced with its reason). The open file is read from each instance's events pipe (`documentOpened`/`documentClosing`); the page's file column is not wired yet.
 - The tray hosts the approval pipe (`ApprovalPipeHost`): first instance, current user only. A dangerous tool call over HTTP runs only on an exact yes; no, no tray, or a timeout refuses it. The approval dialog arrives with the tray shell.
 
 ## MCP over HTTP (unreleased)

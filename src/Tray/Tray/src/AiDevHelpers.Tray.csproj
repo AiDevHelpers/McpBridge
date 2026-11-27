@@ -16,6 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\MCP\Core\src\AiDevHelpers.MCP.Core.csproj" />
+    <ProjectReference Include="..\..\..\Bridge\src\AiDevHelpers.Bridge.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -23,6 +24,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="H.NotifyIcon.Wpf" Version="2.4.1" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.9" />
+    <PackageReference Include="System.Management" Version="10.0.9" />
   </ItemGroup>
 
 </Project>
