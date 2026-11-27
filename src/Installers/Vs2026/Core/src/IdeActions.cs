@@ -131,6 +131,7 @@ public sealed class IdeActions(DTE2 dte)
         "prepareKill" => PrepareKill(),
         "killProcess" => KillProcess(RequireInt(args, "pid")),
         "listProcesses" => ListProcesses(),
+        "listItemTemplates" => ListItemTemplates(OptionalString(args, "filter"), OptionalString(args, "language"), OptionalInt(args, "limit")),
         "listDebuggedProcesses" => ListDebuggedProcesses(),
         "listThreads" => ListThreads(),
         "listExceptions" => ListExceptions(OptionalString(args, "group")),
@@ -1078,6 +1079,56 @@ public sealed class IdeActions(DTE2 dte)
     }
 
     // Process lists for the debugger. Read-only: nothing is attached or detached here.
+    // Item templates this Visual Studio offers in Add New Item: its shipped and extension templates (ItemTemplatesCache,
+    // ItemTemplates), those the user's instance data folders cache, and the user's own under Documents. Each path can be
+    // passed as the template of addProjectItem in mode fromNew.
+    private object ListItemTemplates(string? filter, string? language, int? limit)
+    {
+        var max = Math.Min(Math.Max(limit ?? 200, 1), 1000);
+        var ide = Path.GetDirectoryName(dte.FullName) ?? string.Empty;
+        var roots = new List<string> { Path.Combine(ide, "ItemTemplatesCache"), Path.Combine(ide, "ItemTemplates") };
+        roots.AddRange(MatchingFolders(
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "VisualStudio"),
+            "*", "ItemTemplatesCache"));
+        roots.AddRange(MatchingFolders(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Visual Studio*", Path.Combine("Templates", "ItemTemplates")));
+
+        var found = ItemTemplateFinder.Find(roots, filter, language, max);
+        return new
+        {
+            count = found.Templates.Count,
+            truncated = found.Truncated,
+            templates = found.Templates.Select(t => new { name = t.Name, description = t.Description, language = t.Language, category = t.Category, path = t.Path }).ToList(),
+        };
+    }
+
+    // <parent>\<match>\<suffix> for every folder under parent that matches the pattern and has the suffix folder.
+    private static IEnumerable<string> MatchingFolders(string parent, string pattern, string suffix)
+    {
+        if (!Directory.Exists(parent))
+        {
+            yield break;
+        }
+
+        string[] matches;
+        try
+        {
+            matches = Directory.GetDirectories(parent, pattern);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            yield break;
+        }
+
+        foreach (var match in matches)
+        {
+            var folder = Path.Combine(match, suffix);
+            if (Directory.Exists(folder))
+            {
+                yield return folder;
+            }
+        }
+    }
+
     private object ListProcesses()
     {
         var processes = dte.Debugger.LocalProcesses;

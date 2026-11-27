@@ -121,7 +121,7 @@ VS Code differences:
 
 - Debugger: `listProcesses`, `listDebuggedProcesses`, `listThreads`, `listStackFrames`, `listExceptions`, `setExceptionBreak`, `setBreakpointCondition`, `enableBreakpoint`, `disableBreakpoint`, `attachProcess`, `detachAll`.
 - Editor and documents: `findInFiles`, `replaceInFiles`, `listDocuments`, `saveDocument`, `closeDocument`, `undoGroup`, `listCodeElements`.
-- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`.
+- Solution and projects: `projectProperties`, `addProjectItem`, `removeProjectItem`, `closeSolution`, `listItemTemplates` (Visual Studio only; the VS Code bridge answers unknown action).
 - Tasks and shell services: `listTasks`, `addTask`, `clearTasks`, `setStatus`, `showInfoBar`, `writeActivityLog`, `getSetting`.
 - Roslyn: `semanticReferences`, `semanticDefinition`, `renameSymbol`.
 - Events: subscription over `AiDevHelpers.VS.<pid>.events`, not a request action.
