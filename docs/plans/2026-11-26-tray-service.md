@@ -1,52 +1,62 @@
 # Windows service + login tray app
 
-Branch from `wip`; PRs and merges into `wip`. Status: reviewed (Sonnet, 2026-11-26), findings folded in. Not started.
+Branch from `wip`; PRs and merges into `wip`. Status: reviewed twice (Sonnet, 2026-11-26), findings folded in. Not started.
 
 ## Decisions (user, 2026-11-26)
 - SCM Windows Service (session 0) hosts machine-wide state and service control; a per-user WPF tray app starts at login and talks to it over a named pipe.
-- UI: WPF on .NET 10 with Syncfusion WPF controls. Host never loads Syncfusion.
-- License key (user, 2026-11-26): port the VideoForensics pattern (F:\VideoForensics, `src/client/core/VideoForensics.Client.Core/src/Licensing/`: `SyncfusionLicenseRegistrar`, `EmbeddedLicenseKeySource`, `ISyncfusionLicenseRegistrar`; csproj `SyncfusionLicenseKey` property; `build-windows.yml` and `release-installers.yml` steps). Embedded manifest resource `syncfusion-license.key` in `AiDevHelpers.Tray`, gitignored. Locally an MSBuild target writes it from `dotnet user-secrets` (`Syncfusion:LicenseKey`); in CI the `SYNCFUSION_LICENSE_KEY` GitHub secret writes it (and `-p:SyncfusionLicenseKey=`). Registrar resolves the key at startup. Missing key: Debug builds run with the trial banner; the release workflow fails when the secret is unset (as `release-installers.yml` does).
-- Updater (user, 2026-11-26): port the VideoForensics updater (`src/client/host/VideoForensics.Hosting/src/Updates/`: `UpdateStager`, `StagedUpdateWatcher`, `UpdatePackageVerifier`, `Ed25519PackageSignatureVerifier`, `UpdateApplier`, `StartupUpdateApplier`, `UpdatePathGuard`, `UpdateManifest`, `MaintenanceUpdateDrain`; `UpdatesFolderAcl` from the Windows platform project). Two sources feed one staging folder under `%ProgramData%\AiDevHelpers\updates`: a debug stage script (deploy from a local Debug/Release build) and a GitHub release package downloader. Packages are Ed25519-signed and verified before apply; unsigned dev packages only when `allowDevUpdatePackages` is set. The Host drains, applies in place, exits so the service manager restarts it; the tray is updated by the Host staging it and the tray restarting itself on the next login or a Services-page action.
+- UI: plain WPF on .NET 10 with the built-in Fluent theme (`ThemeMode`, follows system light/dark/high contrast). Syncfusion dropped after review (user, 2026-11-26): no license key, embedded resource or license CI secret. Tray icon via `H.NotifyIcon.Wpf` (pinned in unit 0).
 - MVVM: System.Reactive + CommunityToolkit.Mvvm. Every page binds to view-model properties fed by `IObservable<T>` from the config and from the MCP side.
-- Services page: MCP service install/reinstall/uninstall/start/stop/restart/startup type, VS and VS Code extension install/reinstall, run-at-login toggle for the tray.
+- Services page: MCP service install/reinstall/uninstall/start/stop/restart/startup type, VS and VS Code extension install/reinstall, run-at-login toggle for the tray, update check/install.
+- Service and ported updater kept (user, 2026-11-26), despite the reviewer's tray-only suggestion.
+- Updater: port the VideoForensics updater (`src/client/host/VideoForensics.Hosting/src/Updates/` plus `UpdatesFolderAcl`). One staging folder, two sources: a debug stage script and a GitHub release package.
 
 ## Design (after review)
-- The service does not replace the stdio `AiDevHelpers.MCP` server that clients launch. It supervises and exposes machine-wide state. "MCP health" = service state plus bridge manifests; there is no per-MCP-process heartbeat (dropped from `HostStatus`).
-- **Instances** (Host): manifests in `%ProgramData%\AiDevHelpers\vs-instances` (`VsInstance`: Pid, SolutionPath, Ide, UpdatedUtc; VS Code writes the same shape). Repo and branch derived with `GitWorktree.RootFor/BranchFor` from SolutionPath. Start time comes from the process, not `UpdatedUtc`. Dead PIDs are filtered, never deleted (do not call `VsInstanceRegistry.ListRunning`, it deletes); PID reuse checked via process start time.
-- **Config** (Tray, user context): the service runs as LocalSystem, so user-profile config would resolve to the wrong profile. The tray watches config itself with `ConfigHelper` (`ConfigReader.ReadRedacted`, `ConfigPathResolver.Resolve`) and exposes `IObservable<ConfigSnapshot>`. Watched: user Settings.json, `RepoConfig.PathFor` per open solution (from the instances stream), the `.aidevhelpers` folder. Needs a file-watcher wrapper since the helpers are one-shot.
-- **Pipe security**: reuse `BridgeServer.CreatePipeSecurity()`; user SID from `UserSession.GetUserSid` (src/Helpers/WindowsSession); SYSTEM/Administrators as the existing code grants; remote clients denied; caller-SID check; max frame size; fast user switching handled (one pipe per session or SID-filtered).
-- **Elevation**: pipe clients may send only typed service commands, never a script path. Install/uninstall run `scripts/service-*.ps1` through a UAC prompt from the tray, each with a committed SHA-256 pin (`gate-tpm.ps1` model, `-WritePin`). Host binary installs under `%ProgramFiles%\AiDevHelpers`, ACL'd admin-write only, and the install script verifies the binary hash before `sc create`. `update-vs-extension.ps1` is not elevated and stays unpinned; if it ever becomes elevated it needs a pin.
-- **TFMs**: Host and Contracts target `net10.0-windows` (project-standards.json allows only the `-windows` suffix; Host references `AiDevHelpers.Bridge`, which multi-targets net48 and net10.0-windows).
+- The service does not replace the stdio `AiDevHelpers.MCP` server clients launch. "MCP health" = service state plus bridge manifests; no per-MCP-process heartbeat.
+- **Instances** (Host): manifests in `%ProgramData%\AiDevHelpers\vs-instances` (`VsInstance`: Pid, SolutionPath, Ide, UpdatedUtc; VS Code writes the same shape). Repo/branch from `GitWorktree.RootFor/BranchFor`. Start time from the process. Dead PIDs are filtered, never deleted (not `VsInstanceRegistry.ListRunning`); PID reuse checked by process start time.
+- **Config** (Tray, user context): the service runs as LocalSystem, so user-profile config would resolve to the wrong profile. The tray watches config with `ConfigHelper` and exposes `IObservable<ConfigSnapshot>`: user Settings.json, `RepoConfig.PathFor` per open solution, the `.aidevhelpers` folder. Needs a file-watcher wrapper (helpers are one-shot).
+- **Pipe security**: reuse `BridgeServer.CreatePipeSecurity()`; user SID from `UserSession.GetUserSid`; SYSTEM/Administrators as existing code grants; remote clients denied; caller-SID check; max frame size; fast user switching handled. The protocol carries a **version field**; the tray shows "restart for update" when versions differ.
+- **Elevation**: pipe clients send only typed service commands, never a script path. Install/uninstall run `scripts/service-*.ps1` through a UAC prompt from the tray, each with a committed SHA-256 pin (`gate-tpm.ps1` model). The Host installs under `%ProgramFiles%\AiDevHelpers`, admin-write ACL. The install script verifies the Host binary against the **signed update manifest hash** (not a fixed pin, since updates replace the binary) and sets service **recovery actions (restart on failure)**, which the update-exit model relies on.
+- **Tray and Host ship in one signed package.** The apply step renames locked files to `.old-*`; a running tray keeps old code until restarted, and `.old-*` files are cleaned on next start.
+- **TFMs**: Host and Contracts `net10.0-windows` (project-standards.json); Host references `AiDevHelpers.Bridge` (multi-targets net48 and net10.0-windows).
 
-## Layout (new, under `src/Tray/`, added to `AiDevHelpers.slnx` under a `/Tray/` folder)
+## Updater hardening (from review)
+- `allowDevUpdatePackages` lives in machine-only config (HKLM or ProgramData with admin-write ACL), never user config.
+- Dev stage script elevates, or copies dev packages into an admin-only folder **before** verify, removing the TOCTOU between verify and copy as SYSTEM. Reparse-point checks repeat at apply time.
+- Port cleanly: replace VideoForensics-only types (`IUpdateInstaller`, `GitHubReleaseAsset`, `UpdateCheckService`, `DefaultKeepList`) with local ones; keep-list is AiDevHelpers-specific. Signature lives in the package as `manifest.json.sig` (matches the verifier), not a separate release asset. Port `build-update-package` as a PowerShell script (`scripts/build-update-package.ps1`) that writes the manifest and signs it.
+- New dependency BouncyCastle: dependency-selection check in unit 0.
+- Signing key: private key in a GitHub **environment** secret (`UPDATE_SIGNING_KEY`) with required reviewers, so a tag pusher alone cannot sign. Rotation: verifier accepts a list of public keys embedded in the Host; revocation by shipping a package that removes a key. Download has a size cap and HTTPS only; downgrade rejected (newer-than-current check kept).
+
+## Layout (new, under `src/Tray/`, added to `AiDevHelpers.slnx` under `/Tray/`)
 | Project | Role |
 |---|---|
-| `AiDevHelpers.Host.Contracts` | DTOs and pipe protocol. net10.0-windows, no UI. |
-| `AiDevHelpers.Host` | Worker Service (`UseWindowsService`): instance observable, service-control handler, pipe server. |
-| `AiDevHelpers.Tray` | WPF app: tray icon, windows, view models, Syncfusion views, config watcher, pipe client. |
-| `*.Tests` | xUnit per project; admin-requiring tests get `Category=Admin`, excluded in `.runsettings` like `Tpm`. |
+| `AiDevHelpers.Host.Contracts` | DTOs, pipe protocol (versioned). `net10.0-windows`, no UI. |
+| `AiDevHelpers.Host` | Worker Service (`UseWindowsService`): instances, service control, pipe server, update watcher. |
+| `AiDevHelpers.Updates` | Ported updater: verifier, guard, applier, stager, downloader. |
+| `AiDevHelpers.Tray` | WPF app: tray icon, windows, view models, views, config watcher, pipe client. |
+| `*.Tests` | xUnit per project; admin-requiring tests `Category=Admin`, excluded in `.runsettings` like `Tpm`. |
 
 ## Cross-cutting rules for every unit
 - Failing test first (record the red run); lite gate before commit; commit and push the unit branch; merge unit PR into `wip` without asking.
-- All UI strings are `Strings.resx` keys (`string_scan`, `resx_check`, `localization_sync_check` in the lite gate).
+- All UI strings are `Strings.resx` keys (`string_scan`, `resx_check`, `localization_sync_check`).
 - Docs (`docs/features.md`, README, CHANGELOG) updated in the unit that adds the feature.
-- Filesystem access behind an abstraction (existing registry code uses static `System.IO`) so tests can fake it.
-- Tests run via Test Explorer (`ide_run_tests` / `ide_get_test_results`).
+- Filesystem and pipe behind interfaces so tests can fake them; a protocol-version test.
+- Accessibility: UIA names on all controls, high contrast, per-monitor v2 DPI.
+- The `UPDATE_SIGNING_KEY` CI secret is a manual step for the user; the plan reports it when unit 4b needs it. It passes through `env:` only; no `obj/` upload; the crash-evidence `**/*.dmp` upload is limited so a dump cannot leak it.
 
 ## Units
-0. **Packages and install location.** Dependency-selection check and version pins for Syncfusion, System.Reactive, CommunityToolkit.Mvvm, Microsoft.Extensions.Hosting.WindowsServices; scaffold the three projects plus tests, slnx entries; fix install path and ACL decision. License plumbing: `UserSecretsId` on the Tray project, `.gitignore` entry for `syncfusion.license`, the MSBuild target that writes `syncfusion-license.key` from user-secrets, embedded-resource item, a test that the resource loads and registration is called, and a check that the file is untracked (`git ls-files` in the gate).
-0b. **GitHub Actions CI.** Workflow building and testing the solution on `windows-latest` (`Category=Admin`/`Tpm` excluded); a step writes `${{ secrets.SYNCFUSION_LICENSE_KEY }}` to `src/Tray/AiDevHelpers.Tray/syncfusion-license.key` before build, with no echo and no artifact upload of that file; fork PRs without the secret build with an empty file (Debug) and skip Release publish. User adds the repo secret; plan reports it as a manual step.
-1. **Contracts + pipe protocol.** `HostStatus`, `IdeInstanceInfo(Ide, Repo, Branch, SolutionOrFilePath, Pid, StartedUtc)`, `ServiceCommand/Result`. Length-prefixed JSON, request/response plus push. Tests: round-trip, bad frame, oversized frame, ACL/caller SID.
-2. **Host instance observable.** Debounced watcher over the manifest folders, filter dead/reused PIDs, derive repo/branch. Tests with fake file system and `TestScheduler`.
-3. **Host service + pipe server.** Worker Service publishing instance and status streams, handling typed service commands. Tests: subscribe gets current then updates; reconnect resumes.
-4. **Service control + scripts.** `service-install/uninstall.ps1` with pins, ServiceController start/stop/restart/startup type, extension (re)install wrapper. Tests: command building, pin mismatch fails; admin tests in `Category=Admin`.
-4b. **Updater.** New `AiDevHelpers.Updates` project (ported code, provenance noted in headers; no cross-repo reference). Contents: stager (`scripts/stage-update.ps1` from a local build, folder watcher on the Host), GitHub release downloader (latest release asset plus `.sig`), Ed25519 verifier with the public key embedded and a new keypair (private key in GitHub secret `UPDATE_SIGNING_KEY`, never in git), apply/drain/restart, `UpdatesFolderAcl` (admin-write only). `release.yml` builds, signs and attaches the package. Services page gets "Check for update / Install staged update". Tests: verify rejects tampered or unsigned packages, path-traversal guard, apply rolls back on failure, drain waits. Open: confirm key-management approach (new keypair assumed).
-5. **Tray client library** (parallel with 2-4 after unit 1). Pipe client with `IObservable<T>` per stream, auto-reconnect, `Disconnected` state, plus the config watcher/`ConfigSnapshot` observable. Tests against a fake host and fake FS.
-6. **MVVM shell.** Syncfusion theming, tray icon (running / degraded / stopped / disconnected), context menu, single-instance guard, license from the embedded resource (unit 0). UI-free view models, dispatcher scheduler, tested.
-7. **Pages.** Status, IDE Instances (IDE, repo, file path), Config, Services (unit 4 commands, run-at-login via HKCU Run in the tray, no elevation), About. View-model tests per page; smoke test launches the tray in the real session via `terminal_session` per CLAUDE.md.
-8. **Packaging + end-to-end + full gate.** Publish, install via Services page, verify: install service, log in, tray appears, launch VS and VS Code instances through the bridge, instances page updates, stop service shows disconnected. Run `.claude/reference/full-gate.md` before any PR to `dev`/`main`.
+0. **Packages and scaffolding.** Dependency-selection check and pins (System.Reactive, CommunityToolkit.Mvvm, H.NotifyIcon.Wpf, Hosting.WindowsServices, BouncyCastle); scaffold the projects plus tests and slnx entries; fix install path and ACL.
+0b. **CI.** Extend the existing `.github/workflows/ci.yml` (windows-latest, PR plus `v*` tag), not a second workflow, to build and test the new projects; Admin/Tpm tests excluded.
+1. **Contracts + pipe protocol.** `HostStatus`, `IdeInstanceInfo(Ide, Repo, Branch, SolutionOrFilePath, Pid, StartedUtc)`, `ServiceCommand/Result`, version field. Length-prefixed JSON, request/response plus push. Tests: round-trip, bad frame, oversized frame, ACL/caller SID, version mismatch.
+2. **Host instance observable.** Debounced watcher, dead/reused-PID filter, repo/branch derivation. Tests with fake FS and `TestScheduler`.
+3. **Host service + pipe server.** Worker Service; instance and status streams; typed commands. Tests: current-then-updates; reconnect resumes.
+4. **Service control + scripts.** `service-install/uninstall.ps1` with pins, manifest-hash binary check, recovery actions; start/stop/restart/startup type; extension (re)install wrapper; uninstall cleanup (service, Run key, ProgramData, ACLs). Admin tests in `Category=Admin`.
+4a. **Updater core.** `AiDevHelpers.Updates`: verifier, path guard (recheck at apply), applier, key list, `UpdatesFolderAcl`, machine-only dev flag. Depends on 3 and 4. Tests: tampered/unsigned rejected, traversal, rollback on failure, downgrade rejected, key rotation.
+4b. **Stager and downloader.** `scripts/stage-update.ps1` (elevating), `scripts/build-update-package.ps1`, GitHub release downloader (size cap, HTTPS), Host watcher with drain and restart. New release workflow on tag with protected environment for the signing key.
+4c. **Update UI hooks.** Pipe commands and status for "check / install staged update", tray "restart for update" prompt. Folded into unit 7 Services page.
+5. **Tray client library** (can start after unit 1). Pipe client `IObservable<T>` per stream, auto-reconnect, `Disconnected` state, plus the config watcher/`ConfigSnapshot`.
+6. **MVVM shell.** Fluent theme, tray icon (running / degraded / stopped / disconnected), context menu, single-instance guard, crash-loop guard, toast notifications for state changes.
+7. **Pages.** Status, IDE Instances (IDE, repo, file path), Config, Services (unit 4/4c commands, run-at-login via HKCU Run in the tray, no elevation), Logs (reuse `LogHelper`/`ErrorHelper`), About (version, build, license, links). View-model tests per page; smoke test launches the tray in the real session via `terminal_session`.
+8. **Packaging + end-to-end + full gate.** Publish, install via Services page, verify: install service, log in, tray appears, launch VS and VS Code instances through the bridge, instances page updates, stage and apply an update, stop service shows disconnected. Run `.claude/reference/full-gate.md` before any PR to `dev`/`main`.
 
-## Risks
-- Session 0 cannot show UI; the split avoids it.
-- Unlicensed Syncfusion shows a banner. The embedded key ships inside the Tray assembly (Syncfusion's intended model), so published binaries must not go public unless that is acceptable; the file itself never enters git.
-- Tray and Host are separate processes, so the VS `System.Text.Json` pin applies only where the bridge assembly is loaded into VS.
+## Decided against reviewer suggestions
+- Tray-only first (no SCM service) and reusing `update-aidevtools.ps1` instead of a new updater: user kept the service and ported updater.
