@@ -52,7 +52,8 @@ const unsupported: Record<string, string> = {
     mergePartial: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
     organizeFile: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
     moveMember: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
-    generateMembers: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",
+    generateMembers: "Roslyn refactoring; VS Code cannot host the C# engines (plan answer 1)",    completeAt: "Completion comes from Visual Studio's in-IDE Roslyn workspace; VS Code's own IntelliSense serves the editor (no VS Code handler yet)",
+
 };
 
 describe("VS Code parity with the Visual Studio bridge", () => {
