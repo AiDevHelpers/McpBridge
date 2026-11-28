@@ -5,7 +5,10 @@ using AiDevHelpers.Common;
 namespace AiDevHelpers.MCP.Core.Tools;
 
 /// <summary>One file the plan creates: its project, the file path (inside the repo) and the item template to create it from.</summary>
-internal sealed record CodeWorkStep(string Id, string Project, string File, string Template, bool Difficult = false);
+internal sealed record CodeWorkStep(string Id, string Project, string File, string Template, bool Difficult = false, IReadOnlyList<CodeWorkMethod>? Methods = null);
+
+/// <summary>A method to add to the step's class once its file exists. Summary is optional and becomes the doc comment.</summary>
+internal sealed record CodeWorkMethod(string Text, string? Summary = null);
 
 /// <summary>
 /// A drafted file content waiting for the calling AI's check. The token must be sent back to write it.
@@ -58,10 +61,30 @@ internal static class CodeWorkStore
                 return Strings.Format("CodeWorkDuplicateStep", step.Id);
             if (string.IsNullOrWhiteSpace(step.Project) || string.IsNullOrWhiteSpace(step.Template))
                 return Strings.Format("CodeWorkStepIncomplete", step.Id);
+            if (step.Methods?.Any(m => string.IsNullOrWhiteSpace(m.Text)) == true)
+                return Strings.Format("CodeWorkMethodEmpty", step.Id);
 
             var check = WorkspacePathGuard.Resolve(step.File, root);
             if (!check.Ok)
                 return check.Error;
+        }
+
+        return null;
+    }
+
+    private static readonly Regex TypeDeclaration = new(@"\b(class|struct|record|interface)\s+\w+", RegexOptions.CultureInvariant);
+
+    /// <summary>The 1-based line that declares the first type in a file, or null when the file is missing or has none.</summary>
+    public static int? TypeLine(string path)
+    {
+        if (!File.Exists(path))
+            return null;
+
+        var lines = File.ReadAllLines(path);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            if (TypeDeclaration.IsMatch(lines[i]))
+                return i + 1;
         }
 
         return null;

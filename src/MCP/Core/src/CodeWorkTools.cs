@@ -89,6 +89,9 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
                 created.Add(new { stepId = step.Id, ok, reply = JsonSerializer.Deserialize<JsonElement>(reply, JsonOptions) });
                 if (!ok)
                     return Json(new { ok = false, sessionId = id, created, error = Strings.Format("CodeWorkStepFailed", step.Id) });
+                var methodError = await AddMethodsAsync(root, step, ct);
+                if (methodError is not null)
+                    return Json(new { ok = false, sessionId = id, created, error = methodError });
                 session.Status[step.Id] = "created";
             }
 
@@ -236,6 +239,10 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
                         if (!(made.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
                             return Refuse(Strings.Format("CodeWorkStepFailed", stepId));
 
+                        var methodError = await AddMethodsAsync(root, step, ct);
+                        if (methodError is not null)
+                            return Refuse(methodError);
+
                         session.Status[stepId] = "created";
                         CodeWorkStore.Save(root, session);
                         return Json(new { ok = true, sessionId, stepId, status = "created" });
@@ -266,6 +273,32 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
         {
             return Refuse(ex.Message);
         }
+    }
+
+    // Adds the step's methods to its class through the bridge's addMethod, at the line that declares the class.
+    // Returns the error text, or null when every method was added.
+    private async Task<string?> AddMethodsAsync(string root, CodeWorkStep step, CancellationToken ct)
+    {
+        if (step.Methods is null || step.Methods.Count == 0)
+            return null;
+
+        var target = WorkspacePathGuard.Resolve(step.File, root);
+        if (!target.Ok)
+            return target.Error;
+
+        var line = CodeWorkStore.TypeLine(target.FullPath);
+        if (line is null)
+            return Strings.Format("CodeWorkNoClass", step.File);
+
+        foreach (var method in step.Methods)
+        {
+            var reply = await Bridge("addMethod", new { file = target.FullPath, line, newMethodText = method.Text, newSummary = method.Summary, docs = Array.Empty<object>(), members = Array.Empty<object>(), confirm = true, runTests = false }, ct);
+            using var doc = JsonDocument.Parse(reply);
+            if (!(doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
+                return Strings.Format("CodeWorkMethodFailed", step.Id);
+        }
+
+        return null;
     }
 
     private static string Refuse(string error) => Json(new { ok = false, error });

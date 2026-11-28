@@ -228,4 +228,7 @@ Write the complete contents of the file {1}, created from the item template {2}.
   <data name="FixCodeFileRequired" xml:space="preserve"><value>path is required for format.</value></data>
   <data name="FixCodeFormatPlan" xml:space="preserve"><value>The open Visual Studio instance formats its active document. Open this file first, then set confirm true.</value></data>
   <data name="CodeWorkExecuteConfirmFirst" xml:space="preserve"><value>This step is drafted. Check the content and call code_work confirm with its token.</value></data>
+  <data name="CodeWorkMethodEmpty" xml:space="preserve"><value>Step '{0}' has a method with no text.</value></data>
+  <data name="CodeWorkNoClass" xml:space="preserve"><value>The file {0} declares no class, struct, record or interface to add methods to.</value></data>
+  <data name="CodeWorkMethodFailed" xml:space="preserve"><value>A method for step '{0}' was not added.</value></data>
 </root>
