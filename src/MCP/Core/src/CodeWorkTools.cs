@@ -230,30 +230,30 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
             switch (status)
             {
                 case "pending":
-                {
-                    var reply = await Bridge("addProjectItem", new { project = step.Project, file = step.File, mode = "fromNew", template = step.Template, confirm = true }, ct);
-                    using var made = JsonDocument.Parse(reply);
-                    if (!(made.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
-                        return Refuse(Strings.Format("CodeWorkStepFailed", stepId));
+                    {
+                        var reply = await Bridge("addProjectItem", new { project = step.Project, file = step.File, mode = "fromNew", template = step.Template, confirm = true }, ct);
+                        using var made = JsonDocument.Parse(reply);
+                        if (!(made.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
+                            return Refuse(Strings.Format("CodeWorkStepFailed", stepId));
 
-                    session.Status[stepId] = "created";
-                    CodeWorkStore.Save(root, session);
-                    return Json(new { ok = true, sessionId, stepId, status = "created" });
-                }
+                        session.Status[stepId] = "created";
+                        CodeWorkStore.Save(root, session);
+                        return Json(new { ok = true, sessionId, stepId, status = "created" });
+                    }
 
                 case "created":
-                {
-                    // Drafting saves the session itself, so read the status back afterwards.
-                    var drafted = await CodeWorkContinue(root, sessionId, stepId, ct);
-                    using var doc = JsonDocument.Parse(drafted);
-                    if (!(doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
-                        return drafted;
+                    {
+                        // Drafting saves the session itself, so read the status back afterwards.
+                        var drafted = await CodeWorkContinue(root, sessionId, stepId, ct);
+                        using var doc = JsonDocument.Parse(drafted);
+                        if (!(doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
+                            return drafted;
 
-                    var saved = CodeWorkStore.Load(root, sessionId)!;
-                    saved.Status[stepId] = "drafted";
-                    CodeWorkStore.Save(root, saved);
-                    return Json(new { ok = true, sessionId, stepId, status = "drafted", token = doc.RootElement.GetProperty("token").GetString() });
-                }
+                        var saved = CodeWorkStore.Load(root, sessionId)!;
+                        saved.Status[stepId] = "drafted";
+                        CodeWorkStore.Save(root, saved);
+                        return Json(new { ok = true, sessionId, stepId, status = "drafted", token = doc.RootElement.GetProperty("token").GetString() });
+                    }
 
                 case "drafted":
                     return Refuse(Strings.Get("CodeWorkExecuteConfirmFirst"));
