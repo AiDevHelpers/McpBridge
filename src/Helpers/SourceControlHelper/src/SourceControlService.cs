@@ -27,7 +27,8 @@ public sealed record PendingWrite(
     string RepoPath,
     string? Branch = null,
     bool Overridden = false,
-    RepoState? PlannedState = null);
+    RepoState? PlannedState = null,
+    string? MergedInto = null);
 
 /// <summary>Several writes planned under one token. They run in order at confirm and the first failure stops the rest.</summary>
 /// <param name="PlannedState">The state at plan time when any step is HEAD-sensitive. Checked once, before the first step.</param>
@@ -53,7 +54,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
     private readonly ConcurrentDictionary<string, PendingSequence> _sequences = new();
 
     public static readonly IReadOnlyList<string> WriteActions =
-        ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply", "merge", "merge_abort"];
+        ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply", "merge", "merge_abort", "worktree_add", "worktree_remove"];
 
     public async Task<GitStatusResult> StatusAsync(string repoPath, CancellationToken ct = default)
     {
@@ -96,7 +97,9 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         string? message = null,
         string? branch = null,
         CancellationToken ct = default,
-        string? pushRef = null)
+        string? pushRef = null,
+        string? path = null,
+        string? mergedInto = null)
     {
         if (pushRef is not null && action != "push")
         {
@@ -109,9 +112,55 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         }
 
         var overridden = await CheckRulesAsync(repoPath, action, pushRef is null ? branch : DestinationOf(pushRef), ct);
+        if (action == "worktree_remove")
+        {
+            await CheckWorktreeRemoveAsync(repoPath, path, ct);
+        }
+
+        if (action == "delete_branch" && mergedInto is not null && branch is not null && !await IsAncestorAsync(repoPath, branch, mergedInto, ct))
+        {
+            throw new ArgumentException(Strings.Format("BranchNotMerged", branch, mergedInto), nameof(branch));
+        }
+
         var planned = HeadSensitive.Contains(action) ? await ReadStateAsync(repoPath, ct) : null;
-        return Register(BuildPending(repoPath, action, paths, message, branch, overridden, pushRef) with { PlannedState = planned });
+        return Register(BuildPending(repoPath, action, paths, message, branch, overridden, pushRef, path, mergedInto) with { PlannedState = planned });
     }
+
+    // The path must be a linked worktree of this repo: listed by git, not the main worktree, and not the folder planned from.
+    private async Task CheckWorktreeRemoveAsync(string repoPath, string? path, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new ArgumentException(Strings.Get("WorktreePathNeeded"), nameof(path));
+        }
+
+        var list = await git.RunAsync(repoPath, ["worktree", "list", "--porcelain"], ct);
+        var listed = list.Output.Split('\n')
+            .Where(line => line.StartsWith("worktree ", StringComparison.Ordinal))
+            .Select(line => NormalizePath(line["worktree ".Length..]))
+            .ToList();
+        var target = NormalizePath(Path.Combine(repoPath, path));
+        if (!listed.Contains(target, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(Strings.Get("WorktreeNotListed"), nameof(path));
+        }
+
+        if (listed.Count > 0 && string.Equals(listed[0], target, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(Strings.Get("WorktreeIsMain"), nameof(path));
+        }
+
+        if (string.Equals(NormalizePath(repoPath), target, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException(Strings.Get("WorktreeIsCurrent"), nameof(path));
+        }
+    }
+
+    private static string NormalizePath(string path) => Path.GetFullPath(path).TrimEnd('\\', '/');
+
+    // True when ancestor is reachable from descendant. Used before any force delete, at plan time and again at confirm.
+    private async Task<bool> IsAncestorAsync(string repoPath, string ancestor, string descendant, CancellationToken ct) =>
+        (await git.RunAsync(repoPath, ["merge-base", "--is-ancestor", ancestor, descendant], ct)).Ok;
 
     /// <summary>
     /// Plans several writes under one token. Each action is checked against the rules at plan time. paths, message and branch
@@ -215,14 +264,14 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         name.Length > 0 && !name.StartsWith('-') && !name.Contains("..", StringComparison.Ordinal)
         && name.All(c => char.IsLetterOrDigit(c) || c is '/' or '.' or '_' or '-');
 
-    private static PendingWrite BuildPending(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden, string? pushRef = null)
+    private static PendingWrite BuildPending(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden, string? pushRef = null, string? path = null, string? mergedInto = null)
     {
         if (!WriteActions.Contains(action))
         {
             throw new ArgumentException(Strings.Format("UnknownWriteAction", action, string.Join(", ", WriteActions)), nameof(action));
         }
 
-        var args = BuildArguments(action, paths, message, branch, pushRef);
+        var args = BuildArguments(action, paths, message, branch, pushRef, path, mergedInto);
         return new PendingWrite(
             Token: Guid.NewGuid().ToString("N"),
             Action: action,
@@ -230,7 +279,8 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             Arguments: args,
             RepoPath: repoPath,
             Branch: pushRef is null ? branch : DestinationOf(pushRef),
-            Overridden: overridden);
+            Overridden: overridden,
+            MergedInto: mergedInto);
     }
 
     /// <summary>
@@ -257,6 +307,12 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         if (pending.PlannedState is { } planned && await ReadStateAsync(pending.RepoPath, ct) != planned)
         {
             return new GitResult(false, -1, Strings.Get("HeadMovedBeforeConfirm"));
+        }
+
+        // A force delete is only safe while the branch is still merged; the branch may have moved since planning.
+        if (pending.MergedInto is { } into && pending.Branch is { } deleted && !await IsAncestorAsync(pending.RepoPath, deleted, into, ct))
+        {
+            return new GitResult(false, -1, Strings.Format("BranchNotMerged", deleted, into));
         }
 
         return await RunWriteAsync(pending, ct);
@@ -304,6 +360,11 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
     private static (string Action, IReadOnlyDictionary<string, object?> Arguments)? VsCodeRoute(PendingWrite pending)
     {
         var args = pending.Arguments;
+        if (pending.Action == "delete_branch" && args.Count > 1 && args[1] == "-D")
+        {
+            return null; // The VS Code delete is non-force only, so a force delete stays on git.exe.
+        }
+
         return pending.Action switch
         {
             "stage" => ("gitStage", new Dictionary<string, object?> { ["paths"] = args.Skip(2).ToArray() }),        // add -- <paths>
@@ -371,7 +432,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         return result.Ok && text.Length > 0 && !text.Contains('\n') ? text : null;
     }
 
-    public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch, string? pushRef = null)
+    public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch, string? pushRef = null, string? path = null, string? mergedInto = null)
     {
         switch (action)
         {
@@ -404,7 +465,15 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
                 return ["switch", "-c", branch!];
             case "delete_branch":
                 RequireText(branch, Strings.Get("DeleteBranchNeedsName"));
-                return ["branch", "-d", branch!];
+                // -D only with mergedInto, after the ancestor check in PlanAsync and ConfirmAsync.
+                return mergedInto is null ? ["branch", "-d", branch!] : ["branch", "-D", branch!];
+            case "worktree_add":
+                RequireText(branch, Strings.Get("WorktreeAddNeedsBranch"));
+                RequireText(path, Strings.Get("WorktreePathNeeded"));
+                return ["worktree", "add", "-b", branch!, path!];
+            case "worktree_remove":
+                RequireText(path, Strings.Get("WorktreePathNeeded"));
+                return ["worktree", "remove", path!];
             case "switch":
                 RequireText(branch, Strings.Get("SwitchNeedsName"));
                 return ["switch", branch!];

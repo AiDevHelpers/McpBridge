@@ -101,7 +101,7 @@ internal sealed class SourceControlTools
     [McpServerTool]
     [SafeTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
-                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply, merge, merge_abort. " +
+                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply, merge, merge_abort, worktree_add, worktree_remove. " +
                  "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
                  "and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them.")]
     public static async Task<string> GitPlan(
@@ -112,6 +112,8 @@ internal sealed class SourceControlTools
         [Description("Branch name, for push, create_branch, delete_branch and switch; the ref to merge in, for merge")] string? branch = null,
         [Description("Write actions to run in order under one token, e.g. stage, commit, push")] string[]? sequence = null,
         [Description("Destination for push: a branch name (pushes HEAD there) or source:destination. Not with branch.")] string? pushRef = null,
+        [Description("Folder, for worktree_add and worktree_remove (a linked worktree of this repo)")] string? path = null,
+        [Description("Branch that must already be merged into this ref, for delete_branch. Makes the delete a force delete (-D) after an ancestor check.")] string? mergedInto = null,
         CancellationToken ct = default)
     {
         var hasSequence = sequence is { Length: > 0 };
@@ -129,7 +131,7 @@ internal sealed class SourceControlTools
                 return Json(new { ok = true, token = planned.Token, sequence = sequence, command = planned.Description });
             }
 
-            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct, pushRef);
+            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct, pushRef, path, mergedInto);
             return Json(new { ok = true, token = pending.Token, action = pending.Action, command = pending.Description });
         }
         catch (ArgumentException ex)

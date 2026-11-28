@@ -64,7 +64,13 @@ Original text:
 
 Done when: merging `origin/wip` into a feature branch needs no raw git (dogfood row 46).
 
-### Unit 4: worktree add, remove, and branch force-delete
+### Unit 4: worktree add, remove, and branch force-delete — DONE
+
+Status: `WorktreeTests.cs` (10 cases, compile-red first). Green: SourceControlHelper 81/81, MCP Core 454/454. Deviations: new optional `path` (the worktree folder) and `mergedInto` (the force-delete ref) parameters, since `paths` and `branch` could not carry them cleanly. `worktree_add` always creates a new branch (`-b`); no base or existing-branch option. `worktree_remove` has no force: a dirty worktree is refused by git, and a locked one is refused. The current-worktree check compares the planning folder with the removed path, not `rev-parse --show-toplevel`. Sequences do not carry `path` or `mergedInto`. Force delete stays on git.exe in the VS Code route.
+
+Original text:
+
+### Unit 4 (original)
 
 - `worktree_add` (`path`, `branch`, `base`, `newBranch` default true). `newBranch` true uses `-b`, so `create_branch` name rules apply. False checks out an existing branch.
 - `worktree_remove` (`path`, `force` default false). Resolve `path` relative to `repoPath`. Refuse paths starting with `-`. Normalise slashes and case against `git worktree list --porcelain`. Refuse the main worktree and the current one. Locked worktrees need `force` twice. Git already refuses dirty trees, so test that rather than writing a separate check.

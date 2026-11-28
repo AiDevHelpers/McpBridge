@@ -24,6 +24,13 @@ Conflicted paths (resolve them, then commit, or run merge_abort):
 </value></data>
   <data name="RuleMergeIntoProtected" xml:space="preserve"><value>Merging into {0} is refused: it is a protected branch. Merge into a feature branch and open a pull request instead.</value></data>
   <data name="RuleMergeUnknownBranch" xml:space="preserve"><value>Merging is refused because the checked-out branch is unknown (detached HEAD or unborn). Check out a branch first.</value></data>
+  <data name="WorktreePathNeeded" xml:space="preserve"><value>A worktree action needs its folder, given as the single path.</value></data>
+  <data name="WorktreeAddNeedsBranch" xml:space="preserve"><value>worktree_add needs the new branch name, given as branch.</value></data>
+  <data name="WorktreeNotListed" xml:space="preserve"><value>That folder is not a worktree of this repo (git worktree list does not show it).</value></data>
+  <data name="WorktreeIsMain" xml:space="preserve"><value>The main worktree of this repo cannot be removed.</value></data>
+  <data name="WorktreeIsCurrent" xml:space="preserve"><value>The worktree you are planning from cannot be removed. Plan from another folder.</value></data>
+  <data name="BranchNotMerged" xml:space="preserve"><value>{0} is not merged into {1}, so it will not be force-deleted.</value></data>
+  <data name="BranchNotMergedBeforeConfirm" xml:space="preserve"><value>{0} is no longer merged into {1}. It was not deleted. Plan the delete again.</value></data>
   <data name="UnknownToken" xml:space="preserve"><value>Unknown or already used token. Plan the write again.</value></data>
   <data name="SequenceNeedsSteps" xml:space="preserve"><value>A sequence needs at least one action.</value></data>
   <data name="StageNeedsPath" xml:space="preserve"><value>stage needs at least one path.</value></data>
