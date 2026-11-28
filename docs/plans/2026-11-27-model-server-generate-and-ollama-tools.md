@@ -40,8 +40,8 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
   diff stats only with a note. Tests with a fake runner. Tool with tests.
 - [x] U7. (done: 6 helper tests and 2 MCP tests; cleanup, history cap at 20 with `historyTrimmed`, prompt cap 20,000) `clean_and_chat` in `ModelServerHelper`: prompt cleanup (trim, strip control characters, enforce a length limit), history entries validated (role in
   system, user, assistant; capped count), then chat (U2). Tests for cleanup, history validation, and chat delegation. Tool with tests.
-- [ ] U8. Shared path guard decision: move `WorkspacePathGuard` from `FileEditHelper` into `AiDevHelpers.Common` if the editing tools need it, with tests moved too.
-  Ask the user before moving (it changes an existing helper's references).
+- [x] U8. (done 2026-11-28: `WorkspacePathGuard` and `PathCheck` moved to `AiDevHelpers.Common` with their own `Strings` resx; tests moved to `src/Common/tests`; `FileEditHelper` references Common. Common 120/120, FileEditHelper 49/49, MCP Core 477/477.) Shared path guard: move `WorkspacePathGuard` from `FileEditHelper` into `AiDevHelpers.Common`, with tests moved too.
+  Approved in Answers (2026-11-27).
 - [ ] U9. `code_work` (start and continue): a plan-building session. Decide scope with the user first (it persists session state; where to store it under the repo's
   `.aidevhelpers` folder). Blocked until answered.
 - [ ] U10. `fix_code` (enable-analysis, fix-syntax, fix-imports, fix-namespace, format): edits go through `FileEditEngine` with backups; format through the existing

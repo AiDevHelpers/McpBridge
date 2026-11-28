@@ -1,4 +1,4 @@
-namespace AiDevHelpers.Helpers.FileEditHelper;
+namespace AiDevHelpers.Common;
 
 /// <summary>Outcome of <see cref="WorkspacePathGuard.Resolve" />.</summary>
 public sealed record PathCheck(bool Ok, string FullPath, string? Error)

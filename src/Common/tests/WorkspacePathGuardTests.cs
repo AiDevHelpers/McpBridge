@@ -1,7 +1,7 @@
 using Xunit;
-using AiDevHelpers.Helpers.FileEditHelper;
+using AiDevHelpers.Common;
 
-namespace AiDevHelpers.Helpers.FileEditHelper.Tests;
+namespace AiDevHelpers.Common.Tests;
 
 public sealed class WorkspacePathGuardTests : IDisposable
 {
