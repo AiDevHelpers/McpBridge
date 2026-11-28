@@ -22,6 +22,6 @@
   <data name="CallTimedOut" xml:space="preserve"><value>Router did not answer within {0} seconds.</value></data>
   <data name="PromptTooLong" xml:space="preserve"><value>The prompt is longer than {0} characters.</value></data>
   <data name="HistoryEntryEmpty" xml:space="preserve"><value>History entry {0} has no content.</value></data>
-  <data name="RouteKeyUnknown" xml:space="preserve"><value>Unknown route key '{0}'. Use one of: {1}.</value></data>
-  <data name="RouteMissing" xml:space="preserve"><value>No model is routed for key '{0}'.</value></data>
+  <data name="RouteTypeEmpty" xml:space="preserve"><value>A model type is required.</value></data>
+  <data name="RouteMissing" xml:space="preserve"><value>No model is routed for model type '{0}'.</value></data>
 </root>

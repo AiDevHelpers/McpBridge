@@ -47,7 +47,24 @@ public sealed class ModelRouterTests
     }
 
     [Fact]
-    public void A_key_is_matched_case_insensitively()
+    public void Any_model_type_name_resolves_when_the_table_defines_it()
+    {
+        var r = ModelRouter.Resolve("triage", new Dictionary<string, string> { ["triage"] = "small-model" });
+
+        Assert.True(r.Ok);
+        Assert.Equal("small-model", r.Model);
+    }
+
+    [Fact]
+    public void An_empty_model_type_is_refused()
+    {
+        var r = ModelRouter.Resolve("  ", Routes);
+
+        Assert.False(r.Ok);
+    }
+
+    [Fact]
+    public void A_model_type_is_matched_case_insensitively()
     {
         var r = ModelRouter.Resolve("CODE", Routes);
 
