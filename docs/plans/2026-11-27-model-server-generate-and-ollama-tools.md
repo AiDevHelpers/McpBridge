@@ -27,7 +27,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 ## Units
 - [x] U1. (done: contract written and checked against OllamaService.cs and the router contract; every overload mapped or dropped; chat uses `/v1/chat/completions` because the router contract names it, `architecture.md` says `/api/chat`; endpoint pinning dropped because the router has no endpoint selection) Contract `docs/Host-MCP/model-generate-contract.md`: request and response for generate and chat, endpoint names, selection rules, timeout, capped output,
   error text, and what TokenSaver's `CallModelAsync` overloads map to. Done: every overload either mapped or listed as dropped.
-- [ ] U2. `ModelServerHelper` generate and chat. Failing tests first with the existing fake `HttpMessageHandler` pattern: request body shape (`/api/generate`, `/api/chat`
+- [x] U2. `ModelServerHelper` generate and chat. (done: red run was a missing-type compile error; green 40/40 in ModelServerHelper tests; class is `ModelServerGenerator`) Failing tests first with the existing fake `HttpMessageHandler` pattern: request body shape (`/api/generate`, `/api/chat`
   as the router documents them; check the router's contract doc in `F:\aidevhelpers\TokenSaver\TokenSaver.SimpleModelServer` before writing), non-2xx, timeout, cancellation,
   cap. Done: red then green.
 - [ ] U3. Endpoint listing: `ModelServerClient.ListEndpointsAsync` (router endpoints and their status). Tests: parse, empty list, unreachable router.

@@ -8,4 +8,16 @@
   <data name="NoModels" xml:space="preserve"><value>SimpleModelServer router is reachable but no models are pulled.</value></data>
   <data name="HealthyIdle" xml:space="preserve"><value>SimpleModelServer router is up with {0} model(s) available, but idle: none currently loaded in VRAM.</value></data>
   <data name="HealthyLoaded" xml:space="preserve"><value>SimpleModelServer router is healthy. {0}/{1} model(s) loaded in VRAM.</value></data>
+  <data name="GenerateModelRequired" xml:space="preserve"><value>A model name is required.</value></data>
+  <data name="GeneratePromptRequired" xml:space="preserve"><value>A prompt is required.</value></data>
+  <data name="TimeoutRange" xml:space="preserve"><value>timeoutSeconds must be between 1 and 600 (got {0}).</value></data>
+  <data name="ChatRoleInvalid" xml:space="preserve"><value>Role '{0}' is not allowed. Use system, user or assistant.</value></data>
+  <data name="ChatTooManyMessages" xml:space="preserve"><value>At most 200 messages are allowed.</value></data>
+  <data name="ChatNeedsMessages" xml:space="preserve"><value>At least one message is required.</value></data>
+  <data name="NonSuccessStatus" xml:space="preserve"><value>Router returned HTTP {0}: {1}</value></data>
+  <data name="ReplyMissingField" xml:space="preserve"><value>Router reply has no '{0}' field.</value></data>
+  <data name="ReplyNotJson" xml:space="preserve"><value>Router reply is not JSON.</value></data>
+  <data name="WarmUpGaveUp" xml:space="preserve"><value>Router is still warming_up after {0} attempts.</value></data>
+  <data name="RouterUnreachable" xml:space="preserve"><value>Router could not be reached at {0}.</value></data>
+  <data name="CallTimedOut" xml:space="preserve"><value>Router did not answer within {0} seconds.</value></data>
 </root>
