@@ -220,4 +220,11 @@ Write the complete contents of the file {1}, created from the item template {2}.
   <data name="SnippetOutsideFolder" xml:space="preserve"><value>The snippet would be written outside the Code Snippets folder.</value></data>
   <data name="SnippetExists" xml:space="preserve"><value>A snippet with this title already exists in My Code Snippets. Choose another title.</value></data>
   <data name="SnippetNoFolder" xml:space="preserve"><value>No Visual Studio Code Snippets folder was found under Documents.</value></data>
+  <data name="FixCodeRootRequired" xml:space="preserve"><value>root is required.</value></data>
+  <data name="FixCodeNoEditorConfig" xml:space="preserve"><value>No .editorconfig in the repo root. Create one first; enable-analysis only edits an existing file.</value></data>
+  <data name="FixCodeEditorConfigEmpty" xml:space="preserve"><value>The .editorconfig is empty. Add a line first.</value></data>
+  <data name="FixCodeUseOtherTool" xml:space="preserve"><value>'{0}' is not built in fix_code yet. Use {1} for it.</value></data>
+  <data name="FixCodeUnknownOperation" xml:space="preserve"><value>Unknown operation '{0}'. Use enable-analysis or format.</value></data>
+  <data name="FixCodeFileRequired" xml:space="preserve"><value>path is required for format.</value></data>
+  <data name="FixCodeFormatPlan" xml:space="preserve"><value>The open Visual Studio instance formats its active document. Open this file first, then set confirm true.</value></data>
 </root>

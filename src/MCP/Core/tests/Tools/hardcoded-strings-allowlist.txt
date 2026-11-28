@@ -173,3 +173,5 @@ Vs2026.Core|Visual Studio*
 MCP.Core|Visual Studio *
 MCP.Core|Code Snippets
 MCP.Core|My Code Snippets
+MCP.Core|# BEGIN AiDevHelpers managed analysis
+MCP.Core|# END AiDevHelpers managed analysis
