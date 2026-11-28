@@ -179,7 +179,7 @@ var tools = Verb("tools", "Install the Script Helper tools (administrator). Need
 {
     var refusal = SetupApproval.ToolsRefusal(pr.GetValue(approvedInChat));
     return refusal is null
-        ? ElevatedSetup.Run(["tools", "--approved-in-chat"], pr.GetValue(allowNoTpm))
+        ? ElevatedSetup.Run(["tools"], pr.GetValue(allowNoTpm))
         : Refuse(refusal);
 }));
 tools.Add(approvedInChat);

@@ -54,6 +54,9 @@ foreach ($sid in @('S-1-5-32-544', 'S-1-5-18')) {
 $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new((New-Object System.Security.Principal.SecurityIdentifier 'S-1-5-32-545'), 'ReadAndExecute', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
 Set-Acl -LiteralPath $target -AclObject $acl -ErrorAction Stop
 
+# A tray or MCP.Http left running from an earlier install holds its files open. Stop them before copying over them.
+Get-Process -Name 'AiDevHelpers.Tray', 'AiDevHelpers.MCP.Http' -ErrorAction SilentlyContinue | Stop-Process -Force
+
 Copy-Item -Path (Join-Path $SourceFolder '*') -Destination $target -Recurse -Force -ErrorAction Stop
 $hostExe = Join-Path $target 'AiDevHelpers.Host.exe'
 
