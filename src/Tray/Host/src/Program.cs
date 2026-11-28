@@ -54,6 +54,17 @@ public static class RestartBackoff
     public const int MaxFailures = 8;
 }
 
+/// <summary>
+/// What the supervisor does when there is no user session to start in (at boot, before anyone has logged on). That is not a failure of
+/// MCP.Http, so it never counts toward the give-up limit: the supervisor checks again after a short wait for as long as the service runs.
+/// </summary>
+public static class SupervisorPolicy
+{
+    private static readonly TimeSpan NoSessionWait = TimeSpan.FromSeconds(5);
+
+    public static (int Failures, TimeSpan Delay) AfterNoSession(int failures) => (failures, NoSessionWait);
+}
+
 /// <summary>Picks the session to start in: the console session when a user is logged on there, otherwise the first logged-on session.</summary>
 public static class SessionChoice
 {
@@ -80,10 +91,21 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
         {
             var session = SessionChoice.Choose(UserSession.ActiveConsoleSession(), s => UserSession.GetUserSid(s) is not null, UserSession.FindFirstLoggedOnSession);
             var started = DateTime.UtcNow;
-            var process = session == UserSession.NoSession ? null : launcher.Start(session, exe, folder);
+            if (session == UserSession.NoSession)
+            {
+                // Nobody is logged on yet: wait and look again. This is not a failure and never ends the supervisor.
+                log.LogInformation("No user session to start {Exe} in yet; checking again.", exe);
+                var wait = SupervisorPolicy.AfterNoSession(failures);
+                failures = wait.Failures;
+                await Task.Delay(wait.Delay, stoppingToken);
+                continue;
+            }
+
+            var process = launcher.Start(session, exe, folder);
             if (process is null)
             {
-                log.LogWarning("No user session to start {Exe} in; trying again.", exe);
+                // A session exists but the start failed: that is a failure and counts toward the give-up limit.
+                log.LogWarning("Could not start {Exe} in session {Session}; trying again.", exe, session);
                 failures++;
             }
             else
