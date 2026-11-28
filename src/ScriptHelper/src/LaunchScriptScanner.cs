@@ -54,8 +54,9 @@ public static class LaunchScriptScanner
                     var owner = new ScriptOwner(name, project);
                     if (found.TryGetValue(rel, out var existing))
                     {
-                        if (!existing.Owners!.Contains(owner))
-                            found[rel] = existing with { Owners = [.. existing.Owners, owner] };
+                        var owners = existing.Owners ?? [];
+                        if (!owners.Contains(owner))
+                            found[rel] = existing with { Owners = [.. owners, owner] };
 
                         continue;
                     }

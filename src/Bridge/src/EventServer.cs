@@ -231,7 +231,7 @@ public sealed class EventServer : IDisposable
         foreach (var name in events.EnumerateArray())
         {
             var text = name.GetString();
-            if (!string.IsNullOrEmpty(text))
+            if (text is { Length: > 0 })
             {
                 names.Add(text);
             }

@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
-using AiDevHelpers.Bridge;
 using Task = System.Threading.Tasks.Task;
 
 namespace AiDevHelpers.Installers.Vs2026.Installer;

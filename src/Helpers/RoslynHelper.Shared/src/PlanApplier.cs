@@ -31,6 +31,11 @@ public static class PlanApplier
         {
             var before = snapshot.GetDocument(documentId);
             var after = planned.GetDocument(documentId);
+            if (after is null)
+            {
+                return Refused(Strings.Format("ChangedDocumentNoFile", documentId));
+            }
+
             if (before?.FilePath is null)
             {
                 return Refused(Strings.Format("ChangedDocumentNoFile", documentId));

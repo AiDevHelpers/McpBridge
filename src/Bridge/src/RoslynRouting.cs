@@ -92,6 +92,7 @@ public static class RoslynHelperRegistry
     }
 }
 
+/// <summary>How a Roslyn action is routed: to the IDE bridge, to a live Roslyn helper, or refused.</summary>
 public enum RoslynRouteKind
 {
     /// <summary>The existing IDE bridge answers the action.</summary>

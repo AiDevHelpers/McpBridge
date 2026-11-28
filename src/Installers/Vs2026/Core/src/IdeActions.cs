@@ -88,9 +88,9 @@ public sealed class IdeActions(DTE2 dte)
         File.WriteAllText(path, normalized, new UTF8Encoding(encoderShouldEmitUTF8Identifier: hasBom));
     }
 
-    private object InvokeOnUiThread(string action, JsonElement args) => action switch
+    private object InvokeOnUiThread(string action, JsonElement args) => (action switch
     {
-        "status" => new { solution_path = NullIfEmpty(dte.Solution?.FullName) },
+        "status" => new { solution_path = NullIfEmpty(dte.Solution?.FullName ?? "") },
         "setStartupProject" => SetStartupProject(RequireString(args, "project")),
         "startDebugging" => StartDebugging(),
         "stopDebugging" => StopDebugging(),
@@ -436,7 +436,7 @@ public sealed class IdeActions(DTE2 dte)
             OptionalBool(args, "breakWhenUserUnhandled"),
             OptionalBool(args, "confirm") == true),
         _ => throw new NotSupportedException(Strings.Format("UnknownAction", action)),
-    };
+    })!;
 
     // Clean and publish run through the IDE's build, not a child process this bridge starts, so no process is
     // tracked here. Every pid is refused; only processes the bridge started may be killed.
@@ -739,7 +739,7 @@ public sealed class IdeActions(DTE2 dte)
                 instanceId = Path.GetFileName(dir);
             }
 
-            if (string.IsNullOrEmpty(instanceId) || instanceId.Length < 8)
+            if (instanceId is not { Length: >= 8 })
             {
                 continue;
             }

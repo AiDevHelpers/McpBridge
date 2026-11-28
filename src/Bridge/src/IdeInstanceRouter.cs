@@ -67,7 +67,7 @@ public static class IdeInstanceRouter
             if (matches.Count > 1 && instancePid is null)
             {
                 // The stored preference only breaks this tie. An explicit ide or instancePid has already decided.
-                var preferred = string.IsNullOrWhiteSpace(ide) ? RepoConfig.PreferredIde(solutionPath) : null;
+                var preferred = string.IsNullOrWhiteSpace(ide) && solutionPath is not null ? RepoConfig.PreferredIde(solutionPath) : null;
                 var narrowed = preferred is null
                     ? matches
                     : matches.Where(i => string.Equals(i.Ide, preferred, StringComparison.OrdinalIgnoreCase)).ToList();

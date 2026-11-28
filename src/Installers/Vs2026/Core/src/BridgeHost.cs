@@ -169,6 +169,7 @@ public sealed class BridgeHost : IDisposable
             && args.TryGetProperty("actionTimeoutSeconds", out var seconds)
             && seconds.TryGetInt32(out var limitSeconds)
             && limitSeconds > 0
+            && _server is not null
             && _server.ActionLimit != TimeSpan.FromSeconds(limitSeconds))
         {
             _server.ActionLimit = TimeSpan.FromSeconds(limitSeconds);

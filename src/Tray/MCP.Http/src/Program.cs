@@ -36,7 +36,9 @@ builder.Services.AddAiDevHelpersMcp(builder.Configuration).WithHttpTransport(opt
         return Task.CompletedTask;
     };
     // A session with no requests for this long is dropped; the client re-initializes. Configurable for tests (Http:IdleTimeoutMinutes).
+#pragma warning disable MCP9006 // Idle-session cleanup is needed here; moving to SessionMode.Stateless changes session handling and is a separate change.
     options.IdleTimeout = TimeSpan.FromMinutes(builder.Configuration.GetValue("Http:IdleTimeoutMinutes", 30.0));
+#pragma warning restore MCP9006
     // Counts the running sessions for /healthz; the session itself runs as before. RunSessionHandler is an SDK preview API (MCPEXP002).
 #pragma warning disable MCPEXP002
     options.RunSessionHandler = async (_, server, ct) =>

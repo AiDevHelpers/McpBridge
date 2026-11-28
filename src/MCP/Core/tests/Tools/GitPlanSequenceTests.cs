@@ -14,7 +14,7 @@ public sealed class GitPlanSequenceTests
         try
         {
             File.WriteAllText(Path.Combine(repo, "a.txt"), "one");
-            var json = await SourceControlTools.GitPlan(repo, null, paths: ["a.txt"], message: "m", sequence: ["stage", "commit"]);
+            var json = await SourceControlTools.GitPlan(repo, "", paths: ["a.txt"], message: "m", sequence: ["stage", "commit"]);
 
             using var doc = JsonDocument.Parse(json);
             Assert.True(doc.RootElement.GetProperty("ok").GetBoolean(), json);

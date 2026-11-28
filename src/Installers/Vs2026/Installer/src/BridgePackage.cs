@@ -14,7 +14,9 @@ namespace AiDevHelpers.Installers.Vs2026.Installer;
 
 /// <summary>Starts this Visual Studio instance's IDE bridge when the package loads. UI and registration only; logic is in the Core library.</summary>
 [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
+#pragma warning disable CS0618 // The VSIX manifest is the product record; this attribute still feeds the About box until the manifest carries it.
 [InstalledProductRegistration("AiDevHelpers IDE Bridge", "Named-pipe bridge for IDE tools", "0.1.1")]
+#pragma warning restore CS0618
 [Guid(BridgePackage.PackageGuidString)]
 [ProvideMenuResource("Menus.ctmenu", 1)]
 [ProvideToolWindow(typeof(BridgeToolWindow))]
