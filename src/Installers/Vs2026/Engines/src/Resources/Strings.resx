@@ -304,5 +304,6 @@ There are no user-configurable bridge settings at this time.</value></data>
   <data name="RewriteCallersWithCallerEdits" xml:space="preserve"><value>rewriteCallers and callerEdits are both given; use one of them</value></data>
   <data name="RewriteCallersNeedsChangeSignature" xml:space="preserve"><value>rewriteCallers only removes or reorders parameters; to add, rename or retype one, use ide_change_signature</value></data>
   <data name="QuiesceRefused" xml:space="preserve"><value>The MCP server is stopping; this instance takes no new actions.</value></data>
+  <data name="CompletionUnavailable" xml:space="preserve"><value>Completion is not available for this file. It may not belong to a project in the open solution.</value></data>
 </root>
 

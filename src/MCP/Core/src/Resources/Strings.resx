@@ -213,4 +213,11 @@ Write the complete contents of the file {1}, created from the item template {2}.
   <data name="CodeWorkFileMissing" xml:space="preserve"><value>The file {0} does not exist. Create it with start and confirm first.</value></data>
   <data name="CodeWorkFileEmpty" xml:space="preserve"><value>The file {0} is empty; a write needs existing text to replace.</value></data>
   <data name="CodeWorkWriteFailed" xml:space="preserve"><value>The write was refused.</value></data>
+  <data name="SnippetTitleRequired" xml:space="preserve"><value>title is required.</value></data>
+  <data name="SnippetShortcutInvalid" xml:space="preserve"><value>The shortcut may use only letters, digits and underscore (up to 64).</value></data>
+  <data name="SnippetCodeRequired" xml:space="preserve"><value>code is required.</value></data>
+  <data name="SnippetLanguageUnsupported" xml:space="preserve"><value>Language '{0}' is not supported. Use CSharp or VisualBasic.</value></data>
+  <data name="SnippetOutsideFolder" xml:space="preserve"><value>The snippet would be written outside the Code Snippets folder.</value></data>
+  <data name="SnippetExists" xml:space="preserve"><value>A snippet with this title already exists in My Code Snippets. Choose another title.</value></data>
+  <data name="SnippetNoFolder" xml:space="preserve"><value>No Visual Studio Code Snippets folder was found under Documents.</value></data>
 </root>

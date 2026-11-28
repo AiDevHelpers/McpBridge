@@ -7,6 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Completion;
 using Microsoft.VisualStudio.ComponentModelHost;
 using Microsoft.VisualStudio.LanguageServices;
 using Microsoft.VisualStudio.Shell;
@@ -119,6 +120,32 @@ internal static class CodeModelActions
         }
 
         return new { symbol = symbol.ToDisplayString(), locations };
+    }
+
+    /// <summary>Completion candidates at a position, from the open VS workspace (unsaved editor text included).</summary>
+    public static object CompleteAt(string file, int line, int column, int limit)
+    {
+        ThreadHelper.ThrowIfNotOnUIThread();
+        return ThreadHelper.JoinableTaskFactory.Run(() => CompleteAtAsync(file, line, column, limit));
+    }
+
+    private static async Task<object> CompleteAtAsync(string file, int line, int column, int limit)
+    {
+        var (_, document, position) = await ResolvePositionAsync(file, line, column).ConfigureAwait(true);
+        var service = CompletionService.GetService(document)
+            ?? throw new InvalidOperationException(Strings.Get("CompletionUnavailable"));
+        var list = await service.GetCompletionsAsync(document, position).ConfigureAwait(true);
+        var all = list?.ItemsList ?? [];
+        var items = all.Take(Math.Max(limit, 1)).Select(i => new
+        {
+            displayText = i.DisplayText,
+            filterText = i.FilterText,
+            sortText = i.SortText,
+            inlineDescription = i.InlineDescription,
+            tags = i.Tags.ToArray(),
+        }).ToList();
+
+        return new { count = items.Count, total = all.Count, items };
     }
 
     // Renames the symbol at a position across the solution. Plan-only lists the files that would change. Applied writes them

@@ -34,6 +34,38 @@ internal sealed class SnippetTools
         }
     }
 
+    [McpServerTool]
+    [DangerousTool]
+    [Description("Add a Visual Studio code snippet to the user's My Code Snippets folder. Use it for a recurring need: the calling AI drafts title, shortcut (letters, digits, underscore), description, language (CSharp or VisualBasic) and code, with $end$ and $name$ placeholders. Without confirm it returns the target path and the XML only; show them and set confirm true to write. An existing snippet is never overwritten.")]
+    public static string IdeAddSnippet(
+        [Description("Snippet title")] string title,
+        [Description("Shortcut typed before Tab to expand, letters, digits and underscore only")] string shortcut,
+        [Description("What the snippet does")] string description,
+        [Description("CSharp or VisualBasic")] string language,
+        [Description("Snippet code; $end$ marks the final cursor position")] string code,
+        [Description("Set true to write the file. Default false returns the plan only.")] bool confirm = false)
+    {
+        try
+        {
+            var root = UserSnippetFolders().FirstOrDefault();
+            if (root is null)
+                return JsonSerializer.Serialize(new { ok = false, error = Strings.Get("SnippetNoFolder") }, JsonOptions);
+
+            var plan = SnippetWriter.Plan(root, title, shortcut, description, language, code);
+            if (!plan.Ok)
+                return JsonSerializer.Serialize(new { ok = false, error = plan.Error }, JsonOptions);
+            if (!confirm)
+                return JsonSerializer.Serialize(new { ok = true, written = false, path = plan.Path, xml = plan.Xml }, JsonOptions);
+
+            var result = SnippetWriter.Write(plan);
+            return JsonSerializer.Serialize(new { ok = result.Ok, written = result.Ok, path = result.Path, error = result.Error }, JsonOptions);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return JsonSerializer.Serialize(new { ok = false, error = ex.Message }, JsonOptions);
+        }
+    }
+
     /// <summary>Scans the given folders and returns the JSON reply. Used by the tool and by tests.</summary>
     internal static string ListSnippetsIn(IEnumerable<string> roots, string? filter, string? language, int limit)
     {

@@ -157,6 +157,7 @@ public sealed class IdeActions(DTE2 dte)
         "undoGroup" => UndoGroup(RequireString(args, "name"), args, OptionalBool(args, "confirm") == true),
         "listCodeElements" => CodeModelActions.ListCodeElements(RequireString(args, "file")),
         "semanticReferences" => CodeModelActions.SemanticReferences(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
+        "completeAt" => CodeModelActions.CompleteAt(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1, OptionalInt(args, "limit") ?? 50),
         "semanticDefinition" => CodeModelActions.SemanticDefinition(RequireString(args, "file"), RequireInt(args, "line"), OptionalInt(args, "column") ?? 1),
         "renameSymbol" => CodeModelActions.RenameSymbol(
             RequireString(args, "file"),

@@ -172,3 +172,4 @@ Vs2026.Core| == null) throw new System.ArgumentNullException(nameof(
 Vs2026.Core|Visual Studio*
 MCP.Core|Visual Studio *
 MCP.Core|Code Snippets
+MCP.Core|My Code Snippets
