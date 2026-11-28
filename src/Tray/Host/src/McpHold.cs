@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace AiDevHelpers.Host;
 
 /// <summary>
@@ -8,7 +10,49 @@ public sealed class McpHold
 {
     private readonly object _lock = new();
     private bool _held;
+    private Process? _current;
     private TaskCompletionSource _changed = NewSource();
+
+    /// <summary>Records the MCP.Http process the supervisor just started, so <see cref="WaitUntilStoppedAsync"/> can watch it.</summary>
+    public void Attach(Process process)
+    {
+        lock (_lock)
+        {
+            _current = process;
+        }
+    }
+
+    /// <summary>
+    /// Completes true when no MCP.Http process is running, or false when <paramref name="timeout"/> passes first. Cancelling
+    /// <paramref name="ct"/> throws.
+    /// </summary>
+    public async Task<bool> WaitUntilStoppedAsync(TimeSpan timeout, CancellationToken ct)
+    {
+        using var timer = new CancellationTokenSource(timeout);
+        using CancellationTokenSource linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timer.Token);
+        while (true)
+        {
+            Process? process;
+            lock (_lock)
+            {
+                process = _current;
+            }
+
+            if (process is null || process.HasExited)
+            {
+                return true;
+            }
+
+            try
+            {
+                await process.WaitForExitAsync(linked.Token);
+            }
+            catch (OperationCanceledException) when (timer.IsCancellationRequested && !ct.IsCancellationRequested)
+            {
+                return false;
+            }
+        }
+    }
 
     /// <summary>True while the process must stay down.</summary>
     public bool IsHeld

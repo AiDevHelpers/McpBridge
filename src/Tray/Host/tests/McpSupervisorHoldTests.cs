@@ -105,6 +105,31 @@ public sealed class McpSupervisorHoldTests
         await Stop(supervisor, launcher);
     }
 
+    [Fact]
+    public async Task WaitReturnsTrueWhenNothingRuns()
+    {
+        var hold = new McpHold();
+
+        Assert.True(await hold.WaitUntilStoppedAsync(TimeSpan.FromSeconds(1), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task WaitTimesOutWhileProcessRuns()
+    {
+        var hold = new McpHold();
+        Process process = Process.Start(new ProcessStartInfo("ping", "-n 60 127.0.0.1") { UseShellExecute = false, CreateNoWindow = true })!;
+        try
+        {
+            hold.Attach(process);
+
+            Assert.False(await hold.WaitUntilStoppedAsync(TimeSpan.FromMilliseconds(300), CancellationToken.None));
+        }
+        finally
+        {
+            process.Kill(entireProcessTree: true);
+        }
+    }
+
     // The stop caused by a hold is not a crash, so after release the process comes back at once.
     [Fact]
     public async Task ReleaseAfterHoldKillRestartsPromptly()

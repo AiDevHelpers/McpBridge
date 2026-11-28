@@ -1,8 +1,10 @@
 // The Host service (LocalSystem). It starts AiDevHelpers.MCP.Http in the user's session and restarts it with a bounded backoff
-// (unit 2 of docs/plans/2026-11-26-tray-service.md). It never reads a manifest or any file the user can write.
+// (unit 2 of docs/plans/2026-11-26-tray-service.md). It installs signed updates (unit 10b) only from the admin-only updates folder,
+// and only after the package's signature and hashes verify against the release key.
 using System.Diagnostics;
 using AiDevHelpers.Helpers.WindowsSession;
 using AiDevHelpers.Host;
+using AiDevHelpers.Updates;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -11,7 +13,44 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "AiDevHelpers");
 builder.Services.AddSingleton<ISessionLauncher, WindowsSessionLauncher>();
 builder.Services.AddSingleton<McpHold>();
+builder.Services.AddSingleton<IMcpProcessControl, McpProcessControl>();
+
+// Updates (unit 10b). The install folder holds program files only; the updates folder is in ProgramData and admin-writable (UpdatesFolderAcl).
+// Packages are accepted only with a valid signature from the release key (ReleaseSigningKeys).
+string updatesRoot = Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "updates");
+string installDir = AppContext.BaseDirectory;
+var http = new HttpClient();
+var verifier = new UpdatePackageVerifier(new Ed25519PackageSignatureVerifier([ReleaseSigningKeys.Current()]));
+builder.Services.AddSingleton<IStagedUpdateInstaller>(sp => new StagedUpdateInstaller(
+    verifier,
+    new UpdateApplier(sp.GetRequiredService<ILogger<UpdateApplier>>()),
+    new McpUpdateDrain(sp.GetRequiredService<IMcpProcessControl>(), TimeSpan.FromSeconds(30)),
+    sp.GetRequiredService<IMcpProcessControl>(),
+    new UpdateReplayRecord(updatesRoot),
+    updatesRoot,
+    installDir,
+    sp.GetRequiredService<ILogger<StagedUpdateInstaller>>()));
+builder.Services.AddSingleton<IGitHubReleaseSource>(new GitHubReleaseClient(http, "AiDevHelpers", "McpBridge"));
+builder.Services.AddSingleton<IUpdateDownloader>(sp => new UpdateDownloader(
+    http,
+    new UpdateStager(updatesRoot, verifier, allowDevPackages: false, HostVersion.Current, sp.GetRequiredService<ILogger<UpdateStager>>()),
+    updatesRoot));
+
+// Hosted services start in this order, each start awaited: the startup install runs before the supervisor starts MCP.Http.
+builder.Services.AddHostedService(sp => new StartupUpdateService(
+    sp.GetRequiredService<IStagedUpdateInstaller>(),
+    HostVersion.Current,
+    updatesRoot,
+    UpdatesFolderAcl.Apply,
+    sp.GetRequiredService<ILogger<StartupUpdateService>>()));
 builder.Services.AddHostedService<McpSupervisor>();
+builder.Services.AddHostedService(sp => new StagedUpdateWatcher(
+    sp.GetRequiredService<IGitHubReleaseSource>(),
+    sp.GetRequiredService<IUpdateDownloader>(),
+    sp.GetRequiredService<IStagedUpdateInstaller>(),
+    HostVersion.Current,
+    Environment.Exit,
+    sp.GetRequiredService<ILogger<StagedUpdateWatcher>>()));
 await builder.Build().RunAsync();
 
 /// <summary>Starts a process in a logged-on user's session. A test replaces it with a fake.</summary>
@@ -130,6 +169,7 @@ public sealed class McpSupervisor(
             else
             {
                 log.LogInformation("Started {Exe} (pid {Pid}) in session {Session}.", exe, process.Id, session);
+                hold.Attach(process);
                 try
                 {
                     if (await WaitForExitOrHoldAsync(process, stoppingToken))
