@@ -45,14 +45,46 @@ public static class HealthPoller
         }
     }
 
-    public static async Task<HealthSnapshot> ReadOnceAsync(HttpMessageHandler handler, Uri healthz, Func<string?> readStatusFile, CancellationToken ct)
+    /// <summary>
+    /// A live /healthz reply wins. Otherwise a port-conflict status counts only while something still holds the port; a status left
+    /// by an earlier run is ignored once the port is free.
+    /// </summary>
+    public static async Task<HealthSnapshot> ReadOnceAsync(HttpMessageHandler handler, Uri healthz, Func<string?> readStatusFile, CancellationToken ct, Func<int, bool>? portInUse = null)
     {
+        var reading = await ProbeAsync(handler, healthz, ct).ConfigureAwait(false);
+        if (reading.State == TrayConnection.Connected)
+        {
+            return reading;
+        }
+
         var status = readStatusFile();
-        if (status is not null && status.Contains("\"state\":\"portConflict\"", StringComparison.Ordinal))
+        if (status is not null && status.Contains("\"state\":\"portConflict\"", StringComparison.Ordinal)
+            && (portInUse ?? IsPortInUse)(healthz.Port))
         {
             return new HealthSnapshot(TrayConnection.PortConflict, status);
         }
 
+        return reading;
+    }
+
+    /// <summary>True when another socket already listens on 127.0.0.1 at that port.</summary>
+    public static bool IsPortInUse(int port)
+    {
+        try
+        {
+            var listener = new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback, port);
+            listener.Start();
+            listener.Stop();
+            return false;
+        }
+        catch (System.Net.Sockets.SocketException)
+        {
+            return true;
+        }
+    }
+
+    private static async Task<HealthSnapshot> ProbeAsync(HttpMessageHandler handler, Uri healthz, CancellationToken ct)
+    {
         try
         {
             using var client = new HttpClient(handler, disposeHandler: false) { Timeout = TimeSpan.FromSeconds(3) };
