@@ -66,6 +66,12 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - `model_route` keeps returning the resolved target and model without calling anything.
 - U6 onward follow this. U3 stays dropped.
 
+## Status (2026-11-28)
+- Units U1, U2, U4, U5, U6, U7, U8, U9, U10, U11, U12 are done (U3 dropped). Full gate passes (build 0 warnings, format, 32 test projects, VS Code tests, TPM 2/2); the advisory outdated-packages check is not run.
+- Not done: the `code_work` skeleton does not add methods to classes through `ide_add_method` (the request from 2026-11-28). Plan steps have no methods field yet.
+- Not verified live: `ide_complete_at` (needs a bridge reinstall; no VS Code handler, marked unsupported in `parity.test.ts`), `ide_list_snippets` and `ide_add_snippet` (need an MCP restart), `code_work_*` (create needs an open Visual Studio).
+- Not done: move this plan to `docs/plans/archived/` (implement-plan step 7); add the new tools to the README.
+
 ## Rules
 - Each unit: failing test, implement, build, test, commit, push branch. No PR unless the user asks.
 - New files are created with Write; existing files edited with TokenSaver `edit_file`.
