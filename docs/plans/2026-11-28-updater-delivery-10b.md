@@ -71,4 +71,5 @@ Parent plan: `docs/plans/2026-11-27-tray-consolidated.md` (row 10b). Depends on 
 - Unit 2: done. Red run: `GitHubReleaseClientTests` failed to compile (no `GitHubReleaseClient`). Green: 55/55 in `src/Updates/tests`.
 - Unit 3: done. Red run: `UpdateDownloaderTests` failed to compile (no `UpdateDownloader`). Green: 62/62 in `src/Updates/tests`.
 - Unit 4a: done. Red: first build failed (supervisor used `McpHold` before it existed). Green: Host tests 12/12. The planned `HoldDoesNotCountAsFailure` is covered by `ReleaseAfterHoldKillRestartsPromptly` (a hold stop does not delay the restart). Supervisor gained an injectable session chooser so tests do not depend on a logged-on user.
-- Units 4, 5, 6, 7: not started.
+- Unit 4: done. Red: `UpdateDrainTests` failed to compile (no drain types). Green: Updates 65/65. Design change: the timeout lives in `IMcpProcessControl.WaitUntilStoppedAsync`, so the drain needs no clock; `DrainTimeoutReturnsFalse` tests the false path with a fake control. The Host adapter (`IMcpProcessControl` over `McpHold` plus a running-state signal from the supervisor) is part of unit 7, because the Updates project cannot reference the Host.
+- Units 5, 6, 7: not started.
