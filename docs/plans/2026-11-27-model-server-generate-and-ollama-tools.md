@@ -42,8 +42,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
   system, user, assistant; capped count), then chat (U2). Tests for cleanup, history validation, and chat delegation. Tool with tests.
 - [x] U8. (done 2026-11-28: `WorkspacePathGuard` and `PathCheck` moved to `AiDevHelpers.Common` with their own `Strings` resx; tests moved to `src/Common/tests`; `FileEditHelper` references Common. Common 120/120, FileEditHelper 49/49, MCP Core 477/477.) Shared path guard: move `WorkspacePathGuard` from `FileEditHelper` into `AiDevHelpers.Common`, with tests moved too.
   Approved in Answers (2026-11-27).
-- [ ] U9. `code_work` (start and continue): a plan-building session. Decide scope with the user first (it persists session state; where to store it under the repo's
-  `.aidevhelpers` folder). Blocked until answered.
+- [x] U9. (done 2026-11-28: `CodeWorkStart`, `CodeWorkContinue`, `CodeWorkConfirm` in MCP Core, sessions in `CodeWorkStore` under `.aidevhelpers/code-work`, `CodeWork:Enabled` off by default; 11 tests; MCP Core 488/488.) Scope decided by the answers in "Answers" below. The session store and tools are in MCP Core for now, not a new helper project (deviation from the wiring list; move later if needed). Not verified live: start with confirm needs an open Visual Studio instance.
 - [ ] U10. `fix_code` (enable-analysis, fix-syntax, fix-imports, fix-namespace, format): edits go through `FileEditEngine` with backups; format through the existing
   `ide_format_document` path or `dotnet format` via `CommandRunner`. Blocked on U8 and on the user's choice of format backend.
 - [ ] U11. `execute_step` (plan step execution, from `ManagePlan`): depends on U9's plan storage. Blocked on U9.
@@ -54,6 +53,10 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - `fix_code` format: `ide_format_document`. Needs a running Visual Studio instance, so U10 format steps are blocked when no IDE is open.
 - U8: `WorkspacePathGuard` moves into `AiDevHelpers.Common`, with its tests. Unblocks U8 and then U10.
 - U9 and U11 can now be planned in detail (storage and persistence are decided).
+- `code_work` answers (2026-11-28): the plan is passed by the calling AI to `start`. The skeleton files are created from Visual Studio item templates through the IDE
+  bridge (`ide_list_item_templates`, `ide_add_project_item`); no IDE open means start refuses. `continue` writes each step's content through `FileEditEngine`
+  with a backup, but the content is drafted by the local model (router model type) and the calling AI checks each draft before it is written (two steps: draft, then confirm with
+  a token). Server setting `CodeWork:Enabled`, default off; when off, every action returns AUTO_DISABLED.
 
 ## Change 2026-11-28: model types as server settings, with escalation
 - Model types are not built in. Each type is a server setting: `ModelServer:ModelTypes:<type>` with `Target` and `Model`.
