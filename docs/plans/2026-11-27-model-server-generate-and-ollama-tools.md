@@ -33,7 +33,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - [x] U3. Endpoint listing: DROPPED (2026-11-28). The router documents no endpoint list (its GET routes are `/health`, `/health/ready`, `/api/capacity`; `docs/Server/router-contract.md`). Models and loaded models are already reported by `model_server_status`, so `model_endpoints` is not added in U4.
 - [x] U4. `model_generate` and `model_chat` tools (U2) in MCP.Core, tool tests (refusals and JSON shape), self-test entries, docs wiring. `model_endpoints` is not added (U3 dropped). (done: MCP.Core 459/459; ModelGenerateToolsTests 5 new)
   Note: `list_ollama_endpoints` is the TokenSaver name; the retire list maps it to `model_server_status`.
-- [ ] U5. `model_route` in `ModelServerHelper`: routing keys code, chat, summarize, embed, rerank mapped to a named endpoint or the default; unknown key refused.
+- [x] U5. (done 2026-11-28, decision: the route table is supplied by the caller, mapping keys to model names; no router endpoint selection. Tests: 4 helper, 2 MCP; `RouteChoice` record, `model_route` tool.) `model_route` in `ModelServerHelper`: routing keys code, chat, summarize, embed, rerank mapped to a named endpoint or the default; unknown key refused.
   Tests for each key and unknown key. Tool in MCP.Core with tests.
 - [ ] U6. `diff_summarize` in a new `DiffHelper` (or `SourceControlHelper`, decided in U6 by checking that project's existing scope). Diff through `CommandRunner`
   (`git diff`, `--staged` optional), path guard, returns the diff stats and the raw diff size; the summary step uses U2 generate when present, otherwise returns

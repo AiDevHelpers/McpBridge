@@ -119,5 +119,23 @@ internal sealed class ModelServerTools
         }
     }
 
+    [McpServerTool]
+    [SafeTool]
+    [Description("Pick the model for a task key (code, chat, summarize, embed or rerank) from a route table the caller supplies: an object mapping keys to model names. Returns the model name; it does not call the router. Unknown keys and keys with no route return ok=false.")]
+    public static string ModelRoute(
+        [Description("Task key: code, chat, summarize, embed or rerank")] string key,
+        [Description("Route table: an object mapping each key to a model name the router lists")] Dictionary<string, string> routes)
+    {
+        try
+        {
+            var r = AiDevHelpers.Helpers.ModelServerHelper.ModelRouter.Resolve(key, routes);
+            return Json(new { ok = r.Ok, model = r.Model, error = r.Error });
+        }
+        catch (Exception ex)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

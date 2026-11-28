@@ -72,6 +72,24 @@ public sealed class ModelGenerateToolsTests : IDisposable
     }
 
     [Fact]
+    public void Model_route_returns_the_model_for_a_known_key()
+    {
+        var json = ModelServerTools.ModelRoute("chat", new Dictionary<string, string> { ["chat"] = "helper-chat" });
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("helper-chat", doc.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public void Model_route_unknown_key_is_ok_false()
+    {
+        using var doc = JsonDocument.Parse(ModelServerTools.ModelRoute("translate", new Dictionary<string, string>()));
+
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+    }
+
+    [Fact]
     public async Task Clean_and_chat_returns_the_content_and_the_trimmed_count()
     {
         Use(_ => Json("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"done\"}}]}"));

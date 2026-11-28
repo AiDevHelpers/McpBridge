@@ -1,6 +1,6 @@
 # ModelServerHelper self test
 
-Tools: `ModelServerStatus`, `ModelServerCapacity`, `ModelGenerate`, `ModelChat`, `CleanAndChat`.
+Tools: `ModelServerStatus`, `ModelServerCapacity`, `ModelGenerate`, `ModelChat`, `CleanAndChat`, `ModelRoute`.
 
 ## Full self test
 
