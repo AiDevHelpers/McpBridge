@@ -44,7 +44,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
   Approved in Answers (2026-11-27).
 - [x] U9. (done 2026-11-28: `CodeWorkStart`, `CodeWorkContinue`, `CodeWorkConfirm` in MCP Core, sessions in `CodeWorkStore` under `.aidevhelpers/code-work`, `CodeWork:Enabled` off by default; 11 tests; MCP Core 488/488.) Scope decided by the answers in "Answers" below. The session store and tools are in MCP Core for now, not a new helper project (deviation from the wiring list; move later if needed). Not verified live: start with confirm needs an open Visual Studio instance.
 - [x] U10. (done 2026-11-28: `FixCodeTools` in MCP Core, 9 tests, MCP Core 513/513. `enable-analysis` writes the managed IDE0005 block through `FileEditService` with a backup; `format` calls the bridge `formatDocument` (active document, needs a live Visual Studio, not run). `fix-syntax`, `fix-imports` and `fix-namespace` refuse and name `ide_code_cleanup` / `ide_rename_namespace`.) Format backend answered: `ide_format_document`.
-- [ ] U11. `execute_step` (plan step execution, from `ManagePlan`): depends on U9's plan storage. Blocked on U9.
+- [x] U11. (done 2026-11-28: `CodeWorkExecute` in MCP Core runs one step per call and stores each step's status in the session: pending → created (bridge `addProjectItem`) → drafted → written (confirm). 6 tests; MCP Core 519/519; VS build of AiDevHelpers.slnx passes with 0 errors.) Runs on U9's plan storage, so the step belongs to a `code_work` session, not a separate plan store.
 - [ ] U12. Docs and gates: `docs/features.md`, `docs/self_test.md`, dogfood log; lite gate with aidevtools tools; full gate before any PR to dev/main.
 
 ## Answers (2026-11-27)

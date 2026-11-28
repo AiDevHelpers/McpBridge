@@ -89,8 +89,10 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
                 created.Add(new { stepId = step.Id, ok, reply = JsonSerializer.Deserialize<JsonElement>(reply, JsonOptions) });
                 if (!ok)
                     return Json(new { ok = false, sessionId = id, created, error = Strings.Format("CodeWorkStepFailed", step.Id) });
+                session.Status[step.Id] = "created";
             }
 
+            CodeWorkStore.Save(root, session);
             return Json(new { ok = true, sessionId = id, created });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -193,8 +195,72 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
                 return Refuse(result.Error ?? Strings.Get("CodeWorkWriteFailed"));
 
             session.Drafts.Remove(stepId);
+            session.Status[stepId] = "written";
             CodeWorkStore.Save(root, session);
             return Json(new { ok = true, sessionId, stepId, filePath = result.FilePath, linesChanged = result.LinesChanged, backupPath = result.BackupPath });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Refuse(ex.Message);
+        }
+    }
+
+    [McpServerTool]
+    [DangerousTool]
+    [Description("code_work execute: run the next action for one plan step. A pending step is created from its template (through the IDE bridge). A created step is drafted (as continue does). A drafted step waits for code_work confirm with its token. A written step is done. Changes one step per call.")]
+    public async Task<string> CodeWorkExecute(
+        [Description("Repo folder")] string root,
+        [Description("Session id from start")] string sessionId,
+        [Description("Step id from the plan")] string stepId,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            if (!options.Value.Enabled)
+                return Refuse(Strings.Get("CodeWorkDisabled"));
+
+            var session = CodeWorkStore.Load(root, sessionId);
+            if (session is null)
+                return Refuse(Strings.Get("CodeWorkSessionMissing"));
+            var step = session.Steps.FirstOrDefault(s => s.Id == stepId);
+            if (step is null)
+                return Refuse(Strings.Format("CodeWorkStepUnknown", stepId));
+
+            var status = session.Status.GetValueOrDefault(stepId, "pending");
+            switch (status)
+            {
+                case "pending":
+                {
+                    var reply = await Bridge("addProjectItem", new { project = step.Project, file = step.File, mode = "fromNew", template = step.Template, confirm = true }, ct);
+                    using var made = JsonDocument.Parse(reply);
+                    if (!(made.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
+                        return Refuse(Strings.Format("CodeWorkStepFailed", stepId));
+
+                    session.Status[stepId] = "created";
+                    CodeWorkStore.Save(root, session);
+                    return Json(new { ok = true, sessionId, stepId, status = "created" });
+                }
+
+                case "created":
+                {
+                    // Drafting saves the session itself, so read the status back afterwards.
+                    var drafted = await CodeWorkContinue(root, sessionId, stepId, ct);
+                    using var doc = JsonDocument.Parse(drafted);
+                    if (!(doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.ValueKind == JsonValueKind.True))
+                        return drafted;
+
+                    var saved = CodeWorkStore.Load(root, sessionId)!;
+                    saved.Status[stepId] = "drafted";
+                    CodeWorkStore.Save(root, saved);
+                    return Json(new { ok = true, sessionId, stepId, status = "drafted", token = doc.RootElement.GetProperty("token").GetString() });
+                }
+
+                case "drafted":
+                    return Refuse(Strings.Get("CodeWorkExecuteConfirmFirst"));
+
+                default:
+                    return Json(new { ok = true, sessionId, stepId, status = "written" });
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

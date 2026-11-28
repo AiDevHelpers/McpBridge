@@ -23,6 +23,9 @@ internal sealed class CodeWorkSession
     public List<CodeWorkStep> Steps { get; set; } = [];
 
     public Dictionary<string, CodeWorkDraft> Drafts { get; set; } = new(StringComparer.Ordinal);
+
+    /// <summary>Per step: pending (not created), created (file exists from its template), drafted (content waiting for confirm), written.</summary>
+    public Dictionary<string, string> Status { get; set; } = new(StringComparer.Ordinal);
 }
 
 /// <summary>Reads and writes code_work sessions under the repo, so they survive a server restart.</summary>
