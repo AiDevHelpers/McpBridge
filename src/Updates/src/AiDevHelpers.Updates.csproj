@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Updater core (unit 10a of docs/plans/2026-11-27-tray-consolidated.md). Ported from VideoForensics at 7e47bd9b; see PORTED.md. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>AiDevHelpers.Updates</RootNamespace>
+    <AssemblyName>AiDevHelpers.Updates</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiDevHelpers.Updates.Tests" />
+  </ItemGroup>
+
+</Project>
+

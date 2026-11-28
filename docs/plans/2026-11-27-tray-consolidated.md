@@ -138,7 +138,10 @@ Remaining:
   - Decided 2026-11-27: local dev signing is a generated file key, Ed25519 (same as the port). Private key under `%ProgramData%\AiDevHelpers\updates\keys`, admin-only ACL; public key committed. The release key stays with unit 10b.
   - Decided 2026-11-28 (review): the dev key is accepted in debug builds only, public key from machine-only config. Release builds accept only the unit 10b key.
   - Decided 2026-11-28 (review): the Host starts MCP.Http only when no `AiDevHelpers.Tray` process runs in the user's session. If the tray starts while the Host's MCP.Http runs, the tray adopts it and starts no second one. The Host keeps the updater role.
-  - Open for 10a (review): the port has no monotonic version, `notAfter`, key list, ACL or rotation. Those are new design and each needs a named test before code.
+  - Named tests for 10a (project `src/Updates`, tests in `src/Updates/tests`; each red before its code):
+    - Ported (from VideoForensics, pinned to `7e47bd9b`): `UpdateManifestTests` (`ParsesVersionAndFiles`, `RejectsManifestWithoutFiles`, `RoundTripsThroughJson`); `UpdatePathGuardTests` (`RejectsRootedPath`, `RejectsParentSegment`, `RejectsPathOutsideRoot`, `RejectsJunctionOnPath`); `UpdatePackageVerifierTests` (`UnsignedReleasePackageRejected`, `TamperedFileRejected`, `SizeMismatchRejected`, `MissingFileRejected`, `UnsafePathRejected`, `VersionNotNewerRejected`, `DevPackageAcceptedWhenAllowed`); `Ed25519PackageSignatureVerifierTests` (`AcceptsSignatureFromKey`, `RejectsSignatureFromOtherKey`, `RejectsShortSignature`).
+    - New design: `ReplayOfAppliedPackageRejected` (last-applied record), `ExpiredNotAfterRejected`, `RetiredKeyRejected` and `ActiveKeyFromListAccepted` (key list and rotation), `UpdatesFolderAclRestrictsWrites` (Category=Admin).
+    - `PORTED.md` records `7e47bd9b` and each ported file.
   - Branch: `feat/tray-unit10a-updater-core` from `wip`. Not started in code yet.
 - **10b Updater delivery:** stager scripts, GitHub downloader, service watcher with drain, release workflow with a protected environment. Needs the user's signing key.
 - **11a About and scoped tokens:** version, build, components, links; per-client scoped tokens.
