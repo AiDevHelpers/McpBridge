@@ -53,7 +53,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
     private readonly ConcurrentDictionary<string, PendingSequence> _sequences = new();
 
     public static readonly IReadOnlyList<string> WriteActions =
-        ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply"];
+        ["stage", "commit", "pull", "push", "create_branch", "delete_branch", "switch", "stash_push", "stash_pop", "stash_apply", "merge", "merge_abort"];
 
     public async Task<GitStatusResult> StatusAsync(string repoPath, CancellationToken ct = default)
     {
@@ -103,6 +103,11 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             throw new ArgumentException(Strings.Get("PushRefNeedsPush"), nameof(pushRef));
         }
 
+        if (action == "merge_abort" && !(await git.RunAsync(repoPath, ["rev-parse", "--verify", "-q", "MERGE_HEAD"], ct)).Ok)
+        {
+            throw new ArgumentException(Strings.Get("MergeAbortNotMerging"), nameof(action));
+        }
+
         var overridden = await CheckRulesAsync(repoPath, action, pushRef is null ? branch : DestinationOf(pushRef), ct);
         var planned = HeadSensitive.Contains(action) ? await ReadStateAsync(repoPath, ct) : null;
         return Register(BuildPending(repoPath, action, paths, message, branch, overridden, pushRef) with { PlannedState = planned });
@@ -121,6 +126,12 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         CancellationToken ct = default,
         string? pushRef = null)
     {
+        if (actions.Contains("merge_abort"))
+        {
+            // Abort is a recovery step for a merge that stopped; it cannot wait behind earlier steps in a sequence.
+            throw new ArgumentException(Strings.Get("MergeAbortNotInSequence"), nameof(actions));
+        }
+
         if (actions.Count == 0)
         {
             throw new ArgumentException(Strings.Get("SequenceNeedsSteps"), nameof(actions));
@@ -252,7 +263,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
     }
 
     // Actions whose result depends on which commit or branch is checked out. Only these take a plan-time state.
-    private static readonly HashSet<string> HeadSensitive = ["commit", "push", "pull", "delete_branch"];
+    private static readonly HashSet<string> HeadSensitive = ["commit", "push", "pull", "delete_branch", "merge"];
 
     // HEAD and branch now. A failed rev-parse (an unborn HEAD, or no repo) reads as null, which still compares as a value.
     private async Task<RepoState> ReadStateAsync(string repoPath, CancellationToken ct)
@@ -274,7 +285,18 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
                 : new GitResult(false, -1, Strings.Format("VsCodeRouteFailed", route.Action));
         }
 
-        return await git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+        var result = await git.RunAsync(pending.RepoPath, pending.Arguments, ct);
+        if (pending.Action == "merge" && !result.Ok)
+        {
+            // git prints CONFLICT lines only; the unmerged paths need their own call.
+            var unmerged = await git.RunAsync(pending.RepoPath, ["diff", "--name-only", "--diff-filter=U"], ct);
+            if (unmerged.Ok && unmerged.Output.Trim().Length > 0)
+            {
+                return new GitResult(false, result.ExitCode, result.Output + Strings.Get("MergeConflictedPaths") + unmerged.Output);
+            }
+        }
+
+        return result;
     }
 
     // The VS Code action and arguments for an approved write, or null when the write stays on git.exe (push, pull, create_branch).
@@ -392,6 +414,12 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
                 return ["stash", "pop"];
             case "stash_apply":
                 return ["stash", "apply"];
+            case "merge":
+                // branch is the ref to merge in. The rule checks the current branch, which is the merge target.
+                RequireText(branch, Strings.Get("MergeNeedsSource"));
+                return ["merge", "--no-ff", "--no-edit", branch!];
+            case "merge_abort":
+                return ["merge", "--abort"];
             default:
                 throw new ArgumentException(Strings.Format("UnknownWriteActionName", action), nameof(action));
         }

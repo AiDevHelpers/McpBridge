@@ -16,6 +16,14 @@
   <data name="PushRefInvalid" xml:space="preserve"><value>The push destination must be a branch name, or source:destination, with no spaces, no leading dash and no "..".</value></data>
   <data name="PushRefWithBranch" xml:space="preserve"><value>Give either branch or pushRef for a push, not both.</value></data>
   <data name="PushRefNeedsPush" xml:space="preserve"><value>pushRef is only for the push action.</value></data>
+  <data name="MergeNeedsSource" xml:space="preserve"><value>merge needs the ref to merge in, given as branch.</value></data>
+  <data name="MergeAbortNotMerging" xml:space="preserve"><value>No merge is in progress, so there is nothing to abort.</value></data>
+  <data name="MergeAbortNotInSequence" xml:space="preserve"><value>merge_abort cannot be part of a sequence. Plan it on its own.</value></data>
+  <data name="MergeConflictedPaths" xml:space="preserve"><value>
+Conflicted paths (resolve them, then commit, or run merge_abort):
+</value></data>
+  <data name="RuleMergeIntoProtected" xml:space="preserve"><value>Merging into {0} is refused: it is a protected branch. Merge into a feature branch and open a pull request instead.</value></data>
+  <data name="RuleMergeUnknownBranch" xml:space="preserve"><value>Merging is refused because the checked-out branch is unknown (detached HEAD or unborn). Check out a branch first.</value></data>
   <data name="UnknownToken" xml:space="preserve"><value>Unknown or already used token. Plan the write again.</value></data>
   <data name="SequenceNeedsSteps" xml:space="preserve"><value>A sequence needs at least one action.</value></data>
   <data name="StageNeedsPath" xml:space="preserve"><value>stage needs at least one path.</value></data>

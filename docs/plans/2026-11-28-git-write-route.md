@@ -50,7 +50,11 @@ Status: tests in `PushRefTests.cs` (10 cases; the first red run was a compile fa
 
 Done when: `push origin HEAD:wip` is a plan, not a raw command (dogfood row 46).
 
-### Unit 3: merge
+### Unit 3: merge — DONE
+
+Status: `MergeTests.cs` (9 cases; 6 red before the change, 3 passed because the old code refused unknown actions). Green: SourceControlHelper 71/71, MCP Core 454/454. Deviations: the source ref uses the existing `branch` parameter (no new `from` parameter); merge is HEAD-sensitive; merge into an unknown branch (detached or unborn) is refused. Commit's null-branch behaviour is unchanged, and the plan's "refuse commit on null" is not done. A real-git conflict and abort run is not done yet.
+
+Original text:
 
 - Action `merge` with optional `from` parameter. Argv `merge --no-ff --no-edit <from>`.
 - Action `merge_abort`: precondition `MERGE_HEAD` exists, else refuse. Not allowed inside a sequence.

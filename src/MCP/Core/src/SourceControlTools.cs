@@ -101,7 +101,7 @@ internal sealed class SourceControlTools
     [McpServerTool]
     [SafeTool]
     [Description("Plan a git write and return its exact command and a token. Nothing runs until git_confirm. " +
-                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. " +
+                 "action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply, merge, merge_abort. " +
                  "sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm " +
                  "and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them.")]
     public static async Task<string> GitPlan(
@@ -109,7 +109,7 @@ internal sealed class SourceControlTools
         [Description("One of the write actions above (leave out when sequence is given)")] string action = "",
         [Description("Paths, for stage")] string[]? paths = null,
         [Description("Commit message, for commit")] string? message = null,
-        [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null,
+        [Description("Branch name, for push, create_branch, delete_branch and switch; the ref to merge in, for merge")] string? branch = null,
         [Description("Write actions to run in order under one token, e.g. stage, commit, push")] string[]? sequence = null,
         [Description("Destination for push: a branch name (pushes HEAD there) or source:destination. Not with branch.")] string? pushRef = null,
         CancellationToken ct = default)

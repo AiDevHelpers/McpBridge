@@ -30,7 +30,7 @@ public static class RuleGuard
 
     /// <summary>The actions whose planning needs the checked-out branch.</summary>
     public static bool NeedsCurrentBranch(string action, string? branch) =>
-        action == "commit" || (action == "push" && string.IsNullOrWhiteSpace(branch));
+        action == "commit" || action == "merge" || (action == "push" && string.IsNullOrWhiteSpace(branch));
 
     public static RuleRefusal? Check(EffectiveRules rules, string action, string? branch, string? currentBranch)
     {
@@ -38,6 +38,11 @@ public static class RuleGuard
         {
             case "commit" when currentBranch is not null && rules.IsProtected(currentBranch):
                 return new RuleRefusal(action, currentBranch, Strings.Format("RuleCommitOnProtected", currentBranch));
+            // The merge target is the checked-out branch. An unknown branch is refused, not waved through.
+            case "merge" when currentBranch is null:
+                return new RuleRefusal(action, string.Empty, Strings.Get("RuleMergeUnknownBranch"));
+            case "merge" when rules.IsProtected(currentBranch):
+                return new RuleRefusal(action, currentBranch, Strings.Format("RuleMergeIntoProtected", currentBranch));
             case "push":
                 var target = string.IsNullOrWhiteSpace(branch) ? currentBranch : branch;
                 return target is not null && rules.IsProtected(target)
