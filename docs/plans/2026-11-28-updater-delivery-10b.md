@@ -70,4 +70,5 @@ Parent plan: `docs/plans/2026-11-27-tray-consolidated.md` (row 10b). Depends on 
 - Unit 1: done. Red run: `UpdateManifestWriterTests` failed to compile (no `UpdateManifestWriter`). Green: 49/49 in `src/Updates/tests`. Tool `src/Updates/tools/AiDevHelpers.Updates.ManifestTool` smoke-tested: write produces the manifest; verify rejects an unsigned package (exit 1). Workflow and `scripts/sign-package.ps1` are written but not run: the signing step needs a real run of the `release` environment.
 - Unit 2: done. Red run: `GitHubReleaseClientTests` failed to compile (no `GitHubReleaseClient`). Green: 55/55 in `src/Updates/tests`.
 - Unit 3: done. Red run: `UpdateDownloaderTests` failed to compile (no `UpdateDownloader`). Green: 62/62 in `src/Updates/tests`.
-- Units 4a–7: not started.
+- Unit 4a: done. Red: first build failed (supervisor used `McpHold` before it existed). Green: Host tests 12/12. The planned `HoldDoesNotCountAsFailure` is covered by `ReleaseAfterHoldKillRestartsPromptly` (a hold stop does not delay the restart). Supervisor gained an injectable session chooser so tests do not depend on a logged-on user.
+- Units 4, 5, 6, 7: not started.

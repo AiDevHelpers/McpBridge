@@ -2,6 +2,7 @@
 // (unit 2 of docs/plans/2026-11-26-tray-service.md). It never reads a manifest or any file the user can write.
 using System.Diagnostics;
 using AiDevHelpers.Helpers.WindowsSession;
+using AiDevHelpers.Host;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,6 +10,7 @@ using Microsoft.Extensions.Logging;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "AiDevHelpers");
 builder.Services.AddSingleton<ISessionLauncher, WindowsSessionLauncher>();
+builder.Services.AddSingleton<McpHold>();
 builder.Services.AddHostedService<McpSupervisor>();
 await builder.Build().RunAsync();
 
@@ -80,9 +82,15 @@ public static class SessionChoice
 
 /// <summary>Keeps one MCP.Http running in the user's session. A process that exits is started again after a backoff; a run that lasted
 /// a minute resets the failure count. Stopping the service stops the process.</summary>
-public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration configuration, ILogger<McpSupervisor> log) : BackgroundService
+public sealed class McpSupervisor(
+    ISessionLauncher launcher,
+    IConfiguration configuration,
+    ILogger<McpSupervisor> log,
+    McpHold hold,
+    Func<uint>? chooseSession = null) : BackgroundService
 {
     private static readonly TimeSpan HealthyRun = TimeSpan.FromMinutes(1);
+    private readonly Func<uint> _chooseSession = chooseSession ?? (() => SessionChoice.Choose(UserSession.ActiveConsoleSession(), s => UserSession.GetUserSid(s) is not null, UserSession.FindFirstLoggedOnSession));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -92,7 +100,15 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var session = SessionChoice.Choose(UserSession.ActiveConsoleSession(), s => UserSession.GetUserSid(s) is not null, UserSession.FindFirstLoggedOnSession);
+            if (hold.IsHeld)
+            {
+                // An update is applying: MCP.Http stays down until it is released.
+                log.LogInformation("{Exe} is held for an update; not starting it.", exe);
+                await hold.WhenChangedFrom(true).WaitAsync(stoppingToken);
+                continue;
+            }
+
+            var session = _chooseSession();
             var started = DateTime.UtcNow;
             if (session == UserSession.NoSession)
             {
@@ -100,7 +116,7 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 log.LogInformation("No user session to start {Exe} in yet; checking again.", exe);
                 var wait = SupervisorPolicy.AfterNoSession(failures);
                 failures = wait.Failures;
-                await Task.Delay(wait.Delay, stoppingToken);
+                await PauseAsync(wait.Delay, stoppingToken);
                 continue;
             }
 
@@ -116,7 +132,15 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 log.LogInformation("Started {Exe} (pid {Pid}) in session {Session}.", exe, process.Id, session);
                 try
                 {
-                    await process.WaitForExitAsync(stoppingToken);
+                    if (await WaitForExitOrHoldAsync(process, stoppingToken))
+                    {
+                        // A hold stopped it for an update. That is not a failure, so the count is left alone.
+                        StopProcess(process);
+                        await process.WaitForExitAsync(stoppingToken);
+                        log.LogInformation("{Exe} stopped for an update.", exe);
+                        continue;
+                    }
+
                     log.LogWarning("{Exe} exited with code {Code}.", exe, process.ExitCode);
                 }
                 catch (OperationCanceledException)
@@ -135,7 +159,41 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 return;
             }
 
-            await Task.Delay(delay.Value, stoppingToken);
+            await PauseAsync(delay.Value, stoppingToken);
+        }
+    }
+
+    // Returns true when a hold asked for the process to stop; false when it exited on its own.
+    private async Task<bool> WaitForExitOrHoldAsync(Process process, CancellationToken ct)
+    {
+        Task exit = process.WaitForExitAsync(ct);
+        while (!exit.IsCompleted)
+        {
+            if (hold.IsHeld)
+            {
+                return true;
+            }
+
+            await Task.WhenAny(exit, hold.WhenChangedFrom(false));
+        }
+
+        return false;
+    }
+
+    // A backoff wait ends early when a hold starts, so the next pass waits on the hold instead of sleeping.
+    private async Task PauseAsync(TimeSpan delay, CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task pause = Task.Delay(delay, cts.Token);
+        await Task.WhenAny(pause, hold.WhenChangedFrom(false));
+        cts.Cancel();
+        try
+        {
+            await pause;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Cut short by a hold, not by the service stopping.
         }
     }
 
