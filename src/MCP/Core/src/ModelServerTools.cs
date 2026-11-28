@@ -50,5 +50,53 @@ internal sealed class ModelServerTools
         }
     }
 
+    private static readonly Lazy<ModelServerGenerator> SharedGenerator = new(() => ModelServerGenerator.CreateDefault());
+
+    /// <summary>Test seam: replaces the shared generator.</summary>
+    internal static Func<ModelServerGenerator>? GeneratorFactory { get; set; }
+
+    private static ModelServerGenerator Generator() => GeneratorFactory?.Invoke() ?? SharedGenerator.Value;
+
+    [McpServerTool]
+    [SafeTool]
+    [Description("Generate text with a model on the SimpleModelServer router (non-streaming). The reply is capped at 20,000 characters; capped=true means it was cut. Refused calls return ok=false with the reason.")]
+    public static async Task<string> ModelGenerate(
+        [Description("Model name as the router lists it")] string model,
+        [Description("The prompt")] string prompt,
+        [Description("Optional system text")] string? system = null,
+        [Description("Timeout in seconds, 1-600 (default 120)")] int timeoutSeconds = 120,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var r = await Generator().GenerateAsync(model, prompt, system, timeoutSeconds, ct);
+            return Json(new { ok = r.Ok, response = r.Text, capped = r.Capped, timedOut = r.TimedOut, status = r.Status, error = r.Error });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
+    [McpServerTool]
+    [SafeTool]
+    [Description("Chat with a model on the SimpleModelServer router (non-streaming). Messages take role system, user or assistant. The reply is capped at 20,000 characters.")]
+    public static async Task<string> ModelChat(
+        [Description("Model name as the router lists it")] string model,
+        [Description("Messages in order, each with role (system, user or assistant) and content")] ChatTurn[] messages,
+        [Description("Timeout in seconds, 1-600 (default 120)")] int timeoutSeconds = 120,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var r = await Generator().ChatAsync(model, messages, timeoutSeconds, ct);
+            return Json(new { ok = r.Ok, content = r.Text, capped = r.Capped, timedOut = r.TimedOut, status = r.Status, error = r.Error });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

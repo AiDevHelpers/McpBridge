@@ -30,9 +30,9 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - [x] U2. `ModelServerHelper` generate and chat. (done: red run was a missing-type compile error; green 40/40 in ModelServerHelper tests; class is `ModelServerGenerator`) Failing tests first with the existing fake `HttpMessageHandler` pattern: request body shape (`/api/generate`, `/api/chat`
   as the router documents them; check the router's contract doc in `F:\aidevhelpers\TokenSaver\TokenSaver.SimpleModelServer` before writing), non-2xx, timeout, cancellation,
   cap. Done: red then green.
-- [ ] U3. Endpoint listing: `ModelServerClient.ListEndpointsAsync` (router endpoints and their status). Tests: parse, empty list, unreachable router.
-- [ ] U4. `model_server` tools for U2-U3 (`model_generate`, `model_chat`, `model_endpoints`) in MCP.Core, tool tests (refusals and JSON shape), self-test entries, docs wiring.
-  Note: `list_ollama_endpoints` is the TokenSaver name; aidevtools name is `model_endpoints`, and the retire list maps it.
+- [x] U3. Endpoint listing: DROPPED (2026-11-28). The router documents no endpoint list (its GET routes are `/health`, `/health/ready`, `/api/capacity`; `docs/Server/router-contract.md`). Models and loaded models are already reported by `model_server_status`, so `model_endpoints` is not added in U4.
+- [x] U4. `model_generate` and `model_chat` tools (U2) in MCP.Core, tool tests (refusals and JSON shape), self-test entries, docs wiring. `model_endpoints` is not added (U3 dropped). (done: MCP.Core 459/459; ModelGenerateToolsTests 5 new)
+  Note: `list_ollama_endpoints` is the TokenSaver name; the retire list maps it to `model_server_status`.
 - [ ] U5. `model_route` in `ModelServerHelper`: routing keys code, chat, summarize, embed, rerank mapped to a named endpoint or the default; unknown key refused.
   Tests for each key and unknown key. Tool in MCP.Core with tests.
 - [ ] U6. `diff_summarize` in a new `DiffHelper` (or `SourceControlHelper`, decided in U6 by checking that project's existing scope). Diff through `CommandRunner`
