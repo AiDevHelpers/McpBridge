@@ -38,6 +38,42 @@ public sealed class UpdatePackageVerifierTests : IDisposable
     private static Task<UpdatePackageVerification> Verify(string dir, string current = "1.0.0", bool allowDev = true) =>
         new UpdatePackageVerifier().VerifyAsync(dir, current, allowDev, CancellationToken.None);
 
+    private sealed class FixedClock(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private static readonly DateTimeOffset Now = new(2026, 11, 28, 0, 0, 0, TimeSpan.Zero);
+
+    // Rewrites the package's manifest with a notAfter time (the file content is unchanged, so its hash still matches).
+    private string WriteManifestWithNotAfter(DateTimeOffset notAfter)
+    {
+        string dir = WritePackage();
+        var manifest = new UpdateManifest("2.0.0", [new UpdateManifestFile("bin/app.exe", Hash("hello"), 5)], notAfter);
+        File.WriteAllText(Path.Combine(dir, UpdateManifest.FileName), manifest.ToJson());
+        return dir;
+    }
+
+    [Fact]
+    public async Task ExpiredNotAfterRejected()
+    {
+        string dir = WriteManifestWithNotAfter(Now.AddDays(-1));
+
+        var result = await new UpdatePackageVerifier(clock: new FixedClock(Now)).VerifyAsync(dir, "1.0.0", true, CancellationToken.None);
+
+        Assert.Equal(UpdatePackageStatus.Expired, result.Status);
+    }
+
+    [Fact]
+    public async Task NotAfterInTheFutureAccepted()
+    {
+        string dir = WriteManifestWithNotAfter(Now.AddDays(1));
+
+        var result = await new UpdatePackageVerifier(clock: new FixedClock(Now)).VerifyAsync(dir, "1.0.0", true, CancellationToken.None);
+
+        Assert.Equal(UpdatePackageStatus.Valid, result.Status);
+    }
+
     [Fact]
     public async Task DevPackageAcceptedWhenAllowed()
     {

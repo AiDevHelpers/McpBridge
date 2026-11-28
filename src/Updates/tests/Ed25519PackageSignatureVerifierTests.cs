@@ -92,5 +92,49 @@ public sealed class Ed25519PackageSignatureVerifierTests : IDisposable
 
         Assert.False(ok);
     }
+
+    [Fact]
+    public async Task ActiveKeyFromListAccepted()
+    {
+        var (_, retiredPub) = NewKey();
+        var (active, activePub) = NewKey();
+        string dir = WriteManifest(ManifestJson);
+        File.WriteAllBytes(Path.Combine(dir, UpdateManifest.FileName + ".sig"), Sign(active, ManifestJson));
+        var verifier = new Ed25519PackageSignatureVerifier(
+        [
+            new PackageSigningKey("old", retiredPub, Active: false),
+            new PackageSigningKey("new", activePub, Active: true),
+        ]);
+
+        bool ok = await verifier.VerifyAsync(dir, Manifest(), CancellationToken.None);
+
+        Assert.True(ok);
+    }
+
+    [Fact]
+    public async Task RetiredKeyRejected()
+    {
+        var (retired, retiredPub) = NewKey();
+        var (active, activePub) = NewKey();
+        string dir = WriteManifest(ManifestJson);
+        File.WriteAllBytes(Path.Combine(dir, UpdateManifest.FileName + ".sig"), Sign(retired, ManifestJson));
+        var verifier = new Ed25519PackageSignatureVerifier(
+        [
+            new PackageSigningKey("old", retiredPub, Active: false),
+            new PackageSigningKey("new", activePub, Active: true),
+        ]);
+
+        bool ok = await verifier.VerifyAsync(dir, Manifest(), CancellationToken.None);
+
+        Assert.False(ok);
+    }
+
+    [Fact]
+    public void KeyListNeedsAnActiveKey()
+    {
+        var (_, pub) = NewKey();
+
+        Assert.Throws<ArgumentException>(() => new Ed25519PackageSignatureVerifier([new PackageSigningKey("old", pub, Active: false)]));
+    }
 }
 

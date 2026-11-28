@@ -5,8 +5,11 @@ namespace AiDevHelpers.Updates;
 /// <summary>One file in an update package. <paramref name="Path"/> is relative to the package root, with '/' separators.</summary>
 public sealed record UpdateManifestFile(string Path, string Sha256, long Size);
 
-/// <summary>Describes an update package: its version and every file it installs.</summary>
-public sealed record UpdateManifest(string Version, IReadOnlyList<UpdateManifestFile> Files)
+/// <summary>
+/// Describes an update package: its version, every file it installs, and optionally <paramref name="NotAfter"/>, the time after which
+/// the package must not be applied (so an old signed package cannot be replayed indefinitely).
+/// </summary>
+public sealed record UpdateManifest(string Version, IReadOnlyList<UpdateManifestFile> Files, DateTimeOffset? NotAfter = null)
 {
     /// <summary>File name of the manifest inside a package folder. Written last, so its presence marks the package complete.</summary>
     public const string FileName = "manifest.json";

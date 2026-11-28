@@ -14,18 +14,42 @@ public sealed class Ed25519PackageSignatureVerifier : IPackageSignatureVerifier
     private const string SignatureFileName = UpdateManifest.FileName + ".sig";
     private const int SignatureLength = 64;
     private const int PublicKeyLength = 32;
-    private readonly byte[] _publicKey;
+    private readonly Ed25519PublicKeyParameters[] _activeKeys;
 
-    /// <summary>Creates the verifier for a raw 32-byte Ed25519 public key.</summary>
+    /// <summary>Creates the verifier for a single raw 32-byte Ed25519 public key.</summary>
     public Ed25519PackageSignatureVerifier(byte[] publicKey)
+        : this([new PackageSigningKey("default", publicKey, Active: true)])
     {
-        ArgumentNullException.ThrowIfNull(publicKey);
-        if (publicKey.Length != PublicKeyLength)
+    }
+
+    /// <summary>
+    /// Creates the verifier for a key list. A signature is accepted only when an active key verifies it, so a retired key
+    /// (kept in the list for rotation history) cannot sign a package that installs.
+    /// </summary>
+    public Ed25519PackageSignatureVerifier(IEnumerable<PackageSigningKey> keys)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        var active = new List<Ed25519PublicKeyParameters>();
+        foreach (PackageSigningKey key in keys)
         {
-            throw new ArgumentException("An Ed25519 public key is 32 bytes.", nameof(publicKey));
+            ArgumentNullException.ThrowIfNull(key.PublicKey);
+            if (key.PublicKey.Length != PublicKeyLength)
+            {
+                throw new ArgumentException($"Key '{key.KeyId}' is not a 32-byte Ed25519 public key.", nameof(keys));
+            }
+
+            if (key.Active)
+            {
+                active.Add(new Ed25519PublicKeyParameters(key.PublicKey, 0));
+            }
         }
 
-        _publicKey = publicKey;
+        if (active.Count == 0)
+        {
+            throw new ArgumentException("The key list has no active key.", nameof(keys));
+        }
+
+        _activeKeys = active.ToArray();
     }
 
     /// <inheritdoc />
@@ -45,10 +69,21 @@ public sealed class Ed25519PackageSignatureVerifier : IPackageSignatureVerifier
             return false;
         }
 
-        var verifier = new Ed25519Signer();
-        verifier.Init(false, new Ed25519PublicKeyParameters(_publicKey, 0));
-        verifier.BlockUpdate(manifestBytes, 0, manifestBytes.Length);
-        return verifier.VerifySignature(signature);
+        foreach (Ed25519PublicKeyParameters key in _activeKeys)
+        {
+            var verifier = new Ed25519Signer();
+            verifier.Init(false, key);
+            verifier.BlockUpdate(manifestBytes, 0, manifestBytes.Length);
+            if (verifier.VerifySignature(signature))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
+
+/// <summary>One package signing key. A retired key stays listed for history but no longer verifies packages.</summary>
+public sealed record PackageSigningKey(string KeyId, byte[] PublicKey, bool Active);
 

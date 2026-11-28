@@ -31,6 +31,9 @@ public enum UpdatePackageStatus
 
     /// <summary>The package is unsigned or its signature did not verify, and dev packages are not allowed.</summary>
     SignatureInvalid,
+
+    /// <summary>The current time is past the manifest's <c>notAfter</c>.</summary>
+    Expired,
 }
 
 /// <summary>Result of <see cref="IUpdatePackageVerifier.VerifyAsync"/>. <paramref name="Manifest"/> is set when it parsed.</summary>
@@ -61,11 +64,16 @@ public interface IUpdatePackageVerifier
 public sealed class UpdatePackageVerifier : IUpdatePackageVerifier
 {
     private readonly IPackageSignatureVerifier? _signatureVerifier;
+    private readonly TimeProvider _clock;
 
-    /// <summary>Creates the verifier. With a null <paramref name="signatureVerifier"/> only dev packages can be valid.</summary>
-    public UpdatePackageVerifier(IPackageSignatureVerifier? signatureVerifier = null)
+    /// <summary>
+    /// Creates the verifier. With a null <paramref name="signatureVerifier"/> only dev packages can be valid. <paramref name="clock"/> supplies
+    /// the time checked against a manifest's <c>notAfter</c>; tests pass a fixed one.
+    /// </summary>
+    public UpdatePackageVerifier(IPackageSignatureVerifier? signatureVerifier = null, TimeProvider? clock = null)
     {
         _signatureVerifier = signatureVerifier;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -81,6 +89,11 @@ public sealed class UpdatePackageVerifier : IUpdatePackageVerifier
         if (manifest is null || manifest.Files.Count == 0)
         {
             return Fail(UpdatePackageStatus.ManifestInvalid, "manifest.json is not a valid manifest", null);
+        }
+
+        if (manifest.NotAfter is { } notAfter && _clock.GetUtcNow() > notAfter)
+        {
+            return Fail(UpdatePackageStatus.Expired, $"package expired at {notAfter:O}", manifest);
         }
 
         if (!TryCompareVersions(manifest.Version, currentVersion, out int comparison))
