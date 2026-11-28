@@ -217,6 +217,7 @@ public static class McpServiceCollectionExtensions
             .WithTools<ModelServerTools>()
             .WithTools<DiffSummarizeTools>()
             .WithTools<CodeWorkTools>()
+            .WithTools<SnippetTools>()
             .WithTools<FileEditTools>()
             .WithTools<ContainerTools>()
             .WithTools<WslTools>()

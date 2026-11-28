@@ -170,3 +170,5 @@ Vs2026.Core|public interface I
 Vs2026.Core| == null) throw new System.ArgumentNullException(nameof(
 # ide_list_item_templates looks for the per-user Visual Studio documents folders by this folder-name pattern; it is a path, not a user-facing message.
 Vs2026.Core|Visual Studio*
+MCP.Core|Visual Studio *
+MCP.Core|Code Snippets
