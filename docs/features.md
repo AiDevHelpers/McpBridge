@@ -19,6 +19,13 @@ What McpBridge does, by area. Tool names, arguments and limits are in [ide-bridg
 - Toolset paths: a repo runs on `VisualStudio`, `VsCode` or `Standalone`, set in `.aidevhelpers/settings.json` (`toolsetPath`), with a server default and a server ceiling. A session keeps the path it locks to at its first call in a repo.
 - `model_server_status`, `model_server_capacity`: read the SimpleModelServer router over HTTP (loopback only). See [Host-MCP/model-server-contract.md](Host-MCP/model-server-contract.md).
 - `container`: logs, start, stop, restart and exec on a Docker or Podman container, with JSON results and a 20,000-character output cap. See [Host-MCP/container-contract.md](Host-MCP/container-contract.md).
+- `model_generate`, `model_chat`, `clean_and_chat`, `model_route`: generate and chat on the router. A model type (`ModelServer:ModelTypes`) picks a router model or hands the request back to chat (`handoff`). See [Host-MCP/model-generate-contract.md](Host-MCP/model-generate-contract.md).
+- `diff_summarize`: per-file added and deleted lines and totals for a git diff. With a model type it adds a summary; without one, stats only.
+- `fix_code`: `enable-analysis` writes a managed IDE0005 block into the repo's `.editorconfig` (backed up, plan unless confirmed). `format` formats the document Visual Studio has active. Other fixes name their existing tools.
+- `code_work_start`, `code_work_continue`, `code_work_confirm`, `code_work_execute`: a plan of files, created from Visual Studio item templates, then drafted by the local model (or handed to chat for a difficult step) and written only after confirm. Off unless `CodeWork:Enabled` is set. Sessions live in `.aidevhelpers/code-work`.
+- `ide_list_snippets`, `ide_add_snippet`: list Visual Studio code snippets, and add one the calling AI drafted (confirm writes it; it never overwrites).
+- `ide_complete_at`: completion candidates at a file position from Visual Studio's open workspace (Visual Studio only; VS Code has no handler yet).
+
 - `wsl`: WSL distro status and health, `run` a bash command line in a distro, and `debug_setup` for a debug launch config (writes `.vscode/launch.json` only when absent). See [Host-MCP/wsl-contract.md](Host-MCP/wsl-contract.md).
 
 ## Terminal sessions

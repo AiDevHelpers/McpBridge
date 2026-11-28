@@ -11,7 +11,9 @@ Use this checklist to exercise the standalone `AiDevHelpers.MCP` server and a li
 - `IdeListConfigurations` — read the solution configurations.
 - `IdeGetDebugState`, `IdeListBreakpoints`, and `IdeListWatches` — read the debugger state.
 - `IdeGetTestResults` — read the newest test result: the Tests pane after a Test Explorer run (names and messages of failures), or the newest TRX in DotnetTest mode.
-- `IdeGetLocals` — inspect locals only when the debugger is already stopped at a breakpoint.
+- `IdeGetLocals` — inspect locals only when the debugger is already stopped at a breakpoint.- `ListSnippets` (`ide_list_snippets`) — read the user's Visual Studio snippet folders; PASS when `ok` is true and the count matches the `.snippet` files found.
+
+Covered by unit tests, not live: `ide_complete_at` (needs the Visual Studio bridge reinstalled), `ide_add_snippet` (writes a file), and the `code_work_*` tools (`code_work_start` with `confirm` creates files through the bridge).
 
 Record each result as PASS, FAIL, or NOT RUN with the exact tool arguments and any error message.
 
@@ -32,7 +34,9 @@ These tools change IDE or project state. Run them only when the test operator in
 - `IdeSetStartupProject` and `IdeSetConfiguration`.
 - `IdeStartDebugging`, `IdeStopDebugging`, `IdeStep`, `IdeSetBreakpoint`, and `IdeRemoveBreakpoint`.
 - `IdeFormatDocument` and `IdeCodeCleanup`.
-- `IdeLaunchInstance`, `IdeKillInstance`, and `IdeKillProcess`.
+- `IdeLaunchInstance`, `IdeKillInstance`, and `IdeKillProcess`.- `CodeWorkStart` with `confirm` true, then `CodeWorkExecute` on one step — use a scratch solution; the step creates a file from its template through the bridge.
+- `IdeCompleteAt` on a source file with the cursor inside a type — PASS when `items` is non-empty.
+- `IdeAddSnippet` with `confirm` true — writes a snippet into the user's `My Code Snippets`; remove the file afterwards.
 
 Record the selected solution, expected state change, result, and final state. Do not run kill or publish checks against a user's active work.
 
