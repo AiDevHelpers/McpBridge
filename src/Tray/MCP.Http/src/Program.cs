@@ -6,7 +6,15 @@ using AiDevHelpers.MCP.Core.Services;
 using AiDevHelpers.MCP.Http;
 using TokenSaver.AgentHelpers.Core.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+// The HTTP server starts only when it is asked to serve: the service passes --serve at logon. A program launched any other way
+// (a stdio client, a double click) opens no listener and says what to run instead.
+if (!ServeSwitch.IsRequested(args))
+{
+    Console.Error.WriteLine("AiDevHelpers.MCP.Http runs the HTTP server only with --serve (the service passes it at logon). For stdio, run AiDevHelpers.MCP.");
+    return 2;
+}
+
+var builder = WebApplication.CreateBuilder(ServeSwitch.Without(args));
 // The shared settings file is the default; an explicit Http:Port (appsettings, environment, command line) still wins.
 var port = builder.Configuration.GetValue("Http:Port", McpPortSettings.Read(McpPortSettings.DefaultPath));
 var sessions = new SessionCounter();
@@ -89,6 +97,8 @@ catch (IOException ex)
     throw;
 }
 
+return 0;
+
 /// <summary>The status file written when the listener cannot bind. Pure, so the tests check its shape without a server.</summary>
 public static class PortConflictReport
 {
@@ -100,6 +110,17 @@ public static class PortConflictReport
         cause,
         atUtc = DateTime.UtcNow,
     });
+}
+
+/// <summary>The --serve switch that makes this program run as the HTTP server. Pure, so the tests run it without a server.</summary>
+public static class ServeSwitch
+{
+    public const string Name = "--serve";
+
+    public static bool IsRequested(string[] args) => args.Contains(Name, StringComparer.Ordinal);
+
+    /// <summary>The arguments without the switch, so configuration does not read it as the start of a key and value pair.</summary>
+    public static string[] Without(string[] args) => args.Where(a => !string.Equals(a, Name, StringComparison.Ordinal)).ToArray();
 }
 
 /// <summary>The request checks. Pure, so the tests run them without a server.</summary>

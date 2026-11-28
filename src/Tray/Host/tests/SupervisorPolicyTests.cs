@@ -17,6 +17,13 @@ public sealed class SupervisorPolicyTests
         Assert.True(delay > TimeSpan.Zero);
     }
 
+    // The service starts MCP.Http as a server, so it passes --serve; a program launched any other way does not open a listener.
+    [Fact]
+    public void TheSupervisorStartsTheHttpMcpWithServe()
+    {
+        Assert.Equal("--serve", SupervisorPolicy.ServeArguments);
+    }
+
     [Fact]
     public void TheNoSessionWaitIsFixedAndShort()
     {

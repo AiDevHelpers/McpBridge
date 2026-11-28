@@ -15,14 +15,14 @@ await builder.Build().RunAsync();
 /// <summary>Starts a process in a logged-on user's session. A test replaces it with a fake.</summary>
 public interface ISessionLauncher
 {
-    Process? Start(uint session, string exe, string workingDirectory);
+    Process? Start(uint session, string exe, string arguments, string workingDirectory);
 }
 
 /// <summary>The real launcher: the user's own token, so the process runs in that session and is not elevated.</summary>
 public sealed class WindowsSessionLauncher : ISessionLauncher
 {
-    public Process? Start(uint session, string exe, string workingDirectory) =>
-        UserProcess.Start(new UserProcessStartInfo(exe, string.Empty, session, workingDirectory));
+    public Process? Start(uint session, string exe, string arguments, string workingDirectory) =>
+        UserProcess.Start(new UserProcessStartInfo(exe, arguments, session, workingDirectory));
 }
 
 /// <summary>The restart policy: a bounded backoff, and a give-up after too many consecutive failures.</summary>
@@ -61,6 +61,9 @@ public static class RestartBackoff
 public static class SupervisorPolicy
 {
     private static readonly TimeSpan NoSessionWait = TimeSpan.FromSeconds(5);
+
+    /// <summary>The argument that makes MCP.Http run as the HTTP server. The service passes it; a program launched any other way does not serve.</summary>
+    public const string ServeArguments = "--serve";
 
     public static (int Failures, TimeSpan Delay) AfterNoSession(int failures) => (failures, NoSessionWait);
 }
@@ -101,7 +104,7 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 continue;
             }
 
-            var process = launcher.Start(session, exe, folder);
+            var process = launcher.Start(session, exe, SupervisorPolicy.ServeArguments, folder);
             if (process is null)
             {
                 // A session exists but the start failed: that is a failure and counts toward the give-up limit.
