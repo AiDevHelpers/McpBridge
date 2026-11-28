@@ -16,7 +16,7 @@ public sealed record GitHubRelease(string Tag, string Version, GitHubReleaseAsse
 /// vMAJOR.MINOR.PATCH, it is not a draft or prerelease, and it has <c>AiDevHelpers-package-&lt;version&gt;.zip</c>.
 /// Anything else returns null, so a malformed or spoofed release is never installed.
 /// </summary>
-public sealed class GitHubReleaseClient(HttpClient http, string owner, string repo)
+public sealed class GitHubReleaseClient(HttpClient http, string owner, string repo) : IGitHubReleaseSource
 {
     /// <summary>Name of the package zip for a version: <c>AiDevHelpers-package-&lt;version&gt;.zip</c>.</summary>
     public static string PackageAssetName(string version) => $"AiDevHelpers-package-{version}.zip";

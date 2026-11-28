@@ -40,7 +40,7 @@ public sealed class StagedUpdateInstaller(
     UpdateReplayRecord replay,
     string updatesRoot,
     string installDir,
-    ILogger<StagedUpdateInstaller> logger)
+    ILogger<StagedUpdateInstaller> logger) : IStagedUpdateInstaller
 {
     /// <summary>Suffix for a package that was set aside.</summary>
     public const string RejectedSuffix = ".rejected";

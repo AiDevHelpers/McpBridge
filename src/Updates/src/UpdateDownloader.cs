@@ -8,7 +8,7 @@ public sealed record UpdateDownloadResult(bool Success, string Message, UpdateSt
 /// file name, is capped in size, must come from an allowed https host (also after redirects), must match the advertised size, and must
 /// stage as the version the tag names. Whatever happens, the download is deleted.
 /// </summary>
-public sealed class UpdateDownloader(HttpClient http, IUpdateStager stager, string updatesRoot, long maxBytes = UpdateDownloader.DefaultMaxBytes)
+public sealed class UpdateDownloader(HttpClient http, IUpdateStager stager, string updatesRoot, long maxBytes = UpdateDownloader.DefaultMaxBytes) : IUpdateDownloader
 {
     /// <summary>Largest package accepted: 1 GB.</summary>
     public const long DefaultMaxBytes = 1024L * 1024 * 1024;
