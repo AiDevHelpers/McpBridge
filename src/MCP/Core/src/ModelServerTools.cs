@@ -98,5 +98,26 @@ internal sealed class ModelServerTools
         }
     }
 
+    [McpServerTool]
+    [SafeTool]
+    [Description("Clean a prompt (trim, remove control characters, 20,000 character limit), send it with earlier history to the model in one chat call. The 20 most recent history entries are sent; historyTrimmed counts the rest. The reply is capped at 20,000 characters.")]
+    public static async Task<string> CleanAndChat(
+        [Description("Model name as the router lists it")] string model,
+        [Description("The prompt to clean and send")] string prompt,
+        [Description("Earlier messages, oldest first, each with role (system, user or assistant) and content")] ChatTurn[]? history = null,
+        [Description("Timeout in seconds, 1-600 (default 120)")] int timeoutSeconds = 120,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var r = await Generator().CleanAndChatAsync(model, prompt, history ?? [], timeoutSeconds, ct);
+            return Json(new { ok = r.Reply.Ok, content = r.Reply.Text, capped = r.Reply.Capped, timedOut = r.Reply.TimedOut, status = r.Reply.Status, error = r.Reply.Error, historyTrimmed = r.HistoryTrimmed });
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return Json(new { ok = false, error = ex.Message });
+        }
+    }
+
     private static string Json(object value) => JsonSerializer.Serialize(value);
 }

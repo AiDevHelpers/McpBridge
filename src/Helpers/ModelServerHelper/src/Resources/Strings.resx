@@ -20,4 +20,6 @@
   <data name="WarmUpGaveUp" xml:space="preserve"><value>Router is still warming_up after {0} attempts.</value></data>
   <data name="RouterUnreachable" xml:space="preserve"><value>Router could not be reached at {0}.</value></data>
   <data name="CallTimedOut" xml:space="preserve"><value>Router did not answer within {0} seconds.</value></data>
+  <data name="PromptTooLong" xml:space="preserve"><value>The prompt is longer than {0} characters.</value></data>
+  <data name="HistoryEntryEmpty" xml:space="preserve"><value>History entry {0} has no content.</value></data>
 </root>

@@ -38,7 +38,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - [ ] U6. `diff_summarize` in a new `DiffHelper` (or `SourceControlHelper`, decided in U6 by checking that project's existing scope). Diff through `CommandRunner`
   (`git diff`, `--staged` optional), path guard, returns the diff stats and the raw diff size; the summary step uses U2 generate when present, otherwise returns
   diff stats only with a note. Tests with a fake runner. Tool with tests.
-- [ ] U7. `clean_and_chat` in `ModelServerHelper`: prompt cleanup (trim, strip control characters, enforce a length limit), history entries validated (role in
+- [x] U7. (done: 6 helper tests and 2 MCP tests; cleanup, history cap at 20 with `historyTrimmed`, prompt cap 20,000) `clean_and_chat` in `ModelServerHelper`: prompt cleanup (trim, strip control characters, enforce a length limit), history entries validated (role in
   system, user, assistant; capped count), then chat (U2). Tests for cleanup, history validation, and chat delegation. Tool with tests.
 - [ ] U8. Shared path guard decision: move `WorkspacePathGuard` from `FileEditHelper` into `AiDevHelpers.Common` if the editing tools need it, with tests moved too.
   Ask the user before moving (it changes an existing helper's references).

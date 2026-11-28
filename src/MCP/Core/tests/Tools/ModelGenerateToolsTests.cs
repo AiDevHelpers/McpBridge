@@ -72,6 +72,19 @@ public sealed class ModelGenerateToolsTests : IDisposable
     }
 
     [Fact]
+    public async Task Clean_and_chat_returns_the_content_and_the_trimmed_count()
+    {
+        Use(_ => Json("{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"done\"}}]}"));
+
+        using var doc = JsonDocument.Parse(await ModelServerTools.CleanAndChat("m", "  go\u0007 ", null));
+        var root = doc.RootElement;
+
+        Assert.True(root.GetProperty("ok").GetBoolean());
+        Assert.Equal("done", root.GetProperty("content").GetString());
+        Assert.Equal(0, root.GetProperty("historyTrimmed").GetInt32());
+    }
+
+    [Fact]
     public async Task Chat_invalid_role_is_ok_false()
     {
         Use(_ => Json("{}"));

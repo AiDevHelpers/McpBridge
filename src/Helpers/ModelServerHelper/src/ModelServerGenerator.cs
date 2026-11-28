@@ -12,6 +12,9 @@ public sealed record ChatTurn(string Role, string Content);
 /// </summary>
 public sealed record ModelReply(bool Ok, string? Text, bool Capped, bool TimedOut, int? Status, string? Error);
 
+/// <summary>The clean_and_chat result: the reply and how many older history entries were left out.</summary>
+public sealed record CleanChatResult(ModelReply Reply, int HistoryTrimmed);
+
 /// <summary>
 /// Generate and chat against the SimpleModelServer router (<c>POST /api/generate</c>, <c>POST /v1/chat/completions</c>).
 /// Behavior follows docs/Host-MCP/model-generate-contract.md: warm-up retries, a 20,000-character output cap, a per-call timeout,
@@ -22,6 +25,8 @@ public sealed class ModelServerGenerator(HttpClient http, Uri baseUrl, Func<Time
     public const int MaxChars = 20000;
     public const int MaxAttempts = 10;
     public const int MaxMessages = 200;
+    public const int MaxPromptChars = 20000;
+    public const int MaxHistory = 20;
     private const int DefaultRetryAfterSeconds = 3;
     private const int MaxErrorBodyChars = 500;
 
@@ -84,6 +89,35 @@ public sealed class ModelServerGenerator(HttpClient http, Uri baseUrl, Func<Time
             message.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String
                 ? content.GetString() ?? ""
                 : null, "choices[0].message.content");
+    }
+
+    /// <summary>
+    /// clean_and_chat: cleans the prompt, validates the history, keeps the most recent <see cref="MaxHistory" /> history entries,
+    /// and sends them with the cleaned prompt as one chat call. <c>HistoryTrimmed</c> counts the entries left out.
+    /// </summary>
+    public async Task<CleanChatResult> CleanAndChatAsync(
+        string model, string prompt, IReadOnlyList<ChatTurn> history, int timeoutSeconds, CancellationToken ct)
+    {
+        var cleaned = PromptCleaner.Clean(prompt);
+        if (cleaned.Length == 0)
+            return new CleanChatResult(Refused(Strings.Get("GeneratePromptRequired")), 0);
+        if (cleaned.Length > MaxPromptChars)
+            return new CleanChatResult(Refused(Strings.Format("PromptTooLong", MaxPromptChars)), 0);
+
+        for (var i = 0; i < history.Count; i++)
+        {
+            if (!Roles.Contains(history[i].Role))
+                return new CleanChatResult(Refused(Strings.Format("ChatRoleInvalid", history[i].Role)), 0);
+            if (string.IsNullOrWhiteSpace(history[i].Content))
+                return new CleanChatResult(Refused(Strings.Format("HistoryEntryEmpty", i + 1)), 0);
+        }
+
+        var trimmed = Math.Max(0, history.Count - MaxHistory);
+        var messages = history.Skip(trimmed).ToList();
+        messages.Add(new ChatTurn("user", cleaned));
+
+        var reply = await ChatAsync(model, messages, timeoutSeconds, ct);
+        return new CleanChatResult(reply, trimmed);
     }
 
     private static ModelReply? Refusal(int timeoutSeconds) =>
