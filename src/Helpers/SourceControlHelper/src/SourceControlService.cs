@@ -312,7 +312,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         // A force delete is only safe while the branch is still merged; the branch may have moved since planning.
         if (pending.MergedInto is { } into && pending.Branch is { } deleted && !await IsAncestorAsync(pending.RepoPath, deleted, into, ct))
         {
-            return new GitResult(false, -1, Strings.Format("BranchNotMerged", deleted, into));
+            return new GitResult(false, -1, Strings.Format("BranchNotMergedBeforeConfirm", deleted, into));
         }
 
         return await RunWriteAsync(pending, ct);

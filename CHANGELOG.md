@@ -1,5 +1,14 @@
 # Changelog
 
+## Git write route (unreleased)
+
+- `git_plan` `push` takes `pushRef`: `dst` pushes HEAD to a destination, `src:dst` pushes a source to a destination. The rules check the destination.
+- New `merge` (`--no-ff --no-edit`) and `merge_abort` (only while a merge is in progress; not in a sequence). A conflicted merge lists the unmerged paths. Merging into a protected branch, or from an unknown branch, is refused.
+- New `worktree_add` (new branch at a folder) and `worktree_remove` (linked worktrees only). The main worktree and the planning folder are refused.
+- `delete_branch` with `mergedInto` force-deletes after an ancestor check at plan and at confirm. It stays on git.exe in the VS Code route.
+- Commit, push, pull, merge and delete refuse at confirm when HEAD or the branch changed since planning. Sequences check once, before the first step.
+- Git calls run with `GIT_TERMINAL_PROMPT=0` and a 5-minute no-output timeout.
+
 ## Files, model server, container and WSL tools (unreleased)
 
 - New `file_edit`: apply, insert, delete, rename and rollback text edits in a workspace root, with a byte-exact backup before every write, an atomic write and the BOM kept. Standalone path only for rename and rollback.

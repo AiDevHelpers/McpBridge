@@ -105,7 +105,7 @@ The stdio MCP server exposes the tools below. Read the live `tools/list` schemas
 | --- | --- |
 | `git_confirm` | Run a write planned by git_plan, once. The token is single use. |
 | `git_diff` | Diff of the working tree (or the staged changes when staged is true), optionally for one path. |
-| `git_plan` | Plan a git write and return its exact command and a token. Nothing runs until git_confirm. action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply. sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them. |
+| `git_plan` | Plan a git write and return its exact command and a token. Nothing runs until git_confirm. action: stage, commit, pull, push, create_branch, delete_branch, switch, stash_push, stash_pop, stash_apply, merge, merge_abort, worktree_add, worktree_remove. sequence: several of those actions under one token, e.g. [stage, commit, push]; they run in order at git_confirm and the first failure stops the rest. Give action or sequence, not both. paths, message and branch go to each step that needs them. pushRef: a push destination (`dst` pushes HEAD there, `src:dst` pushes src). path: the worktree folder for worktree_add and worktree_remove. mergedInto: for delete_branch, force-deletes only when the branch is already merged into that ref. Commit, push, pull, merge and delete refuse at confirm when HEAD or the branch changed since planning. |
 | `git_status` | Branch, upstream, ahead and behind counts, and changed paths for a git repo folder. |
 
 ## Gate

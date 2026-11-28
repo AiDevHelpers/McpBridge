@@ -79,7 +79,13 @@ Original text:
 
 Done when: the verification worktree and its merged branch can be removed through the tool (dogfood rows 39, 48).
 
-### Unit 5: compatibility, strings, docs, dogfood log
+### Unit 5: compatibility, strings, docs, dogfood log — DONE
+
+Status: `resx_check` 0 (one unused key found and fixed), `localization_sync_check` 0, `lint_check` 0, `string_scan` 0 on the changed files. Docs updated: `mcp-tools.md`, `SelfTest.md`, `CHANGELOG.md`. Dogfood log rows updated in `~/.claude/docs/dogfood.md`. Tests: all 13 affected projects from `test_affected` run with `dotnet test`. Not run: the IDE steps of the lite gate (no Visual Studio instance on this worktree), `project_audit`, and the full gate.
+
+Original text:
+
+### Unit 5 (original)
 
 - New `GitPlan` parameters are optional and come after `sequence`, so existing named and positional callers still work.
 - Add new `Strings.resx` keys (`HeadMovedBeforeConfirm` and others). Run `localization_sync_check` and `resx_check`.
