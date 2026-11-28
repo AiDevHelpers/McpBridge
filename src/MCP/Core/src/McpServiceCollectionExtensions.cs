@@ -35,6 +35,7 @@ public static class McpServiceCollectionExtensions
     public static IMcpServerBuilder AddAiDevHelpersMcp(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<IdeToolsOptions>(configuration.GetSection("IdeTools"));
+        services.Configure<ModelServerOptions>(configuration.GetSection("ModelServer"));
         services.AddSingleton<AiDevHelpers.MCP.Core.Services.ToolsetSessionLock>();
         services.Configure<ScriptWatchOptions>(configuration.GetSection("ScriptWatch"));
         services.AddSingleton<ScriptRunTracker>(_ => new ScriptRunTracker());

@@ -184,4 +184,8 @@
   <data name="TokenOtherSession" xml:space="preserve"><value>refused: this token was planned in another chat session.</value></data>
   <data name="ApprovalRefused" xml:space="preserve"><value>refused: this dangerous tool needs the person's yes on the tray for this call. Nothing ran.</value></data>
   <data name="AgentToolReplyLimit" xml:space="preserve"><value>Tool replies are fitted to about {0} tokens for this client. When a reply is cut short, ask again with a narrower request (a single file, test, or log range) to get the rest.</value></data>
+  <data name="ModelSelectorInvalid" xml:space="preserve"><value>Give either modelType or model, not both and not neither.</value></data>
+  <data name="HandoffPrompt" xml:space="preserve"><value>Use the model '{0}' for this request:
+
+{1}</value></data>
 </root>

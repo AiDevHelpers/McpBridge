@@ -64,6 +64,24 @@ Every overload is mapped or dropped.
 
 The router infers an agent type from headers, query, body and prompt (router contract). The helper sends none of those, so the router applies its default behavior. The `research` agent type (web-or-local routing) is not used.
 
+## Model types (server settings)
+
+Model types are defined in server config, not in code:
+
+```json
+"ModelServer": {
+  "ModelTypes": {
+    "code": { "Target": "router", "Model": "qwen2.5-coder" },
+    "hard": { "Target": "chat",   "Model": "sonnet" }
+  }
+}
+```
+
+- `Target: router` runs the call on the SimpleModelServer router with `Model`.
+- `Target: chat` does not call the router. The tool returns `handoff: true`, the `model`, and a `prompt` (or `messages`) that asks the calling chat to answer with that model.
+- A tool takes `modelType` or `model`, not both. An unknown type, a bad target or an empty model is refused.
+- Type names are case-insensitive. `model_route` resolves a type without calling anything.
+
 ## Tools (planned, U4)
 
 - `model_generate(model, prompt, system?, timeoutSeconds?)` → `{ ok, url, model, response, capped, done }`

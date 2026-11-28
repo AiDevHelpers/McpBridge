@@ -55,6 +55,15 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - U8: `WorkspacePathGuard` moves into `AiDevHelpers.Common`, with its tests. Unblocks U8 and then U10.
 - U9 and U11 can now be planned in detail (storage and persistence are decided).
 
+## Change 2026-11-28: model types as server settings, with escalation
+- Model types are not built in. Each type is a server setting: `ModelServer:ModelTypes:<type>` with `Target` and `Model`.
+  Read through `IOptions<ModelServerOptions>` (bound from the `ModelServer` section); `ModelServerTools` becomes an instance tool like `IdeTools`.
+- `Target` is `router` (run on the SimpleModelServer router, using Ollama with `Model`) or `chat` (hand back to the calling chat: the tool
+  does not call the router and returns `handoff` with `model` and a `prompt` that asks chat to use that model).
+- `model_generate`, `model_chat` and `clean_and_chat` take `modelType` or `model` (exactly one). A `router` type runs as before; a `chat` type returns `handoff`.
+- `model_route` keeps returning the resolved target and model without calling anything.
+- U6 onward follow this. U3 stays dropped.
+
 ## Rules
 - Each unit: failing test, implement, build, test, commit, push branch. No PR unless the user asks.
 - New files are created with Write; existing files edited with TokenSaver `edit_file`.

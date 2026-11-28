@@ -23,5 +23,7 @@
   <data name="PromptTooLong" xml:space="preserve"><value>The prompt is longer than {0} characters.</value></data>
   <data name="HistoryEntryEmpty" xml:space="preserve"><value>History entry {0} has no content.</value></data>
   <data name="RouteTypeEmpty" xml:space="preserve"><value>A model type is required.</value></data>
-  <data name="RouteMissing" xml:space="preserve"><value>No model is routed for model type '{0}'.</value></data>
+  <data name="RouteMissing" xml:space="preserve"><value>No model type '{0}' is configured.</value></data>
+  <data name="RouteTargetInvalid" xml:space="preserve"><value>Model type '{0}' has target '{1}'. Use router or chat.</value></data>
+  <data name="RouteModelEmpty" xml:space="preserve"><value>Model type '{0}' has no model set.</value></data>
 </root>

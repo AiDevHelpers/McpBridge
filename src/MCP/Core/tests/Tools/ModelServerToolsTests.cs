@@ -21,6 +21,9 @@ public sealed class ModelServerToolsTests : IDisposable
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
+    private static ModelServerTools Tools() =>
+        new(Microsoft.Extensions.Options.Options.Create(new ModelServerOptions()));
+
     private static void Use(Func<string, HttpResponseMessage> respond) =>
         ModelServerTools.ClientFactory = () => new ModelServerClient(
             new HttpClient(new Handler(respond)), new Uri("http://localhost:11435"), TimeProvider.System, TimeSpan.FromSeconds(2));
@@ -30,7 +33,7 @@ public sealed class ModelServerToolsTests : IDisposable
     {
         Use(p => p == "/api/tags" ? Json("{\"models\":[{\"name\":\"HelperModel\"}]}") : Json("{\"models\":[]}"));
 
-        using var doc = JsonDocument.Parse(await ModelServerTools.ModelServerStatus());
+        using var doc = JsonDocument.Parse(await Tools().ModelServerStatus());
         var root = doc.RootElement;
 
         Assert.True(root.GetProperty("ok").GetBoolean());
@@ -45,7 +48,7 @@ public sealed class ModelServerToolsTests : IDisposable
     {
         Use(_ => throw new HttpRequestException("refused"));
 
-        using var doc = JsonDocument.Parse(await ModelServerTools.ModelServerStatus());
+        using var doc = JsonDocument.Parse(await Tools().ModelServerStatus());
 
         Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
         Assert.False(doc.RootElement.GetProperty("running").GetBoolean());
@@ -56,7 +59,7 @@ public sealed class ModelServerToolsTests : IDisposable
     {
         Use(_ => Json("{\"cpuThreads\":4,\"gpu\":{\"detected\":false},\"maxConcurrentSummaryRequests\":2}"));
 
-        using var doc = JsonDocument.Parse(await ModelServerTools.ModelServerCapacity());
+        using var doc = JsonDocument.Parse(await Tools().ModelServerCapacity());
         var root = doc.RootElement;
 
         Assert.True(root.GetProperty("ok").GetBoolean());
@@ -70,7 +73,7 @@ public sealed class ModelServerToolsTests : IDisposable
     {
         Use(_ => throw new HttpRequestException("refused"));
 
-        using var doc = JsonDocument.Parse(await ModelServerTools.ModelServerCapacity(refresh: true));
+        using var doc = JsonDocument.Parse(await Tools().ModelServerCapacity(refresh: true));
 
         Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
         Assert.True(doc.RootElement.GetProperty("fromFallback").GetBoolean());
