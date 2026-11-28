@@ -11,7 +11,8 @@ namespace AiDevHelpers.Helpers.WindowsSession;
 /// <param name="Arguments">Arguments, already quoted for the command line; may be empty.</param>
 /// <param name="SessionId">The session to start it in, from <see cref="UserSession"/>.</param>
 /// <param name="WorkingDirectory">Working directory, or null for the default.</param>
-public sealed record UserProcessStartInfo(string FileName, string Arguments, uint SessionId, string? WorkingDirectory = null);
+/// <param name="HideWindow">True for a console program that should run with no console window (CREATE_NO_WINDOW).</param>
+public sealed record UserProcessStartInfo(string FileName, string Arguments, uint SessionId, string? WorkingDirectory = null, bool HideWindow = false);
 
 /// <summary>
 /// Starts a process on a logged-on user's desktop. Needs SeTcbPrivilege (LocalSystem holds it); a LocalSystem
@@ -22,6 +23,7 @@ public sealed record UserProcessStartInfo(string FileName, string Arguments, uin
 public static class UserProcess
 {
     private const uint CreateUnicodeEnvironment = 0x00000400;
+    private const uint CreateNoWindow = 0x08000000;
     private const string DefaultDesktop = "winsta0\\default";
 
     /// <summary>
@@ -53,7 +55,7 @@ public static class UserProcess
             };
 
             if (!CreateProcessAsUserW(token.Handle, null, commandLine.ToCharArray(), IntPtr.Zero, IntPtr.Zero, false,
-                    CreateUnicodeEnvironment, environment, info.WorkingDirectory, ref startup, out var created))
+                    CreateUnicodeEnvironment | (info.HideWindow ? CreateNoWindow : 0u), environment, info.WorkingDirectory, ref startup, out var created))
             {
                 throw new Win32Exception(Marshal.GetLastWin32Error(), Strings.Get("CreateProcessAsUserFailed"));
             }
