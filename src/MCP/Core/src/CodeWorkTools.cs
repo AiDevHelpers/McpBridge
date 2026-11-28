@@ -120,13 +120,20 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
             if (step is null)
                 return Refuse(Strings.Format("CodeWorkStepUnknown", stepId));
 
-            var route = ModelRouter.Resolve(options.Value.DraftModelType, models.Value.ToRoutes());
+            var typeName = step.Difficult ? options.Value.DifficultModelType : options.Value.DraftModelType;
+            var route = ModelRouter.Resolve(typeName, models.Value.ToRoutes());
             if (!route.Ok)
                 return Refuse(route.Error!);
-            if (route.Target != ModelRouter.RouterTarget)
-                return Refuse(Strings.Format("CodeWorkDraftNotRouter", options.Value.DraftModelType));
 
             var prompt = Strings.Format("CodeWorkDraftPrompt", session.Prompt, step.File, step.Template);
+            if (route.Target == ModelRouter.ChatTarget)
+            {
+                var handoffDraft = new CodeWorkDraft(Guid.NewGuid().ToString("N"), null);
+                session.Drafts[stepId] = handoffDraft;
+                CodeWorkStore.Save(root, session);
+                return Json(new { ok = true, handoff = true, sessionId, stepId, modelType = typeName, model = route.Model, prompt = Strings.Format("HandoffPrompt", route.Model, prompt), token = handoffDraft.Token });
+            }
+
             var reply = await Generator().GenerateAsync(route.Model!, prompt, null, DraftTimeoutSeconds, ct);
             if (!reply.Ok || string.IsNullOrWhiteSpace(reply.Text))
                 return Refuse(reply.Error ?? Strings.Get("CodeWorkDraftEmpty"));
@@ -134,7 +141,7 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
             var draft = new CodeWorkDraft(Guid.NewGuid().ToString("N"), reply.Text);
             session.Drafts[stepId] = draft;
             CodeWorkStore.Save(root, session);
-            return Json(new { ok = true, sessionId, stepId, model = route.Model, content = draft.Content, token = draft.Token, capped = reply.Capped });
+            return Json(new { ok = true, sessionId, stepId, modelType = typeName, model = route.Model, content = draft.Content, token = draft.Token, capped = reply.Capped });
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -150,6 +157,7 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
         [Description("Session id from start")] string sessionId,
         [Description("Step id from the plan")] string stepId,
         [Description("Token from continue for this step")] string token,
+        [Description("File content, required when continue handed the step to chat (the chat writes it)")] string? content = null,
         CancellationToken ct = default)
     {
         try
@@ -172,11 +180,15 @@ internal sealed class CodeWorkTools(IOptions<CodeWorkOptions> options, IOptions<
             if (!File.Exists(target.FullPath))
                 return Refuse(Strings.Format("CodeWorkFileMissing", step.File));
 
+            var newContent = draft.Content ?? content;
+            if (string.IsNullOrEmpty(newContent))
+                return Refuse(Strings.Get("CodeWorkNeedsContent"));
+
             var current = await File.ReadAllTextAsync(target.FullPath, ct);
             if (current.Length == 0)
                 return Refuse(Strings.Format("CodeWorkFileEmpty", step.File));
 
-            var result = await Edits.ExecuteAsync(new FileEditRequest("apply", FilePath: step.File, OldText: current, NewText: draft.Content), root, ct);
+            var result = await Edits.ExecuteAsync(new FileEditRequest("apply", FilePath: step.File, OldText: current, NewText: newContent), root, ct);
             if (!result.Ok)
                 return Refuse(result.Error ?? Strings.Get("CodeWorkWriteFailed"));
 

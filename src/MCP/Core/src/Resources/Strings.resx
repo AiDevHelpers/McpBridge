@@ -204,7 +204,7 @@
   <data name="CodeWorkStepFailed" xml:space="preserve"><value>Step '{0}' failed; the later steps were not created.</value></data>
   <data name="CodeWorkSessionMissing" xml:space="preserve"><value>No code_work session with that id in this repo.</value></data>
   <data name="CodeWorkStepUnknown" xml:space="preserve"><value>No step '{0}' in this session.</value></data>
-  <data name="CodeWorkDraftNotRouter" xml:space="preserve"><value>The draft type '{0}' must be a router type, not chat.</value></data>
+  <data name="CodeWorkNeedsContent" xml:space="preserve"><value>This step was handed to chat: pass the file content as content.</value></data>
   <data name="CodeWorkDraftPrompt" xml:space="preserve"><value>Task: {0}
 
 Write the complete contents of the file {1}, created from the item template {2}. Reply with the file contents only, no commentary.</value></data>

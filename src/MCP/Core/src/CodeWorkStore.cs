@@ -5,10 +5,13 @@ using AiDevHelpers.Common;
 namespace AiDevHelpers.MCP.Core.Tools;
 
 /// <summary>One file the plan creates: its project, the file path (inside the repo) and the item template to create it from.</summary>
-internal sealed record CodeWorkStep(string Id, string Project, string File, string Template);
+internal sealed record CodeWorkStep(string Id, string Project, string File, string Template, bool Difficult = false);
 
-/// <summary>A drafted file content waiting for the calling AI's check. The token must be sent back to write it.</summary>
-internal sealed record CodeWorkDraft(string Token, string Content);
+/// <summary>
+/// A drafted file content waiting for the calling AI's check. The token must be sent back to write it.
+/// Content is null for a chat hand-off: the calling chat writes the content and passes it to confirm.
+/// </summary>
+internal sealed record CodeWorkDraft(string Token, string? Content);
 
 /// <summary>A code_work session as stored under <c>.aidevhelpers/code-work/&lt;id&gt;.json</c>.</summary>
 internal sealed class CodeWorkSession

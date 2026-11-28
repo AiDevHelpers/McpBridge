@@ -65,11 +65,15 @@ public sealed class CodeWorkToolsTests : IDisposable
         return calls;
     }
 
-    private static CodeWorkTools Tools(bool enabled = true, string draftType = "code")
+    private static readonly string DifficultPlan =
+        "[{\"id\":\"s1\",\"project\":\"App\",\"file\":\"src/Thing.cs\",\"template\":\"Class.cs\",\"difficult\":true}]";
+
+    private static CodeWorkTools Tools(bool enabled = true, string draftType = "code", string difficultType = "hard")
     {
-        var cw = new CodeWorkOptions { Enabled = enabled, DraftModelType = draftType };
+        var cw = new CodeWorkOptions { Enabled = enabled, DraftModelType = draftType, DifficultModelType = difficultType };
         var ms = new ModelServerOptions();
         ms.ModelTypes["code"] = new ModelTypeSetting { Target = "router", Model = "qwen-coder" };
+        ms.ModelTypes["big"] = new ModelTypeSetting { Target = "router", Model = "big-model" };
         ms.ModelTypes["hard"] = new ModelTypeSetting { Target = "chat", Model = "sonnet" };
         return new CodeWorkTools(Options.Create(cw), Options.Create(ms));
     }
@@ -156,15 +160,75 @@ public sealed class CodeWorkToolsTests : IDisposable
     }
 
     [Fact]
-    public async Task Continue_with_a_chat_draft_type_is_refused()
+    public async Task Continue_with_a_chat_draft_type_hands_off_and_calls_no_router()
     {
         var h = Router();
         await Tools().CodeWorkStart(_root, OnePlan, "build it", sessionId: "s-chat");
 
         using var doc = Parse(await Tools(draftType: "hard").CodeWorkContinue(_root, "s-chat", "s1"));
 
-        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.True(doc.RootElement.GetProperty("handoff").GetBoolean());
+        Assert.Equal("sonnet", doc.RootElement.GetProperty("model").GetString());
         Assert.Empty(h.Paths);
+    }
+
+    [Fact]
+    public async Task A_difficult_step_drafts_with_the_difficult_router_model()
+    {
+        Router();
+        await Tools(difficultType: "big").CodeWorkStart(_root, DifficultPlan, "build it", sessionId: "s-big");
+
+        using var doc = Parse(await Tools(difficultType: "big").CodeWorkContinue(_root, "s-big", "s1"));
+
+        Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("big-model", doc.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public async Task A_step_that_is_not_difficult_uses_the_draft_model()
+    {
+        Router();
+        await Tools(difficultType: "big").CodeWorkStart(_root, OnePlan, "build it", sessionId: "s-plain");
+
+        using var doc = Parse(await Tools(difficultType: "big").CodeWorkContinue(_root, "s-plain", "s1"));
+
+        Assert.Equal("qwen-coder", doc.RootElement.GetProperty("model").GetString());
+    }
+
+    [Fact]
+    public async Task A_difficult_step_on_a_chat_type_hands_off_and_confirm_takes_the_content()
+    {
+        var h = Router();
+        await Tools().CodeWorkStart(_root, DifficultPlan, "build it", sessionId: "s-handoff");
+        Directory.CreateDirectory(Path.Combine(_root, "src"));
+        File.WriteAllText(Path.Combine(_root, "src", "Thing.cs"), "old\n");
+
+        using var drafted = Parse(await Tools().CodeWorkContinue(_root, "s-handoff", "s1"));
+
+        Assert.True(drafted.RootElement.GetProperty("handoff").GetBoolean());
+        Assert.Equal("sonnet", drafted.RootElement.GetProperty("model").GetString());
+        Assert.Empty(h.Paths);
+        var token = drafted.RootElement.GetProperty("token").GetString()!;
+
+        using var doc = Parse(await Tools().CodeWorkConfirm(_root, "s-handoff", "s1", token, content: "class Thing {}"));
+
+        Assert.True(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("class Thing {}", File.ReadAllText(Path.Combine(_root, "src", "Thing.cs")));
+    }
+
+    [Fact]
+    public async Task Confirm_of_a_handoff_draft_without_content_is_refused()
+    {
+        await Tools().CodeWorkStart(_root, DifficultPlan, "build it", sessionId: "s-nocontent");
+        Directory.CreateDirectory(Path.Combine(_root, "src"));
+        File.WriteAllText(Path.Combine(_root, "src", "Thing.cs"), "old\n");
+        using var drafted = Parse(await Tools().CodeWorkContinue(_root, "s-nocontent", "s1"));
+        var token = drafted.RootElement.GetProperty("token").GetString()!;
+
+        using var doc = Parse(await Tools().CodeWorkConfirm(_root, "s-nocontent", "s1", token));
+
+        Assert.False(doc.RootElement.GetProperty("ok").GetBoolean());
+        Assert.Equal("old\n", File.ReadAllText(Path.Combine(_root, "src", "Thing.cs")));
     }
 
     [Fact]
