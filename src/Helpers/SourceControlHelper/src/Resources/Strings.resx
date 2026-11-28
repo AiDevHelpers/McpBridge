@@ -12,6 +12,7 @@
   <data name="RuleBranchName" xml:space="preserve"><value>Refused by this repo's rules: the branch name '{0}' does not match the required pattern. Pick a name that does.</value></data>
   <data name="RuleOverrideHint" xml:space="preserve"><value>To allow this one write, the user can run in a console: elev rules override "{0}" {1}. Then plan it again.</value></data>
   <data name="RulesChangedBeforeConfirm" xml:space="preserve"><value>The repo's rules changed since this write was planned and it is now refused. {0}</value></data>
+  <data name="HeadMovedBeforeConfirm" xml:space="preserve"><value>The checked-out commit or branch changed since this write was planned, so it was not run. Plan the write again.</value></data>
   <data name="UnknownToken" xml:space="preserve"><value>Unknown or already used token. Plan the write again.</value></data>
   <data name="SequenceNeedsSteps" xml:space="preserve"><value>A sequence needs at least one action.</value></data>
   <data name="StageNeedsPath" xml:space="preserve"><value>stage needs at least one path.</value></data>

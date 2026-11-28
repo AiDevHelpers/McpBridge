@@ -118,6 +118,12 @@ public sealed class GitConfirmVsCodeRouteTests
 
         public Task<GitResult> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken ct = default)
         {
+            // rev-parse is the plan-time HEAD guard's read, not a write; the route tests count writes only.
+            if (arguments is ["rev-parse", ..])
+            {
+                return Task.FromResult(new GitResult(true, 0, "abc123\nmain\n"));
+            }
+
             Calls.Add((workingDirectory, arguments));
             return Task.FromResult(new GitResult(true, 0, string.Empty));
         }

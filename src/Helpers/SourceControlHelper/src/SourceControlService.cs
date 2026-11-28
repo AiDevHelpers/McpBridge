@@ -14,7 +14,11 @@ public interface IGitRunner
 /// <summary>Result of one git call: exit code and combined stdout and stderr.</summary>
 public sealed record GitResult(bool Ok, int ExitCode, string Output);
 
+/// <summary>HEAD commit and branch name of a repo at one moment. Null when git cannot say (for example an unborn HEAD).</summary>
+public sealed record RepoState(string? Head, string? Branch);
+
 /// <summary>A write waiting for approval. Nothing runs until <see cref="SourceControlService.ConfirmAsync"/> is called with its token.</summary>
+/// <param name="PlannedState">The repo state at plan time, for HEAD-sensitive actions. Null when the write is not guarded.</param>
 public sealed record PendingWrite(
     string Token,
     string Action,
@@ -22,10 +26,12 @@ public sealed record PendingWrite(
     IReadOnlyList<string> Arguments,
     string RepoPath,
     string? Branch = null,
-    bool Overridden = false);
+    bool Overridden = false,
+    RepoState? PlannedState = null);
 
 /// <summary>Several writes planned under one token. They run in order at confirm and the first failure stops the rest.</summary>
-public sealed record PendingSequence(string Token, IReadOnlyList<PendingWrite> Steps, string Description);
+/// <param name="PlannedState">The state at plan time when any step is HEAD-sensitive. Checked once, before the first step.</param>
+public sealed record PendingSequence(string Token, IReadOnlyList<PendingWrite> Steps, string Description, RepoState? PlannedState = null);
 
 /// <summary>
 /// Runs an approved write in an open VS Code window. Returns null when no VS Code window has the folder open, so the write
@@ -92,7 +98,8 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         CancellationToken ct = default)
     {
         var overridden = await CheckRulesAsync(repoPath, action, branch, ct);
-        return Register(BuildPending(repoPath, action, paths, message, branch, overridden));
+        var planned = HeadSensitive.Contains(action) ? await ReadStateAsync(repoPath, ct) : null;
+        return Register(BuildPending(repoPath, action, paths, message, branch, overridden) with { PlannedState = planned });
     }
 
     /// <summary>
@@ -119,10 +126,13 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             steps.Add(BuildPending(repoPath, action, paths, message, branch, overridden));
         }
 
+        // One state read covers the whole sequence: it is checked before the first step only (see RunSequenceAsync).
+        var planned = actions.Any(HeadSensitive.Contains) ? await ReadStateAsync(repoPath, ct) : null;
         var sequence = new PendingSequence(
             Token: Guid.NewGuid().ToString("N"),
             Steps: steps,
-            Description: string.Join(" && ", steps.Select(s => s.Description)));
+            Description: string.Join(" && ", steps.Select(s => s.Description)),
+            PlannedState: planned);
         _sequences[sequence.Token] = sequence;
         return sequence;
     }
@@ -197,7 +207,23 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             return new GitResult(false, -1, Strings.Format("RulesChangedBeforeConfirm", refusal));
         }
 
+        if (pending.PlannedState is { } planned && await ReadStateAsync(pending.RepoPath, ct) != planned)
+        {
+            return new GitResult(false, -1, Strings.Get("HeadMovedBeforeConfirm"));
+        }
+
         return await RunWriteAsync(pending, ct);
+    }
+
+    // Actions whose result depends on which commit or branch is checked out. Only these take a plan-time state.
+    private static readonly HashSet<string> HeadSensitive = ["commit", "push", "pull", "delete_branch"];
+
+    // HEAD and branch now. A failed rev-parse (an unborn HEAD, or no repo) reads as null, which still compares as a value.
+    private async Task<RepoState> ReadStateAsync(string repoPath, CancellationToken ct)
+    {
+        var head = await git.RunAsync(repoPath, ["rev-parse", "HEAD"], ct);
+        var branch = await git.RunAsync(repoPath, ["rev-parse", "--abbrev-ref", "HEAD"], ct);
+        return new RepoState(head.Ok ? head.Output.Trim() : null, branch.Ok ? branch.Output.Trim() : null);
     }
 
     // Runs one approved write. The VS Code route takes it when a window has the folder open and VS Code does exactly what the
@@ -237,6 +263,11 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
     private async Task<GitResult> RunSequenceAsync(PendingSequence sequence, CancellationToken ct)
     {
         var log = new StringBuilder();
+        if (sequence.PlannedState is { } planned && await ReadStateAsync(sequence.Steps[0].RepoPath, ct) != planned)
+        {
+            return new GitResult(false, -1, Strings.Get("HeadMovedBeforeConfirm"));
+        }
+
         foreach (var step in sequence.Steps)
         {
             log.Append("$ ").Append(step.Description).Append('\n');
@@ -346,7 +377,15 @@ public sealed class ProcessGitRunner : IGitRunner
     public async Task<GitResult> RunAsync(string workingDirectory, IReadOnlyList<string> arguments, CancellationToken ct = default)
     {
         var result = await CommandRunner.RunAsync(
-            new CommandRequest { FileName = "git", Arguments = arguments, WorkingDirectory = workingDirectory }, ct);
+            new CommandRequest
+            {
+                FileName = "git",
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory,
+                // Never wait on a credential prompt, and stop a call that goes silent (no tty to answer it).
+                Environment = new Dictionary<string, string?> { ["GIT_TERMINAL_PROMPT"] = "0" },
+                NoOutputTimeout = TimeSpan.FromMinutes(5),
+            }, ct);
         if (!result.Launched)
         {
             throw new InvalidOperationException(Strings.Get("CouldNotStartGit"));
