@@ -188,4 +188,7 @@
   <data name="HandoffPrompt" xml:space="preserve"><value>Use the model '{0}' for this request:
 
 {1}</value></data>
+  <data name="DiffStatsOnlyNote" xml:space="preserve"><value>No model given: stats only. Give modelType or model for a summary.</value></data>
+  <data name="DiffPromptHeader" xml:space="preserve"><value>Summarize this git diff for a code reviewer. Name each changed area and any risk. Keep it short.</value></data>
+  <data name="DiffTruncatedMarker" xml:space="preserve"><value>[diff truncated]</value></data>
 </root>

@@ -61,6 +61,54 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         return new GitStatusResult(null, null, 0, 0, [], error);
     }
 
+    /// <summary>Per-file stats, totals and the raw diff. A path must stay inside the repo: absolute, rooted or "..". paths are refused before git runs.</summary>
+    public async Task<DiffSummary> SummarizeDiffAsync(string repoPath, bool staged = false, string? path = null, CancellationToken ct = default)
+    {
+        if (!string.IsNullOrWhiteSpace(path) && !IsInsideRepo(path))
+        {
+            return DiffSummary.Failed(Strings.Get("DiffPathOutside"));
+        }
+
+        var numstat = await git.RunAsync(repoPath, DiffArgs(staged, path, "--numstat"), ct);
+        if (!numstat.Ok)
+        {
+            return DiffSummary.Failed(GitFailure(numstat));
+        }
+
+        var raw = await git.RunAsync(repoPath, DiffArgs(staged, path), ct);
+        if (!raw.Ok)
+        {
+            return DiffSummary.Failed(GitFailure(raw));
+        }
+
+        var files = DiffStatParser.Parse(numstat.Output);
+        return new DiffSummary(true, null, files, files.Sum(f => f.Added), files.Sum(f => f.Deleted), raw.Output);
+    }
+
+    private static IReadOnlyList<string> DiffArgs(bool staged, string? path, params string[] extra)
+    {
+        var args = new List<string> { "diff" };
+        args.AddRange(extra);
+        if (staged)
+        {
+            args.Add("--cached");
+        }
+
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            args.Add("--");
+            args.Add(path);
+        }
+
+        return args;
+    }
+
+    private static bool IsInsideRepo(string path) =>
+        !path.StartsWith('-') && !Path.IsPathRooted(path) && !path.Split('/', '\\').Contains("..");
+
+    private static string GitFailure(GitResult result) =>
+        string.IsNullOrWhiteSpace(result.Output) ? Strings.Format("GitFailedSilently", result.ExitCode) : result.Output;
+
     public Task<GitResult> DiffAsync(string repoPath, bool staged, string? path = null, CancellationToken ct = default)
     {
         var args = new List<string> { "diff" };

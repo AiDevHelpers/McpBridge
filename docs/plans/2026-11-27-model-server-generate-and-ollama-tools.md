@@ -35,7 +35,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
   Note: `list_ollama_endpoints` is the TokenSaver name; the retire list maps it to `model_server_status`.
 - [x] U5. (done 2026-11-28, decision: the route table is supplied by the caller, mapping keys to model names; no router endpoint selection. Tests: 4 helper, 2 MCP; `RouteChoice` record, `model_route` tool.) `model_route` in `ModelServerHelper`: routing keys code, chat, summarize, embed, rerank mapped to a named endpoint or the default; unknown key refused.
   Tests for each key and unknown key. Tool in MCP.Core with tests.
-- [ ] U6. `diff_summarize` in a new `DiffHelper` (or `SourceControlHelper`, decided in U6 by checking that project's existing scope). Diff through `CommandRunner`
+- [x] U6. (done 2026-11-28: decided in `SourceControlHelper`, which already owns `git diff`; `DiffStatParser` and `SummarizeDiffAsync` with a path guard; 9 helper tests; `diff_summarize` in `DiffSummarizeTools` with 9 MCP tests. Summary step reuses the model type selection; no model means stats only.) `diff_summarize` in `SourceControlHelper` (decided in U6 by checking that project's existing scope). Diff through `CommandRunner`
   (`git diff`, `--staged` optional), path guard, returns the diff stats and the raw diff size; the summary step uses U2 generate when present, otherwise returns
   diff stats only with a note. Tests with a fake runner. Tool with tests.
 - [x] U7. (done: 6 helper tests and 2 MCP tests; cleanup, history cap at 20 with `historyTrimmed`, prompt cap 20,000) `clean_and_chat` in `ModelServerHelper`: prompt cleanup (trim, strip control characters, enforce a length limit), history entries validated (role in

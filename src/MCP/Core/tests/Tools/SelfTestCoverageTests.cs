@@ -26,7 +26,7 @@ public sealed class SelfTestCoverageTests
         ("GateTools", "GateHelper"),
         ("PackageTools", "PackageHelper"),
         ("ProjectTools", "ProjectHelper"),
-        ("SourceControlTools", "SourceControlHelper"),
+        ("SourceControlTools", "SourceControlHelper"),        ("DiffSummarizeTools", "SourceControlHelper"),
         ("TestingTools", "TestingHelper"),
         ("TerminalSessionTools", "TerminalControl"),
         ("ScriptHelperTools", "ScriptHelper"),

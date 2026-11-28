@@ -1,13 +1,14 @@
 # SourceControlHelper self test
 
-Tools: `GitStatus`, `GitDiff`, `GitPlan`, `GitConfirm`, `PrChecks`, `CiFailure`.
+Tools: `GitStatus`, `GitDiff`, `DiffSummarize`, `GitPlan`, `GitConfirm`, `PrChecks`, `CiFailure`.
 
 ## Full self test
 
 Fixture: a scratch git repo with one commit on `main` and one modified tracked file.
 
 - `GitStatus` (repoPath = fixture): PASS when `ok` is true, `branch` is `main`, and `changes` lists the modified file with `worktree` `M`.
-- `GitDiff` (repoPath = fixture, staged = false): PASS when `ok` is true and `output` contains the added line.
+- `GitDiff` (repoPath = fixture, staged = false): PASS when `ok` is true and `output` contains the added line.- `DiffSummarize` (repoPath = fixture, staged = false): PASS when `ok` is true, `files` lists the changed file, `added` is at least 1 and `summary` is null with a `note` (no model given).
+
 - `GitPlan` (repoPath = fixture, action = stage, paths = the modified file): PASS when `ok` is true and `token` is returned. The file must still show unstaged in `GitStatus`.
 - `GitConfirm` (token from the previous call): PASS when `ok` is true, and `GitStatus` now shows the file staged.
 - `GitConfirm` (same token again): PASS when `ok` is false and `output` says the token is used or unknown.

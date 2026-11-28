@@ -27,4 +27,5 @@
   <data name="NoFailingCheck" xml:space="preserve"><value>No check of this pull request has failed.</value></data>
   <data name="NoRunLink" xml:space="preserve"><value>Check '{0}' failed but has no GitHub Actions run link, so its log cannot be read.</value></data>
   <data name="GitTimedOut" xml:space="preserve"><value>git did not finish in time and was stopped.</value></data>
+  <data name="DiffPathOutside" xml:space="preserve"><value>The path must be inside the repo: no absolute paths, no drive letters, no "..".</value></data>
 </root>

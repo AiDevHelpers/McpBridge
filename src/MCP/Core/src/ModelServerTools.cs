@@ -74,7 +74,7 @@ internal sealed class ModelServerTools(IOptions<ModelServerOptions> options)
     {
         try
         {
-            var s = Select(model, modelType);
+            var s = Select(options.Value, model, modelType);
             if (!s.Ok)
                 return Json(new { ok = false, error = s.Error });
             if (s.Handoff)
@@ -101,7 +101,7 @@ internal sealed class ModelServerTools(IOptions<ModelServerOptions> options)
     {
         try
         {
-            var s = Select(model, modelType);
+            var s = Select(options.Value, model, modelType);
             if (!s.Ok)
                 return Json(new { ok = false, error = s.Error });
             if (s.Handoff)
@@ -129,7 +129,7 @@ internal sealed class ModelServerTools(IOptions<ModelServerOptions> options)
     {
         try
         {
-            var s = Select(model, modelType);
+            var s = Select(options.Value, model, modelType);
             if (!s.Ok)
                 return Json(new { ok = false, error = s.Error });
             if (s.Handoff)
@@ -161,22 +161,22 @@ internal sealed class ModelServerTools(IOptions<ModelServerOptions> options)
         }
     }
 
-    private sealed record Selection(bool Ok, string? Model, string? ModelType, bool Handoff, string? Error);
+    internal sealed record ModelSelection(bool Ok, string? Model, string? ModelType, bool Handoff, string? Error);
 
     /// <summary>Picks the model for a call: a literal model name, or the model a model type routes to. A chat target hands off.</summary>
-    private Selection Select(string? model, string? modelType)
+    internal static ModelSelection Select(ModelServerOptions options, string? model, string? modelType)
     {
         var hasModel = !string.IsNullOrWhiteSpace(model);
         var hasType = !string.IsNullOrWhiteSpace(modelType);
         if (hasModel == hasType)
-            return new Selection(false, null, null, false, Strings.Get("ModelSelectorInvalid"));
+            return new ModelSelection(false, null, null, false, Strings.Get("ModelSelectorInvalid"));
         if (hasModel)
-            return new Selection(true, model!.Trim(), null, false, null);
+            return new ModelSelection(true, model!.Trim(), null, false, null);
 
-        var r = ModelRouter.Resolve(modelType!, options.Value.ToRoutes());
+        var r = ModelRouter.Resolve(modelType!, options.ToRoutes());
         if (!r.Ok)
-            return new Selection(false, null, modelType, false, r.Error);
-        return new Selection(true, r.Model, modelType, r.Target == ModelRouter.ChatTarget, null);
+            return new ModelSelection(false, null, modelType, false, r.Error);
+        return new ModelSelection(true, r.Model, modelType, r.Target == ModelRouter.ChatTarget, null);
     }
 
     private static string Json(object value) => JsonSerializer.Serialize(value);
