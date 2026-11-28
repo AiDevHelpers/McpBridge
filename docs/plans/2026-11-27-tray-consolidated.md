@@ -136,6 +136,9 @@ Remaining:
 - **10a Updater core:** verifier, guard, applier, key list, `UpdatesFolderAcl`, `PORTED.md`. Tests: tampered or unsigned rejected; traversal, rollback, downgrade and replay rejected; key rotation.
   - Decided 2026-11-27: port source is `F:\videoforensics` at commit 7e47bd9b (`src/client/host/VideoForensics.Hosting/src/Updates/*`, 1138 lines, BouncyCastle Ed25519). Port the verifier, guard, applier, manifest and their tests; record the commit in `PORTED.md`.
   - Decided 2026-11-27: local dev signing is a generated file key, Ed25519 (same as the port). Private key under `%ProgramData%\AiDevHelpers\updates\keys`, admin-only ACL; public key committed. The release key stays with unit 10b.
+  - Decided 2026-11-28 (review): the dev key is accepted in debug builds only, public key from machine-only config. Release builds accept only the unit 10b key.
+  - Decided 2026-11-28 (review): the Host starts MCP.Http only when no `AiDevHelpers.Tray` process runs in the user's session. If the tray starts while the Host's MCP.Http runs, the tray adopts it and starts no second one. The Host keeps the updater role.
+  - Open for 10a (review): the port has no monotonic version, `notAfter`, key list, ACL or rotation. Those are new design and each needs a named test before code.
   - Branch: `feat/tray-unit10a-updater-core` from `wip`. Not started in code yet.
 - **10b Updater delivery:** stager scripts, GitHub downloader, service watcher with drain, release workflow with a protected environment. Needs the user's signing key.
 - **11a About and scoped tokens:** version, build, components, links; per-client scoped tokens.
