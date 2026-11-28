@@ -68,4 +68,5 @@ Parent plan: `docs/plans/2026-11-27-tray-consolidated.md` (row 10b). Depends on 
 ## Status
 - Review: done; findings folded in above.
 - Unit 1: done. Red run: `UpdateManifestWriterTests` failed to compile (no `UpdateManifestWriter`). Green: 49/49 in `src/Updates/tests`. Tool `src/Updates/tools/AiDevHelpers.Updates.ManifestTool` smoke-tested: write produces the manifest; verify rejects an unsigned package (exit 1). Workflow and `scripts/sign-package.ps1` are written but not run: the signing step needs a real run of the `release` environment.
-- Units 2–7: not started.
+- Unit 2: done. Red run: `GitHubReleaseClientTests` failed to compile (no `GitHubReleaseClient`). Green: 55/55 in `src/Updates/tests`.
+- Units 3–7: not started.
