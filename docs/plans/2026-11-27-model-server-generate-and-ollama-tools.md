@@ -43,8 +43,7 @@ Source of behavior: TokenSaver repo `F:\aidevhelpers\TokenSaver` (read only). St
 - [x] U8. (done 2026-11-28: `WorkspacePathGuard` and `PathCheck` moved to `AiDevHelpers.Common` with their own `Strings` resx; tests moved to `src/Common/tests`; `FileEditHelper` references Common. Common 120/120, FileEditHelper 49/49, MCP Core 477/477.) Shared path guard: move `WorkspacePathGuard` from `FileEditHelper` into `AiDevHelpers.Common`, with tests moved too.
   Approved in Answers (2026-11-27).
 - [x] U9. (done 2026-11-28: `CodeWorkStart`, `CodeWorkContinue`, `CodeWorkConfirm` in MCP Core, sessions in `CodeWorkStore` under `.aidevhelpers/code-work`, `CodeWork:Enabled` off by default; 11 tests; MCP Core 488/488.) Scope decided by the answers in "Answers" below. The session store and tools are in MCP Core for now, not a new helper project (deviation from the wiring list; move later if needed). Not verified live: start with confirm needs an open Visual Studio instance.
-- [ ] U10. `fix_code` (enable-analysis, fix-syntax, fix-imports, fix-namespace, format): edits go through `FileEditEngine` with backups; format through the existing
-  `ide_format_document` path or `dotnet format` via `CommandRunner`. Blocked on U8 and on the user's choice of format backend.
+- [x] U10. (done 2026-11-28: `FixCodeTools` in MCP Core, 9 tests, MCP Core 513/513. `enable-analysis` writes the managed IDE0005 block through `FileEditService` with a backup; `format` calls the bridge `formatDocument` (active document, needs a live Visual Studio, not run). `fix-syntax`, `fix-imports` and `fix-namespace` refuse and name `ide_code_cleanup` / `ide_rename_namespace`.) Format backend answered: `ide_format_document`.
 - [ ] U11. `execute_step` (plan step execution, from `ManagePlan`): depends on U9's plan storage. Blocked on U9.
 - [ ] U12. Docs and gates: `docs/features.md`, `docs/self_test.md`, dogfood log; lite gate with aidevtools tools; full gate before any PR to dev/main.
 
