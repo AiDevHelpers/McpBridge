@@ -132,6 +132,11 @@
     <Project Path="src/ScriptHelper/client/AiDevHelpers.ScriptHelper.Client.csproj" />
     <Project Path="src/ScriptHelper/tests/AiDevHelpers.ScriptHelper.Core.Tests.csproj" />
   </Folder>
+  <Folder Name="/Updates/">
+    <Project Path="src/Updates/src/AiDevHelpers.Updates.csproj" />
+    <Project Path="src/Updates/tests/AiDevHelpers.Updates.Tests.csproj" />
+    <Project Path="src/Updates/tools/AiDevHelpers.Updates.ManifestTool/AiDevHelpers.Updates.ManifestTool.csproj" />
+  </Folder>
   <Folder Name="/Tray/MCP.Http/">
     <Project Path="src/Tray/MCP.Http/src/AiDevHelpers.MCP.Http.csproj" />
     <Project Path="src/Tray/MCP.Http/tests/AiDevHelpers.MCP.Http.Tests.csproj" />

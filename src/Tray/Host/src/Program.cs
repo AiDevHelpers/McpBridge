@@ -1,7 +1,10 @@
 // The Host service (LocalSystem). It starts AiDevHelpers.MCP.Http in the user's session and restarts it with a bounded backoff
-// (unit 2 of docs/plans/2026-11-26-tray-service.md). It never reads a manifest or any file the user can write.
+// (unit 2 of docs/plans/2026-11-26-tray-service.md). It installs signed updates (unit 10b) only from the admin-only updates folder,
+// and only after the package's signature and hashes verify against the release key.
 using System.Diagnostics;
 using AiDevHelpers.Helpers.WindowsSession;
+using AiDevHelpers.Host;
+using AiDevHelpers.Updates;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,7 +12,45 @@ using Microsoft.Extensions.Logging;
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddWindowsService(options => options.ServiceName = "AiDevHelpers");
 builder.Services.AddSingleton<ISessionLauncher, WindowsSessionLauncher>();
+builder.Services.AddSingleton<McpHold>();
+builder.Services.AddSingleton<IMcpProcessControl, McpProcessControl>();
+
+// Updates (unit 10b). The install folder holds program files only; the updates folder is in ProgramData and admin-writable (UpdatesFolderAcl).
+// Packages are accepted only with a valid signature from the release key (ReleaseSigningKeys).
+string updatesRoot = Path.Combine(Environment.GetEnvironmentVariable("ProgramData") ?? @"C:\ProgramData", "AiDevHelpers", "updates");
+string installDir = AppContext.BaseDirectory;
+var http = new HttpClient();
+var verifier = new UpdatePackageVerifier(new Ed25519PackageSignatureVerifier([ReleaseSigningKeys.Current()]));
+builder.Services.AddSingleton<IStagedUpdateInstaller>(sp => new StagedUpdateInstaller(
+    verifier,
+    new UpdateApplier(sp.GetRequiredService<ILogger<UpdateApplier>>()),
+    new McpUpdateDrain(sp.GetRequiredService<IMcpProcessControl>(), TimeSpan.FromSeconds(30)),
+    sp.GetRequiredService<IMcpProcessControl>(),
+    new UpdateReplayRecord(updatesRoot),
+    updatesRoot,
+    installDir,
+    sp.GetRequiredService<ILogger<StagedUpdateInstaller>>()));
+builder.Services.AddSingleton<IGitHubReleaseSource>(new GitHubReleaseClient(http, "AiDevHelpers", "McpBridge"));
+builder.Services.AddSingleton<IUpdateDownloader>(sp => new UpdateDownloader(
+    http,
+    new UpdateStager(updatesRoot, verifier, allowDevPackages: false, HostVersion.Current, sp.GetRequiredService<ILogger<UpdateStager>>()),
+    updatesRoot));
+
+// Hosted services start in this order, each start awaited: the startup install runs before the supervisor starts MCP.Http.
+builder.Services.AddHostedService(sp => new StartupUpdateService(
+    sp.GetRequiredService<IStagedUpdateInstaller>(),
+    HostVersion.Current,
+    updatesRoot,
+    UpdatesFolderAcl.Apply,
+    sp.GetRequiredService<ILogger<StartupUpdateService>>()));
 builder.Services.AddHostedService<McpSupervisor>();
+builder.Services.AddHostedService(sp => new StagedUpdateWatcher(
+    sp.GetRequiredService<IGitHubReleaseSource>(),
+    sp.GetRequiredService<IUpdateDownloader>(),
+    sp.GetRequiredService<IStagedUpdateInstaller>(),
+    HostVersion.Current,
+    Environment.Exit,
+    sp.GetRequiredService<ILogger<StagedUpdateWatcher>>()));
 await builder.Build().RunAsync();
 
 /// <summary>Starts a process in a logged-on user's session. A test replaces it with a fake.</summary>
@@ -80,9 +121,15 @@ public static class SessionChoice
 
 /// <summary>Keeps one MCP.Http running in the user's session. A process that exits is started again after a backoff; a run that lasted
 /// a minute resets the failure count. Stopping the service stops the process.</summary>
-public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration configuration, ILogger<McpSupervisor> log) : BackgroundService
+public sealed class McpSupervisor(
+    ISessionLauncher launcher,
+    IConfiguration configuration,
+    ILogger<McpSupervisor> log,
+    McpHold hold,
+    Func<uint>? chooseSession = null) : BackgroundService
 {
     private static readonly TimeSpan HealthyRun = TimeSpan.FromMinutes(1);
+    private readonly Func<uint> _chooseSession = chooseSession ?? (() => SessionChoice.Choose(UserSession.ActiveConsoleSession(), s => UserSession.GetUserSid(s) is not null, UserSession.FindFirstLoggedOnSession));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -92,7 +139,15 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            var session = SessionChoice.Choose(UserSession.ActiveConsoleSession(), s => UserSession.GetUserSid(s) is not null, UserSession.FindFirstLoggedOnSession);
+            if (hold.IsHeld)
+            {
+                // An update is applying: MCP.Http stays down until it is released.
+                log.LogInformation("{Exe} is held for an update; not starting it.", exe);
+                await hold.WhenChangedFrom(true).WaitAsync(stoppingToken);
+                continue;
+            }
+
+            var session = _chooseSession();
             var started = DateTime.UtcNow;
             if (session == UserSession.NoSession)
             {
@@ -100,7 +155,7 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 log.LogInformation("No user session to start {Exe} in yet; checking again.", exe);
                 var wait = SupervisorPolicy.AfterNoSession(failures);
                 failures = wait.Failures;
-                await Task.Delay(wait.Delay, stoppingToken);
+                await PauseAsync(wait.Delay, stoppingToken);
                 continue;
             }
 
@@ -114,9 +169,18 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
             else
             {
                 log.LogInformation("Started {Exe} (pid {Pid}) in session {Session}.", exe, process.Id, session);
+                hold.Attach(process);
                 try
                 {
-                    await process.WaitForExitAsync(stoppingToken);
+                    if (await WaitForExitOrHoldAsync(process, stoppingToken))
+                    {
+                        // A hold stopped it for an update. That is not a failure, so the count is left alone.
+                        StopProcess(process);
+                        await process.WaitForExitAsync(stoppingToken);
+                        log.LogInformation("{Exe} stopped for an update.", exe);
+                        continue;
+                    }
+
                     log.LogWarning("{Exe} exited with code {Code}.", exe, process.ExitCode);
                 }
                 catch (OperationCanceledException)
@@ -135,7 +199,41 @@ public sealed class McpSupervisor(ISessionLauncher launcher, IConfiguration conf
                 return;
             }
 
-            await Task.Delay(delay.Value, stoppingToken);
+            await PauseAsync(delay.Value, stoppingToken);
+        }
+    }
+
+    // Returns true when a hold asked for the process to stop; false when it exited on its own.
+    private async Task<bool> WaitForExitOrHoldAsync(Process process, CancellationToken ct)
+    {
+        Task exit = process.WaitForExitAsync(ct);
+        while (!exit.IsCompleted)
+        {
+            if (hold.IsHeld)
+            {
+                return true;
+            }
+
+            await Task.WhenAny(exit, hold.WhenChangedFrom(false));
+        }
+
+        return false;
+    }
+
+    // A backoff wait ends early when a hold starts, so the next pass waits on the hold instead of sleeping.
+    private async Task PauseAsync(TimeSpan delay, CancellationToken ct)
+    {
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task pause = Task.Delay(delay, cts.Token);
+        await Task.WhenAny(pause, hold.WhenChangedFrom(false));
+        cts.Cancel();
+        try
+        {
+            await pause;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // Cut short by a hold, not by the service stopping.
         }
     }
 

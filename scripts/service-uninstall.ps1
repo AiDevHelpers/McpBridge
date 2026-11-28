@@ -24,6 +24,9 @@ if (Get-Service -Name $serviceName -ErrorAction SilentlyContinue) {
     if ($LASTEXITCODE -ne 0) { Write-Error "sc.exe delete failed with $LASTEXITCODE."; exit 5 }
 }
 
+# The tray and MCP.Http run from this folder; their files cannot be removed while they run. Stop them first.
+Get-Process -Name 'AiDevHelpers.Tray', 'AiDevHelpers.MCP.Http' -ErrorAction SilentlyContinue | Stop-Process -Force
+
 $target = Join-Path $env:ProgramFiles 'AiDevHelpers'
 if (Test-Path -LiteralPath $target) {
     Remove-Item -LiteralPath $target -Recurse -Force -ErrorAction Stop

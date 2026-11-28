@@ -1,0 +1,72 @@
+name: Release package
+
+# Builds the signed update package for a release (unit 10b). The private key is only available to the protected "release"
+# environment, so a run waits for the required reviewer before it can sign.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v0.2.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: windows-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.tag }}
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Derive version and check the tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.tag }}'
+          if ($tag -notmatch '^v(\d+\.\d+\.\d+)$') { throw "tag '$tag' is not vMAJOR.MINOR.PATCH" }
+          "version=$($Matches[1])" >> $env:GITHUB_OUTPUT
+
+      - name: Build package
+        shell: pwsh
+        run: ./scripts/build-package.ps1 -Version '${{ steps.version.outputs.version }}'
+
+      - name: Write manifest
+        shell: pwsh
+        run: |
+          dotnet run --project src/Updates/tools/AiDevHelpers.Updates.ManifestTool -c Release -- write artifacts/package '${{ steps.version.outputs.version }}'
+
+      - name: Sign manifest
+        shell: pwsh
+        env:
+          RELEASE_SIGNING_KEY: ${{ secrets.RELEASE_SIGNING_KEY }}
+        run: |
+          $key = Join-Path $env:RUNNER_TEMP 'release-signing.pem'
+          try {
+            Set-Content -Path $key -Value $env:RELEASE_SIGNING_KEY -NoNewline -Encoding ascii
+            ./scripts/sign-package.ps1 -PackageDir artifacts/package -KeyFile $key
+          } finally {
+            Remove-Item $key -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Verify signature with the release key
+        shell: pwsh
+        run: dotnet run --project src/Updates/tools/AiDevHelpers.Updates.ManifestTool -c Release -- verify artifacts/package
+
+      - name: Zip package contents (no base folder)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path artifacts/package/* -DestinationPath "AiDevHelpers-package-${{ steps.version.outputs.version }}.zip"
+
+      - name: Upload to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload '${{ inputs.tag }}' "AiDevHelpers-package-${{ steps.version.outputs.version }}.zip" --clobber
+
