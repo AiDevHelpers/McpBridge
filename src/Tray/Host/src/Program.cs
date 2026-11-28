@@ -22,7 +22,7 @@ public interface ISessionLauncher
 public sealed class WindowsSessionLauncher : ISessionLauncher
 {
     public Process? Start(uint session, string exe, string arguments, string workingDirectory) =>
-        UserProcess.Start(new UserProcessStartInfo(exe, arguments, session, workingDirectory));
+        UserProcess.Start(new UserProcessStartInfo(exe, arguments, session, workingDirectory, HideWindow: true));
 }
 
 /// <summary>The restart policy: a bounded backoff, and a give-up after too many consecutive failures.</summary>
