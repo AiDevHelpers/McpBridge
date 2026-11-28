@@ -95,11 +95,17 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         IReadOnlyList<string>? paths = null,
         string? message = null,
         string? branch = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? pushRef = null)
     {
-        var overridden = await CheckRulesAsync(repoPath, action, branch, ct);
+        if (pushRef is not null && action != "push")
+        {
+            throw new ArgumentException(Strings.Get("PushRefNeedsPush"), nameof(pushRef));
+        }
+
+        var overridden = await CheckRulesAsync(repoPath, action, pushRef is null ? branch : DestinationOf(pushRef), ct);
         var planned = HeadSensitive.Contains(action) ? await ReadStateAsync(repoPath, ct) : null;
-        return Register(BuildPending(repoPath, action, paths, message, branch, overridden) with { PlannedState = planned });
+        return Register(BuildPending(repoPath, action, paths, message, branch, overridden, pushRef) with { PlannedState = planned });
     }
 
     /// <summary>
@@ -112,7 +118,8 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         IReadOnlyList<string>? paths = null,
         string? message = null,
         string? branch = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        string? pushRef = null)
     {
         if (actions.Count == 0)
         {
@@ -122,8 +129,10 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         var steps = new List<PendingWrite>();
         foreach (var action in actions)
         {
-            var overridden = await CheckRulesAsync(repoPath, action, branch, ct);
-            steps.Add(BuildPending(repoPath, action, paths, message, branch, overridden));
+            // pushRef goes only to push steps; other steps keep the plain branch.
+            var stepPushRef = action == "push" ? pushRef : null;
+            var overridden = await CheckRulesAsync(repoPath, action, stepPushRef is null ? branch : DestinationOf(stepPushRef), ct);
+            steps.Add(BuildPending(repoPath, action, paths, message, branch, overridden, stepPushRef));
         }
 
         // One state read covers the whole sequence: it is checked before the first step only (see RunSequenceAsync).
@@ -168,21 +177,48 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         return pending;
     }
 
-    private static PendingWrite BuildPending(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden)
+    // The destination branch of a push-to-ref: "dst" pushes HEAD to dst, "src:dst" pushes src to dst. Rules check the destination.
+    internal static string DestinationOf(string pushRef) => pushRef.Split(':')[^1];
+
+    // "dst" -> "HEAD:refs/heads/dst"; "src:dst" -> "src:refs/heads/dst". Anything else is refused.
+    private static string PushRefspec(string pushRef)
+    {
+        var parts = pushRef.Split(':');
+        if (parts.Length > 2)
+        {
+            throw new ArgumentException(Strings.Get("PushRefInvalid"), nameof(pushRef));
+        }
+
+        var source = parts.Length == 2 ? parts[0] : "HEAD";
+        var destination = parts[^1];
+        if (!IsValidRefName(source) || !IsValidRefName(destination))
+        {
+            throw new ArgumentException(Strings.Get("PushRefInvalid"), nameof(pushRef));
+        }
+
+        return source + ":refs/heads/" + destination;
+    }
+
+    // A conservative branch-name check: no leading dash, no "..", no spaces, only letters, digits, '/', '.', '_' and '-'.
+    private static bool IsValidRefName(string name) =>
+        name.Length > 0 && !name.StartsWith('-') && !name.Contains("..", StringComparison.Ordinal)
+        && name.All(c => char.IsLetterOrDigit(c) || c is '/' or '.' or '_' or '-');
+
+    private static PendingWrite BuildPending(string repoPath, string action, IReadOnlyList<string>? paths, string? message, string? branch, bool overridden, string? pushRef = null)
     {
         if (!WriteActions.Contains(action))
         {
             throw new ArgumentException(Strings.Format("UnknownWriteAction", action, string.Join(", ", WriteActions)), nameof(action));
         }
 
-        var args = BuildArguments(action, paths, message, branch);
+        var args = BuildArguments(action, paths, message, branch, pushRef);
         return new PendingWrite(
             Token: Guid.NewGuid().ToString("N"),
             Action: action,
             Description: "git " + string.Join(" ", args.Select(Quote)),
             Arguments: args,
             RepoPath: repoPath,
-            Branch: branch,
+            Branch: pushRef is null ? branch : DestinationOf(pushRef),
             Overridden: overridden);
     }
 
@@ -313,7 +349,7 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
         return result.Ok && text.Length > 0 && !text.Contains('\n') ? text : null;
     }
 
-    public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch)
+    public static IReadOnlyList<string> BuildArguments(string action, IReadOnlyList<string>? paths, string? message, string? branch, string? pushRef = null)
     {
         switch (action)
         {
@@ -330,6 +366,16 @@ public sealed class SourceControlService(IGitRunner git, IRepoRulesSource? rules
             case "pull":
                 return ["pull"];
             case "push":
+                if (pushRef is not null)
+                {
+                    if (!string.IsNullOrWhiteSpace(branch))
+                    {
+                        throw new ArgumentException(Strings.Get("PushRefWithBranch"), nameof(pushRef));
+                    }
+
+                    return ["push", "origin", PushRefspec(pushRef)];
+                }
+
                 return string.IsNullOrWhiteSpace(branch) ? ["push"] : ["push", "origin", branch!];
             case "create_branch":
                 RequireText(branch, Strings.Get("CreateBranchNeedsName"));

@@ -111,6 +111,7 @@ internal sealed class SourceControlTools
         [Description("Commit message, for commit")] string? message = null,
         [Description("Branch name, for push, create_branch, delete_branch and switch")] string? branch = null,
         [Description("Write actions to run in order under one token, e.g. stage, commit, push")] string[]? sequence = null,
+        [Description("Destination for push: a branch name (pushes HEAD there) or source:destination. Not with branch.")] string? pushRef = null,
         CancellationToken ct = default)
     {
         var hasSequence = sequence is { Length: > 0 };
@@ -124,11 +125,11 @@ internal sealed class SourceControlTools
         {
             if (hasSequence)
             {
-                var planned = await Service.PlanSequenceAsync(repoPath, sequence!, paths, message, branch, ct);
+                var planned = await Service.PlanSequenceAsync(repoPath, sequence!, paths, message, branch, ct, pushRef);
                 return Json(new { ok = true, token = planned.Token, sequence = sequence, command = planned.Description });
             }
 
-            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct);
+            var pending = await Service.PlanAsync(repoPath, action!, paths, message, branch, ct, pushRef);
             return Json(new { ok = true, token = pending.Token, action = pending.Action, command = pending.Description });
         }
         catch (ArgumentException ex)

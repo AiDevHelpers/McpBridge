@@ -40,7 +40,9 @@ Status: red run 4 of 7 `HeadGuardTests` failing; green: SourceControlHelper 52/5
 
 Done when: tests pass and a live scratch-repo check shows a branch switch between plan and confirm is refused.
 
-### Unit 2: push to another ref
+### Unit 2: push to another ref — DONE
+
+Status: tests in `PushRefTests.cs` (10 cases; the first red run was a compile failure because `pushRef` did not exist yet). Green: SourceControlHelper 62/62, MCP Core 454/454. `pushRef` is passed to push steps only in a sequence; a non-push action with pushRef is refused.
 
 - `pushRef` parameter on `git_plan`, after `sequence` and before `ct`, optional. Accept `dst` or `src:dst`. Build `push origin <src>:refs/heads/<dst>`. Reject empty names and names starting with `-`. Refuse a call that gives both `branch` and `pushRef`.
 - Set `PendingWrite.Branch` to the destination, so `RefusalAsync` at confirm checks the right branch.

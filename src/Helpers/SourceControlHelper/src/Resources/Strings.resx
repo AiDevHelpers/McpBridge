@@ -13,6 +13,9 @@
   <data name="RuleOverrideHint" xml:space="preserve"><value>To allow this one write, the user can run in a console: elev rules override "{0}" {1}. Then plan it again.</value></data>
   <data name="RulesChangedBeforeConfirm" xml:space="preserve"><value>The repo's rules changed since this write was planned and it is now refused. {0}</value></data>
   <data name="HeadMovedBeforeConfirm" xml:space="preserve"><value>The checked-out commit or branch changed since this write was planned, so it was not run. Plan the write again.</value></data>
+  <data name="PushRefInvalid" xml:space="preserve"><value>The push destination must be a branch name, or source:destination, with no spaces, no leading dash and no "..".</value></data>
+  <data name="PushRefWithBranch" xml:space="preserve"><value>Give either branch or pushRef for a push, not both.</value></data>
+  <data name="PushRefNeedsPush" xml:space="preserve"><value>pushRef is only for the push action.</value></data>
   <data name="UnknownToken" xml:space="preserve"><value>Unknown or already used token. Plan the write again.</value></data>
   <data name="SequenceNeedsSteps" xml:space="preserve"><value>A sequence needs at least one action.</value></data>
   <data name="StageNeedsPath" xml:space="preserve"><value>stage needs at least one path.</value></data>
